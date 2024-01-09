@@ -1633,10 +1633,13 @@ void ObjectsPanel::on_motion_enter(double /*ex*/, double /*ey*/)
     _msg_id = getDesktop()->messageStack()->push(Inkscape::NORMAL_MESSAGE,
          _("<b>Hold ALT</b> while hovering over item to highlight, "
            "<b>hold SHIFT</b> and click to hide/lock all."));
+    _translucency_key =  getDesktop()->getTranslucencyGroups().createGroupKey();
 }
 // watch mouse leave too to clear any state.
 void ObjectsPanel::on_motion_leave()
 {
+    getDesktop()->getTranslucencyGroups().removeGroupKey(_translucency_key);
+    _translucency_key = 0;
     getDesktop()->messageStack()->cancel(_msg_id);
     on_motion_motion(nullptr, 0, 0);
 }
@@ -1718,23 +1721,14 @@ void ObjectsPanel::on_motion_motion(Gtk::EventControllerMotion const *controller
 
 void ObjectsPanel::_handleTransparentHover(bool enabled)
 {
-    auto &trg = getDesktop()->getTranslucencyGroup();
     SPItem *item = nullptr;
     if (enabled && _hovered_row_ref) {
         if (auto row = *_store->get_iter(_hovered_row_ref.get_path())) {
             item = getItem(row);
         }
     }
-    // Save any solid item from other inkscape features
-    if (enabled && !_translucency_enabled) {
-        _old_solid_item = trg.getSolidItem();
-    } else if (!enabled && _translucency_enabled) {
-        item = _old_solid_item;
-    }
-    _translucency_enabled = enabled;
-
-    // Ask the canvas to only show one item fully opaque
-    trg.setSolidItem(item);
+    // Hovered item is solid, everything else is translucent
+    getDesktop()->getTranslucencyGroups().setSolidItem(_translucency_key, item);
 }
 
 [[nodiscard]] static auto get_cell_area(Gtk::TreeView const &tree_view,

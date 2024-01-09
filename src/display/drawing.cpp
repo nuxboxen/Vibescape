@@ -382,9 +382,9 @@ void Drawing::setExact()
 /*
  * Set the opacity of the drawing root drawing-item
  */
-void Drawing::setOpacity(double opacity)
+void Drawing::setOpacityOverride(std::optional<double> opacity)
 {
-    _root->setOpacity(opacity);
+    _root->setOpacityOverride(opacity);
 }
 
 } // namespace Inkscape

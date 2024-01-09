@@ -148,6 +148,7 @@ public:
     virtual void setStyle(SPStyle const *style, SPStyle const *context_style = nullptr);
     virtual void setChildrenStyle(SPStyle const *context_style);
     void setOpacity(float opacity);
+    void setOpacityOverride(std::optional<double> opacity);
     void setAntialiasing(Antialiasing antialias);
     void setIsolation(bool isolation); // CSS Compositing and Blending
     void setBlendMode(SPBlendMode blend_mode);
@@ -175,6 +176,9 @@ public:
     void recursivePrintTree(unsigned level = 0) const;  // For debugging
 
     sigc::connection connectItemDeleted(sigc::slot<void ()> const &slot) { return _delete_item_signal.connect(slot); }
+
+    inline double getOpacity() const { return _opacity_override ? *_opacity_override : _opacity; }
+    inline bool hasOpacity() const { return getOpacity() < 0.995; }
 
 protected:
     enum class ChildType : unsigned char
@@ -226,6 +230,7 @@ protected:
     SPStyle const *_context_style; // Used for 'context-fill', 'context-stroke'
 
     float _opacity;
+    std::optional<double> _opacity_override;
     std::unique_ptr<Geom::Affine> _transform; ///< Incremental transform from parent to this item's coords
     Geom::Affine _ctm; ///< Total transform from item coords to display coords
     Geom::OptIntRect _bbox; ///< Bounding box in display (pixel) coords including stroke

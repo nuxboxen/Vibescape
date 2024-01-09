@@ -125,7 +125,7 @@ bool DrawingItem::unisolatedBlend() const
 {
     if (_blend_mode != SP_CSS_BLEND_NORMAL) {
         return true;
-    } else if (_mask || _filter || _opacity < 0.995 || _isolation == SP_CSS_ISOLATION_ISOLATE) {
+    } else if (_mask || _filter || hasOpacity() || _isolation == SP_CSS_ISOLATION_ISOLATE) {
         return false;
     } else {
         return _contains_unisolated_blend;
@@ -195,6 +195,17 @@ void DrawingItem::setOpacity(float opacity)
     defer([=, this] {
         if (opacity == _opacity) return;
         _opacity = opacity;
+        _markForRendering();
+    });
+}
+
+void DrawingItem::setOpacityOverride(std::optional<double> opacity)
+{
+    defer([=, this] {
+        if ((!opacity && !_opacity_override) || (opacity && _opacity_override && *opacity == *_opacity_override)) {
+            return;
+        }
+        _opacity_override = opacity;
         _markForRendering();
     });
 }
@@ -612,7 +623,7 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
         }
 
         // Determine whether this item is cachable.
-        bool isolated = _mask || _filter || _opacity < 0.995
+        bool isolated = _mask || _filter || hasOpacity()
             || _blend_mode != SP_CSS_BLEND_NORMAL
             || _isolation == SP_CSS_ISOLATION_ISOLATE
             || _child_type == ChildType::ROOT;
@@ -783,7 +794,7 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
            _clip                                  // 1. it has a clipping path
         || _mask                                  // 2. it has a mask
         || (_filter && render_filters)            // 3. it has a filter
-        || _opacity < 0.995                       // 4. it is non-opaque
+        || hasOpacity()                           // 4. it is non-opaque
         || _blend_mode != SP_CSS_BLEND_NORMAL     // 5. it has blend mode
         || _isolation == SP_CSS_ISOLATION_ISOLATE // 6. it is isolated
         || (_child_type == ChildType::ROOT && isolate_root) // 7. it is the root and needs isolation
@@ -831,7 +842,7 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     unsigned render_result = RENDER_OK;
 
     // 1. Render clipping path with alpha = opacity.
-    ict.setSource(0,0,0,_opacity);
+    ict.setSource(0,0,0, getOpacity());
     // Since clip can be combined with opacity, the result could be incorrect
     // for overlapping clip children. To fix this we use the SOURCE operator
     // instead of the default OVER.

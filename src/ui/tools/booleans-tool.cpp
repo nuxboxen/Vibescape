@@ -15,6 +15,7 @@
 #include "actions/actions-tools.h" // set_active_tool()
 #include "desktop.h"
 #include "display/control/canvas-item-drawing.h"
+#include "display/translucency-group.h"
 #include "display/drawing.h"
 #include "document-undo.h"
 #include "document.h"
@@ -26,6 +27,7 @@
 #include "ui/modifiers.h"
 #include "ui/tools/booleans-builder.h"
 #include "ui/widget/events/canvas-event.h"
+#include "object/sp-root.h"
 
 using Inkscape::DocumentUndo;
 using Inkscape::Modifiers::Modifier;
@@ -54,15 +56,25 @@ InteractiveBooleansTool::InteractiveBooleansTool(SPDesktop *desktop)
     _desktop->doc()->get_event_log()->updateUndoVerbs();
 
     auto prefs = Inkscape::Preferences::get();
-    set_opacity(prefs->getDouble("/tools/booleans/opacity", 0.5));
+    _translucency_key = _desktop->getTranslucencyGroups().createGroupKey(prefs->getDouble("/tools/booleans/opacity", 0.5));
+    _desktop->getTranslucencyGroups().setTranslucentItem(_translucency_key, _desktop->doc()->getRoot());
+
     hide_selected_objects();
 }
 
 InteractiveBooleansTool::~InteractiveBooleansTool()
 {
-    set_opacity(1.0);
+    _desktop->getTranslucencyGroups().removeGroupKey(_translucency_key);
     hide_selected_objects(false);
     _desktop->doc()->get_event_log()->updateUndoVerbs();
+}
+
+/**
+ * Set the variable transparency of the rest of the canvas
+ */
+void InteractiveBooleansTool::set_opacity(double opacity)
+{
+    _desktop->getTranslucencyGroups().setTranslucency(_translucency_key, opacity);
 }
 
 /**
@@ -80,18 +92,12 @@ void InteractiveBooleansTool::hide_selected_objects(bool hide)
         if (hide && boolean_builder && boolean_builder->contains_image(item))
             continue;
         if (auto ditem = item->get_arenaitem(_desktop->dkey)) {
-            ditem->setOpacity(hide ? 0.0 : item->style->opacity.as_double());
+            if (hide) {
+                ditem->setOpacityOverride(0.0);
+            } else {
+                ditem->setOpacityOverride({});
+            }
         }
-    }
-}
-
-/**
- * Set the variable transparency of the rest of the canvas
- */
-void InteractiveBooleansTool::set_opacity(double opacity)
-{
-    if (auto drawing = _desktop->getCanvasDrawing()->get_drawing()) {
-        drawing->setOpacity(opacity);
     }
 }
 

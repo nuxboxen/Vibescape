@@ -7,32 +7,48 @@
  * Copyright (C) 2021-2024 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
-#ifndef SEEN_DISPLAY_TRANSLUCENCY
-#define SEEN_DISPLAY_TRANSLUCENCY
+#ifndef SEEN_DISPLAY_TRANSLUCENCY_GROUPS
+#define SEEN_DISPLAY_TRANSLUCENCY_GROUPS
 
 #include <vector>
+#include <map>
 
 class SPItem;
 
 namespace Inkscape::Display {
 
-class TranslucencyGroup {
+class TranslucencyGroups {
 public:
-    TranslucencyGroup(unsigned int dkey);
 
-    SPItem *getSolidItem() const { return _solid_item; }
-    void setSolidItem(SPItem *item);
+    TranslucencyGroups(unsigned int dkey);
+
+    unsigned createGroupKey(double translucency = 0.2, bool fallback = true);
+    void removeGroupKey(unsigned group_key);
+    void setTranslucency(unsigned group_key, double translucency = 0.2);
+
+    void setSolidItem(unsigned group_key, SPItem *item) { _set_item(group_key, item, true); }
+    void setTranslucentItem(unsigned group_key, SPItem *item) { _set_item(group_key, item, false); }
 private:
     unsigned int _dkey;
-    SPItem *_solid_item = nullptr;
+
+    struct Group {
+        double translucency;
+        SPItem *item = nullptr;
+        bool invert = true;
+        bool fallback = true;
+    };
+
+    std::map<unsigned, Group> _groups;
     std::vector<SPItem *> _translucent_items;
 
-    void _generateTranslucentItems(SPItem *parent);
+    void _set_item(unsigned group_key, SPItem *item, bool invert);
+    void _generateTranslucentItems(SPItem *item, SPItem *parent);
+    void _update();
 };
 
 } /* namespace Inkscape::Display */
 
-#endif // SEEN_INKSCAPE_NR_LIGHT_H
+#endif // SEEN_DISPLAY_TRANSLUCENCY_GROUPS
 /*
   Local Variables:
   mode:c++
