@@ -133,7 +133,7 @@ class Dock;
 namespace Display {
 class TemporaryItemList;
 class TemporaryItem;
-class TranslucencyGroup;
+class TranslucencyGroups;
 class SnapIndicator;
 } // namespace Display
 
@@ -180,7 +180,7 @@ private:
 
     std::unique_ptr<Inkscape::UI::Tools::ToolBase> _tool;
     std::unique_ptr<Inkscape::Display::TemporaryItemList> _temporary_item_list;
-    std::unique_ptr<Inkscape::Display::TranslucencyGroup> _translucency_group;
+    std::unique_ptr<Inkscape::Display::TranslucencyGroups> _translucency_groups;
     std::unique_ptr<Inkscape::Display::SnapIndicator> _snapindicator;
 
     SPNamedView *namedview = nullptr;
@@ -189,6 +189,8 @@ private:
     std::unique_ptr<Inkscape::UI::Widget::Canvas> canvas;
 
     bool _hide_selection_boxes = false;
+
+    unsigned _translucency_key;
 
 public:
     Inkscape::UI::Tools::ToolBase    *getTool         () const { return _tool.get(); }
@@ -305,7 +307,7 @@ public:
     Inkscape::Display::TemporaryItem *add_temporary_canvasitem(Inkscape::CanvasItem *item, int lifetime_msecs, bool move_to_bottom = true);
     void remove_temporary_canvasitem(Inkscape::Display::TemporaryItem *tempitem);
 
-    Inkscape::Display::TranslucencyGroup &getTranslucencyGroup() const { return *_translucency_group; }
+    Inkscape::Display::TranslucencyGroups &getTranslucencyGroups() const { return *_translucency_groups; }
 
     Inkscape::UI::Dialog::DialogContainer *getContainer();
 
@@ -566,6 +568,7 @@ private:
     sigc::scoped_connection _reconstruction_finish_connection;
     sigc::scoped_connection _schedule_zoom_from_document_connection;
     sigc::scoped_connection _y_axis_flipped;
+    sigc::scoped_connection _layer_changed_connection;
 
     bool drawing_handler(Inkscape::CanvasEvent const &event, Inkscape::DrawingItem *item);
     void reconstruction_start();
@@ -589,6 +592,7 @@ private:
     // Find items by geometry --------------------
     mutable std::map<unsigned long, std::deque<SPItem*>> _node_cache; // Used to speed up search.
 
+    void updateTranslucencyGroups();
 public:
     void clearNodeCache() { _node_cache.clear(); }
 };

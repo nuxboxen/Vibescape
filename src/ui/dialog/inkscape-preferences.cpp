@@ -40,6 +40,7 @@
 #include <2geom/path-sink.h>
 
 #include "display/control/ctrl-handle-manager.h"
+#include "display/translucency-group.h"
 #include "ui/widget/generic/icon-combobox.h"
 #include "ui/widget/handle-preview.h"
 #include "ui/icon-loader.h"
@@ -984,6 +985,16 @@ void InkscapePreferences::initPageTools()
     _t_sel_cue_box.init ( _("Box"), "/options/selcue/value", Inkscape::SelCue::BBOX, false, &_t_sel_cue_none);
     _page_selector.add_line( true, "", _t_sel_cue_box, "",
                             _("Each selected object displays its bounding box"));
+
+    _page_selector.add_group_header( _("Fade Other Objects..."));
+    _t_too_off.init ( C_("Translucency Group", "Never (Off)"), "/options/translucency_groups/value", 0, false, nullptr);
+    _page_selector.add_line( true, "", _t_too_off, "", _("Turn off fade."));
+
+    _t_too_group.init ( C_("Translucency Group", "When in Groups"), "/options/translucency_groups/value", 1, true, &_t_too_off);
+    _page_selector.add_line( true, "", _t_too_group, "", _("Indicate the entered group by making all other objects fade."));
+
+    _t_too_layer.init ( C_("Translucency Group", "When in Layers"), "/options/translucency_groups/value", 2, false, &_t_too_off);
+    _page_selector.add_line( true, "", _t_too_layer, "", _("Indicate the selected layer by making all other layers fade."));
 
     //Node
     AddSelcueCheckbox(_page_node, "/tools/nodes", true);

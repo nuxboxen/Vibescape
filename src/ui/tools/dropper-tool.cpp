@@ -25,6 +25,7 @@
 #include "display/drawing.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-drawing.h"
+#include "display/translucency-group.h"
 
 #include "ui/cursor-utils.h"
 #include "ui/icon-names.h"
@@ -63,10 +64,14 @@ DropperTool::DropperTool(SPDesktop *desktop)
     if (prefs->getBool("/tools/dropper/gradientdrag")) {
         enableGrDrag();
     }
+
+    // Disable other tool's translucencies
+    _translucency_key = _desktop->getTranslucencyGroups().createGroupKey(1.0, false);
 }
 
 DropperTool::~DropperTool()
 {
+    _desktop->getTranslucencyGroups().removeGroupKey(_translucency_key);
     enableGrDrag(false);
     ungrabCanvasEvents();
 }

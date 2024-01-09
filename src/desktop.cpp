@@ -111,8 +111,10 @@ SPDesktop::SPDesktop(SPNamedView *namedview_)
     _setupCanvasItems();
 
     _temporary_item_list = std::make_unique<Inkscape::Display::TemporaryItemList>();
-    _translucency_group = std::make_unique<Inkscape::Display::TranslucencyGroup>(dkey);
+    _translucency_groups = std::make_unique<Inkscape::Display::TranslucencyGroups>(dkey);
     _snapindicator = std::make_unique<Inkscape::Display::SnapIndicator>(this);
+
+    _translucency_key = _translucency_groups->createGroupKey();
 
     // display rect and zoom are now handled in sp_desktop_widget_realize()
 
@@ -183,6 +185,11 @@ void SPDesktop::_setupCanvasItems()
     _canvas_drawing->connect_drawing_event(sigc::mem_fun(*this, &SPDesktop::drawing_handler));
 
     canvas->set_drawing(_canvas_drawing->get_drawing());
+
+    _layer_changed_connection = _layer_manager->connectCurrentLayerChanged([this](SPGroup *group) {
+        updateTranslucencyGroups();
+    });
+
 }
 
 SPDesktop::~SPDesktop()
@@ -1630,6 +1637,30 @@ void SPDesktop::on_zoom_scale(double const scale)
 void SPDesktop::on_zoom_end(Gdk::EventSequence * /*sequence*/)
 {
     _begin_zoom.reset();
+}
+
+/**
+ * Set or unset the translucency group if needed.
+ */
+void SPDesktop::updateTranslucencyGroups()
+{
+    auto const prefs = Inkscape::Preferences::get();
+
+    SPGroup *group = _layer_manager->currentLayer();
+    switch(prefs->getInt("/options/translucency_groups/value", 1)) {
+        case 0: // Off mode
+            group = nullptr;
+            break;
+        case 1: // Group mode, only groups
+            if (group->isLayer()) {
+                group = nullptr;
+            }
+            break;
+        case 2: // Layer mode, any layer
+            break;
+    }
+    // The selected group is solid, everything else is translucent
+    _translucency_groups->setSolidItem(_translucency_key, group);
 }
 
 /*

@@ -33,6 +33,8 @@ protected:
     bool root_handler(CanvasEvent const &event) override;
 
 private:
+    unsigned _translucency_key;
+
     // Stored color.
     std::optional<Colors::Color> stored_color;
 

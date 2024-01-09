@@ -21,37 +21,104 @@
 
 namespace Inkscape::Display {
 
-static double TRANSLUCENCY_AMOUNT = 0.2;
-
-TranslucencyGroup::TranslucencyGroup(unsigned int dkey)
+TranslucencyGroups::TranslucencyGroups(unsigned int dkey)
     : _dkey(dkey)
 {}
 
 /**
- * Set a specific item as the solid item, all other items are made translucent.
+ * Produce a new translucency group, each group overrides any previous
+ * group when setting solid items allowing for different tools to set
+ * their in-context solid items without resetting each other.
+ *
+ * Use `removeGroupKey(key)` when the context is finished.
  */
-void TranslucencyGroup::setSolidItem(SPItem *item)
+unsigned TranslucencyGroups::createGroupKey(double translucency, bool fallback)
 {
-    if (item == _solid_item)
-        return;
+    static unsigned count = 0; // Reserve 0 for disabled
+    _groups[++count] = Group({
+        .translucency = translucency,
+        .fallback = fallback
+    });
+    _update();
+    return count;
+}
 
-    // Set the target item, this prevents rerunning rendering.
-    _solid_item = item;
+/**
+ * Remove the given group_key, allowing us to re-request a key later if needed
+ */
+void TranslucencyGroups::removeGroupKey(unsigned group_key)
+{
+    _groups.erase(group_key);
+    _update();
+}
 
+/**
+ * Set a specific item as the solid item, all other items are made translucent.
+ *
+ * @arg group_key - The unique key produced by createGroupKey()
+ * @arg item      - The optional item to make solid. Everything else is translucent.
+ *                  Setting nullptr here will disable this translucency group and
+ *                   will fallback to the previous group if falback was set to true.
+ * @arg invert    - If true the translucency is inversed and this item is solid
+ */
+void TranslucencyGroups::_set_item(unsigned group_key, SPItem *item, bool invert)
+{
+    if (auto iter = _groups.find(group_key); iter != _groups.end()) {
+        // Set the target item, this prevents rerunning rendering.
+        if (iter->second.item != item) {
+            iter->second.item = item;
+            iter->second.invert = invert;
+            _update();
+        }
+    } else if (group_key != 0) {
+        std::cerr << "TranslucencyGroups::_set_item: Invalid TranslucencyGroup Id = " << group_key << "\n";
+    }
+}
+
+
+void TranslucencyGroups::setTranslucency(unsigned group_key, double translucency)
+{
+    if (auto iter = _groups.find(group_key); iter != _groups.end()) {
+        // Set the target item, this prevents rerunning rendering.
+        if (iter->second.translucency != translucency) {
+            iter->second.translucency = translucency;
+            _update();
+        }
+    } else if (group_key != 0) {
+        std::cerr << "TranslucencyGroups::setTranslucency: Invalid TranslucencyGroup Id = " << group_key << "\n";
+    }
+}
+
+void TranslucencyGroups::_update()
+{
     // Reset all the items in the list.
     for (auto &item : _translucent_items) {
         if (auto arenaitem = item->get_arenaitem(_dkey)) {
-            arenaitem->setOpacity(item->style->opacity.as_double());
+            arenaitem->setOpacityOverride({});
         }
     }
     _translucent_items.clear();
 
-    if (item) {
-        _generateTranslucentItems(item->document->getRoot());
+    for (auto iter = _groups.rbegin(); iter != _groups.rend(); ++iter) {
+        auto &group = iter->second;
+        if (group.item) {
+            auto root = group.item->document->getRoot();
+            if (group.invert) {
+                // Generate a list of the inverse items
+                _generateTranslucentItems(group.item, root);
+            } else {
+                _translucent_items.push_back(group.item);
+            }
 
-        for (auto &item : _translucent_items) {
-            Inkscape::DrawingItem *arenaitem = item->get_arenaitem(_dkey);
-            arenaitem->setOpacity(TRANSLUCENCY_AMOUNT);
+            for (auto &item : _translucent_items) {
+                Inkscape::DrawingItem *arenaitem = item->get_arenaitem(_dkey);
+                arenaitem->setOpacityOverride(group.translucency);
+            }
+
+            return; // Last added, positive result wins.
+        }
+        if (!group.fallback) {
+            return; // This group asks to disable all previous groups
         }
     }
 }
@@ -59,14 +126,14 @@ void TranslucencyGroup::setSolidItem(SPItem *item)
 /**
  * Generate a new list of sibling items (recursive)
  */
-void TranslucencyGroup::_generateTranslucentItems(SPItem *parent)
+void TranslucencyGroups::_generateTranslucentItems(SPItem *item, SPItem *parent)
 {
-    if (parent == _solid_item)
+    if (parent == item)
         return;
-    if (parent->isAncestorOf(_solid_item)) {
+    if (parent->isAncestorOf(item)) {
         for (auto &child: parent->children) {
-            if (auto item = cast<SPItem>(&child)) {
-                _generateTranslucentItems(item);
+            if (auto child_item = cast<SPItem>(&child)) {
+                _generateTranslucentItems(item, child_item);
             }
         }
     } else {
