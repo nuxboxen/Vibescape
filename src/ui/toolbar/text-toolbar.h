@@ -52,6 +52,7 @@ class FontSizeSelector;
 class UnitMenu;
 class ComboBoxEntryToolItem;
 class ComboToolItem;
+class EntryDropDown;
 class SpinButton;
 class UnitTracker;
 } // namespace Widget

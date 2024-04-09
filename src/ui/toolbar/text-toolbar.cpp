@@ -91,7 +91,6 @@ void recursively_set_properties(SPObject *object, SPCSSAttr *css, bool unset_des
     sp_repr_css_attr_unref(css_unset);
 }
 
-
 // TODO: possibly share with font-selector by moving most code to font-lister (passing family name)
 void sp_text_toolbox_select_cb(Gtk::Entry const &entry)
 {
