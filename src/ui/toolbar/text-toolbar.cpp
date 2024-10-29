@@ -52,6 +52,7 @@
 #include "ui/tools/text-tool.h"
 #include "ui/util.h"
 #include "ui/widget/combo-box-entry-tool-item.h"
+#include "ui/widget/entry-dropdown.h"
 #include "ui/widget/font-size-selector.h"
 #include "ui/widget/spinbutton.h"
 #include "ui/widget/unit-tracker.h"
@@ -234,20 +235,14 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     get_widget<Gtk::Box>(builder, "font_list_box").append(*_font_family_item);
 
     // Font styles
-    _font_style_item = Gtk::manage(new UI::Widget::ComboBoxEntryToolItem(
-        "TextFontStyleAction",
-        _("Font Style"),
-        _("Font style"),
-        fontlister->get_style_list(),
-        12, // Width in characters
-        0, // Extra list width
-        {}, // Cell layout
-        {} // Separator
-    ));
-
+    _font_style_item = Gtk::make_managed<UI::Widget::EntryDropDown>();
+    _font_style_item->set_name("TextFontStyleAction");
+    _font_style_item->set_tooltip_text(_("Font style"));
+    _font_style_item->setModel(fontlister->get_style_list());
+    _font_style_item->setStringFuncAndFactory(unwrap_arg_adaptor<StyleNames>([] (auto &s) { return s.css_name; }));
+    _font_style_item->setWidthChars(12);
     _font_style_item->connectChanged([this] { fontstyle_value_changed(); });
-    _font_style_item->focus_on_click(false);
-    _font_style_item->setDefocusWidget(this);
+    _font_style_item->setDefocusTarget(this);
 
     get_widget<Gtk::Box>(builder, "styles_list_box").append(*_font_style_item);
 
@@ -499,7 +494,7 @@ void TextToolbar::fontstyle_value_changed()
     }
     _freeze = true;
 
-    Glib::ustring new_style = _font_style_item->get_active_text();
+    auto const &new_style = _font_style_item->getText();
 
     auto const fontlister = FontLister::get_instance();
 
@@ -1409,7 +1404,7 @@ void TextToolbar::_selectionChanged(Selection *selection) // don't bother to upd
     fontlister->selection_update();
     // Update font list, but only if widget already created.
     _font_family_item->set_active_text(fontlister->get_font_family().c_str(), fontlister->get_font_family_row());
-    _font_style_item->set_active_text(fontlister->get_font_style().c_str());
+    _font_style_item->setText(fontlister->get_font_style());
 
     /*
      * Query from current selection:

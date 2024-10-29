@@ -73,7 +73,7 @@ FontLister::FontLister()
     pango_family_map = FontFactory::get().GetUIFamilies();
     init_font_families();
 
-    style_list_store = Gtk::ListStore::create(font_style_list);
+    style_list_store = Gio::ListStore<WrapAsGObject<StyleNames>>::create();
     init_default_styles();
 
     // Watch gtk for the fonts-changed signal and refresh our pango configuration
@@ -136,14 +136,11 @@ void FontLister::init_font_families(int group_offset, int group_size)
 void FontLister::init_default_styles()
 {
     // Initialize style store with defaults
-    style_list_store->freeze_notify();
-    style_list_store->clear();
+    std::vector<Glib::RefPtr<WrapAsGObject<StyleNames>>> items;
     for (auto const &style : *default_styles) {
-        auto row = *style_list_store->append();
-        row[font_style_list.cssStyle] = style.css_name;
-        row[font_style_list.displayStyle] = style.display_name;
+        items.push_back(WrapAsGObject<StyleNames>::create(style));
     }
-    style_list_store->thaw_notify();
+    style_list_store->splice(0, style_list_store->get_n_items(), items);
     update_signal.emit();
 }
 
@@ -781,16 +778,11 @@ std::pair<Glib::ustring, Glib::ustring> FontLister::new_font_family(Glib::ustrin
     }
 
     // Update style list.
-    style_list_store->freeze_notify();
-    style_list_store->clear();
-
+    std::vector<Glib::RefPtr<WrapAsGObject<StyleNames>>> items;
     for (auto const &style : *styles) {
-        auto row = *style_list_store->append();
-        row[font_style_list.cssStyle] = style.css_name;
-        row[font_style_list.displayStyle] = style.display_name;
+        items.push_back(WrapAsGObject<StyleNames>::create(style));
     }
-
-    style_list_store->thaw_notify();
+    style_list_store->splice(0, style_list_store->get_n_items(), items);
 
     // Find best match to the style from the old font-family to the
     // styles available with the new font.
@@ -1087,17 +1079,6 @@ bool FontLister::is_path_for_font(Gtk::TreePath path, Glib::ustring family)
     return false;
 }
 
-Gtk::TreeModel::Row FontLister::get_row_for_style(Glib::ustring const &style)
-{
-    for (auto const &row : font_list_store->children()) {
-        if (familyNamesAreEqual(style, row[font_style_list.cssStyle])) {
-            return row;
-        }
-    }
-
-    throw Exception::STYLE_NOT_FOUND;
-}
-
 static int compute_distance(PangoFontDescription const *a, PangoFontDescription const *b)
 {
     // Weight: multiples of 100
@@ -1319,26 +1300,6 @@ void font_lister_cell_data_func2(Gtk::CellRenderer &cell,
 
     cell.set_property("markup", markup);
     g_free(family_escaped);
-}
-
-// Draw Face name with face style.
-void font_lister_style_cell_data_func(Gtk::CellRenderer *const renderer,
-                                      Gtk::TreeModel::const_iterator const &iter)
-{
-    Inkscape::FontLister* font_lister = Inkscape::FontLister::get_instance();
-    auto const &row = *iter;
-
-    Glib::ustring family = font_lister->get_font_family();
-    Glib::ustring style  = row[font_lister->font_style_list.cssStyle];
-
-    Glib::ustring style_escaped  = Glib::Markup::escape_text( style );
-    Glib::ustring font_desc = family + ", " + style;
-    Glib::ustring markup;
-
-    markup = "<span font='" + font_desc + "'>" + style_escaped + "</span>";
-    // std::cout << "  markup: " << markup.raw() << std::endl;
-
-    renderer->set_property("markup", markup);
 }
 
 /*

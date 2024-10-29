@@ -23,7 +23,6 @@
 #include "desktop.h"
 #include "inkscape.h"
 #include "object/sp-text.h"
-#include "preferences.h"
 #include "util-string/ustring-format.h"
 
 namespace Inkscape::UI::Widget {
@@ -77,24 +76,21 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
     family_frame.set_child(family_scroll);
 
     // Style
-    style_treecolumn.pack_start (style_cell, false);
-    style_treecolumn.add_attribute (style_cell, "text", 0);
-    style_treecolumn.set_cell_data_func (style_cell, sigc::mem_fun(*this, &FontSelector::style_cell_data_func));
-    style_treecolumn.set_title ("Face");
-    style_treecolumn.set_resizable (true);
+    auto col_css = Gtk::ColumnViewColumn::create(_("CSS"), create_label_factory<StyleNames>([] (auto &s) { return s.css_name; }));
+    style_columnview.append_column(col_css);
+    col_css->set_resizable(true);
 
-    style_treeview.set_model (font_lister->get_style_list());
-    style_treeview.set_name ("FontSelectorStyle");
-    style_treeview.set_headers_visible (false);
-    // Moved to tooltip to save space, but still useful for debugging.
-    // style_treeview.append_column ("CSS", font_lister->font_style_list.cssStyle);
-    style_treeview.append_column (style_treecolumn);
-    style_treeview.set_tooltip_column(font_lister->font_style_list.cssStyle.index());
+    auto col_face = Gtk::ColumnViewColumn::create(_("Face"), create_label_factory<StyleNames>([this] (auto &s) { return get_style_markup(s); }, true));
+    style_columnview.append_column(col_face);
 
-    style_treeview.get_column(0)->set_resizable (true);
+    style_selection = Gtk::SingleSelection::create(font_lister->get_style_list());
+
+    style_columnview.set_model(style_selection);
+    style_columnview.set_name("FontSelectorStyle");
+    style_columnview.add_css_class("data-table");
 
     style_scroll.set_policy (Gtk::PolicyType::AUTOMATIC, Gtk::PolicyType::AUTOMATIC);
-    style_scroll.set_child(style_treeview);
+    style_scroll.set_child(style_columnview);
 
     style_frame.set_hexpand (true);
     style_frame.set_vexpand (true);
@@ -140,8 +136,7 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
 
     // Add signals
     family_treeview.get_selection()->signal_changed().connect(sigc::mem_fun(*this, &FontSelector::on_family_changed));
-    style_treeview.get_selection()->signal_changed().connect(sigc::mem_fun(*this, &FontSelector::on_style_changed));
-    size_selector.signal_size_changed().connect(sigc::mem_fun(*this, &FontSelector::on_size_changed));
+    style_selection->signal_selection_changed().connect([this] (auto...) { on_style_changed(); });
     font_variations.connectChanged(sigc::mem_fun(*this, &FontSelector::on_variations_changed));
     family_treeview.signal_realize().connect(sigc::mem_fun(*this, &FontSelector::on_realize_list));
 
@@ -196,6 +191,25 @@ Glib::RefPtr<Gdk::ContentProvider> FontSelector::on_drag_prepare(double /*x*/, d
     return Gdk::ContentProvider::create(value);
 }
 
+static std::pair<Glib::RefPtr<Gio::ListStore<WrapAsGObject<StyleNames>>>, unsigned> create_styles_store(FontLister::Styles const &styles, Glib::ustring const &search_css_name)
+{
+    unsigned pos = 0;
+    unsigned match = GTK_INVALID_LIST_POSITION;
+    std::vector<Glib::RefPtr<WrapAsGObject<StyleNames>>> items;
+    for (auto const &style : styles) {
+        items.push_back(WrapAsGObject<StyleNames>::create(style));
+        if (style.css_name == search_css_name) {
+            match = pos;
+        }
+        pos++;
+    }
+
+    auto store = Gio::ListStore<WrapAsGObject<StyleNames>>::create();
+    store->splice(0, 0, items);
+
+    return {std::move(store), match};
+}
+
 // Update GUI.
 // We keep a private copy of the style list as the font-family in widget is only temporary
 // until the "Apply" button is set so the style list can be different from that in
@@ -232,22 +246,12 @@ void FontSelector::update_font()
     auto styles = row.get_value(font_lister->font_list.styles);
 
     // Copy font-lister style list to private list store, searching for match.
-    Gtk::TreeModel::iterator match;
-    auto local_style_list_store = Gtk::ListStore::create(font_lister->font_style_list);
+    auto [local_style_list_store, match] = create_styles_store(*styles, style);
 
-    for (auto const &s : *styles) {
-        auto srow = *local_style_list_store->append();
-        srow[font_lister->font_style_list.cssStyle] = s.css_name;
-        srow[font_lister->font_style_list.displayStyle] = s.display_name;
-        if (style == s.css_name) {
-            match = srow.get_iter();
-        }
-    }
-
-    // Attach store to tree view and select row.
-    style_treeview.set_model(local_style_list_store);
-    if (match) {
-        style_treeview.get_selection()->select(match);
+    // Attach store to column view and select row.
+    style_selection->set_model(local_style_list_store);
+    if (match != GTK_INVALID_LIST_POSITION) {
+        style_selection->set_selected(match);
     }
 
     Glib::ustring fontspec = font_lister->get_fontspec();
@@ -281,9 +285,8 @@ FontSelector::get_fontspec(bool use_variations) {
     }
 
     Glib::ustring style = "Normal";
-    iter = style_treeview.get_selection()->get_selected();
-    if (iter) {
-        (*iter).get_value(0, style);
+    if (auto const selected_style = style_selection->get_selected_item()) {
+        style = dynamic_cast<WrapAsGObject<StyleNames> const &>(*selected_style).data.css_name;
     }
 
     if (family.empty()) {
@@ -319,9 +322,7 @@ FontSelector::get_fontspec(bool use_variations) {
     return fontspec;
 }
 
-void
-FontSelector::style_cell_data_func(Gtk::CellRenderer * const renderer,
-                                   Gtk::TreeModel::const_iterator const &iter)
+Glib::ustring FontSelector::get_style_markup(StyleNames const &stylenames)
 {
     Glib::ustring family = "Sans";  // Default...family list may not have been constructed.
     auto const iter_family = family_treeview.get_selection()->get_selected();
@@ -329,18 +330,11 @@ FontSelector::style_cell_data_func(Gtk::CellRenderer * const renderer,
         (*iter_family).get_value(0, family);
     }
 
-    Glib::ustring style = "Normal";
-    (*iter).get_value(1, style);
-    Glib::ustring css = "Normal";
-    (*iter).get_value(0, css);
-
-    Glib::ustring style_escaped  = Glib::Markup::escape_text( style );
-    Glib::ustring font_desc = Glib::Markup::escape_text( family + ", " + css );
+    Glib::ustring style_escaped  = Glib::Markup::escape_text(stylenames.display_name);
+    Glib::ustring font_desc = Glib::Markup::escape_text(family + ", " + stylenames.css_name);
     Glib::ustring markup;
 
-    markup = "<span font='" + font_desc + "'>" + style_escaped + "</span>";
-    // std::cout << "CSS: " << css << "   Markup: " << markup << std::endl;
-    renderer->set_property("markup", markup);
+    return "<span font='" + font_desc + "'>" + style_escaped + "</span>";
 }
 
 // Callbacks
@@ -379,27 +373,15 @@ FontSelector::on_family_changed() {
     Glib::ustring style = fontlister->get_font_style();
     Glib::ustring best  = fontlister->get_best_style_match (family, style);
 
-    // Create are own store of styles for selected font-family (the font-family selected
+    // Create our own store of styles for selected font-family (the font-family selected
     // in the dialog may not be the same as stored in the font-lister class until the
     // "Apply" button is triggered).
-    Gtk::TreeModel::iterator it_best;
-    FontLister::FontStyleListClass FontStyleList;
-    Glib::RefPtr<Gtk::ListStore>  local_style_list_store = Gtk::ListStore::create(FontStyleList);
-
-    // Build list and find best match.
-    for (auto const &s : *styles) {
-        auto srow = *local_style_list_store->append();
-        srow[FontStyleList.cssStyle] = s.css_name;
-        srow[FontStyleList.displayStyle] = s.display_name;
-        if (best == s.css_name) {
-            it_best = srow.get_iter();
-        }
-    }
+    auto [local_style_list_store, match] = create_styles_store(*styles, best);
 
     // Attach store to tree view and select row.
-    style_treeview.set_model (local_style_list_store);
-    if (it_best) {
-        style_treeview.get_selection()->select (it_best);
+    style_selection->set_model(local_style_list_store);
+    if (match != GTK_INVALID_LIST_POSITION) {
+        style_selection->set_selected(match);
     }
 
     // variation sliders are refreshed immediately,

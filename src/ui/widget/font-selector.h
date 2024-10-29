@@ -31,8 +31,14 @@
 #ifndef INKSCAPE_UI_WIDGET_FONT_SELECTOR_H
 #define INKSCAPE_UI_WIDGET_FONT_SELECTOR_H
 
+#include <glibmm/refptr.h>
+#include <gtkmm/box.h>
+#include <gtkmm/cellrenderertext.h>
+#include <gtkmm/columnview.h>
 #include <gtkmm/comboboxtext.h>
 #include <gtkmm/frame.h>
+#include <gtkmm/label.h>
+#include <gtkmm/singleselection.h>
 #include <gtkmm/scrolledwindow.h>
 
 #include "ui/widget/font-selector-interface.h"
@@ -46,6 +52,8 @@ class Drag;
 namespace Gtk {
 class DragSource;
 } // namespace Gtk
+
+struct StyleNames;
 
 namespace Inkscape::UI::Widget {
 
@@ -87,9 +95,8 @@ protected:
     // Font style
     Gtk::Frame          style_frame;
     Gtk::ScrolledWindow style_scroll;
-    Gtk::TreeView       style_treeview;
-    Gtk::TreeViewColumn style_treecolumn;
-    Gtk::CellRendererText style_cell;
+    Glib::RefPtr<Gtk::SingleSelection> style_selection;
+    Gtk::ColumnView     style_columnview;
 
     // Font size
     Gtk::Label          size_label;
@@ -101,8 +108,7 @@ protected:
 
 private:
     // Use font style when listing style names.
-    void style_cell_data_func(Gtk::CellRenderer *renderer,
-                              Gtk::TreeModel::const_iterator const &iter);
+    Glib::ustring get_style_markup(StyleNames const &stylenames);
 
     // Signal handlers
     void on_family_changed();
