@@ -8,97 +8,96 @@
 
 #include "style-text.h"
 
-// User must free return value.
-PangoFontDescription *ink_font_description_from_style(SPStyle const *style)
+Pango::FontDescription ink_font_description_from_style(SPStyle const *style)
 {
-    PangoFontDescription *descr = pango_font_description_new();
+    Pango::FontDescription descr;
 
-    pango_font_description_set_family(descr, style->font_family.value());
+    descr.set_family(style->font_family.value());
 
     // This duplicates Layout::EnumConversionItem... perhaps we can share code?
     switch (style->font_style.computed) {
         case SP_CSS_FONT_STYLE_ITALIC:
-            pango_font_description_set_style(descr, PANGO_STYLE_ITALIC);
+            descr.set_style(Pango::Style::ITALIC);
             break;
 
         case SP_CSS_FONT_STYLE_OBLIQUE:
-            pango_font_description_set_style(descr, PANGO_STYLE_OBLIQUE);
+            descr.set_style(Pango::Style::OBLIQUE);
             break;
 
         case SP_CSS_FONT_STYLE_NORMAL:
         default:
-            pango_font_description_set_style(descr, PANGO_STYLE_NORMAL);
+            descr.set_style(Pango::Style::NORMAL);
             break;
     }
 
     // CSS now allows any value between 1 and 1000, including 1000.
     auto weight = style->font_weight.computed;
     if (weight > 0 && weight <= 1000) {
-        pango_font_description_set_weight(descr, static_cast<PangoWeight>(style->font_weight.computed));
+        descr.set_weight(static_cast<Pango::Weight>(style->font_weight.computed));
     } else {
         // SP_CSS_FONT_WEIGHT_LIGHTER, SP_CSS_FONT_WEIGHT_BOLDER (shouldn't be in computed).
         g_warning("FaceFromStyle: Unrecognized font_weight.computed value");
-        pango_font_description_set_weight(descr, PANGO_WEIGHT_NORMAL);
+        descr.set_weight(Pango::Weight::NORMAL);
     }
 
     switch (style->font_stretch.computed) {
         case SP_CSS_FONT_STRETCH_ULTRA_CONDENSED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_ULTRA_CONDENSED);
+            descr.set_stretch(Pango::Stretch::ULTRA_CONDENSED);
             break;
 
         case SP_CSS_FONT_STRETCH_EXTRA_CONDENSED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_EXTRA_CONDENSED);
+            descr.set_stretch(Pango::Stretch::EXTRA_CONDENSED);
             break;
 
         case SP_CSS_FONT_STRETCH_CONDENSED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_CONDENSED);
+            descr.set_stretch(Pango::Stretch::CONDENSED);
             break;
 
         case SP_CSS_FONT_STRETCH_SEMI_CONDENSED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_SEMI_CONDENSED);
+            descr.set_stretch(Pango::Stretch::SEMI_CONDENSED);
             break;
 
         case SP_CSS_FONT_STRETCH_NORMAL:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_NORMAL);
+            descr.set_stretch(Pango::Stretch::NORMAL);
             break;
 
         case SP_CSS_FONT_STRETCH_SEMI_EXPANDED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_SEMI_EXPANDED);
+            descr.set_stretch(Pango::Stretch::SEMI_EXPANDED);
             break;
 
         case SP_CSS_FONT_STRETCH_EXPANDED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_EXPANDED);
+            descr.set_stretch(Pango::Stretch::EXPANDED);
             break;
 
         case SP_CSS_FONT_STRETCH_EXTRA_EXPANDED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_EXTRA_EXPANDED);
+            descr.set_stretch(Pango::Stretch::EXTRA_EXPANDED);
             break;
 
         case SP_CSS_FONT_STRETCH_ULTRA_EXPANDED:
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_ULTRA_EXPANDED);
+            descr.set_stretch(Pango::Stretch::ULTRA_EXPANDED);
 
         case SP_CSS_FONT_STRETCH_WIDER:
         case SP_CSS_FONT_STRETCH_NARROWER:
         default:
             g_warning("FaceFromStyle: Unrecognized font_stretch.computed value");
-            pango_font_description_set_stretch(descr, PANGO_STRETCH_NORMAL);
+            descr.set_stretch(Pango::Stretch::NORMAL);
             break;
     }
 
     switch (style->font_variant.computed) {
         case SP_CSS_FONT_VARIANT_SMALL_CAPS:
-            pango_font_description_set_variant(descr, PANGO_VARIANT_SMALL_CAPS);
+            descr.set_variant(Pango::Variant::SMALL_CAPS);
             break;
 
         case SP_CSS_FONT_VARIANT_NORMAL:
         default:
-            pango_font_description_set_variant(descr, PANGO_VARIANT_NORMAL);
+            descr.set_variant(Pango::Variant::NORMAL);
             break;
     }
 
     // Check if not empty as Pango will add @ to string even if empty (bug in Pango?).
     if (!style->font_variation_settings.axes.empty()) {
-        pango_font_description_set_variations(descr, style->font_variation_settings.toString().c_str());
+        descr.set_variations(style->font_variation_settings.toString());
     }
 
     return descr;
@@ -123,9 +122,7 @@ std::shared_ptr<FontInstance> ink_font_from_style(SPStyle const *style)
 
         // If that failed, try using the CSS information in the style
         if (!font) {
-            auto temp_descr = ink_font_description_from_style(style);
-            font = FontFactory::get().Face(temp_descr);
-            pango_font_description_free(temp_descr);
+            font = FontFactory::get().Face(ink_font_description_from_style(style).gobj());
         }
     }
 

@@ -15,10 +15,11 @@
  */
 
 #include "sp-item.h"
-#include "sp-string.h"
+#include "sp-text-item.h"
+#include "sp-string.h" // Provides many other headers with is<SPString>
+#include "style.h"
 #include "text-tag-attributes.h"
 #include "libnrtype/style-attachments.h"
-#include "style.h"
 
 /* Text specific flags */
 #define SP_TEXT_CONTENT_MODIFIED_FLAG SP_OBJECT_USER_MODIFIED_FLAG_A
@@ -27,11 +28,12 @@
 class SPShape;
 
 /* SPText */
-class SPText final : public SPItem {
+class SPText final : public SPTextItem {
 public:
 	SPText();
 	~SPText() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
     /** Converts the text object to its component curves */
     Geom::PathVector getNormalizedBpath() const;

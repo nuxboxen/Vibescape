@@ -15,14 +15,9 @@
 #include "sp-string.h"
 #include "xml/document.h"
 
-SPFlowdiv::SPFlowdiv() : SPItem() {
-}
+SPFlowdiv::SPFlowdiv() = default;
 
 SPFlowdiv::~SPFlowdiv() = default;
-
-void SPFlowdiv::release() {
-	SPItem::release();
-}
 
 void SPFlowdiv::update(SPCtx *ctx, unsigned int flags) {
     SPItemCtx *ictx = reinterpret_cast<SPItemCtx *>(ctx);
@@ -55,11 +50,11 @@ void SPFlowdiv::update(SPCtx *ctx, unsigned int flags) {
         sp_object_unref(child);
     }
 
-    SPItem::update(ctx, flags);
+    Base::update(ctx, flags);
 }
 
 void SPFlowdiv::modified(unsigned int flags) {
-    SPItem::modified(flags);
+    Base::modified(flags);
 
     if (flags & SP_OBJECT_MODIFIED_FLAG) {
         flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
@@ -85,11 +80,7 @@ void SPFlowdiv::modified(unsigned int flags) {
 void SPFlowdiv::build(SPDocument *doc, Inkscape::XML::Node *repr) {
 	this->_requireSVGVersion(Inkscape::Version(1, 2));
 
-	SPItem::build(doc, repr);
-}
-
-void SPFlowdiv::set(SPAttr key, const gchar* value) {
-	SPItem::set(key, value);
+    Base::build(doc, repr);
 }
 
 
@@ -132,7 +123,7 @@ Inkscape::XML::Node* SPFlowdiv::write(Inkscape::XML::Document *xml_doc, Inkscape
         }
     }
 
-    SPItem::write(xml_doc, repr, flags);
+    Base::write(xml_doc, repr, flags);
 
     return repr;
 }
@@ -142,14 +133,9 @@ Inkscape::XML::Node* SPFlowdiv::write(Inkscape::XML::Document *xml_doc, Inkscape
  *
  */
 
-SPFlowtspan::SPFlowtspan() : SPItem() {
-}
+SPFlowtspan::SPFlowtspan() = default;
 
 SPFlowtspan::~SPFlowtspan() = default;
-
-void SPFlowtspan::release() {
-	SPItem::release();
-}
 
 void SPFlowtspan::update(SPCtx *ctx, unsigned int flags) {
     SPItemCtx *ictx = reinterpret_cast<SPItemCtx *>(ctx);
@@ -181,11 +167,11 @@ void SPFlowtspan::update(SPCtx *ctx, unsigned int flags) {
         sp_object_unref(child);
     }
 
-    SPItem::update(ctx, flags);
+    Base::update(ctx, flags);
 }
 
 void SPFlowtspan::modified(unsigned int flags) {
-    SPItem::modified(flags);
+    Base::modified(flags);
 
     if (flags & SP_OBJECT_MODIFIED_FLAG) {
         flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
@@ -204,15 +190,6 @@ void SPFlowtspan::modified(unsigned int flags) {
         }
         sp_object_unref(child);
     }
-}
-
-
-void SPFlowtspan::build(SPDocument *doc, Inkscape::XML::Node *repr) {
-	SPItem::build(doc, repr);
-}
-
-void SPFlowtspan::set(SPAttr key, const gchar* value) {
-	SPItem::set(key, value);
 }
 
 Inkscape::XML::Node *SPFlowtspan::write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, guint flags) {
@@ -254,7 +231,7 @@ Inkscape::XML::Node *SPFlowtspan::write(Inkscape::XML::Document *xml_doc, Inksca
         }
     }
 
-    SPItem::write(xml_doc, repr, flags);
+    Base::write(xml_doc, repr, flags);
 
     return repr;
 }
@@ -263,20 +240,15 @@ Inkscape::XML::Node *SPFlowtspan::write(Inkscape::XML::Document *xml_doc, Inksca
 /*
  *
  */
-SPFlowpara::SPFlowpara() : SPItem() {
-}
+SPFlowpara::SPFlowpara() = default;
 
 SPFlowpara::~SPFlowpara() = default;
-
-void SPFlowpara::release() {
-	SPItem::release();
-}
 
 void SPFlowpara::update(SPCtx *ctx, unsigned int flags) {
     SPItemCtx *ictx = reinterpret_cast<SPItemCtx *>(ctx);
     SPItemCtx cctx = *ictx;
 
-    SPItem::update(ctx, flags);
+    Base::update(ctx, flags);
 
     if (flags & SP_OBJECT_MODIFIED_FLAG) {
         flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
@@ -306,7 +278,7 @@ void SPFlowpara::update(SPCtx *ctx, unsigned int flags) {
 }
 
 void SPFlowpara::modified(unsigned int flags) {
-    SPItem::modified(flags);
+    Base::modified(flags);
 
     if (flags & SP_OBJECT_MODIFIED_FLAG) {
         flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
@@ -326,15 +298,6 @@ void SPFlowpara::modified(unsigned int flags) {
         }
         sp_object_unref(child);
     }
-}
-
-
-void SPFlowpara::build(SPDocument *doc, Inkscape::XML::Node *repr) {
-	SPItem::build(doc, repr);
-}
-
-void SPFlowpara::set(SPAttr key, const gchar* value) {
-	SPItem::set(key, value);
 }
 
 Inkscape::XML::Node *SPFlowpara::write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, guint flags) {
@@ -377,7 +340,7 @@ Inkscape::XML::Node *SPFlowpara::write(Inkscape::XML::Document *xml_doc, Inkscap
         }
     }
 
-    SPItem::write(xml_doc, repr, flags);
+    Base::write(xml_doc, repr, flags);
 
     return repr;
 }
@@ -387,24 +350,9 @@ Inkscape::XML::Node *SPFlowpara::write(Inkscape::XML::Document *xml_doc, Inkscap
  *
  */
 
-SPFlowline::SPFlowline() : SPObject() {
-}
+SPFlowline::SPFlowline() = default;
 
 SPFlowline::~SPFlowline() = default;
-
-void SPFlowline::release() {
-	SPObject::release();
-}
-
-void SPFlowline::modified(unsigned int flags) {
-	SPObject::modified(flags);
-
-	if (flags & SP_OBJECT_MODIFIED_FLAG) {
-		flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
-	}
-
-	flags &= SP_OBJECT_MODIFIED_CASCADE;
-}
 
 Inkscape::XML::Node *SPFlowline::write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, guint flags) {
     if ( flags & SP_OBJECT_WRITE_BUILD ) {
@@ -423,24 +371,9 @@ Inkscape::XML::Node *SPFlowline::write(Inkscape::XML::Document *xml_doc, Inkscap
  *
  */
 
-SPFlowregionbreak::SPFlowregionbreak() : SPObject() {
-}
+SPFlowregionbreak::SPFlowregionbreak() = default;
 
 SPFlowregionbreak::~SPFlowregionbreak() = default;
-
-void SPFlowregionbreak::release() {
-	SPObject::release();
-}
-
-void SPFlowregionbreak::modified(unsigned int flags) {
-	SPObject::modified(flags);
-
-	if (flags & SP_OBJECT_MODIFIED_FLAG) {
-		flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
-	}
-
-	flags &= SP_OBJECT_MODIFIED_CASCADE;
-}
 
 Inkscape::XML::Node *SPFlowregionbreak::write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, guint flags) {
     if ( flags & SP_OBJECT_WRITE_BUILD ) {

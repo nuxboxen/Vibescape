@@ -14,54 +14,49 @@
  */
 
 #include "sp-object.h"
-#include "sp-item.h"
+#include "sp-text-item.h"
 
 // these 3 are derivatives of SPItem to get the automatic style handling
-class SPFlowdiv final : public SPItem {
+class SPFlowdiv final : public SPTextItem {
 public:
 	SPFlowdiv();
 	~SPFlowdiv() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
 protected:
 	void build(SPDocument *document, Inkscape::XML::Node *repr) override;
-	void release() override;
 	void update(SPCtx* ctx, unsigned int flags) override;
 	void modified(unsigned int flags) override;
 
-	void set(SPAttr key, char const* value) override;
 	Inkscape::XML::Node* write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, unsigned int flags) override;
 };
 
-class SPFlowtspan final : public SPItem {
+class SPFlowtspan final : public SPTextItem {
 public:
 	SPFlowtspan();
 	~SPFlowtspan() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
 protected:
-	void build(SPDocument *document, Inkscape::XML::Node *repr) override;
-	void release() override;
 	void update(SPCtx* ctx, unsigned int flags) override;
 	void modified(unsigned int flags) override;
 
-	void set(SPAttr key, char const* value) override;
 	Inkscape::XML::Node* write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, unsigned int flags) override;
 };
 
-class SPFlowpara final : public SPItem {
+class SPFlowpara final : public SPTextItem {
 public:
 	SPFlowpara();
 	~SPFlowpara() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
 protected:
-	void build(SPDocument *document, Inkscape::XML::Node *repr) override;
-	void release() override;
 	void update(SPCtx* ctx, unsigned int flags) override;
 	void modified(unsigned int flags) override;
 
-	void set(SPAttr key, char const* value) override;
 	Inkscape::XML::Node* write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, unsigned int flags) override;
 };
 
@@ -71,11 +66,9 @@ public:
 	SPFlowline();
 	~SPFlowline() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
 protected:
-	void release() override;
-	void modified(unsigned int flags) override;
-
 	Inkscape::XML::Node* write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, unsigned int flags) override;
 };
 
@@ -84,11 +77,9 @@ public:
 	SPFlowregionbreak();
 	~SPFlowregionbreak() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
 protected:
-	void release() override;
-	void modified(unsigned int flags) override;
-
 	Inkscape::XML::Node* write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, unsigned int flags) override;
 };
 

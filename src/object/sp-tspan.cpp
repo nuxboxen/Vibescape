@@ -42,8 +42,8 @@
 /*#####################################################
 #  SPTSPAN
 #####################################################*/
-SPTSpan::SPTSpan() : SPItem() {
-    this->role = SP_TSPAN_ROLE_UNSPECIFIED;
+SPTSpan::SPTSpan() {
+    role = SP_TSPAN_ROLE_UNSPECIFIED;
 }
 
 SPTSpan::~SPTSpan() = default;
@@ -65,11 +65,7 @@ void SPTSpan::build(SPDocument *doc, Inkscape::XML::Node *repr) {
     // We'll intercept "style" to strip "visibility" property (SVG 1.1 fallback for SVG 2 text) then pass it on.
     this->readAttr(SPAttr::STYLE);
 
-    SPItem::build(doc, repr);
-}
-
-void SPTSpan::release() {
-    SPItem::release();
+    Base::build(doc, repr);
 }
 
 void SPTSpan::set(SPAttr key, const gchar* value) {
@@ -95,7 +91,7 @@ void SPTSpan::set(SPAttr key, const gchar* value) {
                 }
                 // Fall through
             default:
-                SPItem::set(key, value);
+                Base::set(key, value);
                 break;
         }
     }
@@ -114,7 +110,7 @@ void SPTSpan::update(SPCtx *ctx, guint flags) {
         }
     }
 
-    SPItem::update(ctx, flags);
+    Base::update(ctx, flags);
 
     if (flags & ( SP_OBJECT_STYLE_MODIFIED_FLAG |
                   SP_OBJECT_CHILD_MODIFIED_FLAG |
@@ -131,8 +127,9 @@ void SPTSpan::update(SPCtx *ctx, guint flags) {
     }
 }
 
-void SPTSpan::modified(unsigned int flags) {
-//    SPItem::onModified(flags);
+void SPTSpan::modified(unsigned flags)
+{
+    Base::modified(flags);
 
     if (flags & SP_OBJECT_MODIFIED_FLAG) {
         flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
@@ -209,7 +206,7 @@ Inkscape::XML::Node* SPTSpan::write(Inkscape::XML::Document *xml_doc, Inkscape::
         }
     }
 
-    SPItem::write(xml_doc, repr, flags);
+    Base::write(xml_doc, repr, flags);
 
     return repr;
 }
@@ -228,11 +225,8 @@ const char* SPTSpan::displayName() const {
 #####################################################*/
 void   refresh_textpath_source(SPTextPath* offset);
 
-SPTextPath::SPTextPath() : SPItem() {
+SPTextPath::SPTextPath() {
     this->startOffset._set = false;
-    this->side = SP_TEXT_PATH_SIDE_LEFT;
-    this->originalPath = nullptr;
-    this->isUpdating=false;
 
     // set up the uri reference
     this->sourcePath = new SPUsePath(this);
@@ -255,7 +249,7 @@ void SPTextPath::build(SPDocument *doc, Inkscape::XML::Node *repr) {
 
     this->readAttr(SPAttr::STYLE);
 
-    SPItem::build(doc, repr);
+    Base::build(doc, repr);
 }
 
 void SPTextPath::release() {
@@ -267,7 +261,7 @@ void SPTextPath::release() {
 
     this->originalPath = nullptr;
 
-    SPItem::release();
+    Base::release();
 }
 
 void SPTextPath::set(SPAttr key, const gchar* value) {
@@ -300,7 +294,7 @@ void SPTextPath::set(SPAttr key, const gchar* value) {
                 this->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
                 break;
             default:
-                SPItem::set(key, value);
+                Base::set(key, value);
                 break;
         }
     }
@@ -334,7 +328,7 @@ void SPTextPath::update(SPCtx *ctx, guint flags) {
         }
     }
 
-    SPItem::update(ctx, flags);
+    Base::update(ctx, flags);
 
     if (flags & ( SP_OBJECT_STYLE_MODIFIED_FLAG |
                   SP_OBJECT_CHILD_MODIFIED_FLAG |
@@ -378,8 +372,9 @@ void refresh_textpath_source(SPTextPath* tp)
     }
 }
 
-void SPTextPath::modified(unsigned int flags) {
-//    SPItem::onModified(flags);
+void SPTextPath::modified(unsigned flags)
+{
+    Base::modified(flags);
 
     if (flags & SP_OBJECT_MODIFIED_FLAG) {
         flags |= SP_OBJECT_PARENT_MODIFIED_FLAG;
@@ -456,11 +451,10 @@ Inkscape::XML::Node* SPTextPath::write(Inkscape::XML::Document *xml_doc, Inkscap
         }
     }
 
-    SPItem::write(xml_doc, repr, flags);
+    Base::write(xml_doc, repr, flags);
 
     return repr;
 }
-
 
 SPItem *sp_textpath_get_path_item(SPTextPath const *tp)
 {

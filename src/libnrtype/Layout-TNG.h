@@ -18,9 +18,12 @@
 #include <memory>
 #include <optional>
 #include <vector>
+
 #include <glibmm/ustring.h>
 #include <pango/pango-break.h>
+#include <pangomm/fontdescription.h>
 #include <sigc++/scoped_connection.h>
+
 #include <2geom/affine.h>
 #include <2geom/d2.h>
 #include <2geom/pathvector.h>
@@ -720,8 +723,7 @@ public:
         Glib::ustring lang;
 
         // a few functions for some of the more complicated style accesses
-        /// The return value must be freed with pango_font_description_free()
-        PangoFontDescription *styleGetFontDescription() const;
+        Pango::FontDescription styleGetFontDescription() const;
         std::shared_ptr<FontInstance> styleGetFontInstance() const;
         Direction styleGetBlockProgression() const;
         SPCSSTextOrientation styleGetTextOrientation() const;

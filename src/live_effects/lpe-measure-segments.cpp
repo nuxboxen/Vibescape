@@ -411,9 +411,8 @@ LPEMeasureSegments::createTextLabel(Geom::Point &pos, size_t counter, double len
         Inkscape::GC::release(rstring);
     }
     SPCSSAttr *css = sp_repr_css_attr_new();
-    Inkscape::FontLister *fontlister = Inkscape::FontLister::get_instance();
     auto fontbutton_str = fontbutton.param_getSVGValue();
-    fontlister->fill_css(css, fontbutton_str);
+    fill_css_from_fontspec(css, fontbutton_str);
     std::stringstream font_size;
     setlocale (LC_NUMERIC, "C");
     font_size <<  fontsize << "px";

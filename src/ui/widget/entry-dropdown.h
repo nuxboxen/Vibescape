@@ -37,10 +37,14 @@ public:
 
     void setModel(Glib::RefPtr<Gio::ListModel> model);
     void setFactory(Glib::RefPtr<Gtk::ListItemFactory> const &factory) { _view.set_factory(factory); }
+    void setHeaderFactory(Glib::RefPtr<Gtk::ListItemFactory> const &factory) { _view.set_header_factory(factory); }
     void setStringFunc(StringFunc string_func) { _string_func = std::move(string_func); }
 
     // Convenience function: Set both the string function and a label factory using it.
     void setStringFuncAndFactory(StringFunc string_func);
+
+    void setIcon(Glib::ustring const &icon_name, Gtk::Entry::IconPosition pos) { _entry.set_icon_from_icon_name(icon_name, pos); }
+    void setIconTooltip(Glib::ustring const &icon_tooltip, Gtk::Entry::IconPosition pos) { _entry.set_icon_tooltip_text(icon_tooltip, pos); }
 
     void setWidthChars(int n_chars) { _entry.set_width_chars(n_chars); }
     void setMaxWidthChars(int n_chars) { _entry.set_max_width_chars(n_chars); }
@@ -51,8 +55,10 @@ public:
     void setSelectedPos(unsigned pos);
     std::optional<unsigned> getSelectedPos() const;
     Glib::RefPtr<Glib::ObjectBase> getSelectedItem() const;
+    std::optional<unsigned> lookupText(Glib::ustring const &text);
 
     sigc::connection connectChanged(sigc::slot<void ()> &&slot) { return _changed_signal.connect(std::move(slot)); }
+    sigc::connection connectIconClicked(sigc::slot<void (Gtk::Entry::IconPosition)> &&slot) { return _entry.signal_icon_press().connect(std::move(slot)); }
 
 private:
     void _construct();

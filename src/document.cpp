@@ -82,6 +82,7 @@
 #include "style.h"
 #include "ui/widget/canvas.h"
 #include "ui/widget/desktop-widget.h"
+#include "util/document-fonts.h"
 #include "util/units.h"
 #include "xml/croco-node-iface.h"
 #include "xml/rebase-hrefs.h"
@@ -151,6 +152,7 @@ SPDocument::SPDocument()
 
     _page_manager = std::make_unique<Inkscape::PageManager>(this);
     _cms_manager = std::make_unique<Inkscape::Colors::DocumentCMS>(this);
+    _document_fonts = std::make_unique<Inkscape::DocumentFonts>();
 }
 
 SPDocument::~SPDocument() {

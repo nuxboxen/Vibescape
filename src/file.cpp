@@ -229,10 +229,11 @@ file_save(Gtk::Window &parentWindow,
         g_message("file_save: SP_ACTIVE_DESKTOP == NULL. please report to bug #967416");
     }
 
-    auto font_lister = Inkscape::FontLister::get_instance();
+    // Fixme: This can't be here, or work like this.
+    /*auto font_lister = Inkscape::FontLister::get_instance();
     auto recently_used = Inkscape::RecentlyUsedFonts::get();
     recently_used->prepend_to_list(font_lister->get_font_family());
-    recently_used->set_continuous_streak(false);
+    recently_used->set_continuous_streak(false);*/
 
     doc->get_event_log()->rememberFileSave();
     Glib::ustring msg;

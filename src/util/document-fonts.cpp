@@ -1,64 +1,83 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-/*
- * This file contains document used fonts related logic. The functions to manage the
- * document fonts are defined in this file.
- *
- * Authors:
- *   Vaibhav Malik <vaibhavmalik2018@gmail.com>
- *
- * The contents of this file may be used under the GNU General Public License Version 2 or later.
- *
- */
 
 #include "document-fonts.h"
 
-// #include <iostream>
-
 namespace Inkscape {
 
-DocumentFonts *DocumentFonts::get()
+DocumentFonts::Handle DocumentFonts::insert(std::string const &family, std::string const &style)
 {
-    static DocumentFonts instance;
-    return &instance;
-}
+    auto const [outer, outer_inserted] = _map.try_emplace(family);
+    auto const [inner, inner_inserted] = outer->second.try_emplace(style);
 
-void DocumentFonts::clear()
-{
-    _document_fonts.clear();
-}
+    inner->second++;
 
-/*
-void DocumentFonts::print_document_fonts()
-{
-    std::cout << std::endl << "********************" << std::endl;
+    if (outer_inserted) {
+        _families_changed.emit();
 
-    for(auto const& font: _document_fonts) {
-        std::cout << font << std::endl;
+        if (auto const store = _store.lock()) {
+            store->append(WrapAsGObject<FontLister::FontListItem>::create(FontLister::FontListItem{
+                .family = family,
+                .on_system = false,
+            }));
+        }
+    }
+    if (inner_inserted) {
+        _styles_changed.emit();
     }
 
-    std::cout << std::endl << "********************" << std::endl;
+    return {outer, inner};
 }
-*/
 
-void DocumentFonts::update_document_fonts(std::map<Glib::ustring, std::set<Glib::ustring>> const &font_data)
+void DocumentFonts::remove(Handle handle)
 {
-    // Clear the old fonts and then insert latest set.
-    clear();
+    auto const [outer, inner] = handle;
 
-    // Iterate over all the fonts in this map,
-    // and insert these fonts into the document_fonts.
-    for(auto const &ele: font_data) {
-        _document_fonts.insert(ele.first);
+    inner->second--;
+
+    if (inner->second == 0) {
+        outer->second.erase(inner);
+
+        if (outer->second.empty()) {
+            if (auto const store = _store.lock()) {
+                auto const size = store->get_n_items();
+                for (int i = 0; i < size; i++) {
+                    if (store->get_item(i)->data.family.raw() == outer->first) {
+                        store->remove(i);
+                        break;
+                    }
+                }
+            }
+
+            _map.erase(outer);
+            _families_changed.emit();
+        }
+
+        _styles_changed.emit();
+    }
+}
+
+Glib::RefPtr<DocumentFonts::ListStore> DocumentFonts::getFamilies()
+{
+    auto store = _store.lock();
+    if (!store) {
+        _store = store = _createStore();
+    }
+    return store;
+}
+
+std::shared_ptr<DocumentFonts::ListStore> DocumentFonts::_createStore() const
+{
+    auto store = ListStore::create();
+
+    for (auto const &[family, _] : _map) {
+        store->append(WrapAsGObject<FontLister::FontListItem>::create(FontLister::FontListItem{
+            .family = family,
+            .on_system = false,
+        }));
+        // Todo: Link back styles to here to allow lazy-loading.
     }
 
-    // Emit the update signal to keep everything consistent.
-    update_signal.emit();
-}
-
-// Returns the fonts used in the document.
-std::set<Glib::ustring> const &DocumentFonts::get_fonts() const
-{
-    return _document_fonts;
+    return store;
 }
 
 } // namespace Inkscape

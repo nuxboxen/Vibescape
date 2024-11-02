@@ -25,29 +25,22 @@
 #include <vector>
 #include <map>
 
+#include <giomm/liststore.h>
+
 #include <glibmm/ustring.h>
 #include <glibmm/stringutils.h> // For strescape()
 
-#include <giomm/liststore.h>
-#include <gtkmm/liststore.h>
-#include <gtkmm/treemodel.h>
-#include <gtkmm/treemodelcolumn.h>
-#include <gtkmm/treepath.h>
+#include <pangomm/fontfamily.h>
 
 #include "libnrtype/font-utils.h" // canonize_fontspec
 #include "libnrtype/font-factory.h" // StyleNames
 #include "ui/item-factories.h"
 
-inline constexpr int FONT_FAMILIES_GROUP_SIZE = 30;
-
 class SPObject;
+class SPDesktop;
 class SPDocument;
 class SPCSSAttr;
 class SPStyle;
-
-namespace Gtk {
-class CellRenderer;
-} // namespace Gtk
 
 namespace Inkscape {
 
@@ -84,50 +77,49 @@ namespace Inkscape {
  *  means font-family.
  */
 
+/**
+ * Gets font-family and style from fontspec.
+ */
+struct FamilyStyle
+{
+    Glib::ustring family;
+    Glib::ustring style;
+};
+FamilyStyle ui_from_fontspec(Glib::ustring const &fontspec);
+
+/**
+ * Fill css using given fontspec (doesn't need to be member function).
+ */
+void fill_css_from_fontspec(SPCSSAttr *css, Glib::ustring const &fontspec);
+
+Glib::ustring fontspec_from_style(SPStyle const *style);
+
 class FontLister
 {
 public:
-    enum class Exception
-    {
-        FAMILY_NOT_FOUND,
-        STYLE_NOT_FOUND
-    };
-
     using Styles = std::vector<StyleNames>;
 
-    /**
-     * GtkTreeModelColumnRecord for the font-family list Gtk::ListStore
-     */
-    struct FontListClass : Gtk::TreeModelColumnRecord
+    /// Data for each item in the font list.
+    struct FontListItem
     {
         /// Family name
-        Gtk::TreeModelColumn<Glib::ustring> family;
+        Glib::ustring family;
 
-        /// Styles for each family name.
-        Gtk::TreeModelColumn<std::shared_ptr<Styles>> styles;
+        /// Styles for each family name. May be lazy-loaded.
+        std::shared_ptr<Styles> styles;
 
         /// Whether font is on system
-        Gtk::TreeModelColumn<bool> onSystem;
-        
-        /**
-         * Not actually a column.
-         * Necessary for quick initialization of FontLister;
-         * we initially store the pango family and if the
-         * font style is actually used we'll cache it in
-         * %styles.
-         */
-        Gtk::TreeModelColumn<PangoFontFamily *> pango_family;
-        
-        FontListClass()
-        {
-            add(family);
-            add(styles);
-            add(onSystem);
-            add(pango_family);
-        }
-    };
+        bool on_system = false;
 
-    FontListClass font_list;
+        /// Used for lazy-loading %styles.
+        PangoFontFamily *pango_family = nullptr;
+
+        /// Ensure styles is not null, loading it if necessary.
+        void ensureStyles();
+
+        /// Return styles, loading it if necessary.
+        auto &getStyles() { ensureStyles(); return styles; }
+    };
 
     /**
      * The list of fonts, sorted by the order they will appear in the UI.
@@ -141,151 +133,26 @@ public:
      * The ListStore is ready to be used after class instantiation
      * and should not be modified.
      */
-    Glib::RefPtr<Gtk::ListStore> const &get_font_list() const { return font_list_store; }
+    Glib::RefPtr<Gio::ListStore<WrapAsGObject<FontListItem>>> const &get_font_list() const { return font_list_store; }
 
     /**
      * @return the ListStore with the styles
      */
     Glib::RefPtr<Gio::ListStore<WrapAsGObject<StyleNames>>> const &get_style_list() const { return style_list_store; }
 
-    /** 
-     * Inserts a font family or font-fallback list (for use when not
-     *  already in document or on system).
-     */
-    void insert_font_family(Glib::ustring const &new_family);
-
-    int add_document_fonts_at_top(SPDocument *document);
-
-    /**
-     * Updates font list to include fonts in document.
-     */
-    void update_font_list(SPDocument *document);
-
     static Inkscape::FontLister *get_instance();
-
-    /**
-     * Takes a hand written font spec and returns a Pango generated one in
-     *  standard form.
-     */
 
     /**
      * Functions to display the search results in the font list.
      */
-    bool find_string_case_insensitive(std::string const &text, std::string const &pat);
     void show_results(Glib::ustring const &search_text);
     void apply_collections(std::set <Glib::ustring> &selected_collections);
     void set_dragging_family(Glib::ustring const &new_family);
-
-    /**
-     * Gets font-family and style from fontspec.
-     *  font-family and style returned.
-     */
-    std::pair<Glib::ustring, Glib::ustring> ui_from_fontspec(Glib::ustring const &fontspec) const;
-
-    /**
-     * Sets font-family and style after a selection change.
-     *  New font-family and style returned.
-     */
-    std::pair<Glib::ustring, Glib::ustring> selection_update();
-
-    /** 
-     * Sets current_fontspec, etc. If check is false, won't
-     *  try to find best style match (assumes style in fontspec
-     *  valid for given font-family).
-     */
-    void set_fontspec(Glib::ustring const &fontspec, bool check = true);
-
-    Glib::ustring get_fontspec() const {
-        return Inkscape::canonize_fontspec(current_family + ", " + current_style);
-    }
-
-    /**
-     * Changes font-family, updating style list and attempting to find
-     *  closest style to current_style style (if check_style is true).
-     *  New font-family and style returned.
-     *  Does NOT update current_family and current_style.
-     *  (For potential use in font-selector which doesn't update until
-     *  "Apply" button clicked.)
-     */
-    std::pair<Glib::ustring, Glib::ustring> new_font_family(Glib::ustring const &family, bool check_style = true);
-
-    /** 
-     * Sets font-family, updating style list and attempting
-     *  to find closest style to old current_style.
-     *  New font-family and style returned.
-     *  Updates current_family and current_style.
-     *  Calls new_font_family().
-     *  (For use in text-toolbar where update is immediate.)
-     */
-    std::pair<Glib::ustring, Glib::ustring> set_font_family(Glib::ustring const &family, bool check_style = true,
-                                                            bool emit = true);
-
-    /**
-     * Sets font-family from row in list store.
-     *  The row can be used to determine if we are in the
-     *  document or system part of the font-family list.
-     *  This is needed to handle scrolling through the
-     *  font-family list correctly.
-     *  Calls set_font_family().
-     */
-    std::pair<Glib::ustring, Glib::ustring> set_font_family(int row, bool check_style = true, bool emit = true);
-
-    Glib::ustring const &get_font_family() const
-    {
-        return current_family;
-    }
 
     Glib::ustring const &get_dragging_family() const
     {
         return dragging_family;
     }
-
-    int get_font_family_row() const
-    {
-        return current_family_row;
-    }
-
-    /**
-     * Sets style. Does not validate style for family.
-     */
-    void set_font_style(Glib::ustring style, bool emit = true);
-
-    Glib::ustring const &get_font_style() const
-    {
-        return current_style;
-    }
-
-    Glib::ustring fontspec_from_style(SPStyle *style) const;
-
-    /**
-     * Fill css using given fontspec (doesn't need to be member function).
-     */
-    void fill_css(SPCSSAttr *css, Glib::ustring fontspec = {});
-
-    Gtk::TreeModel::Row get_row_for_font() { return get_row_for_font(current_family); }
-
-    Gtk::TreeModel::Row get_row_for_font(Glib::ustring const &family);
-
-    Gtk::TreePath get_path_for_font(Glib::ustring const &family);
-
-    bool is_path_for_font(Gtk::TreePath path, Glib::ustring family);
-
-    std::pair<Gtk::TreePath, Gtk::TreePath> get_paths(Glib::ustring const &family, Glib::ustring const &style);
-
-    /**
-     * Return best style match for new font given style for old font.
-     */
-    Glib::ustring get_best_style_match(Glib::ustring const &family, Glib::ustring const &style);
-
-    /**
-     * Ensures the style list for a particular family has been created.
-     */
-    void ensureRowStyles(Gtk::TreeModel::iterator iter);
-
-    /**
-     * Get markup for font-family.
-     */
-    Glib::ustring get_font_family_markup(Gtk::TreeModel::const_iterator const &iter) const;
 
     /**
      * Let users of FontLister know to update GUI.
@@ -296,38 +163,26 @@ public:
     sigc::connection connectUpdate(sigc::slot<void ()> slot) {
         return update_signal.connect(slot);
     }
-    sigc::connection connectNewFonts(sigc::slot<void ()> slot) {
-        return new_fonts_signal.connect(slot);
-    }
 
     bool blocked() const { return block; }
 
     int get_font_families_size() const { return pango_family_map.size(); }
     bool font_installed_on_system(Glib::ustring const &font) const;
 
-    void init_font_families(int group_offset = -1, int group_size = -1);
+    void init_font_families();
     void init_default_styles();
     std::pair<bool, std::string> get_font_count_label() const;
+
+    auto const &getDefaultStyles() const { return default_styles; }
 
 private:
     FontLister();
     ~FontLister();
 
-    void update_font_data_recursive(SPObject& r, std::map<Glib::ustring, std::set<Glib::ustring>> &font_data);
-
-    void font_family_row_update(int start = 0);
-
-    Glib::RefPtr<Gtk::ListStore> font_list_store;
+    Glib::RefPtr<Gio::ListStore<WrapAsGObject<FontListItem>>> font_list_store;
     Glib::RefPtr<Gio::ListStore<WrapAsGObject<StyleNames>>> style_list_store;
 
-    /**
-     * Info for currently selected font (what is shown in the UI).
-     *  May include font-family lists and fonts not on system.
-     */
-    int current_family_row = 0;
-    Glib::ustring current_family = "sans-serif";
     Glib::ustring dragging_family;
-    Glib::ustring current_style = "Normal";
 
     /**
      * If a font-family is not on system, this list of styles is used.
@@ -337,24 +192,67 @@ private:
     bool block = false;
     void emit_update();
     sigc::signal<void ()> update_signal;
-    sigc::signal<void ()> new_fonts_signal;
 };
 
+class LocalFontLister
+{
+public:
+    LocalFontLister();
+
+    void unsetDocument();
+    void setDocument(SPDocument *document);
+
+    auto const &getFonts() const { return all_fonts_flat; }
+    auto const &getStyles() const { return styles_store; }
+
+    // Only used to determine section headers.
+    auto firstDocumentFont() const { return document_fonts ? document_fonts->get_item(0) : nullptr; }
+
+    /**
+     * Info for currently selected font (what is shown in the UI).
+     *  May include font-family lists and fonts not on system.
+     */
+    std::string family = "sans-serif";
+    std::string style = "Normal";
+
+    Glib::ustring getFontspec() const { return canonize_fontspec(family + ", " + style); }
+
+    /**
+     * Sets font-family, updating style list and attempting
+     *  to find closest style to old current_style.
+     *  New font-family and style returned.
+     *  Updates current_family and current_style.
+     *  Calls new_font_family().
+     *  (For use in text-toolbar where update is immediate.)
+     */
+    void setFontFamily(unsigned pos);
+    void setFontFamily(Glib::ustring new_family);
+    void setFontStyle(Glib::ustring style);
+    void selectionUpdate(SPDesktop *desktop);
+    void setFontspec(Glib::ustring const &new_fontspec); // Note: Used to have an optional check arg, used to assume style is valid.
+
+    FontLister::FontListItem &getItem(unsigned pos);
+    unsigned getPosForFont(Glib::ustring const &family);
+    FontLister::FontListItem *getItemForFont(Glib::ustring const &family);
+
+private:
+    Glib::RefPtr<Gio::ListStore<WrapAsGObject<FontLister::FontListItem>>> document_fonts;
+    Glib::RefPtr<Gio::ListStore<Gio::ListModel>> all_font_models;
+    Glib::RefPtr<Gio::ListModel> all_fonts_flat;
+
+    Glib::RefPtr<Gio::ListStore<WrapAsGObject<StyleNames>>> styles_store;
+
+    void _setStyles(FontLister::Styles const &styles);
+};
+
+/**
+ * Return best style match for new font given style for old font.
+ */
+std::string closestStyle(FontLister::FontListItem *item, std::string const &target_style);
+
+Glib::ustring font_lister_get_markup(FontLister::FontListItem const &item);
+
 } // namespace Inkscape
-
-// Helper functions
-bool font_lister_separator_func(Glib::RefPtr<Gtk::TreeModel> const &model,
-                                Gtk::TreeModel::const_iterator const &iter);
-
-void font_lister_cell_data_func(Gtk::CellRenderer *renderer,
-                                Gtk::TreeModel::const_iterator const &iter);
-
-void font_lister_cell_data_func_markup(Gtk::CellRenderer *renderer,
-                                       Gtk::TreeModel::const_iterator const &iter);
-
-void font_lister_cell_data_func2(Gtk::CellRenderer &cell,
-                                 Gtk::TreeModel::const_iterator const &iter,
-                                 bool with_markup);
 
 #endif // FONT_LISTER_H
 

@@ -199,21 +199,17 @@ Layout::Alignment Layout::InputStreamTextSource::styleGetAlignment(Layout::Direc
 
 std::shared_ptr<FontInstance> Layout::InputStreamTextSource::styleGetFontInstance() const
 {
-    PangoFontDescription *descr = styleGetFontDescription();
-    if (descr == nullptr) return nullptr;
-    auto res = FontFactory::get().Face(descr);
-    pango_font_description_free(descr);
-    return res;
+    return FontFactory::get().Face(styleGetFontDescription().gobj());
 }
 
-PangoFontDescription *Layout::InputStreamTextSource::styleGetFontDescription() const
+Pango::FontDescription Layout::InputStreamTextSource::styleGetFontDescription() const
 {
     // This use to be done by code here but it duplicated more complete code in FontFactory.cpp.
-    PangoFontDescription *descr = ink_font_description_from_style( style );
+    auto descr = ink_font_description_from_style(style);
 
     // Font size not yet set
     // mandatory huge size (hinting workaround)
-    pango_font_description_set_size(descr, FontFactory::get().fontSize * PANGO_SCALE);
+    descr.set_size(FontFactory::get().fontSize * PANGO_SCALE);
 
     return descr;
 }

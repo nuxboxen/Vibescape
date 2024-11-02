@@ -1,48 +1,58 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+/** @file
+ * Per-document gadget for tracking the fonts and styles in use in a document.
+ */
 /*
- * Header file that defines the singleton DocumentFonts class.
- * This is a singleton class.
- *
  * Authors:
- *   Vaibhav Malik <vaibhavmalik2018@gmail.com>
+ *   PBS <pbs3141@gmail.com>
  *
- * The contents of this file may be used under the GNU General Public License Version 2 or later.
+ * Copyright (C) 2024 Authors
+ *
+ * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
 #ifndef INKSCAPE_UTIL_DOCUMENT_FONTS_H
 #define INKSCAPE_UTIL_DOCUMENT_FONTS_H
 
-#include <vector>
 #include <map>
-#include <set>
-#include <glibmm/ustring.h>
 #include <sigc++/connection.h>
 #include <sigc++/signal.h>
+
+#include "libnrtype/font-lister.h"
+#include "ui/item-factories.h"
 
 namespace Inkscape {
 
 class DocumentFonts
 {
 public:
-    static DocumentFonts *get();
+    using InnerMap = std::map<std::string, int>;
+    using OuterMap = std::map<std::string, InnerMap>;
+    using ListStore = Gio::ListStore<WrapAsGObject<FontLister::FontListItem>>;
 
-    void clear();
-    // void print_document_fonts();
-    void update_document_fonts(std::map<Glib::ustring, std::set<Glib::ustring>> const &font_data);
-    std::set<Glib::ustring> const &get_fonts() const;
-
-    // Signals
-    sigc::connection connectUpdate(sigc::slot<void ()> slot) {
-        return update_signal.connect(slot);
+    sigc::connection connectFamiliesChanged(sigc::slot<void ()> &&slot) {
+        return _families_changed.connect(std::move(slot));
+    }
+    sigc::connection connectStylesChanged(sigc::slot<void ()> &&slot) {
+        return _styles_changed.connect(std::move(slot));
     }
 
+    using Handle = std::pair<OuterMap::iterator, InnerMap::iterator>;
+    Handle insert(std::string const &family, std::string const &style);
+    void remove(Handle handle);
+
+    OuterMap const &getMap() const { return _map; }
+    Glib::RefPtr<ListStore> getFamilies();
+
 private:
-    DocumentFonts() = default;
+    OuterMap _map;
 
-    std::set<Glib::ustring> _document_fonts;
+    std::weak_ptr<ListStore> _store; // only exists while observed
 
-    // Signals
-    sigc::signal<void ()> update_signal;
+    sigc::signal<void ()> _families_changed;
+    sigc::signal<void ()> _styles_changed;
+
+    std::shared_ptr<ListStore> _createStore() const;
 };
 
 } // namespace Inkscape

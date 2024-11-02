@@ -17,7 +17,7 @@
 
 #include "libnrtype/Layout-TNG.h"
 #include "libnrtype/style-attachments.h"
-#include "sp-item.h"
+#include "sp-text-item.h"
 #include "desktop.h"
 
 #include <memory>
@@ -28,7 +28,7 @@ class DrawingGroup;
 
 } // namespace Inkscape
 
-class SPFlowtext final : public SPItem {
+class SPFlowtext final : public SPTextItem {
 public:
 	SPFlowtext();
 	~SPFlowtext() override;
@@ -58,9 +58,9 @@ public:
     /** discards the drawing objects representing this text. */
     void _clearFlow(Inkscape::DrawingGroup* in_arena);
 
-    double par_indent;
+    double par_indent = 0.0;
 
-    bool _optimizeScaledText;
+    bool _optimizeScaledText = false;
 
 	/** Converts the text object to its component curves */
     Geom::PathVector getNormalizedBpath() const;

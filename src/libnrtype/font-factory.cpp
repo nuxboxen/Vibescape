@@ -43,7 +43,6 @@
 #include "libnrtype/font-utils.h"
 #include "libnrtype/OpenTypeUtil.h"
 
-
 #ifdef _WIN32
 #undef NOGDI
 #include <glibmm.h>
@@ -411,11 +410,9 @@ std::vector<StyleNames> FontFactory::GetUIStyles(PangoFontFamily *in)
 
 std::shared_ptr<FontInstance> FontFactory::FaceFromDescr(char const *family, char const *style)
 {
-    PangoFontDescription *temp_descr = pango_font_description_from_string(style);
-    pango_font_description_set_family(temp_descr,family);
-    auto res = Face(temp_descr);
-    pango_font_description_free(temp_descr);
-    return res;
+    auto temp_descr = Pango::FontDescription(style);
+    temp_descr.set_family(family);
+    return Face(temp_descr.gobj());
 }
 
 std::shared_ptr<FontInstance> FontFactory::FaceFromPangoString(char const *pangoString)

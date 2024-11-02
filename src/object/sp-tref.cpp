@@ -50,20 +50,15 @@ static void sp_tref_href_changed(SPObject *old_ref, SPObject *ref, SPTRef *tref)
 static void sp_tref_delete_self(SPObject *deleted, SPTRef *self);
 
 SPTRef::SPTRef()
-    : SPItem()
-    , href(nullptr)
-    , uriOriginalRef(this)
-    , stringChild(nullptr)
+    : uriOriginalRef(this)
 {
     _changed_connection = uriOriginalRef.changedSignal().connect(sigc::bind(sigc::ptr_fun(sp_tref_href_changed), this));
 }
 
-SPTRef::~SPTRef()
-{
-}
+SPTRef::~SPTRef() = default;
 
 void SPTRef::build(SPDocument *document, Inkscape::XML::Node *repr) {
-    SPItem::build(document, repr);
+    Base::build(document, repr);
 
     this->readAttr(SPAttr::XLINK_HREF);
     this->readAttr(SPAttr::X);
@@ -84,7 +79,7 @@ void SPTRef::release() {
 
     uriOriginalRef.detach();
 
-    SPItem::release();
+    Base::release();
 }
 
 void SPTRef::set(SPAttr key, const gchar* value) {
@@ -121,7 +116,7 @@ void SPTRef::set(SPAttr key, const gchar* value) {
             requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
         }
     } else { // default
-        SPItem::set(key, value);
+        Base::set(key, value);
     }
 }
 
@@ -142,7 +137,7 @@ void SPTRef::update(SPCtx *ctx, guint flags) {
         }
     }
 
-    SPItem::update(ctx, flags);
+    Base::update(ctx, flags);
 }
 
 void SPTRef::modified(unsigned int flags) {
@@ -181,7 +176,7 @@ Inkscape::XML::Node* SPTRef::write(Inkscape::XML::Document *xml_doc, Inkscape::X
         Inkscape::setHrefAttribute(*repr, uri_string);
     }
 
-    SPItem::write(xml_doc, repr, flags);
+    Base::write(xml_doc, repr, flags);
 
     return repr;
 }

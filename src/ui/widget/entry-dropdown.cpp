@@ -161,13 +161,25 @@ Glib::RefPtr<Glib::ObjectBase> EntryDropDown::getSelectedItem() const
     return {};
 }
 
+std::optional<unsigned> EntryDropDown::lookupText(Glib::ustring const &text)
+{
+    if (!_dict) {
+        _rebuildDict();
+    }
+    if (auto const it = _dict->find(_text.collate_key()); it != _dict->end()) {
+        return it->second;
+    }
+    return {};
+}
+
 void EntryDropDown::_rebuildDict()
 {
     _dict.emplace();
 
     auto const size = _model->get_n_items();
     for (int i = 0; i < size; i++) {
-        (*_dict)[_string_func(*_model->get_object(i)).collate_key()] = i;
+        // Give earlier entries priority when there are duplicate entries.
+        _dict->try_emplace(_string_func(*_model->get_object(i)).collate_key(), i);
     }
 }
 
@@ -207,7 +219,7 @@ void EntryDropDown::_resolveSelection()
 void EntryDropDown::_updateEntry()
 {
     _entry.set_text(_text);
-    _entry.select_region(_text.length(), _text.length());
+    _entry.select_region(_text.length(), _text.length()); // Fixme: Only if has focus.
 }
 
 void EntryDropDown::_setSelection(unsigned pos)
