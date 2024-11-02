@@ -15,6 +15,7 @@
 
 namespace Gio { class ListModel; }
 namespace Gtk {
+class Builder;
 class ListItemFactory;
 class EventControllerKey;
 } // namespace Gtk
@@ -31,6 +32,8 @@ public:
     using StringFunc = std::function<Glib::ustring (Glib::ObjectBase const &)>;
 
     EntryDropDown();
+    EntryDropDown(BaseObjectType *cobject, Glib::RefPtr<Gtk::Builder> const &);
+    static void register_type();
 
     void setModel(Glib::RefPtr<Gio::ListModel> model);
     void setFactory(Glib::RefPtr<Gtk::ListItemFactory> const &factory) { _view.set_factory(factory); }
@@ -40,6 +43,7 @@ public:
     void setStringFuncAndFactory(StringFunc string_func);
 
     void setWidthChars(int n_chars) { _entry.set_width_chars(n_chars); }
+    void setMaxWidthChars(int n_chars) { _entry.set_max_width_chars(n_chars); }
     void setDefocusTarget(DefocusTarget *defocus_target) { _defocus_target = defocus_target; }
 
     void setText(Glib::ustring text);
@@ -51,6 +55,8 @@ public:
     sigc::connection connectChanged(sigc::slot<void ()> &&slot) { return _changed_signal.connect(std::move(slot)); }
 
 private:
+    void _construct();
+
     Gtk::Box _box;
     Gtk::Entry _entry;
     Gtk::ToggleButton _button;

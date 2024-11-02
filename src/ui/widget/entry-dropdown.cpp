@@ -11,9 +11,34 @@
 
 namespace Inkscape::UI::Widget {
 
+static bool registered_type = false;
+
 EntryDropDown::EntryDropDown()
     : Glib::ObjectBase{"EntryDropDown"}
     , CssNameClassInit{"dropdown"}
+{
+    _construct();
+    registered_type = true;
+}
+
+EntryDropDown::EntryDropDown(BaseObjectType *cobject, Glib::RefPtr<Gtk::Builder> const &)
+    : Glib::ObjectBase{"EntryDropDown"}
+    , CssNameClassInit{"dropdown"}
+    , Gtk::Widget{cobject}
+{
+    _construct();
+    registered_type = true;
+}
+
+void EntryDropDown::register_type()
+{
+    // This workaround, both required and recommended by GTKmm, is offensively wasteful.
+    if (!registered_type) {
+        EntryDropDown{}; // construct and throw away object
+    }
+}
+
+void EntryDropDown::_construct()
 {
     containerize(*this);
     set_layout_manager(Gtk::BinLayout::create());
