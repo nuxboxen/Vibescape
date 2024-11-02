@@ -2,7 +2,14 @@
 #ifndef SEEN_FONT_SELECTOR_INTERFACE_H
 #define SEEN_FONT_SELECTOR_INTERFACE_H
 
-class FontSelectorInterface {
+#include <glibmm/ustring.h>
+#include <gtkmm/widget.h>
+#include <sigc++/signal.h>
+
+namespace Inkscape::UI { class DefocusTarget; }
+
+class FontSelectorInterface
+{
 public:
     virtual ~FontSelectorInterface() {};
 
@@ -26,6 +33,9 @@ public:
     // legacy font selector
     virtual void set_model() = 0;
     virtual void unset_model() = 0;
+
+    // defocus handling
+    virtual void setDefocusTarget(Inkscape::UI::DefocusTarget *) {}
 };
 
 #endif

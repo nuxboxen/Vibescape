@@ -37,7 +37,9 @@ namespace Inkscape::UI::Dialog {
  * DialogContainer classes. DialogContainer instances can have at most one type of dialog,
  * differentiated by the associated type.
  */
-class DialogBase : public Gtk::Box, protected DefocusTarget
+class DialogBase
+    : public Gtk::Box
+    , public Inkscape::UI::DefocusTarget
 {
     using parent_type = Gtk::Box;
 
@@ -58,6 +60,7 @@ public:
     // Public for future use, say if the desktop is smartly set when docking dialogs.
     void setDesktop(SPDesktop *new_desktop);
 
+    void onDefocus() override;
     void on_map() override;
 
     Glib::ustring const &get_name    () const { return _name       ; }
@@ -88,7 +91,6 @@ protected:
     Glib::ustring const _dialog_type; // Type of dialog (we could just use _pref_path?).
 
 private:
-    void onDefocus() override;
     bool blink_off(); // timer callback
     bool on_key_pressed(Gtk::EventControllerKey const &controller,
                         unsigned keyval, unsigned keycode, Gdk::ModifierType state);

@@ -64,6 +64,8 @@ public:
     void set_model() override {};
     void unset_model() override {};
 
+    void setDefocusTarget(Inkscape::UI::DefocusTarget *) override;
+
 private:
     void on_map() override;
     void sort_fonts();

@@ -106,6 +106,7 @@ TextEdit::TextEdit(bool use_browser)
     font_list = _use_browser ?
         Inkscape::UI::Widget::FontList::create_font_list("/font-selector") :
         Inkscape::UI::Widget::FontSelector::create_font_selector();
+    font_list->setDefocusTarget(this);
 
     auto font_collections = Inkscape::FontCollections::get();
 
