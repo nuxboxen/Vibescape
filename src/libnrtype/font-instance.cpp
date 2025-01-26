@@ -29,6 +29,12 @@
 #include FT_TRUETYPE_TABLES_H
 #include FT_GLYPH_H
 
+#include <pango/pangoft2.h>
+#include <harfbuzz/hb.h>
+#include <harfbuzz/hb-cairo.h>
+#include <harfbuzz/hb-ft.h>
+#include <harfbuzz/hb-ot.h> // Color fonts
+
 #include <glibmm/regex.h>
 #include <glibmm/stringutils.h>
 #include <harfbuzz/hb-ft.h>
@@ -39,12 +45,95 @@
 #include <pangomm/fontdescription.h>
 #include <2geom/path-sink.h>
 #include <2geom/pathvector.h>
+#include <2geom/path-sink.h>
 
 #include "font-instance.h"
 
 /*
  * Outline extraction
  */
+
+#if HB_VERSION_ATLEAST(4,0,0)
+
+struct HBGeomData
+{
+    HBGeomData(Geom::PathBuilder &b, double s)
+        : builder(b)
+        , scale(s)
+    {
+    }
+
+    Geom::PathBuilder &builder;
+    double scale;
+};
+
+static void hb_draw_move_to(hb_draw_funcs_t *dfuncs, // Unused
+                            void *draw_data,
+                            hb_draw_state_t *st, // Unused
+                            float to_x,
+                            float to_y,
+                            void *user_data) // Unused
+{
+    HBGeomData *draw = (HBGeomData*)draw_data;
+    Geom::Point p(to_x, to_y);
+    draw->builder.moveTo(p * draw->scale);
+}
+
+static void hb_draw_line_to(hb_draw_funcs_t *dfuncs, // Unused
+                            void *draw_data,
+                            hb_draw_state_t *st, // Unused
+                            float to_x,
+                            float to_y,
+                            void *user_data) // Unused
+{
+    HBGeomData *draw = (HBGeomData*)draw_data;
+    Geom::Point p(to_x, to_y);
+    draw->builder.lineTo(p * draw->scale);
+}
+
+static void hb_draw_quadratic_to(hb_draw_funcs_t *dfuncs, // Unused
+                                 void *draw_data,
+                                 hb_draw_state_t *st, // Unused
+                                 float control_x,
+                                 float control_y,
+                                 float to_x,
+                                 float to_y,
+                                 void *user_data) // Unused
+{
+    HBGeomData *draw = (HBGeomData*)draw_data;
+    Geom::Point p(to_x, to_y);
+    Geom::Point c(control_x, control_y);
+    draw->builder.quadTo(c * draw->scale, p * draw->scale);
+}
+
+static void hb_draw_cubic_to(hb_draw_funcs_t *dfuncs, // Unused
+                             void *draw_data,
+                             hb_draw_state_t *st, // Unused
+                             float control1_x,
+                             float control1_y,
+                             float control2_x,
+                             float control2_y,
+                             float to_x,
+                             float to_y,
+                             void *user_data) // Unused
+{
+    HBGeomData *draw = (HBGeomData*)draw_data;
+    Geom::Point p(to_x, to_y);
+    Geom::Point c1(control1_x, control1_y);
+    Geom::Point c2(control2_x, control2_y);
+    draw->builder.curveTo(c1 * draw->scale, c2 * draw->scale, p * draw->scale);
+}
+
+static void hb_draw_close_path(hb_draw_funcs_t *dfuncs, // Unused
+                               void *draw_data,
+                               hb_draw_state_t *st, // Unused
+                               void *uer_data) // Unused
+{
+    HBGeomData *draw = (HBGeomData*)draw_data;
+    draw->builder.closePath();
+}
+
+#else
 
 struct FT2GeomData
 {
@@ -104,12 +193,16 @@ static int ft2_cubic_to(FT_Vector const *control1, FT_Vector const *control2, FT
     return 0;
 }
 
+#endif
+
 /*
  *
  */
 
 FontInstance::FontInstance(PangoFont *p_font, PangoFontDescription *descr)
 {
+    data = std::make_shared<Data>();
+
     acquire(p_font, descr);
 
     _ascent  = _ascent_max  = 0.8;
@@ -149,20 +242,27 @@ void FontInstance::acquire(PangoFont *p_font_, PangoFontDescription *descr_)
     descr_hash = pango_font_description_hash(descr);
     hb_font_copy = nullptr;
     face = nullptr;
-    hb_face = nullptr;
+    data->cairo_font_face = nullptr;
 
     hb_font = pango_font_get_hb_font(p_font); // Pango owns hb_font.
     if (!hb_font) {
         release();
         throw CtorException("Failed to get harfbuzz font");
     }
-    hb_face = hb_font_get_face(hb_font);
+
+    // Used for rendering color fonts.
+    data->cairo_font_face = hb_cairo_font_face_create_for_font(hb_font);
+    if (!data->cairo_font_face) {
+        release();
+        throw CtorException("Failed to get cairo font face");
+    }
 
     // hb_font is immutable, yet we need to act on it (with set_funcs) to extract the freetype face
     hb_font_copy = hb_font_create_sub_font(hb_font);
     hb_ft_font_set_funcs(hb_font_copy);
-    face = hb_ft_font_lock_face(hb_font_copy);
+    hb_face = hb_font_get_face(hb_font);
 
+    face = hb_ft_font_lock_face(hb_font_copy);
     if (!face) {
         release();
         throw CtorException("Failed to get freetype face");
@@ -177,6 +277,10 @@ void FontInstance::release()
             hb_ft_font_unlock_face(hb_font_copy);
         }
         hb_font_destroy(hb_font_copy);
+    }
+
+    if (data->cairo_font_face) {
+        cairo_font_face_destroy(data->cairo_font_face); // TODO Verify this is necessary!
     }
 
     pango_font_description_free(descr);
@@ -199,15 +303,34 @@ uint32_t compose_tag(Glib::ustring tag_name) {
 
 void FontInstance::init_face()
 {
+    std::cout << "FontInstance::init_face: " << pango_font_description_to_string(descr) << ":" << std::endl;
     auto hb_font = pango_font_get_hb_font(p_font); // Pango owns hb_font.
     assert(hb_font); // Guaranteed since already tested in acquire().
 
-    has_svg = hb_ot_color_has_svg(hb_face); // SVG glyphs Since HB 2.1.0
+    readOpenTypeTableList(hb_font, openTypeTableList);
+    std::cout << "  OpenType Table list: ";
+    for (const auto& table : openTypeTableList) {
+        std::cout << table << ", ";
+    }
+    std::cout << std::endl;
 
-    data = std::make_shared<Data>();
+    has_svg    = hb_ot_color_has_svg(hb_face);    // SVG glyphs         HB 2.1.0
+    has_png    = hb_ot_color_has_png(hb_face);    // Color png glyphs   HB 2.1.0
+    has_layers = hb_ot_color_has_layers(hb_face); // Has COLRv0 table.  HB 2.1.0
+    has_paint  = hb_ot_color_has_paint(hb_face);  // Has COLRv1 table.  HB 7.0.0
+
+    std::cout << "  " << pango_font_description_to_string(descr)
+              << "  Has SVG: "    << std::setw(5) << std::boolalpha << has_svg
+              << "  Has PNG: "    << std::setw(5) << std::boolalpha << has_png
+              << "  Has COLRv0: " << std::setw(5) << std::boolalpha << has_layers
+              << "  Has COLRv1: " << std::setw(5) << std::boolalpha << has_paint
+              << std::endl;
+
     readOpenTypeTableList(hb_font, openTypeTableList);
     _has_vertical = openTypeTableList.contains("vmtx") && openTypeTableList.contains("vhea");
     readOpenTypeSVGTable(hb_font, data->openTypeSVGGlyphs, data->openTypeSVGData);
+    std::vector<Glib::RefPtr<Gdk::Pixbuf>> pixbufs;
+    readOpenTypePNG(hb_font, pixbufs);
     readOpenTypeFvarAxes(hb_font, data->openTypeVarAxes);
 }
 
@@ -314,8 +437,9 @@ void FontInstance::find_font_metrics()
             // std::cout << "Hanging baseline:  प: " << hanging << std::endl;
             FT_Done_Glyph(aglyph);
         }
+    } else {
+        _design_units = hb_face_get_upem(hb_face);
     }
-
     // const gchar *family = pango_font_description_get_family(descr);
     // std::cout << "Font: " << (family?family:"null") << std::endl;
     // std::cout << "  ascent:      " << _ascent      << std::endl;
@@ -364,36 +488,50 @@ unsigned int FontInstance::MapUnicodeChar(gunichar c) const
     return res;
 }
 
+// The purpose of this function is to extract and cache:
+// * glyph metrics (for text layout and selection ),
+// * glyph paths (for non-color fonts to allow for pattern fills, etc.).
 FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 {
-    if (!FT_IS_SCALABLE(face)) {
-        return nullptr; // bitmap font
-    }
-
     if (auto it = data->glyphs.find(glyph_id); it != data->glyphs.end()) {
         return it->second.get(); // already loaded
     }
 
-    Geom::PathBuilder path_builder;
+    auto n_g = std::make_unique<FontGlyph>();
+    
+    // For debugging
+    const unsigned int MAX_CHAR = 65; // Maximum length + 1 per OpenType spec.
+    char name[MAX_CHAR] = {};
+    hb_font_get_glyph_name (hb_font, glyph_id, name, MAX_CHAR);
+    if (name) {
+        n_g->unicode_name = name;
+    }
+
+    std::cout << "\nFontInstance::LoadGlyph: new: " << std::setw(6) << glyph_id
+              << "  (" << std::setw(12) << name << ")"
+              << "  " << pango_font_description_to_string(descr)
+              << std::endl;
 
     // Note: Bitmap only fonts (i.e. some color fonts) ignore FT_LOAD_NO_BITMAP.
     if (FT_Load_Glyph(face, glyph_id, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP)) {
+        std::cout << "FontGlyph: Failed to load glyph: " << glyph_id
+                  << "  " << pango_font_description_to_string(descr) << std::endl;
         return nullptr; // error
     }
+
+    // Use harfbuzz value as FreeType doesn't return value for bitmap fonts.
+    // auto units_per_em = hb_face_get_upem(hb_face);
 
     // Find scale, used by both metrics and paths.
     int x_scale = 0;
     int y_scale = 0;
     hb_font_get_scale(hb_font, &x_scale, &y_scale);
+    std::cout << "  HB font scale " << x_scale << ", " << y_scale << std::endl;
     if (x_scale != y_scale) {
         std::cerr << "FontInstance::LoadGlyph: x scale not equal to y scale!" << std::endl;
     }
 
-    auto n_g = std::make_unique<FontGlyph>();
-
     // Find metrics ----------------------------------
-
-    // Use harfbuzz as freetype doesn't return proper values for bitmap fonts.
 
     n_g->h_advance = hb_font_get_glyph_h_advance (hb_font, glyph_id) / (double)x_scale; // Since HB 0.9.2
     if (openTypeTableList.contains("vmtx")) {
@@ -434,33 +572,96 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 
     // Find path vector ------------------------------
 
-    if (face->glyph->format == ft_glyph_format_outline) {
-        FT_Outline_Funcs ft2_outline_funcs = {
-            ft2_move_to,
-            ft2_line_to,
-            ft2_conic_to,
-            ft2_cubic_to,
-            0, 0
-        };
-        FT2GeomData user(path_builder, 1.0 / face->units_per_EM);
-        FT_Outline_Decompose(&face->glyph->outline, &ft2_outline_funcs, &user);
+
+#if HB_VERSION_ATLEAST(4,0,0)
+    if (true) { // Check if glyf table exists?
+        // Move this out of loop?
+        auto dfuncs = hb_draw_funcs_create();
+        hb_draw_funcs_set_move_to_func     (dfuncs, (hb_draw_move_to_func_t)     hb_draw_move_to,      NULL, NULL);
+        hb_draw_funcs_set_line_to_func     (dfuncs, (hb_draw_line_to_func_t)     hb_draw_line_to,      NULL, NULL);
+        hb_draw_funcs_set_quadratic_to_func(dfuncs, (hb_draw_quadratic_to_func_t)hb_draw_quadratic_to, NULL, NULL);
+        hb_draw_funcs_set_cubic_to_func    (dfuncs, (hb_draw_cubic_to_func_t)    hb_draw_cubic_to,     NULL, NULL);
+        hb_draw_funcs_set_close_path_func  (dfuncs, (hb_draw_close_path_func_t)  hb_draw_close_path,   NULL, NULL);
+        hb_draw_funcs_make_immutable (dfuncs);
+
+        Geom::PathBuilder path_builder_hb;
+        HBGeomData draw_data(path_builder_hb, 1.0/x_scale);
+        hb_font_draw_glyph(hb_font, glyph_id, dfuncs, &draw_data);
+        hb_draw_funcs_destroy(dfuncs);
+
+        path_builder_hb.flush();
+        Geom::PathVector pv = path_builder_hb.peek();
+        // std::cout << "HB Path: " << pv << std::endl;
+
+        if (!pv.empty()) {
+            n_g->pathvector = std::move(pv);
+        }
     }
 
-    path_builder.flush();
+#else
 
-    Geom::PathVector pv = path_builder.peek();
+    if (FT_IS_SCALABLE(face)) {
+        // Vector
+        if (face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
+            FT_Outline_Funcs ft2_outline_funcs = {
+                ft2_move_to,
+                ft2_line_to,
+                ft2_conic_to,
+                ft2_cubic_to,
+                0, 0
+            };
+            Geom::PathBuilder path_builder_ft;
+            FT2GeomData user(path_builder_ft, 1.0 / face->units_per_EM);
+            FT_Outline_Decompose(&face->glyph->outline, &ft2_outline_funcs, &user);
 
-    // close all paths
-    for (auto &i : pv) {
-        i.close();
+            path_builder.flush();
+
+            Geom::PathVector pv = path_builder_ft.peek();
+
+            // close all paths
+            for (auto &i : pv) {
+                i.close();
+            }
+            // std::cout << "FT Path: " << pv << std::endl;
+
+            if (!pv.empty()) {
+                n_g->pathvector = std::move(pv);
+            }
+        }
     }
+#endif
 
-    if (!pv.empty()) {
-        n_g->pathvector = std::move(pv);
-    }
+    // From pango shape.c
+    if (hb_ot_color_has_svg(hb_face)) {
+        auto blob = hb_ot_color_glyph_reference_svg (hb_face, glyph_id); // Note face!
+        if (blob) {
+            auto length = hb_blob_get_length(blob);
+            hb_blob_destroy(blob);
+            if (length > 0) {
+                n_g->has_svg = true;
+            }
+        }
+    };
+
+    if (hb_ot_color_has_png(hb_face)) {
+        auto blob = hb_ot_color_glyph_reference_png (hb_font, glyph_id); // Note face!
+        if (blob) {
+            auto length = hb_blob_get_length(blob);
+            hb_blob_destroy(blob);
+            if (length > 0) {
+                n_g->has_png = true;
+            }
+        }
+    };
+
+    n_g->has_layers = hb_ot_color_glyph_get_layers(hb_face, glyph_id, 0, NULL, NULL) > 0;
+#if HB_VERSION_ATLEAST(7,0,0)
+    n_g->has_paint  = hb_ot_color_glyph_has_paint(hb_face, glyph_id);
+#endif
 
     auto ret = data->glyphs.emplace(glyph_id, std::move(n_g));
 
+    std::cout << "FontInstance::LoadGlyph: exit\n" << std::endl;
     return ret.first->second.get();
 }
 
@@ -556,6 +757,56 @@ Geom::Rect FontInstance::BBoxDraw(unsigned int glyph_id)
     }
 
     return g->bbox_draw;
+}
+
+bool FontInstance::GlyphHasSVG(unsigned int glyph_id)
+{
+    auto g = LoadGlyph(glyph_id);
+    if (!g) {
+        return false;
+    }
+
+    return g->has_svg;
+}
+
+bool FontInstance::GlyphHasPNG(unsigned int glyph_id)
+{
+    auto g = LoadGlyph(glyph_id);
+    if (!g) {
+        return false;
+    }
+
+    return g->has_png;
+}
+
+bool FontInstance::GlyphHasLayers(unsigned int glyph_id)
+{
+    auto g = LoadGlyph(glyph_id);
+    if (!g) {
+        return false;
+    }
+
+    return g->has_layers;
+}
+
+bool FontInstance::GlyphHasPaint(unsigned int glyph_id)
+{
+    auto g = LoadGlyph(glyph_id);
+    if (!g) {
+        return false;
+    }
+
+    return g->has_paint;
+}
+
+std::string FontInstance::UnicodeName(unsigned int glyph_id)
+{
+    auto g = LoadGlyph(glyph_id);
+    if (!g) {
+        return std::string("Glyph missing");
+    }
+
+    return g->unicode_name;
 }
 
 Geom::PathVector const *FontInstance::PathVector(unsigned int glyph_id)
