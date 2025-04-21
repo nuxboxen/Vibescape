@@ -1023,7 +1023,7 @@ void SingleExport::setDesktop(SPDesktop *desktop)
 
 void SingleExport::setDocument(SPDocument *document)
 {
-    if (_document == document || !_desktop)
+    if (_document == document)
         return;
 
     _document = document;
@@ -1047,6 +1047,7 @@ void SingleExport::setDocument(SPDocument *document)
         refreshArea();
         loadExportHints();
     } else {
+        preview.setDrawing({});
         _preview_drawing.reset();
         onPagesChanged();
     }
