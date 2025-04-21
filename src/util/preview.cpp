@@ -55,13 +55,13 @@ render_preview(SPDocument *doc, std::shared_ptr<Inkscape::Drawing> drawing, uint
 
     auto on_error = [&] (char const *err) {
         std::cerr << "render_preview: " << err << std::endl;
-        surface = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, ua.width(), ua.height());
+        surface = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, ua->width(), ua->height());
     };
 
     try {
         {
             auto cr = Cairo::Context::create(surface);
-            cr->rectangle(0, 0, ua.width(), ua.height());
+            cr->rectangle(0, 0, ua->width(), ua->height());
 
             // We always use checkerboard to indicate transparency.
             if (SP_RGBA32_A_F(bg) < 1.0) {
@@ -80,13 +80,13 @@ render_preview(SPDocument *doc, std::shared_ptr<Inkscape::Drawing> drawing, uint
         drawing->root()->setTransform(Geom::Scale(sf));
         drawing->update();
 
-        auto dc = Inkscape::DrawingContext(surface->cobj(), ua.min());
+        auto dc = Inkscape::DrawingContext(surface->cobj(), ua->min());
         if (item) {
             // Render just one item
-            item->render(dc, ua);
+            item->render(dc, *ua);
         } else {
             // Render drawing.
-            drawing->render(dc, ua);
+            drawing->render(dc, *ua);
         }
 
         surface->flush();
