@@ -311,10 +311,12 @@ sp_tweak_dilate_recursive (Inkscape::Selection *selection, SPItem *item, Geom::P
         std::vector<Inkscape::XML::Node*> to_select;
         SPDocument *doc = item->document;
         sp_item_list_to_curves (items, selected, to_select);
-        SPObject* newObj = doc->getObjectByRepr(to_select[0]);
-        item = cast<SPItem>(newObj);
-        g_assert(item != nullptr);
-        selection->add(item);
+        if (!to_select.empty()) {
+            SPObject *newObj = doc->getObjectByRepr(to_select[0]);
+            item = cast<SPItem>(newObj);
+            g_assert(item != nullptr);
+            selection->add(item);
+        }
     }
 
     if (is<SPGroup>(item) && !is<SPBox3D>(item)) {
