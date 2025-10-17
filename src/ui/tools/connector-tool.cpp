@@ -123,9 +123,14 @@ void CCToolShapeNodeObserver::notifyAttributeChanged(Inkscape::XML::Node &repr, 
             // Active shape has moved. Clear active shape.
             tool->cc_clear_active_shape();
         } else if (&repr == tool->active_conn_repr) {
-            // The active conn has been moved.
-            // Set it again, which just sets new handle positions.
-            tool->cc_set_active_conn(tool->active_conn);
+            if (auto const active_connection = tool->active_conn.get()) {
+                // The active conn has been moved.
+                // Set it again, which just sets new handle positions.
+                tool->cc_set_active_conn(active_connection);
+            } else {
+                // The active connection is no longer available, cleanup.
+                tool->cc_clear_active_conn();
+            }
         }
     }
 }
@@ -279,12 +284,12 @@ static void cc_clear_active_knots(SPKnotList k)
 
 void ConnectorTool::cc_clear_active_conn()
 {
-    if (this->active_conn == nullptr) {
+    if (!this->active_conn) {
         return;
     }
     g_assert( this->active_conn_repr );
 
-    this->active_conn = nullptr;
+    this->active_conn.reset();
 
     if (this->active_conn_repr) {
         this->active_conn_repr->removeObserver(shapeNodeObserver());
@@ -949,7 +954,7 @@ static bool endpt_handler(CanvasEvent const &event, ConnectorTool *cc)
         g_assert( (cc->active_handle == cc->endpt_handle[0]) ||
                   (cc->active_handle == cc->endpt_handle[1]) );
         if (cc->state == SP_CONNECTOR_CONTEXT_IDLE) {
-            cc->clickeditem = cc->active_conn;
+            cc->clickeditem = cc->active_conn.get();
             cc->clickedhandle = cc->active_handle;
             cc->cc_clear_active_conn();
             cc->state = SP_CONNECTOR_CONTEXT_REROUTING;
@@ -1079,7 +1084,7 @@ void ConnectorTool::cc_set_active_conn(SPItem *item)
     const SPCurve *curve = cast<SPPath>(item)->curveForEdit();
     Geom::Affine i2dt = item->i2dt_affine();
 
-    if (this->active_conn == item) {
+    if (this->active_conn.get() == item) {
         if (curve->is_empty()) {
             // Connector is invisible because it is clipped to the boundary of
             // two overlapping shapes.
@@ -1246,7 +1251,7 @@ void cc_selection_set_avoid(SPDesktop *desktop, bool const set_avoid)
 void ConnectorTool::_selectionChanged(Inkscape::Selection *selection)
 {
     SPItem *item = selection->singleItem();
-    if (this->active_conn == item) {
+    if (this->active_conn.get() == item) {
         // Nothing to change.
         return;
     }
