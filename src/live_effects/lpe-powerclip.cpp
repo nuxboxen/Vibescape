@@ -116,8 +116,7 @@ Geom::PathVector LPEPowerClip::getClipPathvector()
                     }
                     if (!childitem->style || !childitem->style->display.set ||
                         childitem->style->display.value != SP_CSS_DISPLAY_NONE) {
-                        childitem->style->display.set = TRUE;
-                        childitem->style->display.value = SP_CSS_DISPLAY_NONE;
+                        childitem->setAttribute("display", "none");
                         childitem->updateRepr(SP_OBJECT_WRITE_NO_CHILDREN | SP_OBJECT_WRITE_EXT);
                     }
                 }
@@ -247,8 +246,7 @@ LPEPowerClip::doOnRemove (SPLPEItem const* /*lpeitem*/)
             if (childitem) {
                 if (!childitem->style || childitem->style->display.set ||
                     childitem->style->display.value == SP_CSS_DISPLAY_NONE) {
-                    childitem->style->display.set = TRUE;
-                    childitem->style->display.value = SP_CSS_DISPLAY_BLOCK;
+                    childitem->setAttribute("display", "block");
                     childitem->updateRepr(SP_OBJECT_WRITE_NO_CHILDREN | SP_OBJECT_WRITE_EXT);
                 }
             }
