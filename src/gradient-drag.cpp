@@ -502,11 +502,17 @@ SPStop *GrDrag::addStopNearPoint(SPItem *item, Geom::Point mouse_p, double toler
 
         if( is<SPLinearGradient>(gradient) || is<SPRadialGradient>( gradient ) ) {
             SPGradient *vector = sp_gradient_get_forked_vector_if_necessary (gradient, false);
-            SPStop* prev_stop = vector->getFirstStop();
-            SPStop* next_stop = prev_stop->getNextStop();
+            SPStop* first_stop = vector->getFirstStop();
+
+            // getFirstStop() can return a nullptr
+            if (!first_stop) {
+                return nullptr;
+            }
+
+            SPStop* next_stop = first_stop->getNextStop();
             guint i = 1;
             while ( (next_stop) && (next_stop->offset < new_stop_offset) ) {
-                prev_stop = next_stop;
+                first_stop = next_stop;
                 next_stop = next_stop->getNextStop();
                 i++;
             }
@@ -528,7 +534,7 @@ SPStop *GrDrag::addStopNearPoint(SPItem *item, Geom::Point mouse_p, double toler
                 return nullptr;
             }
 
-            SPStop *newstop = sp_vector_add_stop (vector, prev_stop, next_stop, new_stop_offset);
+            SPStop *newstop = sp_vector_add_stop (vector, first_stop, next_stop, new_stop_offset);
             gradient->ensureVector();
             updateDraggers();
 
