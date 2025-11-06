@@ -113,30 +113,33 @@ void DrawingGlyphs::setGlyph(std::shared_ptr<FontInstance> font, unsigned int gl
 
             // This tests if we really need to check font for glyph type. Presumably Pango already has
             // given us a matching font that contains the right glyph type.
-            if (has_svg != font->GlyphHasSVG(glyph)) {
-                std::cerr << "DrawingGlyphs::setGlyph: glyph missing in SVG font!!!!    " << std::setw(6) << glyph
-                          << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
-                          << " " << font_descr
-                          << std::endl;
-            }
-            if (has_png != font->GlyphHasPNG(glyph)) {
-                std::cerr << "DrawingGlyphs::setGlyph: glyph missing in PNG font!!!!    " << std::setw(6) << glyph
-                          << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
-                          << " " << font_descr
-                          << std::endl;
-            }
-            if (has_layers != font->GlyphHasLayers(glyph)) {
-                std::cerr << "DrawingGlyphs::setGlyph: glyph missing in COLRv0 font!!!! " << std::setw(6) << glyph
-                          << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
-                          << " " << font_descr
-                          << std::endl;
-            }
-            if (has_paint != font->GlyphHasPaint(glyph)) {
-                std::cerr << "DrawingGlyphs::setGlyph: glyph missing in COLRv1 font!!!! " << std::setw(6) << glyph
-                          << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
-                          << " " << font_descr
-                          << std::endl;
-            }
+            //
+            // Spaces will trigger these error messages.
+            //
+            // if (has_svg != font->GlyphHasSVG(glyph)) {
+            //     std::cerr << "DrawingGlyphs::setGlyph: glyph missing in SVG font!!!!    " << std::setw(6) << _glyph
+            //               << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
+            //               << " " << font_descr
+            //               << std::endl;
+            // }
+            // if (has_png != font->GlyphHasPNG(glyph)) {
+            //     std::cerr << "DrawingGlyphs::setGlyph: glyph missing in PNG font!!!!    " << std::setw(6) << glyph
+            //               << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
+            //               << " " << font_descr
+            //               << std::endl;
+            // }
+            // if (has_layers != font->GlyphHasLayers(glyph)) {
+            //     std::cerr << "DrawingGlyphs::setGlyph: glyph missing in COLRv0 font!!!! " << std::setw(6) << glyph
+            //               << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
+            //               << " " << font_descr
+            //               << std::endl;
+            // }
+            // if (has_paint != font->GlyphHasPaint(glyph)) {
+            //     std::cerr << "DrawingGlyphs::setGlyph: glyph missing in COLRv1 font!!!! " << std::setw(6) << glyph
+            //               << " (" << std::setw(12) << font->UnicodeName(_glyph) << ")"
+            //               << " " << font_descr
+            //               << std::endl;
+            // }
 
             // std::cout << "DrawingGlyphs::setGlyph: " << std::setw(6) << glyph
             //           << "  design_units: " << design_units
@@ -199,12 +202,6 @@ unsigned DrawingGlyphs::_updateItem(Geom::IntRect const &/*area*/, UpdateContext
 
     // drawing-item variable
     _bbox = bbox_draw_scaled;
-
-    std::cout << "DrawingGlyphs::_updateItem: "
-              << " glyph: " << std::setw(6) << _glyph
-              << " bbox_pick_scaled: "  << bbox_pick_scaled
-              << " bbox_draw_scaled: "  << bbox_draw_scaled
-              << std::endl;
 
     return STATE_ALL;
 }
@@ -489,7 +486,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
 {
     auto visible = area & _bbox;
     if (!visible) {
-        std::cout << "DrawingText::_renderItem: not visible" << std::endl;
+        // std::cout << "DrawingText::_renderItem: not visible" << std::endl;
         return RENDER_OK;
     }
 
@@ -640,7 +637,11 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 strategy = 2;
             }
         }
-        std::cout << "Drawing color fonts with strategy: " << strategy << std::endl;
+
+        const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
+        if (color_font_debug) {
+            std::cout << "Drawing color fonts with strategy: " << strategy << std::endl;
+        }
 
         // Accumulate the path that represents the glyphs and/or draw color glyphs.
         for (auto &i : _children) {
@@ -687,16 +688,19 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 // End debug boxes.
             }
 
-            std::cout << "DrawingText::_renderItem: "
-                      << std::setw(6) << g->_glyph
-                      << "  " << std::setw(20) << (g->font_descr ? g->font_descr : " No font description!!")
-                      << "   Design units: " << g->design_units
-                      << " svg: "     << std::boolalpha << g->has_svg
-                      << " png: "     << std::boolalpha << g->has_png
-                      << " layers: "  << std::boolalpha << g->has_layers
-                      << " paint: "   << std::boolalpha << g->has_paint
-                      << " pathvec: " << std::boolalpha << (bool)g->pathvec
-                      << std::endl;
+            const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
+            if (color_font_debug) {
+                std::cout << "DrawingText::_renderItem: "
+                          << std::setw(6) << g->_glyph
+                          << "  " << std::setw(20) << (g->font_descr ? g->font_descr : " No font description!!")
+                          << "   Design units: " << g->design_units
+                          << "  svg: "     << std::boolalpha << g->has_svg
+                          << "  png: "     << std::boolalpha << g->has_png
+                          << "  layers: "  << std::boolalpha << g->has_layers
+                          << "  paint: "   << std::boolalpha << g->has_paint
+                          << "  pathvec: " << std::boolalpha << (bool)g->pathvec
+                          << std::endl;
+            }
 
             // +++++++++++++++++++++++++++++++++
 

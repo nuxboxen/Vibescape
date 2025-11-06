@@ -1370,8 +1370,11 @@ unsigned Layout::Calculator::_buildSpansForPara(ParagraphInfo *para) const
                                      &para->pango_items[pango_item_index].item->analysis,
                                      new_span.glyph_string);
 
-                    printf("Layout::Calculator::_buildSpansForPara: %*.*s\n", new_span.text_bytes, new_span.text_bytes,
+                    const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
+                    if (color_font_debug) {
+                        printf("Layout::Calculator::_buildSpansForPara: %*.*s\n", new_span.text_bytes, new_span.text_bytes,
                            para->text.data() + para_text_index);
+                    }
                     if (para->pango_items[pango_item_index].item->analysis.level & 1) {
                         // Right to left text (Arabic, Hebrew, etc.)
 

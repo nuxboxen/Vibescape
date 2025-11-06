@@ -303,34 +303,48 @@ uint32_t compose_tag(Glib::ustring tag_name) {
 
 void FontInstance::init_face()
 {
-    std::cout << "FontInstance::init_face: " << pango_font_description_to_string(descr) << ":" << std::endl;
+    const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
+    if (color_font_debug) {
+      std::cout << "FontInstance::init_face: " << pango_font_description_to_string(descr) << ":" << std::endl;
+    }
     auto hb_font = pango_font_get_hb_font(p_font); // Pango owns hb_font.
     assert(hb_font); // Guaranteed since already tested in acquire().
 
     readOpenTypeTableList(hb_font, openTypeTableList);
-    std::cout << "  OpenType Table list: ";
-    for (const auto& table : openTypeTableList) {
-        std::cout << table << ", ";
+    if (color_font_debug) {
+        std::cout << "  OpenType Table list: ";
+        for (const auto& table : openTypeTableList) {
+            std::cout << table << ", ";
+        }
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
 
     has_svg    = hb_ot_color_has_svg(hb_face);    // SVG glyphs         HB 2.1.0
     has_png    = hb_ot_color_has_png(hb_face);    // Color png glyphs   HB 2.1.0
     has_layers = hb_ot_color_has_layers(hb_face); // Has COLRv0 table.  HB 2.1.0
     has_paint  = hb_ot_color_has_paint(hb_face);  // Has COLRv1 table.  HB 7.0.0
 
-    std::cout << "  " << pango_font_description_to_string(descr)
-              << "  Has SVG: "    << std::setw(5) << std::boolalpha << has_svg
-              << "  Has PNG: "    << std::setw(5) << std::boolalpha << has_png
-              << "  Has COLRv0: " << std::setw(5) << std::boolalpha << has_layers
-              << "  Has COLRv1: " << std::setw(5) << std::boolalpha << has_paint
-              << std::endl;
+    if (color_font_debug) {
+        std::cout << "  " << pango_font_description_to_string(descr)
+                  << "  Has SVG: "    << std::setw(5) << std::boolalpha << has_svg
+                  << "  Has PNG: "    << std::setw(5) << std::boolalpha << has_png
+                  << "  Has COLRv0: " << std::setw(5) << std::boolalpha << has_layers
+                  << "  Has COLRv1: " << std::setw(5) << std::boolalpha << has_paint
+                  << std::endl;
+    }
 
     readOpenTypeTableList(hb_font, openTypeTableList);
     _has_vertical = openTypeTableList.contains("vmtx") && openTypeTableList.contains("vhea");
-    readOpenTypeSVGTable(hb_font, data->openTypeSVGGlyphs, data->openTypeSVGData);
+
+    if (has_svg) {
+        readOpenTypeSVGTable(hb_font, data->openTypeSVGGlyphs, data->openTypeSVGData);
+    }
+
     std::vector<Glib::RefPtr<Gdk::Pixbuf>> pixbufs;
-    readOpenTypePNG(hb_font, pixbufs);
+    if (has_png) {
+        readOpenTypePNG(hb_font, pixbufs);
+    }
+
     readOpenTypeFvarAxes(hb_font, data->openTypeVarAxes);
 }
 
@@ -493,28 +507,36 @@ unsigned int FontInstance::MapUnicodeChar(gunichar c) const
 // * glyph paths (for non-color fonts to allow for pattern fills, etc.).
 FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 {
+    if (glyph_id == 0xfffffff) {
+        // Pango value for zero-width empty glyph that we can ignore (e.g. 0xFE0F, Emoji variant selector).
+        return nullptr;
+    }
+
     if (auto it = data->glyphs.find(glyph_id); it != data->glyphs.end()) {
         return it->second.get(); // already loaded
     }
 
     auto n_g = std::make_unique<FontGlyph>();
     
-    // For debugging
-    const unsigned int MAX_CHAR = 65; // Maximum length + 1 per OpenType spec.
-    char name[MAX_CHAR] = {};
-    hb_font_get_glyph_name (hb_font, glyph_id, name, MAX_CHAR);
-    if (name) {
-        n_g->unicode_name = name;
-    }
+    const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
+    if (color_font_debug) {
+        // For debugging
+        const unsigned int MAX_CHAR = 65; // Maximum length + 1 per OpenType spec.
+        char name[MAX_CHAR] = {};
+        hb_font_get_glyph_name (hb_font, glyph_id, name, MAX_CHAR);
+        if (name) {
+            n_g->unicode_name = name;
+        }
 
-    std::cout << "\nFontInstance::LoadGlyph: new: " << std::setw(6) << glyph_id
-              << "  (" << std::setw(12) << name << ")"
-              << "  " << pango_font_description_to_string(descr)
-              << std::endl;
+        std::cout << "\nFontInstance::LoadGlyph: new: " << std::setw(6) << glyph_id
+                  << "  (" << std::setw(12) << name << ")"
+                  << "  " << pango_font_description_to_string(descr)
+                  << std::endl;
+    }
 
     // Note: Bitmap only fonts (i.e. some color fonts) ignore FT_LOAD_NO_BITMAP.
     if (FT_Load_Glyph(face, glyph_id, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP)) {
-        std::cout << "FontGlyph: Failed to load glyph: " << glyph_id
+        std::cerr << "FontGlyph: Failed to load glyph: " << glyph_id
                   << "  " << pango_font_description_to_string(descr) << std::endl;
         return nullptr; // error
     }
@@ -526,7 +548,6 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
     int x_scale = 0;
     int y_scale = 0;
     hb_font_get_scale(hb_font, &x_scale, &y_scale);
-    std::cout << "  HB font scale " << x_scale << ", " << y_scale << std::endl;
     if (x_scale != y_scale) {
         std::cerr << "FontInstance::LoadGlyph: x scale not equal to y scale!" << std::endl;
     }
@@ -661,7 +682,6 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 
     auto ret = data->glyphs.emplace(glyph_id, std::move(n_g));
 
-    std::cout << "FontInstance::LoadGlyph: exit\n" << std::endl;
     return ret.first->second.get();
 }
 

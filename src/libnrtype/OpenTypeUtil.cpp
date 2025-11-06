@@ -11,7 +11,6 @@
 #include "OpenTypeUtil.h"
 
 //#define DEBUG_OPENTYPEUTIL
-
 #ifdef DEBUG_OPENTYPEUTIL
 #include <filesystem> // For debugging
 #include <fstream>    // For debugging
@@ -477,7 +476,7 @@ void readOpenTypeSVGTable(hb_font_t* hb_font,
 
     hb_face_t* hb_face = hb_font_get_face (hb_font);
 
-#if 0
+#ifdef DEBUG_OPENTYPEUTIL
     // Test use of hb_ot_color_glyph_reference_svg()
     for (int i=0; i < hb_face_get_glyph_count(hb_face); ++i) {
         hb_blob_t* svg_glyph_blob = hb_ot_color_glyph_reference_svg(hb_face, i);
@@ -611,7 +610,16 @@ void readOpenTypePNG(hb_font_t* hb_font,
     hb_face_t* hb_face = hb_font_get_face (hb_font);
 
     if (!hb_ot_color_has_png(hb_face)) {
-        std::cerr << "No PNG in font face!" << std::endl;
+        const unsigned int buffer_size = 64;
+        char font_family_c[buffer_size];
+        unsigned int buffer_size_io = buffer_size;
+        hb_language_t lang = hb_language_from_string("en", -1);
+        std::string font_family;
+        auto length = hb_ot_name_get_utf8(hb_face, HB_OT_NAME_ID_FONT_FAMILY, lang, &buffer_size_io, font_family_c);
+        if (length > 0) {
+            font_family = font_family_c;
+        }
+        std::cerr << "No PNG in font face! " << font_family << std::endl;
         return;
     }
 
