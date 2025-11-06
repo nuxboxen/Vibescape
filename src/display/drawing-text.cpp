@@ -627,21 +627,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
             dc.newPath(); // Clear text-decoration path
         }
 
-        // TEMP
-        int strategy = 0;
-        const char* color_font_strategy = std::getenv("COLOR_FONT_STRATEGY");
-        if (color_font_strategy) {
-            if (color_font_strategy[0] == '1') {
-                strategy = 1;
-            } else if (color_font_strategy[0] == '2') {
-                strategy = 2;
-            }
-        }
-
         const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
-        if (color_font_debug) {
-            std::cout << "Drawing color fonts with strategy: " << strategy << std::endl;
-        }
 
         // Accumulate the path that represents the glyphs and/or draw color glyphs.
         for (auto &i : _children) {
@@ -688,7 +674,6 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 // End debug boxes.
             }
 
-            const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
             if (color_font_debug) {
                 std::cout << "DrawingText::_renderItem: "
                           << std::setw(6) << g->_glyph
@@ -704,9 +689,8 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
 
             // +++++++++++++++++++++++++++++++++
 
-            if (strategy == 0) {
-
             if (g->has_svg && g->pixbuf) {
+                // Cairo does not support SVG color fonts.
                 Inkscape::DrawingContext::Save save(dc);
 
                 // pixbuf is in font design units, scale to embox.
@@ -717,6 +701,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 dc.setSource(g->pixbuf->getSurfaceRaw(), 0, 0);
                 dc.paint(1);
             } else if (g->has_png || g->has_layers || g->has_paint) {
+                // Other color fonts.
                 Inkscape::DrawingContext::Save save(dc);
 
                 cairo_glyph_t glyph = { 0, 0, 0 }; // {index, x, y}
@@ -727,58 +712,12 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
 
                 dc.showGlyphs(&glyph, 1);
             } else if (g->pathvec) {
-                    dc.path(*g->pathvec);
+                // Non-color fonts, we fill and stroke ourselves.
+                dc.path(*g->pathvec);
             } else {
                 std::cerr << "DrawingText::_renderItem: No glyph data! "
                           << std::setw(6) << g->_glyph << std::endl;
             }
-            } // End Strategy 0
-
-            // +++++++++++++++++++++++++++++++++
-
-            // Use Cairo for font rendering. Requires HB 7.0.0 if we use cairo_font_face from hb_face.
-            // Uses outlines for SVGs
-            if (strategy == 1) {
-
-            if (g->has_svg || g->has_png || g->has_layers || g->has_paint) {
-                Inkscape::DrawingContext::Save save(dc);
-
-                cairo_glyph_t glyph = { 0, 0, 0 }; // {index, x, y}
-                glyph.index = g->_glyph;
-
-                dc.setUnitFontMatrix();  // We do all scaling ourselves.
-                dc.setFontFace(g->cairo_font_face);
-
-                dc.showGlyphs(&glyph, 1);
-            } else if (g->pathvec) {
-                    dc.path(*g->pathvec);
-            } else {
-                std::cerr << "DrawingText::_renderItem: No glyph data! "
-                          << std::setw(6) << g->_glyph << std::endl;
-            }
-            } // End Strategy 1
-
-            // +++++++++++++++++++++++++++++++++
-
-            if (strategy == 2) {
-            // 1.4.x
-            if (g->pathvec) {
-                if (g->pixbuf) {
-                    {
-                        // pixbuf is in font design units, scale to embox.
-                        double scale = g->design_units;
-                        if (scale <= 0) scale = 1000;
-                        Inkscape::DrawingContext::Save save(dc);
-                        dc.translate(g->bbox_draw.corner(3));
-                        dc.scale(1.0 / scale, -1.0 / scale);
-                        dc.setSource(g->pixbuf->getSurfaceRaw(), 0, 0);
-                        dc.paint(1);
-                    }
-                } else {
-                    dc.path(*g->pathvec);
-                }
-            }
-            } // End Strategy 2
         }
 
         // Draw the glyphs (non-color glyphs, draw as one path).
