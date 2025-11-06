@@ -716,7 +716,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 dc.scale(1.0 / scale, -1.0 / scale);
                 dc.setSource(g->pixbuf->getSurfaceRaw(), 0, 0);
                 dc.paint(1);
-            } else if (g->has_png) {
+            } else if (g->has_png || g->has_layers || g->has_paint) {
                 Inkscape::DrawingContext::Save save(dc);
 
                 cairo_glyph_t glyph = { 0, 0, 0 }; // {index, x, y}
@@ -725,30 +725,6 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 dc.setUnitFontMatrix();  // We do all scaling ourselves.
                 dc.setFontFace(g->cairo_font_face);
 
-// #if CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 18, 0)
-//                 auto options = cairo_font_options_create();
-//                 cairo_font_options_set_color_mode(options, CAIRO_COLOR_MODE_COLOR);
-//                 cairo_font_options_set_color_palette(options, CAIRO_COLOR_PALETTE_DEFAULT);
-//                 cairo_set_font_options(dc.raw(), options);
-//                 cairo_font_options_destroy(options);
-// #endif
-                dc.showGlyphs(&glyph, 1);
-            } else if (g->has_layers || g->has_paint) {
-                Inkscape::DrawingContext::Save save(dc);
-
-                cairo_glyph_t glyph = { 0, 0, 0 }; // {index, x, y}
-                glyph.index = g->_glyph;
-
-                dc.setUnitFontMatrix();  // We do all scaling ourselves.
-                dc.setFontFace(g->cairo_font_face);
-
-// #if CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 18, 0)
-//                 auto options = cairo_font_options_create();
-//                 cairo_font_options_set_color_mode(options, CAIRO_COLOR_MODE_COLOR);
-//                 cairo_font_options_set_color_palette(options, CAIRO_COLOR_PALETTE_DEFAULT);
-//                 cairo_set_font_options(dc.raw(), options);
-//                 cairo_font_options_destroy(options);
-// #endif
                 dc.showGlyphs(&glyph, 1);
             } else if (g->pathvec) {
                     dc.path(*g->pathvec);
@@ -763,7 +739,8 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
             // Use Cairo for font rendering. Requires HB 7.0.0 if we use cairo_font_face from hb_face.
             // Uses outlines for SVGs
             if (strategy == 1) {
-            {
+
+            if (g->has_svg || g->has_png || g->has_layers || g->has_paint) {
                 Inkscape::DrawingContext::Save save(dc);
 
                 cairo_glyph_t glyph = { 0, 0, 0 }; // {index, x, y}
@@ -773,6 +750,11 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 dc.setFontFace(g->cairo_font_face);
 
                 dc.showGlyphs(&glyph, 1);
+            } else if (g->pathvec) {
+                    dc.path(*g->pathvec);
+            } else {
+                std::cerr << "DrawingText::_renderItem: No glyph data! "
+                          << std::setw(6) << g->_glyph << std::endl;
             }
             } // End Strategy 1
 
