@@ -69,10 +69,9 @@ public:
     Geom::Rect BBoxPick(unsigned int glyph_id);  // For picking. (Height: embox, Width: glyph advance.)
     Geom::Rect BBoxDraw(unsigned int glyph_id);  // Contains all inked areas including possible text decorations.
 
-#if HB_VERSION_ATLEAST(7,0,0)
     // For drawing bitmap color fonts.
     cairo_font_face_t *CairoFontFace() { return data->cairo_font_face; }
-#endif
+
     // Return if font has various tables.
     bool FontHasSVG()    const { return has_svg; };
     bool FontHasPNG()    const { return has_png; }

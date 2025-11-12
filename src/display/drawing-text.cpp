@@ -696,7 +696,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 // pixbuf is in font design units, scale to embox.
                 double scale = g->design_units;
                 if (scale <= 0) scale = 1000;
-                dc.translate(0, 1);
+                dc.translate(g->bbox_draw.corner(3));
                 dc.scale(1.0 / scale, -1.0 / scale);
                 dc.setSource(g->pixbuf->getSurfaceRaw(), 0, 0);
                 dc.paint(1);
@@ -709,7 +709,14 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
 
                 dc.setUnitFontMatrix();  // We do all scaling ourselves.
                 dc.setFontFace(g->cairo_font_face);
-
+                if (has_fill) {
+                    // Set foreground color if fill is solid.
+                    if (cairo_pattern_get_type(has_fill.get()) == CAIRO_PATTERN_TYPE_SOLID) {
+                        double r, g, b, a;
+                        cairo_pattern_get_rgba(has_fill.get(), &r, &g, &b, &a);
+                        dc.setSource(has_fill.get()); // using cairo_font_options_set_custom_palette_color() works for everything but foreground (0xffff).
+                    }
+                }
                 dc.showGlyphs(&glyph, 1);
             } else if (g->pathvec) {
                 // Non-color fonts, we fill and stroke ourselves.

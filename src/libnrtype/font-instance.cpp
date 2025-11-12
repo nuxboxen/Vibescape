@@ -53,8 +53,6 @@
  * Outline extraction
  */
 
-#if HB_VERSION_ATLEAST(4,0,0)
-
 struct HBGeomData
 {
     HBGeomData(Geom::PathBuilder &b, double s)
@@ -132,72 +130,6 @@ static void hb_draw_close_path(hb_draw_funcs_t *dfuncs, // Unused
     HBGeomData *draw = (HBGeomData*)draw_data;
     draw->builder.closePath();
 }
-
-#else
-
-struct FT2GeomData
-{
-    FT2GeomData(Geom::PathBuilder &b, double s)
-        : builder(b)
-        , last(0, 0)
-        , scale(s)
-    {
-    }
-
-    Geom::PathBuilder &builder;
-    Geom::Point last;
-    double scale;
-};
-
-// outline as returned by freetype
-static int ft2_move_to(FT_Vector const *to, void * i_user)
-{
-    FT2GeomData *user = (FT2GeomData*)i_user;
-    Geom::Point p(to->x, to->y);
-    //    printf("m  t=%f %f\n",p[0],p[1]);
-    user->builder.moveTo(p * user->scale);
-    user->last = p;
-    return 0;
-}
-
-static int ft2_line_to(FT_Vector const *to, void *i_user)
-{
-    FT2GeomData *user = (FT2GeomData*)i_user;
-    Geom::Point p(to->x, to->y);
-    //    printf("l  t=%f %f\n",p[0],p[1]);
-    user->builder.lineTo(p * user->scale);
-    user->last = p;
-    return 0;
-}
-
-static int ft2_conic_to(FT_Vector const *control, FT_Vector const *to, void *i_user)
-{
-    FT2GeomData *user = (FT2GeomData*)i_user;
-    Geom::Point p(to->x, to->y), c(control->x, control->y);
-    user->builder.quadTo(c * user->scale, p * user->scale);
-    //    printf("b c=%f %f  t=%f %f\n",c[0],c[1],p[0],p[1]);
-    user->last = p;
-    return 0;
-}
-
-static int ft2_cubic_to(FT_Vector const *control1, FT_Vector const *control2, FT_Vector const *to, void *i_user)
-{
-    FT2GeomData *user = (FT2GeomData*)i_user;
-    Geom::Point p(to->x, to->y);
-    Geom::Point c1(control1->x, control1->y);
-    Geom::Point c2(control2->x, control2->y);
-    //    printf("c c1=%f %f  c2=%f %f   t=%f %f\n",c1[0],c1[1],c2[0],c2[1],p[0],p[1]);
-    //user->theP->CubicTo(p,3*(c1-user->last),3*(p-c2));
-    user->builder.curveTo(c1 * user->scale, c2 * user->scale, p * user->scale);
-    user->last = p;
-    return 0;
-}
-
-#endif
-
-/*
- *
- */
 
 FontInstance::FontInstance(PangoFont *p_font, PangoFontDescription *descr)
 {
@@ -310,8 +242,8 @@ void FontInstance::init_face()
     auto hb_font = pango_font_get_hb_font(p_font); // Pango owns hb_font.
     assert(hb_font); // Guaranteed since already tested in acquire().
 
-    readOpenTypeTableList(hb_font, openTypeTableList);
     if (color_font_debug) {
+        readOpenTypeTableList(hb_font, openTypeTableList);
         std::cout << "  OpenType Table list: ";
         for (const auto& table : openTypeTableList) {
             std::cout << table << ", ";
@@ -340,9 +272,11 @@ void FontInstance::init_face()
         readOpenTypeSVGTable(hb_font, data->openTypeSVGGlyphs, data->openTypeSVGData);
     }
 
-    std::vector<Glib::RefPtr<Gdk::Pixbuf>> pixbufs;
-    if (has_png) {
-        readOpenTypePNG(hb_font, pixbufs);
+    if (color_font_debug) {
+        std::vector<Glib::RefPtr<Gdk::Pixbuf>> pixbufs;
+        if (has_png) {
+            readOpenTypePNG(hb_font, pixbufs);
+        }
     }
 
     readOpenTypeFvarAxes(hb_font, data->openTypeVarAxes);
@@ -519,6 +453,8 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
     auto n_g = std::make_unique<FontGlyph>();
     
     const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
+    const char* font_paths_debug = std::getenv("FONT_PATHS_DEBUG");
+
     if (color_font_debug) {
         // For debugging
         const unsigned int MAX_CHAR = 65; // Maximum length + 1 per OpenType spec.
@@ -593,8 +529,6 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 
     // Find path vector ------------------------------
 
-
-#if HB_VERSION_ATLEAST(4,0,0)
     if (true) { // Check if glyf table exists?
         // Move this out of loop?
         auto dfuncs = hb_draw_funcs_create();
@@ -612,45 +546,14 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 
         path_builder_hb.flush();
         Geom::PathVector pv = path_builder_hb.peek();
-        // std::cout << "HB Path: " << pv << std::endl;
+        if (font_paths_debug) {
+            std::cout << "HB Path: " << pv << std::endl;
+        }
 
         if (!pv.empty()) {
             n_g->pathvector = std::move(pv);
         }
     }
-
-#else
-
-    if (FT_IS_SCALABLE(face)) {
-        // Vector
-        if (face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
-            FT_Outline_Funcs ft2_outline_funcs = {
-                ft2_move_to,
-                ft2_line_to,
-                ft2_conic_to,
-                ft2_cubic_to,
-                0, 0
-            };
-            Geom::PathBuilder path_builder_ft;
-            FT2GeomData user(path_builder_ft, 1.0 / face->units_per_EM);
-            FT_Outline_Decompose(&face->glyph->outline, &ft2_outline_funcs, &user);
-
-            path_builder.flush();
-
-            Geom::PathVector pv = path_builder_ft.peek();
-
-            // close all paths
-            for (auto &i : pv) {
-                i.close();
-            }
-            // std::cout << "FT Path: " << pv << std::endl;
-
-            if (!pv.empty()) {
-                n_g->pathvector = std::move(pv);
-            }
-        }
-    }
-#endif
 
     // From pango shape.c
     if (hb_ot_color_has_svg(hb_face)) {
@@ -676,9 +579,7 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
     };
 
     n_g->has_layers = hb_ot_color_glyph_get_layers(hb_face, glyph_id, 0, NULL, NULL) > 0;
-#if HB_VERSION_ATLEAST(7,0,0)
     n_g->has_paint  = hb_ot_color_glyph_has_paint(hb_face, glyph_id);
-#endif
 
     auto ret = data->glyphs.emplace(glyph_id, std::move(n_g));
 
