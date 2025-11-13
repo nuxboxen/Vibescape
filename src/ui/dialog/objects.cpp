@@ -800,7 +800,10 @@ ObjectsPanel::ObjectsPanel()
             os << CLAMP(value, 0.0, 1.0);
             auto css = sp_repr_css_attr_new();
             sp_repr_css_set_property(css, "opacity", os.str().c_str());
-            current_item->changeCSS(css, "style");
+
+            // Apply the style change through the StyleSubject.
+            // This ensures the "last style used" system is notified
+            _subject.setCSS(css);
             sp_repr_css_attr_unref(css);
             DocumentUndo::maybeDone(current_item->document, ":opacity", _("Change opacity"), INKSCAPE_ICON("dialog-object-properties"));
         }
@@ -1007,7 +1010,12 @@ void ObjectsPanel::desktopReplaced()
 {
     layer_changed.disconnect();
 
-    if (auto desktop = getDesktop()) {
+    auto desktop = getDesktop();
+
+    // Update the _subject with the new desktop
+    _subject.setDesktop(desktop);
+
+    if (desktop) {
         layer_changed = desktop->layerManager().connectCurrentLayerChanged(sigc::mem_fun(*this, &ObjectsPanel::layerChanged));
     }
 }
