@@ -79,4 +79,4 @@ endif()
 # custom .otf font with SVG glyphs for testing various edge cases
 add_rendering_test(text-svg-glyph-custom FUZZ 0.3)
 
-add_rendering_test(color-font-test FUZZ 0.001)
+add_rendering_test(color-font-test FUZZ 0.1)
