@@ -1004,7 +1004,9 @@ ObjectsPanel::ObjectsPanel()
     show_all_children();
 }
 
-ObjectsPanel::~ObjectsPanel() = default;
+ObjectsPanel::~ObjectsPanel() {
+    _subject.setDesktop(nullptr);
+};
 
 void ObjectsPanel::desktopReplaced()
 {
