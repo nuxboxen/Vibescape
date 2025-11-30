@@ -199,6 +199,9 @@ bool URIReference::try_attach(char const *uri)
         try {
             attach(Inkscape::URI(uri));
             return true;
+        } catch (Inkscape::UnsupportedURIException &e) {
+            // Explicitly SILENCE this (no g_warning).
+            // Just fall through to detach() and return false.
         } catch (Inkscape::BadURIException &e) {
             g_warning("%s", e.what());
         }
