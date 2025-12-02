@@ -64,6 +64,7 @@ set(TEST_SOURCES
     async_progress-test
     boolop-attr-test
     uri-test
+    uri-references-test
     util-test
     drag-and-drop-svgz
     drawing-pattern-test
