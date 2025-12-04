@@ -1349,6 +1349,8 @@ void  Layout::Calculator::_buildPangoItemizationForPara(ParagraphInfo *para) con
                 continue;  // bad news: we'll have to ignore all this text because we know of no font to render it
             }
 
+            unsigned const start_index = para->text.bytes();
+
             PangoAttribute *attribute_font_description = pango_attr_font_desc_new(font->get_descr());
             attribute_font_description->start_index = para->text.bytes();
 
@@ -1356,6 +1358,8 @@ void  Layout::Calculator::_buildPangoItemizationForPara(ParagraphInfo *para) con
                 pango_attr_font_features_new( text_source->style->getFontFeatureString().c_str());
             attribute_font_features->start_index = para->text.bytes();
             para->text.append(&*text_source->text_begin.base(), text_source->text_length);     // build the combined text
+
+            unsigned const end_index = para->text.bytes();
 
             attribute_font_description->end_index = para->text.bytes();
             pango_attr_list_insert(attributes_list, attribute_font_description);
@@ -1369,6 +1373,8 @@ void  Layout::Calculator::_buildPangoItemizationForPara(ParagraphInfo *para) con
             if (lang && lang[0] != '\0') {
                 PangoLanguage *language = pango_language_from_string(lang);
                 PangoAttribute *attribute_language = pango_attr_language_new( language );
+                attribute_language->start_index = start_index;
+                attribute_language->end_index = end_index;
                 pango_attr_list_insert(attributes_list, attribute_language);
             }
         }
