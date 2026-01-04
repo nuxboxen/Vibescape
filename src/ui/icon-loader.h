@@ -18,6 +18,7 @@
 #include <glibmm/refptr.h>
 #include <glibmm/ustring.h>
 #include <gtkmm/enums.h>
+#include <cstdint>
 
 namespace Gtk {
 class Image;

@@ -12,6 +12,7 @@
 #ifndef SEEN_UI_UI_SYNTAX_H
 #define SEEN_UI_UI_SYNTAX_H
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <vector>
