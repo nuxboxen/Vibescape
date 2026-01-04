@@ -87,7 +87,7 @@ PowerStrokePointArrayParam::knot_get(size_t index)
     Piecewise<D2<SBasis> > pwd2 = get_pwd2();
     Piecewise<D2<SBasis> > n = get_pwd2_normal();
     Point offset_point = _vector.at(index);
-    if (offset_point[X] > path_from_piecewise(pwd2,0.1).curveCount() || offset_point[X] < 0) {
+    if (pwd2.empty() || n.empty() || offset_point[X] > path_from_piecewise(pwd2,0.1).curveCount() || offset_point[X] < 0) {
         g_warning("Broken powerstroke point at %f, I won't try to add that", offset_point[X]);
         return Point(infinity(), infinity());
     }
