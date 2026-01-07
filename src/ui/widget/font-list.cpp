@@ -33,13 +33,14 @@
 #include "util/font-collections.h"
 
 using Inkscape::UI::create_builder;
+using Inkscape::FontInfo;
 
 namespace {
 
 // construct font name from Pango face and family;
 // return font name as it is recorded in the font itself, as far as Pango allows it
 Glib::ustring get_full_name(const FontInfo& font_info) {
-    return get_full_font_name(font_info.ff, font_info.face);
+    return Inkscape::get_full_font_name(font_info.ff, font_info.face);
 }
 
 Glib::ustring get_alt_name(const Glib::ustring& fontspec) {
@@ -168,7 +169,7 @@ public:
 
         auto& alt = _alt_fontspec;
         auto font_desc = Glib::Markup::escape_text(
-            is_present() ? get_font_description(_font.ff, _font.face).to_string() : (alt.empty() ? "sans-serif" : alt));
+            is_present() ? Inkscape::get_font_description(_font.ff, _font.face).to_string() : (alt.empty() ? "sans-serif" : alt));
         auto alpha = _missing_font ? "60%" : "100%";
         return Glib::ustring::format(
             "<span allow_breaks='false' alpha='", alpha, "' size='", font_size_percent, "%' font='", font_desc, "'>", text, "</span>");
@@ -187,11 +188,11 @@ private:
         switch (type) {
         case Type::Font:
             // full font name: family + style
-            name = Glib::Markup::escape_text(present ? get_full_font_name(_font.ff, _font.face) : get_alt_name(_alt_fontspec));
+            name = Glib::Markup::escape_text(present ? Inkscape::get_full_font_name(_font.ff, _font.face) : get_alt_name(_alt_fontspec));
             break;
         case Type::Family:
             // font family name only
-            name = Glib::Markup::escape_text(present ? get_full_font_name(_font.ff, empty) : get_alt_name(_alt_fontspec));
+            name = Glib::Markup::escape_text(present ? Inkscape::get_full_font_name(_font.ff, empty) : get_alt_name(_alt_fontspec));
             break;
         case Type::Style:
             // font style only

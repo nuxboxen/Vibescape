@@ -793,13 +793,13 @@ static bool verify_grad(SPGradient* gradient) {
 
         child = xml_doc->createElement("svg:stop");
         sp_repr_set_css_double(child, "offset", 0.0);
-        SPStop::setColorRepr(child, Colors::Color(0x000000ff));
+        SPStop::setColorRepr(child, Inkscape::Colors::Color(0x000000ff));
         gradient->getRepr()->addChild(child, nullptr);
         Inkscape::GC::release(child);
 
         child = xml_doc->createElement("svg:stop");
         sp_repr_set_css_double(child, "offset", 1.0);
-        SPStop::setColorRepr(child, Colors::Color(0x000000ff));
+        SPStop::setColorRepr(child, Inkscape::Colors::Color(0x000000ff));
         gradient->getRepr()->addChild(child, nullptr);
         Inkscape::GC::release(child);
         modified = true;
@@ -928,14 +928,14 @@ Color sp_item_gradient_stop_query_style(SPItem *item, GrPointType point_type, gu
     SPGradient *gradient = getGradient(item, fill_or_stroke);
 
     if (!gradient)
-        return Colors::Color(0x000000ff);
+        return Inkscape::Colors::Color(0x000000ff);
 
     if (is<SPLinearGradient>(gradient) || is<SPRadialGradient>(gradient) ) {
 
         SPGradient *vector = gradient->getVector();
 
         if (!vector) // orphan!
-            return Colors::Color(0x000000ff);
+            return Inkscape::Colors::Color(0x000000ff);
 
         switch (point_type) {
             case POINT_LG_BEGIN:
@@ -983,7 +983,7 @@ Color sp_item_gradient_stop_query_style(SPItem *item, GrPointType point_type, gu
         switch (point_type) {
             case POINT_MG_CORNER: {
                 if (point_i >= mg->array.corners.size()) {
-                    return Colors::Color(0x000000ff);
+                    return Inkscape::Colors::Color(0x000000ff);
                 }
                 SPMeshNode const* cornerpoint = mg->array.corners[ point_i ];
 
@@ -1004,7 +1004,7 @@ Color sp_item_gradient_stop_query_style(SPItem *item, GrPointType point_type, gu
                 g_warning( "Bad mesh handle type" );
         }
     }
-    return Colors::Color(0x000000ff);
+    return Inkscape::Colors::Color(0x000000ff);
 }
 
 void sp_item_gradient_stop_set_style(SPItem *item, GrPointType point_type, guint point_i, Inkscape::PaintTarget fill_or_stroke, SPCSSAttr *stop)
@@ -1745,7 +1745,7 @@ SPGradient *sp_document_default_gradient_vector(SPDocument *document, Color cons
 
     addStop(repr, color, opacity, "0");
     if (!singleStop) {
-        auto lightness = Colors::get_perceptual_lightness(color);
+        auto lightness = Inkscape::Colors::get_perceptual_lightness(color);
         auto contrast = (lightness > 0.95 ? Color(0x00'00'00'ff) : Color(0xff'ff'ff'ff)).converted(color.getSpace());
         // second stop without transparency - no more forcing users to fix alpha channel on new gradients
         addStop(repr, /*contrast.value_or*/(color), 1.0, "1");
@@ -1892,12 +1892,12 @@ int sp_get_gradient_refcount(SPDocument* document, SPGradient* gradient) {
 void sp_item_apply_gradient(SPItem* item, SPGradient* vector, SPDesktop* desktop, SPGradientType gradient_type, bool create_swatch, FillOrStroke kind) {
     if (!item || !item->document || !item->style || gradient_type == SP_GRADIENT_TYPE_MESH) return;
 
-    PaintTarget paint_target = kind == FILL ? FOR_FILL : FOR_STROKE;
+    Inkscape::PaintTarget paint_target = kind == FILL ? Inkscape::FOR_FILL : Inkscape::FOR_STROKE;
 
     if (!vector) {
         // no vector means that we want to create a new one; find initial color
         if (auto paint = item->style->getFillOrStroke(kind == FILL)) {
-            Colors::Color common(0xff'ff'ff'ff); // fallback: opaque white
+            Inkscape::Colors::Color common(0xff'ff'ff'ff); // fallback: opaque white
             if (paint->isColor()) {
                 common = paint->getColor();
             }
@@ -2136,7 +2136,7 @@ int sp_cleanup_document_swatches(SPDocument* document) {
 SPGradient* sp_find_matching_swatch(SPDocument* document, const Color& color) {
     if (!document) return nullptr;
 
-    auto rgb = color.converted(Colors::Space::Type::RGB);
+    auto rgb = color.converted(Inkscape::Colors::Space::Type::RGB);
     if (!rgb) return nullptr;
     rgb->enableOpacity(false);
 
@@ -2144,7 +2144,7 @@ SPGradient* sp_find_matching_swatch(SPDocument* document, const Color& color) {
     for (auto grad : gradients) {
         auto g = static_cast<SPGradient*>(grad);
         if (g->isSwatch()) {
-            if (auto c = g->getFirstStop()->getColor().converted(Colors::Space::Type::RGB)) {
+            if (auto c = g->getFirstStop()->getColor().converted(Inkscape::Colors::Space::Type::RGB)) {
                 c->enableOpacity(false);
                 if (*c == *rgb) return g;
             }

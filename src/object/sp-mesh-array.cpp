@@ -1585,7 +1585,7 @@ void SPMeshNodeArray::bicubic(SPMeshNodeArray * const smooth, SPMeshType const t
         d[i].resize( smooth->patch_columns() + 1 );
         for( unsigned j = 0; j < d[i].size(); ++j ) {
             // Note: Conversion to RGB happens here
-            auto rgb_color = this->nodes[i * 3][j * 3]->color->converted(Colors::Space::Type::RGB);
+            auto rgb_color = this->nodes[i * 3][j * 3]->color->converted(Inkscape::Colors::Space::Type::RGB);
             d[i][j].g[0][0] =  rgb_color->get(0);
             d[i][j].g[1][0] =  rgb_color->get(1);
             d[i][j].g[2][0] =  rgb_color->get(2);
@@ -1739,7 +1739,7 @@ void SPMeshNodeArray::bicubic(SPMeshNodeArray * const smooth, SPMeshType const t
                     auto op = smooth->nodes[(i*8+k)*3 ][(j*8+l)*3]->color->getOpacity();
                     // Every third node is a corner node
                     smooth->nodes[(i*8+k)*3 ][(j*8+l)*3]->color->set(
-                        Colors::Color(SP_RGBA32_F_COMPOSE(r[0][k][l], r[1][k][l], r[2][k][l], op))
+                        Inkscape::Colors::Color(SP_RGBA32_F_COMPOSE(r[0][k][l], r[1][k][l], r[2][k][l], op))
                     );
                 }
             }

@@ -143,17 +143,17 @@ Glib::ValueBase from_bytes<DnDSvg>(Glib::RefPtr<Glib::Bytes> &&bytes, char const
 }
 
 template <>
-Glib::ValueBase from_bytes<Colors::Paint>(Glib::RefPtr<Glib::Bytes> &&bytes, char const *mime_type)
+Glib::ValueBase from_bytes<Inkscape::Colors::Paint>(Glib::RefPtr<Glib::Bytes> &&bytes, char const *mime_type)
 {
     try {
-        return GlibValue::create<Colors::Paint>(Colors::fromMIMEData(get_span(bytes), mime_type));
-    } catch (Colors::ColorError const &c) {
+        return GlibValue::create<Inkscape::Colors::Paint>(Inkscape::Colors::fromMIMEData(get_span(bytes), mime_type));
+    } catch (Inkscape::Colors::ColorError const &c) {
         throw Glib::Error(G_FILE_ERROR, 0, c.what());
     }
 }
 
 template <>
-Glib::RefPtr<Glib::Bytes> to_bytes<Colors::Paint>(Colors::Paint const &paint, char const *mime_type)
+Glib::RefPtr<Glib::Bytes> to_bytes<Inkscape::Colors::Paint>(Inkscape::Colors::Paint const &paint, char const *mime_type)
 {
     return make_bytes(getMIMEData(paint, mime_type));
 }
@@ -171,18 +171,18 @@ std::vector<GType> const &get_drop_types()
             register_deserializer<DnDSvg>(mime_type);
         }
 
-        for (auto mime_type : {Colors::mimeOSWB_COLOR, Colors::mimeX_COLOR}) {
-            register_deserializer<Colors::Paint>(mime_type);
+        for (auto mime_type : {Inkscape::Colors::mimeOSWB_COLOR, Inkscape::Colors::mimeX_COLOR}) {
+            register_deserializer<Inkscape::Colors::Paint>(mime_type);
         }
 
-        for (auto mime_type : {Colors::mimeOSWB_COLOR, Colors::mimeX_COLOR, Colors::mimeTEXT}) {
-            register_serializer<Colors::Paint>(mime_type);
+        for (auto mime_type : {Inkscape::Colors::mimeOSWB_COLOR, Inkscape::Colors::mimeX_COLOR, Inkscape::Colors::mimeTEXT}) {
+            register_serializer<Inkscape::Colors::Paint>(mime_type);
         }
 
         register_serializer<DnDSymbol>("text/plain;charset=utf-8");
 
         return {
-            GlibValue::type<Colors::Paint>(),
+            GlibValue::type<Inkscape::Colors::Paint>(),
             GlibValue::type<DnDSvg>(),
             GDK_TYPE_FILE_LIST,
             GlibValue::type<DnDSymbol>(),
@@ -204,14 +204,14 @@ bool on_drop(Glib::ValueBase const &value, double x, double y, SPDesktopWidget *
     auto const world_pos = canvas->canvas_to_world(canvas_pos);
     auto const dt_pos = desktop->w2d(world_pos);
 
-    if (auto const ptr = GlibValue::get<Colors::Paint>(value)) {
+    if (auto const ptr = GlibValue::get<Inkscape::Colors::Paint>(value)) {
         auto paint = *ptr;
         auto const item = desktop->getItemAtPoint(world_pos, true);
         if (!item) {
             return false;
         }
 
-        auto find_gradient = [&] (Colors::Color const &color) -> SPGradient * {
+        auto find_gradient = [&] (Inkscape::Colors::Color const &color) -> SPGradient * {
             for (auto obj : doc->getResourceList("gradient")) {
                 auto const grad = cast_unsafe<SPGradient>(obj);
                 if (grad->hasStops() && grad->getId() == color.getName()) {
@@ -222,10 +222,10 @@ bool on_drop(Glib::ValueBase const &value, double x, double y, SPDesktopWidget *
         };
 
         std::string colorspec;
-        if (std::holds_alternative<Colors::NoColor>(paint)) {
+        if (std::holds_alternative<Inkscape::Colors::NoColor>(paint)) {
             colorspec = "none";
         } else {
-            auto &color = std::get<Colors::Color>(paint);
+            auto &color = std::get<Inkscape::Colors::Color>(paint);
             if (auto const grad = find_gradient(color)) {
                 colorspec = std::string{"url(#"} + grad->getId() + ")";
             } else {

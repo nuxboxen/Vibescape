@@ -21,17 +21,17 @@ typedef struct _GdkPixbuf GdkPixbuf;
 
 void ink_cairo_pixbuf_cleanup(unsigned char *, void *);
 
-namespace Inkscape {
-namespace Colors {
-class Color;
-}
-
 // DELETE ME when the display code is updated for interpolation values
 enum SPColorInterpolation : std::uint_least8_t {
     SP_CSS_COLOR_INTERPOLATION_AUTO,
     SP_CSS_COLOR_INTERPOLATION_SRGB,
     SP_CSS_COLOR_INTERPOLATION_LINEARRGB
 };
+
+namespace Inkscape {
+namespace Colors {
+class Color;
+}
 
 /** Class to hold image data for raster images.
  * Allows easy interoperation with GdkPixbuf and Cairo. */
@@ -103,15 +103,16 @@ void set_cairo_surface_ci(cairo_surface_t *surface, SPColorInterpolation cif);
 void copy_cairo_surface_ci(cairo_surface_t *in, cairo_surface_t *out);
 void convert_cairo_surface_ci(cairo_surface_t *surface, SPColorInterpolation cif);
 
-void ink_cairo_set_source_color(cairo_t *ctx, Colors::Color const &c, bool to_srgb = true);
-void ink_cairo_set_source_color(Cairo::RefPtr<Cairo::Context> &ctx, Colors::Color const &c, bool to_srgb = true);
-void ink_cairo_pattern_add_color_stop(cairo_pattern_t *ptn, double offset, Colors::Color const &color, bool to_srgb = true);
-cairo_pattern_t *ink_cairo_pattern_create(Colors::Color const &color, bool to_srgb = true);
+void ink_cairo_set_source_color(cairo_t *ctx, Inkscape::Colors::Color const &c, bool to_srgb = true);
+void ink_cairo_set_source_color(Cairo::RefPtr<Cairo::Context> &ctx, Inkscape::Colors::Color const &c, bool to_srgb = true);
+void ink_cairo_pattern_add_color_stop(cairo_pattern_t *ptn, double offset, Inkscape::Colors::Color const &color, bool to_srgb = true);
+cairo_pattern_t *ink_cairo_pattern_create(Inkscape::Colors::Color const &color, bool to_srgb = true);
+
 void ink_cairo_transform(cairo_t *ct, Geom::Affine const &m);
 void ink_cairo_pattern_set_matrix(cairo_pattern_t *cp, Geom::Affine const &m);
 void ink_cairo_set_hairline(cairo_t *ct);
 void ink_cairo_pattern_set_dither(cairo_pattern_t *pattern, bool enabled);
-void ink_cairo_mesh_pattern_set_corner_color(cairo_pattern_t *pattern, unsigned corner_num, Colors::Color color);
+void ink_cairo_mesh_pattern_set_corner_color(cairo_pattern_t *pattern, unsigned corner_num, Inkscape::Colors::Color color);
 
 void ink_matrix_to_2geom(Geom::Affine &, cairo_matrix_t const &);
 Geom::Affine ink_matrix_to_2geom(cairo_matrix_t const &cairo_matrix);
@@ -128,7 +129,7 @@ void ink_cairo_surface_blit(cairo_surface_t *src, cairo_surface_t *dest);
 int ink_cairo_surface_get_width(cairo_surface_t *surface);
 int ink_cairo_surface_get_height(cairo_surface_t *surface);
 guint32 ink_cairo_pattern_get_argb32(cairo_pattern_t *pattern);
-Colors::Color ink_cairo_surface_average_color(cairo_surface_t *surface, cairo_surface_t *mask = nullptr);
+Inkscape::Colors::Color ink_cairo_surface_average_color(cairo_surface_t *surface, cairo_surface_t *mask = nullptr);
 
 double srgb_to_linear( const double c );
 int ink_cairo_surface_srgb_to_linear(cairo_surface_t *surface);

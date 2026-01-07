@@ -724,8 +724,8 @@ void sp_file_fix_lpe(SPDocument *doc)
 
 void sp_file_fix_page_elements(std::unique_ptr<SPDocument> &doc)
 {
-    std::vector<XML::Node *> to_delete;
-    std::vector<XML::Node *> to_add;
+    std::vector<Inkscape::XML::Node *> to_delete;
+    std::vector<Inkscape::XML::Node *> to_add;
 
     if (auto nv = doc->getNamedView()) {
         bool done = false;

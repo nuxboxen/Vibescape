@@ -966,41 +966,41 @@ copy_cairo_surface_ci(cairo_surface_t *in, cairo_surface_t *out) {
  * @arg to_srgb - Default true, does a conversion to sRGB if needed, force no conversion
  *                to hack the data of the Cairo surface to non sRGB spaces.
  */
-void ink_cairo_set_source_color(Cairo::RefPtr<Cairo::Context> &ctx, Colors::Color const &color, bool to_srgb)
+void ink_cairo_set_source_color(Cairo::RefPtr<Cairo::Context> &ctx, Inkscape::Colors::Color const &color, bool to_srgb)
 {
     ink_cairo_set_source_color(ctx->cobj(), color, to_srgb);
 }
-void ink_cairo_set_source_color(cairo_t *ctx, Colors::Color const &color, bool to_srgb)
+void ink_cairo_set_source_color(cairo_t *ctx, Inkscape::Colors::Color const &color, bool to_srgb)
 {
-    if (!to_srgb || *color.getSpace() == Colors::Space::Type::RGB) {
+    if (!to_srgb || *color.getSpace() == Inkscape::Colors::Space::Type::RGB) {
         // Do not copy the color if we don't need to.
         // This sets floats so if the Surface is RGB96F or RGBA128F your surface will have more color data.
         cairo_set_source_rgba(ctx, color[0], color[1], color[2], color.getOpacity());
-    } else if (auto copy = color.converted(Colors::Space::Type::RGB)) {
+    } else if (auto copy = color.converted(Inkscape::Colors::Space::Type::RGB)) {
         ink_cairo_set_source_color(ctx, *copy, false); // Callback
     }
 }
-void ink_cairo_pattern_add_color_stop(cairo_pattern_t *ptn, double offset, Colors::Color const &color, bool to_srgb)
+void ink_cairo_pattern_add_color_stop(cairo_pattern_t *ptn, double offset, Inkscape::Colors::Color const &color, bool to_srgb)
 {
-    if (!to_srgb || *color.getSpace() == Colors::Space::Type::RGB) {
+    if (!to_srgb || *color.getSpace() == Inkscape::Colors::Space::Type::RGB) {
         cairo_pattern_add_color_stop_rgba(ptn, offset, color[0], color[1], color[2], color.getOpacity());
-    } else if (auto copy = color.converted(Colors::Space::Type::RGB)) {
+    } else if (auto copy = color.converted(Inkscape::Colors::Space::Type::RGB)) {
         ink_cairo_pattern_add_color_stop(ptn, offset, *copy, false); // Callback
     }
 }
-cairo_pattern_t *ink_cairo_pattern_create(Colors::Color const &color, bool to_srgb)
+cairo_pattern_t *ink_cairo_pattern_create(Inkscape::Colors::Color const &color, bool to_srgb)
 {
-    if (!to_srgb || *color.getSpace() == Colors::Space::Type::RGB) {
+    if (!to_srgb || *color.getSpace() == Inkscape::Colors::Space::Type::RGB) {
         return cairo_pattern_create_rgba(color[0], color[1], color[2], color.getOpacity());
-    } else if (auto copy = color.converted(Colors::Space::Type::RGB)) {
+    } else if (auto copy = color.converted(Inkscape::Colors::Space::Type::RGB)) {
         return ink_cairo_pattern_create(*copy, false);
     }
     return nullptr;
 }
 
-void ink_cairo_mesh_pattern_set_corner_color(cairo_pattern_t *pattern, unsigned corner_num, Colors::Color color)
+void ink_cairo_mesh_pattern_set_corner_color(cairo_pattern_t *pattern, unsigned corner_num, Inkscape::Colors::Color color)
 {
-    color.convert(Colors::Space::Type::RGB);
+    color.convert(Inkscape::Colors::Space::Type::RGB);
     cairo_mesh_pattern_set_corner_color_rgba(pattern, corner_num, color[0], color[1], color[2], color.getOpacity());
 }
 
@@ -1300,14 +1300,14 @@ guint32 ink_cairo_pattern_get_argb32(cairo_pattern_t *pattern)
  * @arg surface - The cairo surface to get data from.
  * @arg masked - If true, ignores any truely invisible pixels.
  */
-Colors::Color ink_cairo_surface_average_color(cairo_surface_t *surface, cairo_surface_t * mask)
+Inkscape::Colors::Color ink_cairo_surface_average_color(cairo_surface_t *surface, cairo_surface_t * mask)
 {
     double r, g, b, a = 0.0;
     double count = ink_cairo_surface_average_color_internal(surface, mask, r, g, b, a);
     if (a == 0.0) {
-        return Colors::Color(Colors::Space::Type::RGB, {0, 0, 0, 0});
+        return Inkscape::Colors::Color(Inkscape::Colors::Space::Type::RGB, {0, 0, 0, 0});
     }
-    auto color = Colors::Color(Colors::Space::Type::RGB, {r / a, g / a, b / a, a / count});
+    auto color = Inkscape::Colors::Color(Inkscape::Colors::Space::Type::RGB, {r / a, g / a, b / a, a / count});
     color.normalize();
     return color;
 }
@@ -1491,7 +1491,7 @@ Cairo::RefPtr<Cairo::Pattern> ink_cairo_pattern_create_slanting_stripes(uint32_t
     auto surface = Cairo::ImageSurface::create(Cairo::ImageSurface::Format::ARGB32, width, 1);
     auto context = Cairo::Context::create(surface);
     context->rectangle(0, 0, line_width / 2.0, 1);
-    ink_cairo_set_source_color(context, Colors::Color(color));
+    ink_cairo_set_source_color(context, Inkscape::Colors::Color(color));
     context->fill();
     context->paint();
 
@@ -1519,7 +1519,7 @@ Cairo::RefPtr<Cairo::Pattern> create_checkerboard_pattern(uint32_t dark, uint32_
 }
 
 Cairo::RefPtr<Cairo::Pattern> ink_cairo_pattern_create_checkerboard(guint32 rgba, bool use_alpha, int size) {
-    auto color_a = Colors::Color(rgba, use_alpha);
+    auto color_a = Inkscape::Colors::Color(rgba, use_alpha);
     auto color_b = Inkscape::Colors::make_contrasted_color(color_a, 1.0);
     // Once the second color is generated, the original doesn't need alpha
     color_a.enableOpacity(false);
