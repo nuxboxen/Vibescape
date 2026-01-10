@@ -32,6 +32,7 @@
 #include <poppler/GfxState.h>
 #include <poppler/Page.h>
 #include <poppler/Stream.h>
+#include <poppler/goo/gmem.h>
 
 #include "color.h"
 #include "color/cms-util.h"
@@ -2093,7 +2094,11 @@ Inkscape::XML::Node *SvgBuilder::_createImage(Stream *str, int width, int height
         } else {
             image_stream = new ImageStream(str, width, 1, 1);
         }
+#if POPPLER_CHECK_VERSION(26, 0, 0)
+        image_stream->rewind();
+#else
         image_stream->reset();
+#endif
 
         // Convert grayscale values
         unsigned char *buffer = new unsigned char[width];
@@ -2119,7 +2124,11 @@ Inkscape::XML::Node *SvgBuilder::_createImage(Stream *str, int width, int height
         image_stream = new ImageStream(str, width,
                                        color_map->getNumPixelComps(),
                                        color_map->getBits());
+#if POPPLER_CHECK_VERSION(26, 0, 0)
+        image_stream->rewind();
+#else
         image_stream->reset();
+#endif
 
         // Convert RGB values
         unsigned int *buffer = new unsigned int[width];
