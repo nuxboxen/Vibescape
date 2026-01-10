@@ -33,6 +33,7 @@
 #include <poppler/glib/poppler.h>
 #include <poppler/glib/poppler-document.h>
 #include <poppler/glib/poppler-page.h>
+#include <poppler/goo/gmem.h>
 #endif
 
 #include <gdkmm/general.h>
