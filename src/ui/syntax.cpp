@@ -22,6 +22,7 @@
 #include "config.h"
 #include "io/resource.h"
 #include "object/sp-factory.h"
+#include "util/svg-path-parser.h"
 #include "util/trim.h"
 
 #if WITH_GSOURCEVIEW
@@ -224,24 +225,6 @@ Glib::ustring minify_css(Glib::ustring const &css)
     return minified;
 }
 
-/** @brief Reformat a path 'd' attibute for better readability. */
-Glib::ustring prettify_svgd(Glib::ustring const &d)
-{
-    auto result = d;
-    Util::trim(result);
-    // Ensure that a non-M command is preceded only by a newline.
-    static auto const space_b4_command = Glib::Regex::create("(?<=\\S)\\s*(?=[LHVCSQTAZlhvcsqtaz])");
-    result = space_b4_command->replace(result, 1, "\n", Glib::RegexMatchFlags::REGEX_MATCH_NEWLINE_ANY);
-
-    // Before a non-initial M command, we want to have two newlines to visually separate the subpaths.
-    static auto const space_b4_m = Glib::Regex::create("(?<=\\S)\\s*(?=[Mm])");
-    result = space_b4_m->replace(result, 1, "\n\n", Glib::RegexMatchFlags::REGEX_MATCH_NEWLINE_ANY);
-
-    // Ensure that there's a space after each command letter other than Z.
-    static auto const nospace = Glib::Regex::create("([MLHVCSQTAmlhvcsqta])(?=\\S)");
-    return nospace->replace(result, 0, "\\1 ", Glib::RegexMatchFlags::REGEX_MATCH_NEWLINE_ANY);
-}
-
 /** @brief Remove excessive space, including newlines, from a path 'd' attibute. */
 Glib::ustring minify_svgd(Glib::ustring const &d)
 {
@@ -392,7 +375,7 @@ std::unique_ptr<TextEditView> TextEditView::create(SyntaxMode mode)
         case SyntaxMode::CssStyle:
             return std::make_unique<SyntaxHighlighting>("css", no_reformat, no_reformat);
         case SyntaxMode::SvgPathData:
-            return std::make_unique<SyntaxHighlighting>("svgd", &prettify_svgd, &minify_svgd);
+            return std::make_unique<SyntaxHighlighting>("svgd", &SvgPathParser::prettify_svgd, &minify_svgd);
         case SyntaxMode::SvgPolyPoints:
             return std::make_unique<SyntaxHighlighting>("svgpoints", no_reformat, no_reformat);
         case SyntaxMode::JavaScript:

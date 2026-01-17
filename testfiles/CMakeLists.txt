@@ -93,6 +93,7 @@ set(TEST_SOURCES
     svg-box-test
     svg-color-test
     svg-length-test
+    svg-path-parser-test
     svg-stringstream-test
     sp-gradient-test
     svg-path-geom-test

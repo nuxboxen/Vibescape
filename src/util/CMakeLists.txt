@@ -15,6 +15,7 @@ set(util_SRC
 	parse-int-range.cpp
 	preview.cpp
 	statics.cpp
+	svg-path-parser.cpp
     recently-used-fonts.cpp
 	pool.cpp
 	treeify.cpp
@@ -59,6 +60,7 @@ set(util_SRC
 	treeify.h
 	trim.h
 	units.h
+	svg-path-parser.h
     variant-visitor.h
 	xim_fix.h
 	ziptool.h
