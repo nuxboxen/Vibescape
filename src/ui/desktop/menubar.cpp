@@ -225,7 +225,13 @@ build_menu()
                             break;
                         }
                     }
-                    assert(i < max_size); // Paths are assured to always have a difference.
+
+                    // If no difference, skip. Should not happen, but possible with ill-formed recently-used.xbel.
+                    if (i >= max_size) {
+                        g_warning("Duplicate paths in recently-used.xbel");
+                        ++it;
+                        continue;
+                    }
 
                     // Override map of path to shortened path.
                     for (auto j = 0; j < 2; j++) {
