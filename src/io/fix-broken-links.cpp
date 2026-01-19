@@ -7,49 +7,39 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include <set>
-#include <algorithm>
-
-#include <gtkmm/recentmanager.h>
-#include <glibmm/i18n.h>
-#include <glibmm/miscutils.h>
-#include <glibmm/fileutils.h>
-#include <glibmm/uriutils.h>
-#include <glibmm/convert.h>
-
 #include "fix-broken-links.h"
 
-#include "document.h"
+#include <algorithm>
+#include <set>
+#include <string_view>
+#include <boost/algorithm/string.hpp>
+#include <glibmm/convert.h>
+#include <glibmm/fileutils.h>
+#include <glibmm/i18n.h>
+#include <glibmm/miscutils.h>
+#include <glibmm/uriutils.h>
+#include <gtkmm/recentmanager.h>
+
 #include "document-undo.h"
-
+#include "document.h"
 #include "object/sp-object.h"
-
 #include "ui/icon-names.h"
-
-#include "xml/node.h"
 #include "xml/href-attribute-helper.h"
+#include "xml/node.h"
 
 namespace Inkscape {
 
-std::vector<std::string> splitPath( std::string const &path )
+#ifdef _WIN32
+constexpr char dir_separators[] = "\\/";
+#else
+constexpr char dir_separators[] = "/";
+#endif
+
+std::vector<std::string> splitPath(std::string_view path)
 {
     std::vector<std::string> parts;
-
-    std::string prior;
-    std::string tmp = path;
-    while ( !tmp.empty() && (tmp != prior) ) {
-        prior = tmp;
-
-        parts.push_back( Glib::path_get_basename(tmp) );
-        tmp = Glib::path_get_dirname(tmp);
-    }
-    if ( !parts.empty() ) {
-        std::reverse(parts.begin(), parts.end());
-        if ( (parts[0] == ".") && (path[0] != '.') ) {
-            parts.erase(parts.begin());
-        }
-    }
-
+    boost::split(parts, path, boost::is_any_of(dir_separators), boost::token_compress_on);
+    std::erase_if(parts, [] (auto const &str) { return str.empty() || str == "."; });
     return parts;
 }
 

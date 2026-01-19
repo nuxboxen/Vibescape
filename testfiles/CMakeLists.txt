@@ -68,6 +68,7 @@ set(TEST_SOURCES
     drag-and-drop-svgz
     drawing-pattern-test
     extract-uri-test
+    fix-broken-links-test
     attributes-test
     color-profile-test
     dir-util-test

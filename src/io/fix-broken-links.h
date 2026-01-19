@@ -14,7 +14,7 @@ class SPDocument;
 
 namespace Inkscape {
 
-std::vector<std::string> splitPath( std::string const &path );
+std::vector<std::string> splitPath(std::string_view path);
 
 std::string optimizePath(std::string const &path, std::string const &base, unsigned int parents = 2);
 bool fixBrokenLinks(SPDocument *doc);
