@@ -212,8 +212,8 @@ build_menu()
                     display_uris.emplace_back(( *(it+1))->get_uri_display());
 
                     std::vector<std::vector<std::string>> path_parts;
-                    path_parts.emplace_back(Inkscape::splitPath((* it   )->get_uri_display()));
-                    path_parts.emplace_back(Inkscape::splitPath((*(it+1))->get_uri_display()));
+                    path_parts.emplace_back(Inkscape::splitPath((* it   )->get_uri_display().raw()));
+                    path_parts.emplace_back(Inkscape::splitPath((*(it+1))->get_uri_display().raw()));
 
                     // Find first directory difference from root down.
                     auto max_size = std::min(path_parts[0].size(), path_parts[1].size());
