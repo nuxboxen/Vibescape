@@ -46,7 +46,7 @@ TEST(DrawingFilterSlotTest, getCopyInt)
     auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
 
     auto slot = DrawingFilter::Slot();
-    auto rgbint = std::make_shared<TestSurface>(Inkscape::Renderer::Surface({21, 21}, 1, {}));
+    auto rgbint = std::make_shared<TestSurface>(Geom::IntPoint(21, 21), 1);
     rgbint->rect(3,  3,  15, 15,  {0.0, 0.9, 0.0, 0.5});
 
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, rgbint);
@@ -90,7 +90,7 @@ TEST(DrawingFilterSlotTest, getCopyFloat)
     auto cmyk = Colors::Manager::get().find(Colors::Space::Type::CMYK);
 
     auto slot = DrawingFilter::Slot();
-    auto surface = std::make_shared<TestSurface>(Inkscape::Renderer::Surface({21, 21}, 1, rgb));
+    auto surface = std::make_shared<TestSurface>(Geom::IntPoint(21, 21), 1, rgb);
     surface->rect(3,  3,  15, 15,  {0.0, 0.9, 0.0, 0.5});
 
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, surface);
@@ -144,7 +144,7 @@ TEST(DrawingFilterSlotTest, setAlphaSlot)
     auto slot = DrawingFilter::Slot();
 
     auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-    auto src = std::make_shared<TestSurface>(Inkscape::Renderer::Surface({21, 21}, 1, rgb));
+    auto src = std::make_shared<TestSurface>(Geom::IntPoint(21, 21), 1, rgb);
     src->rect(0,  3,  21, 3,  {0.0, 0.9, 0.0, 0.5});
     src->rect(15, 0,  3,  21, {0.5, 0.5, 0.5, 0.5});
     src->rect(0,  15, 21, 3,  {0.9, 0.0, 0.0, 0.5});

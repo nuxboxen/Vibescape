@@ -10,8 +10,8 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#ifndef INKSCAPE_DISPLAY_DRAWING_H
-#define INKSCAPE_DISPLAY_DRAWING_H
+#ifndef INKSCAPE_RENDERER_DRAWING_H
+#define INKSCAPE_RENDERER_DRAWING_H
 
 #include <optional>
 #include <set>
@@ -24,15 +24,15 @@
 #include <sigc++/signal.h>
 
 #include "colors/color.h"
-#include "display/drawing-item.h"
-#include "display/rendermode.h"
-#include "nr-filter-colormatrix.h"
 #include "util/funclog.h"
 
-namespace Inkscape {
+#include "renderer/drawing/enums.h"
+#include "drawing-item.h"
+
+namespace Inkscape::Renderer {
 
 class DrawingItem;
-class DrawingContext;
+class Context;
 
 class Drawing
 {
@@ -54,8 +54,8 @@ public:
     void setMaskOutlineColor(Colors::Color);
     void setImageOutlineColor(Colors::Color);
     void setImageOutlineMode(bool);
-    void setFilterQuality(int);
-    void setBlurQuality(int);
+    void setFilterQuality(DrawingFilter::Quality);
+    void setBlurQuality(DrawingFilter::BlurQuality);
     void setDithering(bool);
     void setSelectZeroOpacity(bool select_zero_opacity) { _select_zero_opacity = select_zero_opacity; }
     void setCacheBudget(size_t bytes);
@@ -67,21 +67,20 @@ public:
     RenderMode renderMode() const { return _rendermode; }
     ColorMode colorMode() const { return _colormode; }
     bool outlineOverlay() const { return _outlineoverlay; }
-    auto &grayscaleMatrix() const { return _grayscale_matrix; }
     Colors::Color const &outlineColor() const { return _outline_color; }
     Colors::Color const &clipOutlineColor() const { return _clip_outline_color; }
     Colors::Color const &maskOutlineColor() const { return _mask_outline_color; }
     Colors::Color const &imageOutlineColor() const { return _image_outline_color; }
     bool imageOutlineMode() const { return _image_outline_mode; }
-    int filterQuality() const { return _filter_quality; }
-    int blurQuality() const { return _blur_quality; }
+    DrawingFilter::Quality filterQuality() const { return _filter_quality; }
+    DrawingFilter::BlurQuality blurQuality() const { return _blur_quality; }
     bool useDithering() const { return _use_dithering; }
     bool selectZeroOpacity() const { return _select_zero_opacity; }
     Geom::OptIntRect const &cacheLimit() const { return _cache_limit; }
 
     void update(Geom::IntRect const &area = Geom::IntRect::infinite(), Geom::Affine const &affine = Geom::identity(),
                 unsigned flags = DrawingItem::STATE_ALL, unsigned reset = 0);
-    void render(DrawingContext &dc, Geom::IntRect const &area, unsigned flags = 0) const;
+    void render(Context &dc, Geom::IntRect const &area, unsigned flags = 0) const;
     DrawingItem *pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags);
 
     void snapshot();
@@ -92,7 +91,7 @@ public:
     Colors::Color averageColor(Geom::IntRect const &area) const;
     Colors::Color averageColor(Geom::PathVector const &path, bool evenodd) const;
     void setExact();
-    void setOpacityOverride(std::optional<double> opacity = {});
+    void setOpacity(double opacity = 1.0);
 
     sigc::connection connectDrawingUpdated(sigc::slot<void ()> const &slot) { return _drawing_updated_signal.connect(slot); }
     sigc::connection connectRedrewArea(sigc::slot<void (Geom::IntRect)> const &slot) { return _redraw_area_signal.connect(slot); }
@@ -108,14 +107,13 @@ private:
     RenderMode _rendermode = RenderMode::NORMAL;
     ColorMode _colormode = ColorMode::NORMAL;
     bool _outlineoverlay = false;
-    Filters::FilterColorMatrix::ColorMatrixMatrix _grayscale_matrix;
     Colors::Color _outline_color;
     Colors::Color _clip_outline_color;
     Colors::Color _mask_outline_color;
     Colors::Color _image_outline_color;
     bool _image_outline_mode; ///< Always draw images as images, even in outline mode.
-    int _filter_quality;
-    int _blur_quality;
+    DrawingFilter::Quality _filter_quality;
+    DrawingFilter::BlurQuality _blur_quality;
     bool _use_dithering;
     size_t _cache_budget = 0; ///< Maximum allowed size of cache.
     Geom::OptIntRect _cache_limit;
@@ -146,9 +144,9 @@ private:
     friend class DrawingItem;
 };
 
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
-#endif // INKSCAPE_DISPLAY_DRAWING_H
+#endif // INKSCAPE_RENDERER_DRAWING_H
 
 /*
   Local Variables:

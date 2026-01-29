@@ -60,6 +60,7 @@ public:
     SPPattern();
     ~SPPattern() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    PaintServerType getPaintType() const { return PaintServerType::GROUP_PATTERN; }
 
     // Reference (href)
     Glib::ustring href;

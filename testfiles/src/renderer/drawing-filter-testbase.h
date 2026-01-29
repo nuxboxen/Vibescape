@@ -52,7 +52,7 @@ std::shared_ptr<TestSurface> get_transformed_input()
     // Normally these images are drawn in-test, but this one is proving consistancy
     // between the old code and the new code, so it's a recording of the inputs of
     // this section of code to make sure the same inputs produce the same outputs.
-    return std::make_shared<TestSurface>(Renderer::Surface(INKSCAPE_TESTS_DIR "/data/renderer/transform-source-16.png"));
+    return std::make_shared<TestSurface>(INKSCAPE_TESTS_DIR "/data/renderer/transform-source-16.png");
 }
 
 DrawingFilter::Filter get_transformed_filter()
@@ -89,7 +89,7 @@ void EXPECT_PRIMITIVE_IS(std::unique_ptr<Renderer::DrawingFilter::Primitive> pri
     std::shared_ptr<Surface> background;
     if ( filter.uses_input(DrawingFilter::SLOT_BACKGROUND_IMAGE)
       || filter.uses_input(DrawingFilter::SLOT_BACKGROUND_ALPHA)) {
-        background = std::make_shared<TestSurface>(Renderer::Surface(INKSCAPE_TESTS_DIR "/data/renderer/rainbow-source-16.png"));
+        background = std::make_shared<TestSurface>(INKSCAPE_TESTS_DIR "/data/renderer/rainbow-source-16.png");
     }
 
     auto dopt = Renderer::DrawingOptions();

@@ -828,9 +828,6 @@ private:
 // This could be replaced by a generic enum class where multiple keywords are allowed and
 // where order matters (in contrast to 'text-decoration-line' where order does not matter).
 
-// Each layer represents a layer of paint which can be a fill, a stroke, or markers.
-inline constexpr size_t PAINT_ORDER_LAYERS = 3;
-
 /// Paint order type internal to SPStyle
 class SPIPaintOrder : public SPIBase
 {

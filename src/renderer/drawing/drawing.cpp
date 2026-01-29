@@ -14,23 +14,16 @@
 #include "drawing.h"
 
 #include <array>
+#include <thread>
 
-#include "cairo-utils.h"
-#include "control/canvas-item-drawing.h"
-#include "drawing-context.h"
-#include "nr-filter-gaussian.h"
-#include "nr-filter-types.h"
-#include "threading.h"
+#include "colors/manager.h"
 
-namespace Inkscape {
+#include "renderer/context.h"
+#include "renderer/pixel-filters/average-color.h"
+#include "renderer/surface.h"
+#include "renderer/threading.h"
 
-// Hardcoded grayscale color matrix values as default.
-static auto constexpr grayscale_matrix = std::array{
-    0.21, 0.72, 0.072, 0.0, 0.0,
-    0.21, 0.72, 0.072, 0.0, 0.0,
-    0.21, 0.72, 0.072, 0.0, 0.0,
-    0.0 , 0.0 , 0.0  , 1.0, 0.0
-};
+namespace Inkscape::Renderer {
 
 static auto rendermode_to_renderflags(RenderMode mode)
 {
@@ -43,8 +36,7 @@ static auto rendermode_to_renderflags(RenderMode mode)
 }
 
 Drawing::Drawing()
-    : _grayscale_matrix(std::vector<double>(grayscale_matrix.begin(), grayscale_matrix.end()))
-    , _outline_color{0xFF}
+    : _outline_color{0xFF}
     , _clip_outline_color{0xFF}
     , _mask_outline_color{0xFF}
     , _image_outline_color{0xFF}
@@ -98,16 +90,6 @@ void Drawing::setOutlineOverlay(bool outlineoverlay)
     });
 }
 
-void Drawing::setGrayscaleMatrix(double value_matrix[20])
-{
-    defer([=, this] {
-        _grayscale_matrix = Filters::FilterColorMatrix::ColorMatrixMatrix(std::vector<double>(value_matrix, value_matrix + 20));
-        if (_rendermode != RenderMode::OUTLINE) {
-            _root->_markForRendering();
-        }
-    });
-}
-
 void Drawing::setOutlineColor(Colors::Color col)
 {
     defer([=, this] {
@@ -158,7 +140,7 @@ void Drawing::setImageOutlineMode(bool enabled)
     });
 }
 
-void Drawing::setFilterQuality(int quality)
+void Drawing::setFilterQuality(DrawingFilter::Quality quality)
 {
     defer([=, this] {
         _filter_quality = quality;
@@ -169,12 +151,14 @@ void Drawing::setFilterQuality(int quality)
     });
 }
 
-void Drawing::setBlurQuality(int quality)
+void Drawing::setBlurQuality(DrawingFilter::BlurQuality quality)
 {
     defer([=, this] {
         _blur_quality = quality;
         if (!(_rendermode == RenderMode::OUTLINE || _rendermode == RenderMode::NO_FILTERS)) {
-            _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+            if (_root) {
+                _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+            }
             _clearCache();
         }
     });
@@ -205,9 +189,11 @@ void Drawing::setCacheLimit(Geom::OptIntRect const &rect)
 {
     defer([=, this] {
         _cache_limit = rect;
+        /*
         for (auto item : _cached_items) {
             item->_markForUpdate(DrawingItem::STATE_CACHE, false);
         }
+        */
     });
 }
 
@@ -245,21 +231,23 @@ void Drawing::update(Geom::IntRect const &area, Geom::Affine const &affine, unsi
     }
 }
 
-void Drawing::render(DrawingContext &dc, Geom::IntRect const &area, unsigned flags) const
+void Drawing::render(Context &dc, Geom::IntRect const &area, unsigned flags) const
 {
-    apply_antialias(dc, _antialiasing_override.value_or(Antialiasing(_root->_antialias)));
-
-    auto rc = RenderContext{.outline_color = _outline_color,
-                            .antialiasing_override = _antialiasing_override,
-                            .dithering = _use_dithering};
+    auto opt = DrawingOptions{
+        .outline_color = _outline_color,
+        .antialiasing_override = _antialiasing_override,
+        .dithering = _use_dithering
+        // TODO: Add blurquality and filterquality
+    };
     flags |= rendermode_to_renderflags(_rendermode);
 
+    dc.setAntialias(_antialiasing_override.value_or(Antialiasing(_root->_antialias)));
     if (_clip) {
         dc.save();
         dc.path(*_clip * _root->_ctm);
         dc.clip();
     }
-    _root->render(dc, rc, area, flags);
+    _root->render(dc, opt, area, flags);
     if (_clip) {
         dc.restore();
     }
@@ -286,6 +274,7 @@ void Drawing::unsnapshot()
 void Drawing::_pickItemsForCaching()
 {
     // Build sorted list of items that should be cached.
+    /*
     std::vector<DrawingItem*> to_cache;
     size_t used = 0;
     for (auto &rec : _candidate_items) {
@@ -309,16 +298,19 @@ void Drawing::_pickItemsForCaching()
     for (auto item : to_cache) {
         item->_setCached(true);
     }
+    */
 }
 
 void Drawing::_clearCache()
 {
     // Note: setCached() modifies _cached_items, so the temporary container is necessary.
+    /*
     std::vector<DrawingItem*> to_uncache;
     std::copy(_cached_items.begin(), _cached_items.end(), std::back_inserter(to_uncache));
     for (auto item : to_uncache) {
         item->_setCached(false, true);
     }
+    */
 }
 
 /*
@@ -326,10 +318,12 @@ void Drawing::_clearCache()
  */
 Colors::Color Drawing::averageColor(Geom::IntRect const &area) const
 {
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, area.width(), area.height());
-    auto dc = Inkscape::DrawingContext(surface->cobj(), area.min());
+    // TODO: Replace color_space with target color space useful for this average
+    auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto surface = std::make_shared<Surface>(area.dimensions(), 1, color_space);
+    auto dc = Context(surface, area);
     render(dc, area);
-    return ink_cairo_surface_average_color(surface->cobj());
+    return Colors::Color(color_space, surface->run_pixel_filter(PixelFilter::AverageColor()));
 }
 
 /*
@@ -347,27 +341,27 @@ Colors::Color Drawing::averageColor(Geom::PathVector const &path, bool evenodd) 
     static constexpr auto height = 200.0;
 
     auto affine = Geom::Scale(width / area->width(), height / area->height());
-    auto offset = area->min() * affine;
 
     // Build a mask of pixels to ignore
-    auto mask = Cairo::ImageSurface::create(Cairo::Surface::Format::A8, width, height);
-    auto dc_mask = Inkscape::DrawingContext(mask->cobj(), offset);
+    auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
+    auto mask = std::make_shared<Surface>(Geom::IntPoint(width, height), 1, alpha);
+    auto dc_mask = Context(mask, *area * affine);
     dc_mask.scale(affine);
 
-    dc_mask.setFillRule(evenodd ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING);
+    dc_mask.setFillRule(evenodd ? Cairo::Context::FillRule::EVEN_ODD : Cairo::Context::FillRule::WINDING);
     dc_mask.path(path);
     dc_mask.clip();
-    dc_mask.setSource(1, 1, 1, 1);
-    dc_mask.setOperator(CAIRO_OPERATOR_SOURCE);
+    dc_mask.resetSource(1.0);
+    dc_mask.setOperator(Cairo::Context::Operator::SOURCE);
     dc_mask.paint();
 
     // Render the output, no need to clip as the mask will say what values to use
-    auto image = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width, height);
-    auto dc = Inkscape::DrawingContext(image->cobj(), offset);
+    auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto image = std::make_shared<Surface>(Geom::IntPoint(width, height), 1, color_space);
+    auto dc = Context(image, *area * affine);
     dc.scale(affine);
     render(dc, area->roundOutwards());
-
-    return ink_cairo_surface_average_color(image->cobj(), mask->cobj());
+    return Colors::Color(color_space, image->run_pixel_filter(PixelFilter::AverageColor(), *mask));
 }
 
 /*
@@ -375,16 +369,16 @@ Colors::Color Drawing::averageColor(Geom::PathVector const &path, bool evenodd) 
  */
 void Drawing::setExact()
 {
-    setFilterQuality(Filters::FILTER_QUALITY_BEST);
-    setBlurQuality(BLUR_QUALITY_BEST);
+    setFilterQuality(DrawingFilter::Quality::BEST);
+    setBlurQuality(DrawingFilter::BlurQuality::BEST);
 }
 
 /*
  * Set the opacity of the drawing root drawing-item
  */
-void Drawing::setOpacityOverride(std::optional<double> opacity)
+void Drawing::setOpacity(double opacity)
 {
-    _root->setOpacityOverride(opacity);
+    _root->setOpacity(opacity);
 }
 
 } // namespace Inkscape
