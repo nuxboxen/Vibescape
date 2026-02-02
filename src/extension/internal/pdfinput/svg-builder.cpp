@@ -2095,7 +2095,17 @@ Inkscape::XML::Node *SvgBuilder::_createImage(Stream *str, int width, int height
             image_stream = new ImageStream(str, width, 1, 1);
         }
 #if POPPLER_CHECK_VERSION(26, 0, 0)
-        image_stream->rewind();
+        if(!image_stream->rewind())
+        {
+            g_warning("ImageStream: Failed to rewind image stream");
+            png_destroy_write_struct(&png_ptr, &info_ptr);
+            if (!_embed_images) {
+                fclose(fp);
+                g_free(file_name);
+            }
+            delete image_stream;
+            return nullptr;
+        }
 #else
         image_stream->reset();
 #endif
@@ -2125,7 +2135,17 @@ Inkscape::XML::Node *SvgBuilder::_createImage(Stream *str, int width, int height
                                        color_map->getNumPixelComps(),
                                        color_map->getBits());
 #if POPPLER_CHECK_VERSION(26, 0, 0)
-        image_stream->rewind();
+        if(!image_stream->rewind())
+        {
+            g_warning("ImageStream: Failed to rewind image stream");
+            png_destroy_write_struct(&png_ptr, &info_ptr);
+            if (!_embed_images) {
+                fclose(fp);
+                g_free(file_name);
+            }
+            delete image_stream;
+            return nullptr;
+        }
 #else
         image_stream->reset();
 #endif
