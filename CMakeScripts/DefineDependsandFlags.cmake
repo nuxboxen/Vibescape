@@ -193,39 +193,68 @@ if(NOT WITH_INTERNAL_ADAPTAGRAMS)
 endif()
 
 if(WITH_CAPYPDF)
-  pkg_check_modules(CAPYPDF IMPORTED_TARGET capypdf>=0.18)
+  pkg_check_modules(CAPYPDF IMPORTED_TARGET capypdf>=0.21)
   if(CAPYPDF_FOUND)
     add_library(Inkscape::CapyPDF ALIAS PkgConfig::CAPYPDF)
   else()
-    if(APPLE)
-      message(STATUS "New CMYK PDF exporter disabled on macOS")
+    if(NOT DEFINED CAPYPDF_SUPPORTED)
+      try_compile(CAPYPDF_SUPPORTED
+        SOURCE_FROM_CONTENT capypdf-support-check.cpp [[
+          #include <version>
+          #if defined(__cpp_lib_expected)
+          #else
+            #error
+          #endif
+          int main() {}
+        ]]
+        CXX_STANDARD 23
+        CXX_STANDARD_REQUIRED TRUE
+      )
+      if(NOT CAPYPDF_SUPPORTED)
+        message(STATUS "CapyPDF disabled, requires C++23")
+      else()
+        execute_process(COMMAND meson --version OUTPUT_VARIABLE MESON_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(MESON_VERSION VERSION_LESS 1.10)
+          message(STATUS "CapyPDF disabled, requires meson>=1.10")
+          set(CAPYPDF_SUPPORTED 0 CACHE INTERNAL "Test CAPYPDF_SUPPORTED")
+        endif()
+      endif()
+    endif()
+    if(NOT CAPYPDF_SUPPORTED)
       set(WITH_CAPYPDF OFF)
     else()
       set(CAPY_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/deps)
       set(CAPY_LIBDIR ${CAPY_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+      if(APPLE)
+        set(SED_INPLACE "-i ''")
+      else()
+        set(SED_INPLACE "-i")
+      endif()
       include(ExternalProject)
       ExternalProject_Add(capypdf
-          URL https://github.com/jpakkane/capypdf/releases/download/0.18.0/capypdf-0.18.0.tar.xz
-          URL_HASH SHA256=bda2c0cbbc60b461b1c5d64c50cdecfee6e90b3c9ee28d33212412771caaafd4
+          URL https://github.com/jpakkane/capypdf/releases/download/0.21.0/capypdf-0.21.0.tar.xz
+          URL_HASH SHA256=b269a7361252b737f47b744f5329ba63f29af5bd3c46acbf7d4a4e074661f8a1
           DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-          CONFIGURE_COMMAND meson setup . ../capypdf --libdir=${CAPY_LIBDIR} --prefix=${CAPY_PREFIX}
+          PATCH_COMMAND sed ${SED_INPLACE} -e "/subdir('benchmark')/d" -e "/subdir('test')/d" ../capypdf/meson.build
+          CONFIGURE_COMMAND meson setup . ../capypdf --libdir=${CAPY_LIBDIR} --prefix=${CAPY_PREFIX} --buildtype release --default-library static
           BUILD_COMMAND meson compile
           INSTALL_COMMAND meson install
+          INSTALL_BYPRODUCTS "${CAPY_LIBDIR}/libcapypdf.a"
       )
-      add_library(CapyPDF_LIB INTERFACE)
-      target_include_directories(CapyPDF_LIB INTERFACE "${CAPY_PREFIX}/include/capypdf-0")
-      target_link_directories(CapyPDF_LIB INTERFACE "${CAPY_LIBDIR}")
-      target_link_libraries(CapyPDF_LIB INTERFACE -lcapypdf)
-      add_library(Inkscape::CapyPDF ALIAS CapyPDF_LIB)
-      list(APPEND CMAKE_INSTALL_RPATH ${CAPY_LIBDIR})
-      if(WIN32)
-        # DLL needs to be copied for tests to run
-        ExternalProject_Add_Step(capypdf copy-dll
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CAPY_PREFIX}/bin/libcapypdf-0.dll" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libcapypdf-0.dll"
-            DEPENDEES install
-            BYPRODUCTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libcapypdf-0.dll"
-        )
-      endif()
+      add_library(CapyPDF_LIB STATIC IMPORTED GLOBAL)
+      set_target_properties(CapyPDF_LIB PROPERTIES IMPORTED_LOCATION "${CAPY_LIBDIR}/libcapypdf.a")
+      find_package(PNG REQUIRED)
+      find_package(JPEG REQUIRED)
+      find_package(ZLIB REQUIRED)
+      find_package(TIFF REQUIRED)
+      find_package(Freetype REQUIRED)
+      pkg_check_modules(CAPY_DEPS REQUIRED IMPORTED_TARGET lcms2)
+      target_link_libraries(CapyPDF_LIB INTERFACE PNG::PNG JPEG::JPEG ZLIB::ZLIB TIFF::TIFF Freetype::Freetype PkgConfig::CAPY_DEPS)
+      add_library(CapyPDF_LIB2 INTERFACE)
+      target_link_libraries(CapyPDF_LIB2 INTERFACE CapyPDF_LIB)
+      target_include_directories(CapyPDF_LIB2 INTERFACE "${CAPY_PREFIX}/include/capypdf-0")
+      add_dependencies(CapyPDF_LIB2 capypdf)
+      add_library(Inkscape::CapyPDF ALIAS CapyPDF_LIB2)
     endif()
   endif()
 endif()
