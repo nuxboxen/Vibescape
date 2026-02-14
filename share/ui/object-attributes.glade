@@ -734,7 +734,7 @@
           <object class="GtkMenuButton" id="text-line-height-unit">
             <property name="popover">text-line-hight-unit-menu</property>
             <property name="valign">center</property>
-            <property name="icon-name">pan-down</property>
+            <property name="icon-name">tool-measure</property>
           </object>
         </child>
         <layout>
@@ -761,7 +761,7 @@
           <object class="GtkMenuButton" id="text-font-size-units">
             <property name="popover">text-font-size-unit-menu</property>
             <property name="valign">center</property>
-            <property name="icon-name">pan-down</property>
+            <property name="icon-name">tool-measure</property>
           </object>
         </child>
         <layout>
@@ -958,6 +958,7 @@
     </child>
     <child>
       <object class="gtkmm__CustomObject_InkSpinButton" id="text-letter-space">
+        <property name="min-value">-100000.000000</property>
         <property name="icon">text_letter_spacing</property>
         <property name="tooltip-text" translatable="yes">Letter spacing</property>
         <property name="max-value">100000.000000</property>
@@ -970,6 +971,7 @@
     </child>
     <child>
       <object class="gtkmm__CustomObject_InkSpinButton" id="text-word-space">
+        <property name="min-value">-100000.000000</property>
         <property name="icon">text_word_spacing</property>
         <property name="tooltip-text" translatable="yes">Word spacing</property>
         <property name="digits">3</property>
@@ -1304,6 +1306,8 @@
         </child>
         <child>
           <object class="gtkmm__CustomObject_InkSpinButton" id="text-line-thickness">
+            <property name="max-value">100000.000000</property>
+            <property name="step-value">0.100000</property>
             <property name="valign">fill</property>
             <layout>
               <property name="column">3</property>
