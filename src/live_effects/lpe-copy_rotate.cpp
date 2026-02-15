@@ -119,14 +119,15 @@ bool LPECopyRotate::doOnOpen(SPLPEItem const *lpeitem)
             return fixed;
         }
         lpesatellites.clear();
-        for (size_t i = 0; i < num_copies - 1; i++) {
-            Glib::ustring id = Glib::ustring("rotated-");
+        size_t expected_paths = num_copies - 1;
+        for (size_t i = 0; i < expected_paths; i++) {
+            Glib::ustring id = "rotated-";
             id += std::to_string(i);
             id += "-";
             id += getLPEObj()->getId();
             SPObject *elemref = getSPDoc()->getObjectById(id.c_str());
             if (elemref) {
-                lpesatellites.link(elemref, i);
+                lpesatellites.link(elemref, Glib::ustring::npos);
             }
         }
         lpeversion.param_setValue("1.2", true);
