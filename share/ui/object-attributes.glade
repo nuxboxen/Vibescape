@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <placeholder width="101" height="161"></placeholder>
+  <placeholder width="239" height="151"></placeholder>
   <requires lib="gtk" version="4.0"></requires>
   <object class="GtkGrid" id="ellipse-main">
     <property name="row-spacing">4</property>
@@ -1394,4 +1394,34 @@
   </object>
   <object class="GtkPopoverMenu" id="text-font-size-unit-menu"></object>
   <object class="GtkPopoverMenu" id="text-line-hight-unit-menu"></object>
+  <object class="GtkGrid" id="multiobj-main">    <!--dim: 5, 3-->
+
+    <child>
+      <object class="GtkMenuButton" id="multi-recolor">
+        <property name="direction">none</property>
+        <property name="label" translatable="yes">Recolor selection</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">0</property>
+          <property name="column-span">2</property>
+        </layout>
+        <child>
+          <object class="GtkBox">
+            <property name="halign">center</property>
+            <property name="spacing">4</property>
+            <child>
+              <object class="GtkImage">
+                <property name="icon-name">color-palette</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label" translatable="yes">Recolor selection</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
 </interface>

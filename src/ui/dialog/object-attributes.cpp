@@ -248,6 +248,9 @@ void ObjectAttributes::widget_setup() {
 }
 
 void ObjectAttributes::desktopReplaced() {
+
+    ::Inkscape::UI::Widget::RecolorArtManager::get().popover.popdown();
+
     if (_current_panel) {
         _current_panel->set_desktop(getDesktop());
     }
@@ -3114,9 +3117,17 @@ void visit_objects(SPObject* object, F f) {
 
 class MultiObjPanel : public details::AttributesPanel {
 public:
-    MultiObjPanel(Glib::RefPtr<Gtk::Builder> builder) {
+    MultiObjPanel(Glib::RefPtr<Gtk::Builder> builder): _builder(builder) {
         add_object_label();
         add_size_properties();
+        _grid.add_gap();
+        add_fill_and_stroke();
+        Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "multiobj-main"), _grid);
+        _recolor_btn.set_create_popup_func([this] {
+            auto& mgr = Widget::RecolorArtManager::get();
+            mgr.reparentPopoverTo(_recolor_btn);
+            mgr.widget.showForSelection(_desktop);
+        });
 
 if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
         //todo: should those options be exposed? =======================
@@ -3183,13 +3194,24 @@ private:
         return Glib::ustring::compose(ngettext("%1 Object", "%1 Objects", n), n);
     }
 
+    void update_paint(SPObject* object) override {
+        if (!_desktop) return;
+
+        auto selection = _desktop->getSelection();
+
+        SPStyle query(_desktop->doc());
+        const int property = 0;// kind == FILL ? QUERY_STYLE_PROPERTY_FILL : QUERY_STYLE_PROPERTY_STROKE;
+        int result = sp_desktop_query_style(_desktop, &query, property);
+        _paint->update_from_style(nullptr, &query);
+    }
+
     void update(SPObject* object) override {
         if (!_desktop) return;
 
         auto selection = _desktop->getSelection();
 
-        return; // not used for now
 
+if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
         std::set<std::string> types;
         std::set<PaintKey> fills; // fill paints
         std::set<PaintKey> strokes;
@@ -3301,8 +3323,11 @@ private:
                 });
             }
         }
+}
     }
 
+    Glib::RefPtr<Gtk::Builder> _builder;
+    Gtk::MenuButton& _recolor_btn = get_widget<Gtk::MenuButton>(_builder, "multi-recolor");
     GridViewList _types{GridViewList::Label};
     GridViewList _fill_paint{GridViewList::ColorLong};
     GridViewList _stroke_paint{GridViewList::ColorLong};
