@@ -5,6 +5,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 
 # custom "check" target with proper dependencies (builds inkscape and tests)
 file(TO_NATIVE_PATH "/" _separator)
+add_definitions(-DUNIT_TEST="true")
 add_definitions(-DINKSCAPE_TESTS_DIR="${CMAKE_SOURCE_DIR}/testfiles")
 add_definitions(-DINKSCAPE_SHARE_DIR="${CMAKE_SOURCE_DIR}/share")
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
