@@ -280,14 +280,14 @@ void DrawingText::decorateStyle(DrawingContext &dc, double vextent, double xphas
         -4, -3,  -2,  -1
         // clang-format on
     };
-    int dots[16]={
-        // clang-format off
-        4,     3,   2,   1,
-        -4,   -3,  -2,  -1,
-        4,     3,   2,   1,
-        -4,   -3,  -2,  -1
-        // clang-format on
-    };
+    // int dots[16]={
+    //     // clang-format off
+    //     4,     3,   2,   1,
+    //     -4,   -3,  -2,  -1,
+    //     4,     3,   2,   1,
+    //     -4,   -3,  -2,  -1
+    //     // clang-format on
+    // };
     double   step = vextent/32.0;
     unsigned i  = 15 & (unsigned) round(xphase/step);  // xphase is >= 0.0
 
@@ -314,30 +314,26 @@ void DrawingText::decorateStyle(DrawingContext &dc, double vextent, double xphas
     to figure where in each of their cycles to start.  Only accurate to 1 part in 16.
     Huge positive offset should keep the phase calculation from ever being negative.
     */
-    else if(_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_DOTTED){
-        // FIXME: Per spec, this should produce round dots.
-        Geom::Point pv = ps;
-        while(true){
-            Geom::Point pvlast = pv;
-            if(dots[i]>0){
-                if(pv[Geom::X] > pf[Geom::X]) break;
+    else if (_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_DOTTED) {
+        // Draw round dots per CSS specification.
+        // Dot diameter = thickness, gap between dots = thickness (gap equals diameter).
+        double dot_spacing = thickness * 2.0;
+        double radius = thickness / 2.0;
+        // Global X coordinate of this span's start and end
+        double global_start = xphase + ps[Geom::X];
+        double global_end   = xphase + pf[Geom::X];
+        // Find first dot whose right edge reaches global_start (include partial dots at left edge).
+        // A dot at gcx overlaps the left edge if gcx + radius >= global_start.
+        double first_global = (floor(global_start / dot_spacing) + 0.5) * dot_spacing;
+        if (first_global + radius < global_start) first_global += dot_spacing;
 
-                pv += Geom::Point(step * (double)dots[i], 0.0);
-
-                if(pv[Geom::X]>= pf[Geom::X]){
-                    // Last dot
-                    dc.rectangle( Geom::Rect(pvlast + poff, pf - poff));
-                    break;
-                } else {
-                    dc.rectangle( Geom::Rect(pvlast + poff, pv - poff));
-                }
-
-                pv += Geom::Point(step * 4.0, 0.0);
-
-            } else {
-                pv += Geom::Point(step * -(double)dots[i], 0.0);
-            }
-            i = 0;  // once in phase, it stays in phase
+        double cy = ps[Geom::Y];
+        // Draw dots that start within or overlap the left edge of this span,
+        // but whose CENTER is before global_end (right edge clipping is handled
+        // by the next span drawing the same dot from its left-edge overlap logic).
+        for (double gcx = first_global; gcx < global_end; gcx += dot_spacing) {
+            double cx = gcx - xphase;
+            cairo_arc(dc.raw(), cx, cy, radius, 0, 2 * M_PI);
         }
     }
     else if (_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_DASHED) {
@@ -366,7 +362,7 @@ void DrawingText::decorateStyle(DrawingContext &dc, double vextent, double xphas
         }
     }
     else if (_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_WAVY) {
-        double   amp  = vextent/10.0;
+        double   amp  = vextent / 20.0; // tweaked amplitude for a nice wavy look
         double   x    = ps[Geom::X];
         double   y    = ps[Geom::Y] + poff[Geom::Y];
         dc.moveTo(Geom::Point(x, y + amp * wave[i]));
