@@ -1118,10 +1118,10 @@
         </child>
         <child>
           <object class="GtkToggleButton" id="text-decor-syntax">
-            <property name="icon-name">text-syntax</property>
+            <property name="icon-name">text-spelling</property>
             <property name="hexpand">true</property>
             <property name="hexpand-set">true</property>
-            <property name="tooltip-text" translatable="yes">Text syntax error</property>
+            <property name="tooltip-text" translatable="yes">Text spelling error</property>
             <style>
               <class name="menu-btn-tight"></class>
             </style>
@@ -1214,7 +1214,7 @@
           </object>
         </child>
         <child>
-          <object class="GtkBox">
+          <object class="GtkBox" id="text-style-box">
             <child>
               <object class="GtkToggleButton" id="text-line-solid">
                 <property name="tooltip-text" translatable="yes">Solid line</property>

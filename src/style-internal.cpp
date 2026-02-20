@@ -2911,6 +2911,7 @@ SPITextDecorationLine::read( gchar const *str ) {
         line_through = false;
         blink        = false;
         spelling_error = false;
+        grammar_error = false;
     } else {
         bool found_one          = false;
         bool hit_one            = false;
@@ -2921,6 +2922,7 @@ SPITextDecorationLine::read( gchar const *str ) {
         bool found_line_through = false;
         bool found_blink        = false;
         bool found_spelling_error = false;
+        bool found_grammar_error = false;
 
         // This method ignores inlineid keys and extra delimiters, so " ,,, blink hello" will set
         // blink and ignore hello
@@ -2936,6 +2938,7 @@ SPITextDecorationLine::read( gchar const *str ) {
                     if ((slen == 12) && strneq(hstr, "line-through", slen)){  found_line_through = true; break; }
                     if ((slen ==  5) && strneq(hstr, "blink",        slen)){  found_blink        = true; break; }
                     if ((slen == 14) && strneq(hstr, "spelling-error", slen)){ found_spelling_error = true; break; }
+                    if ((slen == 13) && strneq(hstr, "grammar-error",  slen)){ found_grammar_error = true; break; }
                     if ((slen ==  4) && strneq(hstr, "none",         slen)){                             break; }
 
                     hit_one = false; // whatever this thing is, we do not recognize it
@@ -2955,9 +2958,10 @@ SPITextDecorationLine::read( gchar const *str ) {
             line_through = found_line_through;
             blink        = found_blink;
             spelling_error = found_spelling_error;
+            grammar_error = found_grammar_error;
 
             auto const has_css2_line = found_underline || found_overline || found_line_through || found_blink;
-            if (found_spelling_error && has_css2_line) {
+            if ((found_spelling_error || found_grammar_error) && has_css2_line) {
                 /* Note: When using spelling-error and grammar-error values, the browser disregards the other
                    properties in the text-decoration shorthand (such as text-underline-position, color, or stroke). */
 
@@ -2972,6 +2976,7 @@ SPITextDecorationLine::read( gchar const *str ) {
             set          = false;
             inherit      = false;
             spelling_error = false;
+            grammar_error = false;
         }
     }
 }
@@ -2985,6 +2990,7 @@ const Glib::ustring SPITextDecorationLine::get_value() const
     if (line_through) ret += "line-through ";
     if (blink) ret += "blink "; // Deprecated
     if (spelling_error) ret += "spelling-error ";
+    if (grammar_error) ret += "grammar-error ";
     if (ret.empty()) {
         ret = "none";
     } else {
@@ -3003,6 +3009,7 @@ SPITextDecorationLine::cascade( const SPIBase* const parent ) {
             line_through = p->line_through;
             blink        = p->blink;
             spelling_error = p->spelling_error;
+            grammar_error = p->grammar_error;
         }
     } else {
         std::cerr << "SPITextDecorationLine::cascade(): Incorrect parent type" << std::endl;
@@ -3021,6 +3028,7 @@ SPITextDecorationLine::merge( const SPIBase* const parent ) {
                 line_through = p->line_through;
                 blink        = p->blink;
                 spelling_error = p->spelling_error;
+                grammar_error = p->grammar_error;
             }
         }
     }
@@ -3035,6 +3043,7 @@ SPITextDecorationLine::equals(const SPIBase& rhs) const {
             (line_through == r->line_through ) &&
             (blink        == r->blink        ) &&
             (spelling_error == r->spelling_error ) &&
+            (grammar_error  == r->grammar_error  ) &&
             SPIBase::equals(rhs);
     } else {
         return false;

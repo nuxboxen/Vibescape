@@ -219,13 +219,31 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
     if (style->text_decoration_line.line_through) { text_decoration_line |= TEXT_DECORATION_LINE_LINETHROUGH + TEXT_DECORATION_LINE_SET; }
     if (style->text_decoration_line.blink       ) { text_decoration_line |= TEXT_DECORATION_LINE_BLINK       + TEXT_DECORATION_LINE_SET; }
 
-    text_decoration_style = TEXT_DECORATION_STYLE_CLEAR;
-    if (style->text_decoration_style.inherit ) { text_decoration_style |= TEXT_DECORATION_STYLE_INHERIT;                              }
-    if (style->text_decoration_style.solid   ) { text_decoration_style |= TEXT_DECORATION_STYLE_SOLID    + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.isdouble) { text_decoration_style |= TEXT_DECORATION_STYLE_ISDOUBLE + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.dotted  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DOTTED   + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.dashed  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DASHED   + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.wavy    ) { text_decoration_style |= TEXT_DECORATION_STYLE_WAVY     + TEXT_DECORATION_STYLE_SET; }
+    // Note: When using spelling-error and grammar-error values, the browser disregards the other properties
+    // in the text-decoration shorthand (such as text-underline-position, color, or stroke).
+    // They also ignore other decoration line settings, like underline, overline, etc.
+    // TODO: apply colors too? Red for spelling, green for grammar errors.
+    if (style->text_decoration_line.spelling_error || style->text_decoration_line.grammar_error) {
+        // remove other types, the browsers do not combine them with spelling/grammar error
+        text_decoration_line &=
+            ~(TEXT_DECORATION_LINE_UNDERLINE | TEXT_DECORATION_LINE_OVERLINE | TEXT_DECORATION_LINE_LINETHROUGH | TEXT_DECORATION_LINE_BLINK);
+        // add only the error type
+        text_decoration_line |=
+            (style->text_decoration_line.spelling_error ? TEXT_DECORATION_LINE_SPELLING_ERROR : TEXT_DECORATION_LINE_GRAMMAR_ERROR)
+            | TEXT_DECORATION_LINE_SET;
+
+        // for errors, always use dotted style to mimic what browsers do
+        text_decoration_style = TEXT_DECORATION_STYLE_DOTTED | TEXT_DECORATION_STYLE_SET;
+    }
+    else {
+        text_decoration_style = TEXT_DECORATION_STYLE_CLEAR;
+        if (style->text_decoration_style.inherit ) { text_decoration_style |= TEXT_DECORATION_STYLE_INHERIT;                              }
+        if (style->text_decoration_style.solid   ) { text_decoration_style |= TEXT_DECORATION_STYLE_SOLID    + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.isdouble) { text_decoration_style |= TEXT_DECORATION_STYLE_ISDOUBLE + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.dotted  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DOTTED   + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.dashed  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DASHED   + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.wavy    ) { text_decoration_style |= TEXT_DECORATION_STYLE_WAVY     + TEXT_DECORATION_STYLE_SET; }
+    }
 
     /* FIXME
        The meaning of text-decoration-color in CSS3 for SVG is ambiguous (2014-05-06).  Set

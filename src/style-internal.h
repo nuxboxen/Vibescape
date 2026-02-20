@@ -68,7 +68,7 @@ enum class SPStyleSrc : unsigned char
  * Overview:
  *   Style can be obtained (in order of precedence) [CHECK]
  *     1. "style" property in an element (style="fill:red").
- *     2. Style sheet, internal or external (<style> rect {fill:red;}</style>). 
+ *     2. Style sheet, internal or external (<style> rect {fill:red;}</style>).
  *     3. Attributes in an element (fill="red").
  *     4. Parent's style.
  *   A later property overrides an earlier property. This is implemented by
@@ -90,7 +90,7 @@ enum class SPStyleSrc : unsigned char
  *
  *   An explicitly set value (including 'inherit') has a 'true' "set" flag.
  *   The "value" is either explicitly set or inherited.
- *   The "computed" value (if present) is calculated from "value" and some other input. 
+ *   The "computed" value (if present) is calculated from "value" and some other input.
  *
  * Functions:
  *   write():    Write a property and its value to a string.
@@ -299,7 +299,7 @@ static const unsigned SP_SCALE24_MAX = 0xff0000;
 
 /// 24 bit data type internal to SPStyle.
 // Used only for opacity, fill-opacity, stroke-opacity.
-// Opacity does not inherit but stroke-opacity and fill-opacity do. 
+// Opacity does not inherit but stroke-opacity and fill-opacity do.
 class SPIScale24 : public SPIBase
 {
     static unsigned get_default() { return SP_SCALE24_MAX; }
@@ -1103,7 +1103,7 @@ public:
     const Glib::ustring get_value() const override;
     void clear() override {
         SPIBase::clear();
-        underline = false, overline = false, line_through = false, blink = false, spelling_error = false;
+        underline = false, overline = false, line_through = false, blink = false, spelling_error = false, grammar_error = false;
     }
 
     void cascade( const SPIBase* const parent ) override;
@@ -1120,6 +1120,7 @@ public:
     bool line_through : 1;
     bool blink : 1;    // "Conforming user agents are not required to support this value." yay!
     bool spelling_error : 1;
+    bool grammar_error : 1;
 };
 
 // CSS3 2.2

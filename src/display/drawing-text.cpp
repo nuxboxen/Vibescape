@@ -280,14 +280,6 @@ void DrawingText::decorateStyle(DrawingContext &dc, double vextent, double xphas
         -4, -3,  -2,  -1
         // clang-format on
     };
-    // int dots[16]={
-    //     // clang-format off
-    //     4,     3,   2,   1,
-    //     -4,   -3,  -2,  -1,
-    //     4,     3,   2,   1,
-    //     -4,   -3,  -2,  -1
-    //     // clang-format on
-    // };
     double   step = vextent/32.0;
     unsigned i  = 15 & (unsigned) round(xphase/step);  // xphase is >= 0.0
 
@@ -418,13 +410,21 @@ void DrawingText::decorateItem(DrawingContext &dc, double phase_length, bool und
 
     if( under ) {
 
-        if(_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_UNDERLINE){
+        if (_nrstyle.data.text_decoration_line &
+            (NRStyleData::TEXT_DECORATION_LINE_SPELLING_ERROR | NRStyleData::TEXT_DECORATION_LINE_GRAMMAR_ERROR)) {
+
             p1 = Geom::Point(0.0,          -_nrstyle.data.underline_position);
             p2 = Geom::Point(tsp_width_adj,-_nrstyle.data.underline_position);
             decorateStyle(dc, tsp_size_adj, xphase, p1, p2, thickness);
         }
 
-        if(_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_OVERLINE){
+        if (_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_UNDERLINE) {
+            p1 = Geom::Point(0.0,          -_nrstyle.data.underline_position);
+            p2 = Geom::Point(tsp_width_adj,-_nrstyle.data.underline_position);
+            decorateStyle(dc, tsp_size_adj, xphase, p1, p2, thickness);
+        }
+
+        if (_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_OVERLINE) {
             p1 = Geom::Point(0.0,          tsp_asc_adj -_nrstyle.data.underline_position + 1 * final_underline_thickness);
             p2 = Geom::Point(tsp_width_adj,tsp_asc_adj -_nrstyle.data.underline_position + 1 * final_underline_thickness);
             decorateStyle(dc, tsp_size_adj, xphase,  p1, p2, thickness);

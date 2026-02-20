@@ -2284,8 +2284,8 @@ private:
         if (props.strikethrough.state != PropState::Unset) {
             _strikethrough_btn.set_active(props.strikethrough.value);
         }
-        if (props.decoration_syntax_error.state != PropState::Unset) {
-            _syntax_error_btn.set_active(props.decoration_syntax_error.value);
+        if (props.decoration_spelling_error.state != PropState::Unset) {
+            _syntax_error_btn.set_active(props.decoration_spelling_error.value);
         }
 
         // writing mode: map CSS enum to button index
@@ -2326,6 +2326,9 @@ private:
             props.decoration_style.value >= 0 && props.decoration_style.value < 5) {
             for (int j = 0; j < 5; ++j) _line_style_buttons[j]->set_active(j == props.decoration_style.value);
         }
+        // decoration style is ignored for spelling/grammar error line types
+        _line_style_box.set_sensitive(props.decoration_spelling_error.state == PropState::Single && !props.decoration_spelling_error.value);
+        //TODO: consider disabling color selection too?
 
         // decoration thickness
         {
@@ -2616,6 +2619,7 @@ private:
     Gtk::ToggleButton* _orientation_buttons[3] = {}; // auto, upright, sideways
     // decoration popover
     Gtk::ToggleButton* _line_style_buttons[5] = {}; // solid, double, dotted, dashed, wavy
+    Gtk::Box& _line_style_box = get_widget<Gtk::Box>(_builder, "text-style-box");
     Gtk::CheckButton& _thickness_auto;
     Gtk::CheckButton& _thickness_font;
     Gtk::CheckButton& _thickness_custom;

@@ -221,11 +221,11 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
 
         bool syntax_error = style->text_decoration_line.spelling_error;
         if (first) {
-            props.decoration_syntax_error.value = syntax_error;
-            props.decoration_syntax_error.state = PropState::Single;
-        } else if (props.decoration_syntax_error.state != PropState::Mixed &&
-                   props.decoration_syntax_error.value != syntax_error) {
-            props.decoration_syntax_error.state = PropState::Mixed;
+            props.decoration_spelling_error.value = syntax_error;
+            props.decoration_spelling_error.state = PropState::Single;
+        } else if (props.decoration_spelling_error.state != PropState::Mixed &&
+                   props.decoration_spelling_error.value != syntax_error) {
+            props.decoration_spelling_error.state = PropState::Mixed;
         }
 
         // --- decoration style ---

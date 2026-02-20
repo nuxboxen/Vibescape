@@ -94,7 +94,9 @@ struct NRStyleData
         TEXT_DECORATION_LINE_UNDERLINE   = 0x04,
         TEXT_DECORATION_LINE_OVERLINE    = 0x08,
         TEXT_DECORATION_LINE_LINETHROUGH = 0x10,
-        TEXT_DECORATION_LINE_BLINK       = 0x20
+        TEXT_DECORATION_LINE_BLINK       = 0x20,
+        TEXT_DECORATION_LINE_SPELLING_ERROR = 0x40,
+        TEXT_DECORATION_LINE_GRAMMAR_ERROR  = 0x80
     };
 
     enum TextDecorationStyle
@@ -124,7 +126,7 @@ struct NRStyleData
     float ascender;
     float descender;
     float underline_thickness;
-    float underline_position; 
+    float underline_position;
     float line_through_thickness;
     float line_through_position;
     float font_size;
