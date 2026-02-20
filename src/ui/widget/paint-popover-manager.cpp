@@ -30,11 +30,11 @@ PaintPopoverManager::Registration::Registration(Registration&& other) noexcept {
 PaintPopoverManager::Registration& PaintPopoverManager::Registration::operator=(Registration&& other) noexcept {
     if (this != &other) {
         if (_mgr && _btn) _mgr->unregister_button(*_btn, _fill);
-        
+
         _mgr = other._mgr;
         _btn = other._btn;
         _fill = other._fill;
-        
+
         other._mgr = nullptr;
         other._btn = nullptr;
     }
@@ -65,7 +65,7 @@ PaintPopoverManager::Registration PaintPopoverManager::register_button(Gtk::Menu
             if (auto old = dynamic_cast<Gtk::MenuButton*>(data.popover->get_parent())) {
                 old->unset_popover();
             }
-            btn_ptr->set_popover(*data.popover);     
+            btn_ptr->set_popover(*data.popover);
         }
         data.clear_connections();
 
@@ -110,7 +110,7 @@ void PaintPopoverManager::SharedData::create_resources(bool is_fill) {
     paint_switch = PaintSwitch::create(false, is_fill);
     popover = std::make_unique<Gtk::Popover>();
     popover->set_child(*paint_switch);
-    Inkscape::UI::Widget::Utils::wrap_in_scrolled_window(*popover, 250);
+    Inkscape::UI::Widget::Utils::wrap_in_scrolled_window(*popover, 180);
 }
 
 void PaintPopoverManager::SharedData::clear_connections() {

@@ -123,7 +123,7 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
             //std::cerr << "NRStyleData::set: 'context-stroke': 'context_style' is NULL" << std::endl;
         }
     }
-    
+
     fill.set(style_fill);
     fill.opacity = style->fill_opacity;
 
@@ -226,17 +226,17 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
     if (style->text_decoration_style.dotted  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DOTTED   + TEXT_DECORATION_STYLE_SET; }
     if (style->text_decoration_style.dashed  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DASHED   + TEXT_DECORATION_STYLE_SET; }
     if (style->text_decoration_style.wavy    ) { text_decoration_style |= TEXT_DECORATION_STYLE_WAVY     + TEXT_DECORATION_STYLE_SET; }
- 
+
     /* FIXME
        The meaning of text-decoration-color in CSS3 for SVG is ambiguous (2014-05-06).  Set
        it for fill, for stroke, for both?  Both would seem like the obvious choice but what happens
        is that for text which is just fill (very common) it makes the lines fatter because it
        enables stroke on the decorations when it wasn't present on the text.  That contradicts the
        usual behavior where the text and decorations by default have the same fill/stroke.
-       
+
        The behavior here is that if color is defined it is applied to text_decoration_fill/stroke
        ONLY if the corresponding fill/stroke is also present.
-       
+
        Hopefully the standard will be clarified to resolve this issue.
     */
 
@@ -304,7 +304,7 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
         font_size              = style->font_size.computed;
 
         // CSS text-decoration-thickness override (not inherited — walk up to parent)
-        auto const *tdt_ptr = &style->text_decoration_thickness;
+        const auto* tdt_ptr = &style->text_decoration_thickness;
         if (!tdt_ptr->set && style->object && style->object->parent &&
             style->object->parent->style) {
             tdt_ptr = &style->object->parent->style->text_decoration_thickness;

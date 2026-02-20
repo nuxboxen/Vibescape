@@ -243,7 +243,7 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
 
         // --- decoration color (not inherited — check parent if unset) ---
         {
-            auto const *dc_ptr = &style->text_decoration_color;
+            const auto* dc_ptr = &style->text_decoration_color;
             if (!dc_ptr->set && item->parent && item->parent->style) {
                 dc_ptr = &item->parent->style->text_decoration_color;
             }
