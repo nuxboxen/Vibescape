@@ -178,7 +178,6 @@
     </child>
   </object>
   <object class="GtkGrid" id="opacity-box">    <!--dim: 5, 1-->
-
     <child>
       <object class="GtkLabel">
         <property name="halign">start</property>
@@ -190,21 +189,14 @@
       </object>
     </child>
     <child>
-      <object class="GtkBox">
-        <style>
-          <class name="linked"></class>
-        </style>
+      <object class="GtkBox" id="obj-opacity">
+        <property name="hexpand">true</property>
+        <property name="hexpand-set">true</property>
         <layout>
           <property name="column">2</property>
           <property name="row">0</property>
           <property name="column-span">2</property>
         </layout>
-        <child>
-          <object class="GtkBox" id="obj-opacity">
-            <property name="hexpand">true</property>
-            <property name="hexpand-set">true</property>
-          </object>
-        </child>
       </object>
     </child>
     <child>
@@ -219,6 +211,7 @@
         </layout>
       </object>
     </child>
+    <!-- Currently there's no good space to add the reset button: -->
     <!--    <child>-->
     <!--      <object class="GtkButton" id="reset-opacity">-->
     <!--        <property name="valign">center</property>-->
@@ -233,7 +226,6 @@
     <!--    </child>-->
   </object>
   <object class="GtkGrid" id="blend-box">    <!--dim: 5, 1-->
-
     <child>
       <object class="GtkLabel">
         <property name="halign">start</property>

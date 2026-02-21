@@ -106,7 +106,7 @@ void PaintAttribute::PaintStrip::show() {
 }
 
 bool PaintAttribute::PaintStrip::can_update() const {
-    return _current_item && _update && !_update->pending();
+    return _document && _current_item && _update && !_update->pending();
 }
 
 namespace {
@@ -256,7 +256,7 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
     _define(get_widget<Gtk::Button>(builder, "paint-add")),
     _clear(get_widget<Gtk::Button>(builder, "paint-clear")),
     _box(get_widget<Gtk::Box>(builder, "paint-buttons")),
-    _connection(PaintPopoverManager::get().register_button(_paint_btn, fill, 
+    _connection(PaintPopoverManager::get().register_button(_paint_btn, fill,
         [this]() { set_paint(_current_item); },
         [this]() { return connect_signals(); }
     ))
@@ -298,7 +298,7 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
         apply_style(css.get());
         request_update(true);
 
-        DocumentUndo::done(_current_item->document, fill ? RC_("Undo", "Remove fill") : RC_("Undo", "Remove stroke"), "dialog-fill-and-stroke", tag);
+        DocumentUndo::done(_document, fill ? RC_("Undo", "Remove fill") : RC_("Undo", "Remove stroke"), "dialog-fill-and-stroke", tag);
         // paint removed
         _toggle_definition.emit(false);
     });
@@ -319,7 +319,7 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
         sp_repr_css_set_property_double(css.get(), fill ? "fill-opacity" : "stroke-opacity", alpha);
         apply_style(css.get());
         request_update(true);
-        DocumentUndo::maybeDone(_current_item->document, fill ? "undo_fill_alpha" : "undo_stroke_alpha",
+        DocumentUndo::maybeDone(_document, fill ? "undo_fill_alpha" : "undo_stroke_alpha",
             fill ? RC_("Undo", "Set fill opacity") : RC_("Undo", "Set stroke opacity"), "dialog-fill-and-stroke", tag);
     });
 }
@@ -333,7 +333,7 @@ void PaintAttribute::PaintStrip::set_fill_rule(FillRule rule) {
     request_update(true);
     _switch->set_fill_rule(rule);
 
-    DocumentUndo::maybeDone(_current_item->document, "change-fill-rule", RC_("Undo", "Change fill rule"), "dialog-fill-and-stroke");
+    DocumentUndo::maybeDone(_document, "change-fill-rule", RC_("Undo", "Change fill rule"), "dialog-fill-and-stroke");
 };
 
 void PaintAttribute::PaintStrip::set_flat_color(const Color& color) {
@@ -354,7 +354,7 @@ void PaintAttribute::PaintStrip::set_flat_color(const Color& color) {
     apply_style(css.get());
     request_update(true);
 
-    DocumentUndo::maybeDone(_current_item->document, _is_fill ? "change-fill" : "change-stroke",
+    DocumentUndo::maybeDone(_document, _is_fill ? "change-fill" : "change-stroke",
         _is_fill ? RC_("Undo", "Set fill color") : RC_("Undo", "Set stroke color"), "dialog-fill-and-stroke", _modified_tag);
 };
 
@@ -384,7 +384,7 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
         if (auto item = cast<SPItem>(_current_item)) {
             auto kind = fill ? FILL : STROKE;
             sp_item_apply_hatch(item, hatch, kind, color, label, transform, offset, pitch, rotation, stroke);
-            DocumentUndo::maybeDone(item->document, fill ? "fill-pattern-change" : "stroke-pattern-change", fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
+            DocumentUndo::maybeDone(_document, fill ? "fill-pattern-change" : "stroke-pattern-change", fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
@@ -396,7 +396,7 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
         if (auto item = cast<SPItem>(_current_item)) {
             auto kind = fill ? FILL : STROKE;
             sp_item_apply_gradient(item, vector, _desktop, gradient_type, false, kind);
-            DocumentUndo::maybeDone(item->document, fill ? "fill-gradient-change" : "stroke-gradient-change", fill ? RC_("Undo", "Set gradient on fill") : RC_("Undo", "Set gradient on stroke"), "dialog-fill-and-stroke", tag);
+            DocumentUndo::maybeDone(_document, fill ? "fill-gradient-change" : "stroke-gradient-change", fill ? RC_("Undo", "Set gradient on fill") : RC_("Undo", "Set gradient on stroke"), "dialog-fill-and-stroke", tag);
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
@@ -407,8 +407,8 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
 
         if (auto item = cast<SPItem>(_current_item)) {
             auto kind = fill ? FILL : STROKE;
-            sp_item_apply_mesh(item, mesh, _current_item->document, kind);
-            DocumentUndo::maybeDone(item->document, fill ? "fill-mesh-change" : "stroke-mesh-change", fill ? RC_("Undo", "Set mesh on fill") : RC_("Undo", "Set mesh on stroke"), "dialog-fill-and-stroke", tag);
+            sp_item_apply_mesh(item, mesh, _document, kind);
+            DocumentUndo::maybeDone(_document, fill ? "fill-mesh-change" : "stroke-mesh-change", fill ? RC_("Undo", "Set mesh on fill") : RC_("Undo", "Set mesh on stroke"), "dialog-fill-and-stroke", tag);
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
@@ -458,7 +458,7 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
             break;
         }
         apply_style(css.get());
-        DocumentUndo::done(_current_item->document,  fill ? RC_("Undo", "Inherit fill") : RC_("Undo", "Inherit stroke"), "dialog-fill-and-stroke", tag);
+        DocumentUndo::done(_document,  fill ? RC_("Undo", "Inherit fill") : RC_("Undo", "Inherit stroke"), "dialog-fill-and-stroke", tag);
         update_preview_indicators(_current_item);
     }));
 
@@ -469,7 +469,7 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
             auto css = new_css_attr();
             sp_repr_css_unset_property(css.get(), fill ? "fill" : "stroke");
             apply_style(css.get());
-            DocumentUndo::done(_current_item->document,  fill ? RC_("Undo", "Unset fill") : RC_("Undo", "Unset stroke"), "dialog-fill-and-stroke", tag);
+            DocumentUndo::done(_document,  fill ? RC_("Undo", "Unset fill") : RC_("Undo", "Unset stroke"), "dialog-fill-and-stroke", tag);
             if (auto paint = _current_item->style->getFillOrStroke(fill)) {
                 _switch->update_from_paint(*paint);
             }
@@ -621,7 +621,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
             if (!can_update()) return;
 
             set_item_marker(_current_item, location, id, uri);
-            DocumentUndo::maybeDone(_current_item->document, "marker-change", RC_("Undo", "Set marker"), "dialog-fill-and-stroke", _modified_tag);
+            DocumentUndo::maybeDone(_document, "marker-change", RC_("Undo", "Set marker"), "dialog-fill-and-stroke", _modified_tag);
         };
 
         for (auto combo : {&_marker_start, &_marker_mid, &_marker_end}) {
@@ -657,7 +657,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         auto unit = _unit_selector.getUnit();
         set_stroke_width(_current_item, width, hairline, unit);
         update_stroke(_current_item);
-        DocumentUndo::maybeDone(_current_item->document, "set-stroke-width", RC_("Undo", "Set stroke width"), "dialog-fill-and-stroke", _modified_tag);
+        DocumentUndo::maybeDone(_document, "set-stroke-width", RC_("Undo", "Set stroke width"), "dialog-fill-and-stroke", _modified_tag);
     };
     auto set_stroke_unit = [=,this] {
         if (!can_update()) return;
@@ -671,7 +671,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
             auto scoped(_update.block());
             _current_unit = new_unit;
             set_stroke_width(_current_item, 1, hairline, new_unit);
-            DocumentUndo::maybeDone(_current_item->document, "set-stroke-unit", RC_("Undo", "Set stroke unit"), "dialog-fill-and-stroke", _modified_tag);
+            DocumentUndo::maybeDone(_document, "set-stroke-unit", RC_("Undo", "Set stroke unit"), "dialog-fill-and-stroke", _modified_tag);
         }
         else {
             // if the current unit is empty, then it's a hairline, b/c it's not in a unit table
@@ -693,7 +693,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
 
         auto scoped(_update.block());
         set_item_style_str(_current_item, attr, value);
-        DocumentUndo::maybeDone(_current_item->document, "set-stroke-style", RC_("Undo", "Set stroke style"), "dialog-fill-and-stroke", _modified_tag);
+        DocumentUndo::maybeDone(_document, "set-stroke-style", RC_("Undo", "Set stroke style"), "dialog-fill-and-stroke", _modified_tag);
         update_stroke(_current_item);
     };
     auto set_stroke_miter_limit = [this](double limit) {
@@ -701,7 +701,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
 
         auto scoped(_update.block());
         set_item_style_dbl(_current_item, "stroke-miterlimit", limit);
-        DocumentUndo::maybeDone(_current_item->document, "set-stroke-miter-limit", RC_("Undo", "Set stroke miter"), "dialog-fill-and-stroke", _modified_tag);
+        DocumentUndo::maybeDone(_document, "set-stroke-miter-limit", RC_("Undo", "Set stroke miter"), "dialog-fill-and-stroke", _modified_tag);
     };
     _stroke_width.signal_value_changed().connect([=,this](auto value) {
         set_stroke(value);
@@ -759,7 +759,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         // update menu selection if the user edits a dash pattern
         auto [vec, offset2] = getDashFromStyle(item->style);
         _dash_selector.set_dash_pattern(vec, offset2);
-        DocumentUndo::maybeDone(_current_item->document, "set-dash-pattern", RC_("Undo", "Set stroke dash pattern"), "dialog-fill-and-stroke", _modified_tag);
+        DocumentUndo::maybeDone(_document, "set-dash-pattern", RC_("Undo", "Set stroke dash pattern"), "dialog-fill-and-stroke", _modified_tag);
     };
     _dash_selector.changed_signal.connect([=](auto change) {
         set_dash(change == DashSelector::Pattern);
@@ -788,7 +788,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         }
         update_reset_opacity_button();
         request_item_update(item, _modified_tag);
-        DocumentUndo::done(item->document, clear ? RC_("Undo", "Clear opacity") : RC_("Undo", "Set opacity"), "dialog-fill-and-stroke", _modified_tag);
+        DocumentUndo::done(_document, clear ? RC_("Undo", "Clear opacity") : RC_("Undo", "Set opacity"), "dialog-fill-and-stroke", _modified_tag);
     };
     _opacity.signal_value_changed().connect([=,this](auto value){ set_object_opacity(value, false); });
     //TODO: there's no place for opacity reset button, so it's been removed
@@ -805,7 +805,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
                 _blend.set_active_by_id(SP_CSS_BLEND_NORMAL);
             }
             update_reset_blend_button();
-            DocumentUndo::done(_current_item->document, clear ? RC_("Undo", "Clear blending mode") : RC_("Undo", "Set blending mode"), "dialog-fill-and-stroke", _modified_tag);
+            DocumentUndo::done(_document, clear ? RC_("Undo", "Clear blending mode") : RC_("Undo", "Set blending mode"), "dialog-fill-and-stroke", _modified_tag);
         }
     };
     _blend.signal_changed().connect([=,this] {
@@ -819,9 +819,13 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
 }
 
 void PaintAttribute::set_document(SPDocument* document) {
+    _document = document;
+
     for (auto combo : {&_marker_start, &_marker_mid, &_marker_end}) {
         combo->setDocument(document);
     }
+    _fill._document = document;
+    _stroke._document = document;
     if (_fill._switch) _fill._switch->set_document(document);
     if (_stroke._switch) _stroke._switch->set_document(document);
 }
@@ -964,7 +968,7 @@ void PaintAttribute::update_stroke(SPItem* item) {
 }
 
 bool PaintAttribute::can_update() const {
-    return _current_item && _current_item->style && !_update.pending();
+    return _document && _current_item && _current_item->style && !_update.pending();
 }
 
 void PaintAttribute::update_reset_opacity_button() {

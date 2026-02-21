@@ -31,6 +31,9 @@
 #include "ui/widget/paint-popover-manager.h"
 #include "widget-group.h"
 
+class SPDocument;
+class SPDesktop;
+
 namespace Inkscape::UI::Widget {
 
 class PaintAttribute {
@@ -92,6 +95,7 @@ private:
         bool can_update() const;
         std::vector<sigc::connection> connect_signals();
 
+        SPDocument* _document = nullptr;
         Glib::RefPtr<Gtk::Builder> _builder;
         Gtk::Grid& _main;
         sigc::signal<void (bool)> _toggle_definition;
@@ -136,6 +140,7 @@ private:
     WidgetGroup _stroke_widgets;
     OperationBlocker _update;
     SPDesktop* _desktop = nullptr;
+    SPDocument* _document = nullptr;
     const Unit* _current_unit = nullptr;
     Parts _added_parts;
     unsigned int _modified_tag;
