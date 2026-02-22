@@ -9,7 +9,6 @@
 #include "style-utils.h"
 
 #include <functional>
-#include <string>
 #include "object/sp-item.h"
 #include "object/sp-item-group.h"
 #include "object/sp-linear-gradient.h"
@@ -73,18 +72,6 @@ PaintProp classify_paint(const SPIPaint& paint) {
     return p;
 }
 
-// Update a simple scalar property field: on a first call, set the value and state to Single;
-// on subsequent calls, compare the value and set state to Mixed if different.
-template<typename Field, typename T>
-void merge_scalar(Field& field, T value, bool first) {
-    if (first) {
-        field.value = value;
-        field.state = StylePropState::Single;
-    } else if (field.state != StylePropState::Mixed && field.value != value) {
-        field.state = StylePropState::Mixed;
-    }
-}
-
 // Visit items recursively, invoking fn for each leaf item (no temp allocation).
 void visit_items(SPItem* item, StyleQueryFlags flags, const std::function<void(SPItem*)>& fn) {
     if (!item) return;
@@ -104,141 +91,76 @@ void visit_items(SPItem* item, StyleQueryFlags flags, const std::function<void(S
     }
 }
 
-// Merge one item's style into props. first==true initialises all fields.
-void merge_item_style(StyleProperties& props, SPItem* item, bool first) {
+// Merge one item's style into props.
+void merge_item_style(StyleProperties& props, SPItem* item) {
     auto* style = item->style;
     if (!style) return;
 
     // --- fill ---
-    {
-        auto cur = classify_paint(style->fill);
-        if (first) {
-            props.fill = cur;
-            props.fill.state = StylePropState::Single;
-        } else if (props.fill.state != StylePropState::Mixed && props.fill != cur) {
-            props.fill.state = StylePropState::Mixed;
-        }
+    if (!props.fill.is_mixed()) {
+        props.fill.merge(classify_paint(style->fill));
     }
 
-    // --- fill-opacity ---
-    merge_scalar(props.fill_opacity, static_cast<double>(style->fill_opacity), first);
-
-    // --- fill-rule ---
-    merge_scalar(props.fill_rule, static_cast<int>(style->fill_rule.computed), first);
+    props.fill_opacity.merge(static_cast<double>(style->fill_opacity));
+    props.fill_rule.merge(static_cast<int>(style->fill_rule.computed));
 
     // --- stroke ---
-    {
-        auto cur = classify_paint(style->stroke);
-        if (first) {
-            props.stroke = cur;
-            props.stroke.state = StylePropState::Single;
-        } else if (props.stroke.state != StylePropState::Mixed && props.stroke != cur) {
-            props.stroke.state = StylePropState::Mixed;
-        }
+    if (!props.stroke.is_mixed()) {
+        props.stroke.merge(classify_paint(style->stroke));
     }
 
-    // --- stroke-opacity ---
-    merge_scalar(props.stroke_opacity, static_cast<double>(style->stroke_opacity), first);
+    props.stroke_opacity.merge(static_cast<double>(style->stroke_opacity));
 
-    // --- stroke-width (in px, before item transform) ---
+    // --- stroke-width ---
     {
         bool hairline = style->stroke_extensions.hairline;
         double width = hairline ? 0.0 : style->stroke_width.computed;
-        if (first) {
-            props.stroke_width.value   = width;
-            props.stroke_width.hairline = hairline;
-            props.stroke_width.state   = StylePropState::Single;
-        } else if (props.stroke_width.state != StylePropState::Mixed) {
-            if (props.stroke_width.hairline != hairline || props.stroke_width.value != width) {
-                props.stroke_width.state = StylePropState::Mixed;
-            }
-        }
+        props.stroke_width.merge(StrokeWidthProp{width, hairline});
     }
 
-    // --- stroke-linecap ---
-    merge_scalar(props.stroke_linecap, static_cast<int>(style->stroke_linecap.value), first);
-
-    // --- stroke-linejoin ---
-    merge_scalar(props.stroke_linejoin, static_cast<int>(style->stroke_linejoin.value), first);
-
-    // --- stroke-miterlimit ---
-    merge_scalar(props.stroke_miterlimit, style->stroke_miterlimit.value, first);
+    props.stroke_linecap.merge(static_cast<int>(style->stroke_linecap.value));
+    props.stroke_linejoin.merge(static_cast<int>(style->stroke_linejoin.value));
+    props.stroke_miterlimit.merge(style->stroke_miterlimit.value);
 
     // --- stroke-dasharray + dashoffset ---
-    {
-        std::vector<double> dashes;
-        dashes.reserve(style->stroke_dasharray.values.size());
+    if (!props.stroke_dash.is_mixed()) {
+        StrokeDashProp sd;
+        sd.dashes.reserve(style->stroke_dasharray.values.size());
         for (auto& d : style->stroke_dasharray.values) {
-            dashes.push_back(d.computed);
+            sd.dashes.push_back(d.computed);
         }
-        double offset = style->stroke_dashoffset.computed;
-        if (first) {
-            props.stroke_dash.dashes = std::move(dashes);
-            props.stroke_dash.offset = offset;
-            props.stroke_dash.state  = StylePropState::Single;
-        } else if (props.stroke_dash.state != StylePropState::Mixed) {
-            if (props.stroke_dash.dashes != dashes || props.stroke_dash.offset != offset) {
-                props.stroke_dash.state = StylePropState::Mixed;
-            }
-        }
+        sd.offset = style->stroke_dashoffset.computed;
+        props.stroke_dash.merge(std::move(sd));
     }
 
     // --- markers ---
-    auto merge_marker = [&](auto& field, const SPIString& marker_prop) {
-        std::string uri = marker_prop.value() ? marker_prop.value() : "";
-        if (first) {
-            field.uri   = uri;
-            field.state = StylePropState::Single;
-        } else if (field.state != StylePropState::Mixed && field.uri != uri) {
-            field.state = StylePropState::Mixed;
-        }
-    };
-    merge_marker(props.marker_start, style->marker_start);
-    merge_marker(props.marker_mid,   style->marker_mid);
-    merge_marker(props.marker_end,   style->marker_end);
+    props.marker_start.merge(style->marker_start.value() ? style->marker_start.value() : "");
+    props.marker_mid.merge(style->marker_mid.value()     ? style->marker_mid.value()   : "");
+    props.marker_end.merge(style->marker_end.value()     ? style->marker_end.value()   : "");
 
     // --- paint-order ---
-    {
-        std::string order_str = style->paint_order.set ? style->paint_order.value : "normal";
-        if (first) {
-            props.paint_order.value = order_str;
-            props.paint_order.state = StylePropState::Single;
-        } else if (props.paint_order.state != StylePropState::Mixed && props.paint_order.value != order_str) {
-            props.paint_order.state = StylePropState::Mixed;
-        }
-    }
+    props.paint_order.merge(style->paint_order.set ? style->paint_order.value : "normal");
 
-    // --- opacity ---
-    merge_scalar(props.opacity, static_cast<double>(style->opacity), first);
+    props.opacity.merge(static_cast<double>(style->opacity));
 
     // --- blend mode ---
     {
         int blend = style->mix_blend_mode.set
             ? static_cast<int>(style->mix_blend_mode.value)
             : static_cast<int>(SP_CSS_BLEND_NORMAL);
-        merge_scalar(props.blend_mode, blend, first);
+        props.blend_mode.merge(blend);
     }
 
-    // --- visibility ---
-    {
-        bool hidden = item->isExplicitlyHidden();
-        if (first) {
-            props.visibility.hidden = hidden;
-            props.visibility.state  = StylePropState::Single;
-        } else if (props.visibility.state != StylePropState::Mixed && props.visibility.hidden != hidden) {
-            props.visibility.state = StylePropState::Mixed;
-        }
-    }
+    props.visibility.merge(item->isExplicitlyHidden());
 }
 
 } // anonymous namespace
 
 namespace detail {
 
-void query_style_impl(StyleProperties& props, bool& first, SPItem* item, StyleQueryFlags flags) {
+void query_style_impl(StyleProperties& props, SPItem* item, StyleQueryFlags flags) {
     visit_items(item, flags, [&](SPItem* leaf) {
-        merge_item_style(props, leaf, first);
-        first = false;
+        merge_item_style(props, leaf);
     });
 }
 

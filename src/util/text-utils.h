@@ -9,14 +9,16 @@
 #ifndef INKSCAPE_TEXT_UTILS_H
 #define INKSCAPE_TEXT_UTILS_H
 
+#include <glibmm/ustring.h>
 #include <optional>
+#include <pangomm/fontdescription.h>
 #include <string>
 #include <vector>
-#include <glibmm/ustring.h>
-#include <pangomm.h>
+
 #include "colors/color.h"
-#include "style-enums.h"
 #include "style-internal.h"
+#include "util/units.h"
+#include "mixed-property.h"
 
 class SPCSSAttr;
 class SPDesktop;
@@ -35,38 +37,50 @@ namespace Inkscape {
 //
 int get_text_align_button_index(bool rtl, SPCSSTextAlign text_align);
 
-// State of a queried text property across one or more items.
-enum class PropState { Unset, Single, Mixed };
+
+// Value type for font scripts: superscript and subscript flags.
+struct FontScriptsProp {
+    bool superscript = false;
+    bool subscript = false;
+    bool operator==(const FontScriptsProp&) const = default;
+};
+
+// Value type for decoration thickness: value + auto/from-font flags.
+struct DecorationThicknessProp {
+    double value = 0;
+    bool auto_val = true;
+    bool from_font = false;
+    bool operator==(const DecorationThicknessProp&) const = default;
+};
 
 // Resolved text property values with per-property mixed-state flags.
 // For mixed properties, the value is from the first encountered style.
 struct TextProperties {
     // numeric
-    struct { double value = 0; PropState state = PropState::Unset; } font_size; // value in px
-    struct { double value = 0; PropState state = PropState::Unset; } line_height;
-    struct { int unit = 0; } line_height_unit;
-    struct { double value = 0; PropState state = PropState::Unset; } letter_spacing;
-    struct { double value = 0; PropState state = PropState::Unset; } word_spacing;
+    mixed_property<double> font_size{0}; // value in px
+    mixed_property<double> line_height{0};
+    mixed_property<int> line_height_unit{0};
+    mixed_property<double> letter_spacing{0};
+    mixed_property<double> word_spacing{0};
     // font identity
-    struct { Glib::ustring family; PropState state = PropState::Unset; } font_family;
-    struct { Glib::ustring style; PropState state = PropState::Unset; } font_style;
-    struct { SPIFontVariationSettings settings; PropState state = PropState::Unset; } font_variation;
+    mixed_property<Glib::ustring> font_family;
+    mixed_property<Glib::ustring> font_style;
+    mixed_property<SPIFontVariationSettings> font_variation;
     // enums
-    struct { int value = -1; PropState state = PropState::Unset; } text_align;   // button index 0-3
-    struct { int value = 0; PropState state = PropState::Unset; } writing_mode;
-    struct { int value = 0; PropState state = PropState::Unset; } direction;
-    struct { int value = 0; PropState state = PropState::Unset; } text_orientation;
+    mixed_property<int> text_align{-1};   // button index 0-3
+    mixed_property<int> writing_mode{0};
+    mixed_property<int> direction{0};
+    mixed_property<int> text_orientation{0};
     // booleans / toggles
-    struct { bool value = false; PropState state = PropState::Unset; } superscript;
-    struct { bool value = false; PropState state = PropState::Unset; } subscript;
-    struct { bool value = false; PropState state = PropState::Unset; } underline;
-    struct { bool value = false; PropState state = PropState::Unset; } overline;
-    struct { bool value = false; PropState state = PropState::Unset; } strikethrough;
+    mixed_property<FontScriptsProp> scripts;
+    mixed_property<bool> underline{false};
+    mixed_property<bool> overline{false};
+    mixed_property<bool> strikethrough{false};
     // decoration extras
-    struct { bool value = false; PropState state = PropState::Unset; } decoration_spelling_error;
-    struct { int value = 0; PropState state = PropState::Unset; } decoration_style; // 0=solid,1=double,2=dotted,3=dashed,4=wavy
-    struct { std::optional<Colors::Color> color; PropState state = PropState::Unset; } decoration_color;
-    struct { double value = 0; bool auto_val = true; bool from_font = false; PropState state = PropState::Unset; } decoration_thickness;
+    mixed_property<bool> decoration_spelling_error{false};
+    mixed_property<int> decoration_style{0}; // 0=solid,1=double,2=dotted,3=dashed,4=wavy
+    mixed_property<std::optional<Colors::Color>> decoration_color;
+    mixed_property<DecorationThicknessProp> decoration_thickness;
 };
 
 // Query text properties from a list of items (tspans, flowparas, or text elements).

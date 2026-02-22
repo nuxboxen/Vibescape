@@ -16,6 +16,7 @@
 #include "colors/color.h"
 #include "style-enums.h"
 #include "ui/widget/paint-enums.h"
+#include "mixed-property.h"
 
 class SPItem;
 class SPGradient;
@@ -32,11 +33,7 @@ class SPHatch;
 
 namespace Inkscape {
 
-// Reuse PropState from text-utils — same semantics.
-// Unset: no items visited yet; Single: all items agree; Mixed: items differ.
-enum class StylePropState { Unset, Single, Mixed };
-
-// Paint state for a single fill or stroke attribute, with all the
+// Paint value type for a single fill or stroke attribute, with all the
 // possible combinations of paint types.
 struct PaintProp {
     UI::Widget::PaintMode mode = UI::Widget::PaintMode::None;
@@ -61,55 +58,56 @@ struct PaintProp {
     // Derived: how the paint is inherited.
     UI::Widget::PaintDerivedMode derived_mode = UI::Widget::PaintDerivedMode::Unset;
 
-    StylePropState state = StylePropState::Unset;
+    bool operator==(const PaintProp&) const = default;
+};
 
-    bool operator == (const PaintProp& o) const {
-        return mode            == o.mode
-            && color           == o.color
-            && linear          == o.linear
-            && radial          == o.radial
-            && swatch          == o.swatch
-            && mesh            == o.mesh
-            && pattern         == o.pattern
-            && hatch           == o.hatch
-            && derived_mode    == o.derived_mode;
-    }
-    bool operator != (const PaintProp& o) const { return !(*this == o); }
+// Value type for stroke-width: width in px plus hairline flag.
+struct StrokeWidthProp {
+    double value    = 1.0;
+    bool   hairline = false;
+    bool operator==(const StrokeWidthProp&) const = default;
+};
+
+// Value type for stroke-dasharray + dashoffset.
+struct StrokeDashProp {
+    std::vector<double> dashes;
+    double offset = 0.0;
+    bool operator==(const StrokeDashProp&) const = default;
 };
 
 // Resolved style property values across one or more items.
-// For mixed properties, the value field holds the first encountered value.
+// For mixed properties, the stored value is the first encountered value.
 struct StyleProperties {
     // --- fill ---
-    PaintProp fill;
-    struct { double value = 1.0; StylePropState state = StylePropState::Unset; } fill_opacity;
-    struct { int value = 0; StylePropState state = StylePropState::Unset; } fill_rule; // SP_WIND_RULE_*
+    mixed_property<PaintProp> fill;
+    mixed_property<double>    fill_opacity{1.0};
+    mixed_property<int>       fill_rule{0};            // SP_WIND_RULE_*
 
     // --- stroke ---
-    PaintProp stroke;
-    struct { double value = 1.0; StylePropState state = StylePropState::Unset; } stroke_opacity;
+    mixed_property<PaintProp> stroke;
+    mixed_property<double>    stroke_opacity{1.0};
 
     // --- stroke geometry ---
-    struct { double value = 1.0; bool hairline = false; StylePropState state = StylePropState::Unset; } stroke_width; // in px (document units, before item transform)
-    struct { int value = SP_STROKE_LINECAP_BUTT; StylePropState state = StylePropState::Unset; } stroke_linecap;
-    struct { int value = SP_STROKE_LINEJOIN_MITER; StylePropState state = StylePropState::Unset; } stroke_linejoin;
-    struct { double value = 4.0; StylePropState state = StylePropState::Unset; } stroke_miterlimit;
-    struct { std::vector<double> dashes; double offset = 0.0; StylePropState state = StylePropState::Unset; } stroke_dash;
+    mixed_property<StrokeWidthProp> stroke_width;        // in px (document units, before item transform)
+    mixed_property<int>            stroke_linecap{SP_STROKE_LINECAP_BUTT};
+    mixed_property<int>            stroke_linejoin{SP_STROKE_LINEJOIN_MITER};
+    mixed_property<double>         stroke_miterlimit{4.0};
+    mixed_property<StrokeDashProp>  stroke_dash;
 
     // --- markers ---
-    struct { std::string uri; StylePropState state = StylePropState::Unset; } marker_start;
-    struct { std::string uri; StylePropState state = StylePropState::Unset; } marker_mid;
-    struct { std::string uri; StylePropState state = StylePropState::Unset; } marker_end;
+    mixed_property<std::string> marker_start;
+    mixed_property<std::string> marker_mid;
+    mixed_property<std::string> marker_end;
 
     // --- paint order ---
-    struct { std::string value; StylePropState state = StylePropState::Unset; } paint_order; // CSS string e.g. "stroke fill markers"
+    mixed_property<std::string> paint_order;        // CSS string e.g. "stroke fill markers"
 
     // --- opacity & blend ---
-    struct { double value = 1.0; StylePropState state = StylePropState::Unset; } opacity;
-    struct { int value = SP_CSS_BLEND_NORMAL; StylePropState state = StylePropState::Unset; } blend_mode;
+    mixed_property<double> opacity{1.0};
+    mixed_property<int>    blend_mode{SP_CSS_BLEND_NORMAL};
 
     // --- visibility ---
-    struct { bool hidden = false; StylePropState state = StylePropState::Unset; } visibility;
+    mixed_property<bool>   visibility{false};        // true = hidden
 };
 
 // Flags controlling which items are visited during iteration.
@@ -128,16 +126,14 @@ inline bool operator&(StyleQueryFlags a, StyleQueryFlags b) {
 
 namespace detail {
 // Implemented in style-utils.cpp; visits leaf items and merges their style into props.
-void query_style_impl(StyleProperties& props, bool& first,
-                      SPItem* item, StyleQueryFlags flags);
+void query_style_impl(StyleProperties& props, SPItem* item, StyleQueryFlags flags);
 } // namespace detail
 
 // Query style properties from a single item.
 inline StyleProperties query_style_properties(SPItem* item,
                                               StyleQueryFlags flags = StyleQueryFlags::None) {
     StyleProperties props;
-    bool first = true;
-    detail::query_style_impl(props, first, item, flags);
+    detail::query_style_impl(props, item, flags);
     return props;
 }
 
@@ -147,9 +143,8 @@ template<std::ranges::input_range Range>
 StyleProperties query_style_properties(Range&& items,
                                        StyleQueryFlags flags = StyleQueryFlags::None) {
     StyleProperties props;
-    bool first = true;
     for (SPItem* item : items) {
-        detail::query_style_impl(props, first, item, flags);
+        detail::query_style_impl(props, item, flags);
     }
     return props;
 }

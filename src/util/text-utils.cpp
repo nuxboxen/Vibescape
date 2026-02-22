@@ -22,6 +22,7 @@
 #include "object/sp-tref.h"
 #include "object/sp-tspan.h"
 #include "style.h"
+#include "style-internal.h"
 #include "text-editing.h"
 #include "ui/tools/text-tool.h"
 #include "xml/repr.h"
@@ -45,7 +46,6 @@ bool is_textual_item(SPObject const* obj) {
 
 TextProperties query_text_properties(const std::vector<SPItem*>& items) {
     TextProperties props;
-    bool first = true;
 
     for (auto item : items) {
         if (!item || !is_textual_item(item)) continue;
@@ -55,12 +55,7 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
 
         // --- font family ---
         auto family = style->font_family.value() ? Glib::ustring(style->font_family.value()) : Glib::ustring();
-        if (first) {
-            props.font_family.family = family;
-            props.font_family.state = PropState::Single;
-        } else if (props.font_family.state != PropState::Mixed && props.font_family.family != family) {
-            props.font_family.state = PropState::Mixed;
-        }
+        props.font_family.merge(family);
 
         // --- font style (face style string for combo lookup) ---
         // Build a Pango description from the CSS font properties and extract the face style
@@ -76,29 +71,13 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
         desc.set_weight(static_cast<Pango::Weight>(style->font_weight.computed));
         desc.set_stretch(static_cast<Pango::Stretch>(style->font_stretch.computed));
         auto face_style = get_face_style(desc);
-        if (first) {
-            props.font_style.style = face_style;
-            props.font_style.state = PropState::Single;
-        } else if (props.font_style.state != PropState::Mixed && props.font_style.style != face_style) {
-            props.font_style.state = PropState::Mixed;
-        }
+        props.font_style.merge(face_style);
 
         // --- font variation settings ---
-        if (first) {
-            props.font_variation.settings = style->font_variation_settings;
-            props.font_variation.state = PropState::Single;
-        } else if (props.font_variation.state != PropState::Mixed && !props.font_variation.settings.equals(style->font_variation_settings)) {
-            props.font_variation.state = PropState::Mixed;
-        }
+        props.font_variation.merge(style->font_variation_settings);
 
         // --- font size ---
-        double sz = style->font_size.computed;
-        if (first) {
-            props.font_size.value = sz;
-            props.font_size.state = PropState::Single;
-        } else if (props.font_size.state != PropState::Mixed && props.font_size.value != sz) {
-            props.font_size.state = PropState::Mixed;
-        }
+        props.font_size.merge(style->font_size.computed);
 
         // --- line height ---
         double lh = style->line_height.computed;
@@ -111,68 +90,30 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
                    style->line_height.unit == SP_CSS_UNIT_EX) {
             lh = style->line_height.value;
         }
-        if (first) {
-            props.line_height.value = lh;
-            props.line_height.state = PropState::Single;
-            props.line_height_unit.unit = lh_unit;
-        } else if (props.line_height.state != PropState::Mixed && props.line_height.value != lh) {
-            props.line_height.state = PropState::Mixed;
-        }
+        props.line_height.merge(lh);
+        props.line_height_unit.merge(lh_unit);
 
         // --- letter spacing ---
         double ls = style->letter_spacing.normal ? 0.0 : style->letter_spacing.computed;
-        if (first) {
-            props.letter_spacing.value = ls;
-            props.letter_spacing.state = PropState::Single;
-        } else if (props.letter_spacing.state != PropState::Mixed && props.letter_spacing.value != ls) {
-            props.letter_spacing.state = PropState::Mixed;
-        }
+        props.letter_spacing.merge(ls);
 
         // --- word spacing ---
         double ws = style->word_spacing.normal ? 0.0 : style->word_spacing.computed;
-        if (first) {
-            props.word_spacing.value = ws;
-            props.word_spacing.state = PropState::Single;
-        } else if (props.word_spacing.state != PropState::Mixed && props.word_spacing.value != ws) {
-            props.word_spacing.state = PropState::Mixed;
-        }
+        props.word_spacing.merge(ws);
 
         // --- text align ---
         bool rtl = (style->direction.computed == SP_CSS_DIRECTION_RTL);
         int align_idx = get_text_align_button_index(rtl, static_cast<SPCSSTextAlign>(style->text_align.computed));
-        if (first) {
-            props.text_align.value = align_idx;
-            props.text_align.state = PropState::Single;
-        } else if (props.text_align.state != PropState::Mixed && props.text_align.value != align_idx) {
-            props.text_align.state = PropState::Mixed;
-        }
+        props.text_align.merge(align_idx);
 
         // --- writing mode ---
-        int wm = style->writing_mode.computed;
-        if (first) {
-            props.writing_mode.value = wm;
-            props.writing_mode.state = PropState::Single;
-        } else if (props.writing_mode.state != PropState::Mixed && props.writing_mode.value != wm) {
-            props.writing_mode.state = PropState::Mixed;
-        }
+        props.writing_mode.merge(style->writing_mode.computed);
 
         // --- direction ---
-        int dir = style->direction.computed;
-        if (first) {
-            props.direction.value = dir;
-            props.direction.state = PropState::Single;
-        } else if (props.direction.state != PropState::Mixed && props.direction.value != dir) {
-            props.direction.state = PropState::Mixed;
-        }
+        props.direction.merge(style->direction.computed);
 
         // --- text orientation ---
-        int orient = style->text_orientation.computed;
-        if (first) {
-            props.text_orientation.value = orient;
-            props.text_orientation.state = PropState::Single;
-        } else if (props.text_orientation.state != PropState::Mixed && props.text_orientation.value != orient) {
-            props.text_orientation.state = PropState::Mixed;
-        }
+        props.text_orientation.merge(style->text_orientation.computed);
 
         // --- baseline shift (superscript / subscript) ---
         // Only report if baseline_shift is explicitly set on this element
@@ -181,52 +122,19 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
                 style->baseline_shift.literal == SP_CSS_BASELINE_SHIFT_SUPER;
             bool is_sub = style->baseline_shift.type == SP_BASELINE_SHIFT_LITERAL &&
                 style->baseline_shift.literal == SP_CSS_BASELINE_SHIFT_SUB;
-            if (props.superscript.state == PropState::Unset) {
-                props.superscript.value = is_super;
-                props.superscript.state = PropState::Single;
-                props.subscript.value = is_sub;
-                props.subscript.state = PropState::Single;
-            } else {
-                if (props.superscript.state != PropState::Mixed && props.superscript.value != is_super) {
-                    props.superscript.state = PropState::Mixed;
-                }
-                if (props.subscript.state != PropState::Mixed && props.subscript.value != is_sub) {
-                    props.subscript.state = PropState::Mixed;
-                }
-            }
+            props.scripts.merge(FontScriptsProp{is_super, is_sub});
         }
 
         // --- text decorations ---
         bool ul = style->text_decoration_line.underline;
         bool ol = style->text_decoration_line.overline;
         bool st = style->text_decoration_line.line_through;
-        if (first) {
-            props.underline.value = ul;
-            props.underline.state = PropState::Single;
-            props.overline.value = ol;
-            props.overline.state = PropState::Single;
-            props.strikethrough.value = st;
-            props.strikethrough.state = PropState::Single;
-        } else {
-            if (props.underline.state != PropState::Mixed && props.underline.value != ul) {
-                props.underline.state = PropState::Mixed;
-            }
-            if (props.overline.state != PropState::Mixed && props.overline.value != ol) {
-                props.overline.state = PropState::Mixed;
-            }
-            if (props.strikethrough.state != PropState::Mixed && props.strikethrough.value != st) {
-                props.strikethrough.state = PropState::Mixed;
-            }
-        }
+        props.underline.merge(ul);
+        props.overline.merge(ol);
+        props.strikethrough.merge(st);
 
         bool syntax_error = style->text_decoration_line.spelling_error;
-        if (first) {
-            props.decoration_spelling_error.value = syntax_error;
-            props.decoration_spelling_error.state = PropState::Single;
-        } else if (props.decoration_spelling_error.state != PropState::Mixed &&
-                   props.decoration_spelling_error.value != syntax_error) {
-            props.decoration_spelling_error.state = PropState::Mixed;
-        }
+        props.decoration_spelling_error.merge(syntax_error);
 
         // --- decoration style ---
         int ds = 0; // solid by default
@@ -234,12 +142,7 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
         else if (style->text_decoration_style.dotted) ds = 2;
         else if (style->text_decoration_style.dashed) ds = 3;
         else if (style->text_decoration_style.wavy) ds = 4;
-        if (first) {
-            props.decoration_style.value = ds;
-            props.decoration_style.state = PropState::Single;
-        } else if (props.decoration_style.state != PropState::Mixed && props.decoration_style.value != ds) {
-            props.decoration_style.state = PropState::Mixed;
-        }
+        props.decoration_style.merge(ds);
 
         // --- decoration color (not inherited — check parent if unset) ---
         {
@@ -249,14 +152,8 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
             }
             bool dc_is_set = dc_ptr->set && !dc_ptr->inherit;
             auto dc = dc_is_set ? std::optional<Colors::Color>(dc_ptr->getColor()) : std::nullopt;
-            if (first) {
-                props.decoration_color.color = dc;
-                props.decoration_color.state = dc_is_set ? PropState::Single : PropState::Unset;
-            } else if (props.decoration_color.state != PropState::Mixed) {
-                if (dc_is_set != (props.decoration_color.state == PropState::Single) ||
-                    props.decoration_color.color != dc) {
-                    props.decoration_color.state = PropState::Mixed;
-                }
+            if (dc_is_set) {
+                props.decoration_color.merge(dc);
             }
         }
 
@@ -267,24 +164,12 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
                 tdt_ptr = &item->parent->style->text_decoration_thickness;
             }
             auto& tdt = *tdt_ptr;
-            double tv = tdt.computed;
-            bool ta = tdt.auto_val;
-            bool tf = tdt.from_font;
-            if (first) {
-                props.decoration_thickness.value = tv;
-                props.decoration_thickness.auto_val = ta;
-                props.decoration_thickness.from_font = tf;
-                props.decoration_thickness.state = tdt.set ? PropState::Single : PropState::Unset;
-            } else if (props.decoration_thickness.state != PropState::Mixed) {
-                if (props.decoration_thickness.auto_val != ta ||
-                    props.decoration_thickness.from_font != tf ||
-                    (!ta && !tf && props.decoration_thickness.value != tv)) {
-                    props.decoration_thickness.state = PropState::Mixed;
-                }
+            if (tdt.set) {
+                props.decoration_thickness.merge(DecorationThicknessProp{
+                    tdt.computed, tdt.auto_val, tdt.from_font
+                });
             }
         }
-
-        first = false;
     }
 
     return props;

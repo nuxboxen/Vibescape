@@ -2149,21 +2149,21 @@ private:
         static const Glib::ustring mixed_text = "…";
 
         // font size (stored in px, convert to display unit)
-        if (props.font_size.state == PropState::Mixed) {
+        if (props.font_size.is_mixed()) {
             auto unit = _tracker_fs->getActiveUnit();
-            double display_val = Util::Quantity::convert(props.font_size.value, "px", unit);
+            double display_val = Util::Quantity::convert(props.font_size.value(), "px", unit);
             _font_size.set_value(display_val);
             _font_size.set_placeholder(mixed_text);
-        } else if (props.font_size.state == PropState::Single) {
+        } else if (props.font_size.is_single()) {
             auto unit = _tracker_fs->getActiveUnit();
-            double display_val = Util::Quantity::convert(props.font_size.value, "px", unit);
+            double display_val = Util::Quantity::convert(props.font_size.value(), "px", unit);
             _font_size.set_value(display_val);
         }
 
         // line height — set tracker unit and convert value for display
         {
-            int lh_unit = props.line_height_unit.unit;
-            double height = props.line_height.value;
+            int lh_unit = props.line_height_unit.value();
+            double height = props.line_height.value();
 
             // For absolute units stored in px, convert to display unit
             if (!is_relative_unit(lh_unit)) {
@@ -2191,70 +2191,70 @@ private:
             // Save unit for conversion on unit change
             _lineheight_unit = lh_unit;
 
-            if (props.line_height.state == PropState::Mixed) {
+            if (props.line_height.is_mixed()) {
                 _line_height.set_value(height);
                 _line_height.set_placeholder(mixed_text);
-            } else if (props.line_height.state == PropState::Single) {
+            } else if (props.line_height.is_single()) {
                 _line_height.set_value(height);
             }
         }
 
         // letter spacing
-        if (props.letter_spacing.state == PropState::Mixed) {
-            _letter_spacing.set_value(props.letter_spacing.value);
+        if (props.letter_spacing.is_mixed()) {
+            _letter_spacing.set_value(props.letter_spacing.value());
             _letter_spacing.set_placeholder(mixed_text);
-        } else if (props.letter_spacing.state == PropState::Single) {
-            _letter_spacing.set_value(props.letter_spacing.value);
+        } else if (props.letter_spacing.is_single()) {
+            _letter_spacing.set_value(props.letter_spacing.value());
         }
 
         // word spacing
-        if (props.word_spacing.state == PropState::Mixed) {
-            _word_spacing.set_value(props.word_spacing.value);
+        if (props.word_spacing.is_mixed()) {
+            _word_spacing.set_value(props.word_spacing.value());
             _word_spacing.set_placeholder(mixed_text);
-        } else if (props.word_spacing.state == PropState::Single) {
-            _word_spacing.set_value(props.word_spacing.value);
+        } else if (props.word_spacing.is_single()) {
+            _word_spacing.set_value(props.word_spacing.value());
         }
 
         // font family
-        if (props.font_family.state == PropState::Mixed) {
+        if (props.font_family.is_mixed()) {
             _font_family.set_selected(-1);
-        } else if (props.font_family.state == PropState::Single) {
-            int idx = find_family_index(props.font_family.family);
+        } else if (props.font_family.is_single()) {
+            int idx = find_family_index(props.font_family.value());
             _font_family.set_selected(idx);
             populate_styles(idx);
         }
 
         // font style
-        if (props.font_style.state == PropState::Mixed) {
+        if (props.font_style.is_mixed()) {
             _font_styles.set_selected(-1);
-        } else if (props.font_style.state == PropState::Single) {
-            int idx = find_style_index(props.font_style.style);
+        } else if (props.font_style.is_single()) {
+            int idx = find_style_index(props.font_style.value());
             if (idx >= 0) {
                 _font_styles.set_selected(idx);
             }
         }
 
         // font variation settings
-        if (props.font_variation.state == PropState::Mixed || props.font_family.state == PropState::Mixed) {
+        if (props.font_variation.is_mixed() || props.font_family.is_mixed()) {
             // TODO: show mixed state in var axes?
             // what if there are different axis?
             update_font_variants(nullptr);
-        } else if (props.font_variation.state == PropState::Single) {
-            auto& fontspec = props.font_family.family;
-            if (props.font_variation.settings.axes.empty()) {
+        } else if (props.font_variation.is_single()) {
+            const auto& fontspec = props.font_family.value();
+            if (props.font_variation.value().axes.empty()) {
                 // if there are no explicit axes set, then variable font can still derive
                 // settings from the font style
                 update_font_variants(get_selected_font());
             } else {
-                _font_variations.update(fontspec, &props.font_variation.settings);
+                _font_variations.update(fontspec, &props.font_variation.value());
             }
             _var_axes.set_visible(_font_variations.variations_present());
             set_min_font_variants_height();
         }
 
         // alignment
-        if (props.text_align.state == PropState::Single && props.text_align.value >= 0 && props.text_align.value < 4) {
-            _align_buttons[props.text_align.value]->set_active(true);
+        if (props.text_align.is_single() && props.text_align.value() >= 0 && props.text_align.value() < 4) {
+            _align_buttons[props.text_align.value()]->set_active(true);
         }
         else {
             for (auto& btn : _align_buttons) {
@@ -2263,10 +2263,12 @@ private:
         }
 
         // super/subscript — check subselection first, then fall back to _current_item
-        if (props.superscript.state != PropState::Unset) {
-            _superscript_btn.set_active(props.superscript.value);
-            _subscript_btn.set_active(props.subscript.value);
+        if (!props.scripts.is_unset()) {
+            auto& scripts = props.scripts.value();
+            _superscript_btn.set_active(scripts.superscript);
+            _subscript_btn.set_active(scripts.subscript);
         } else if (_current_item && _current_item->style) {
+            // fall back to current item's baseline shift if no subselection
             auto& bs = _current_item->style->baseline_shift;
             bool is_super = bs.set && bs.type == SP_BASELINE_SHIFT_LITERAL && bs.literal == SP_CSS_BASELINE_SHIFT_SUPER;
             bool is_sub   = bs.set && bs.type == SP_BASELINE_SHIFT_LITERAL && bs.literal == SP_CSS_BASELINE_SHIFT_SUB;
@@ -2275,25 +2277,25 @@ private:
         }
 
         // decorations; TODO: handle mixed state better
-        if (props.underline.state != PropState::Unset) {
-            _underline_btn.set_active(props.underline.value);
+        if (!props.underline.is_unset()) {
+            _underline_btn.set_active(props.underline.value());
         }
-        if (props.overline.state != PropState::Unset) {
-            _overline_btn.set_active(props.overline.value);
+        if (!props.overline.is_unset()) {
+            _overline_btn.set_active(props.overline.value());
         }
-        if (props.strikethrough.state != PropState::Unset) {
-            _strikethrough_btn.set_active(props.strikethrough.value);
+        if (!props.strikethrough.is_unset()) {
+            _strikethrough_btn.set_active(props.strikethrough.value());
         }
-        if (props.decoration_spelling_error.state != PropState::Unset) {
-            _syntax_error_btn.set_active(props.decoration_spelling_error.value);
+        if (!props.decoration_spelling_error.is_unset()) {
+            _syntax_error_btn.set_active(props.decoration_spelling_error.value());
         }
 
         // writing mode: map CSS enum to button index
         // buttons: 0=horizontal, 1=vert-r2l, 2=vert-l2r
         // enum: LR_TB=0, RL_TB=1, TB_RL=2, TB_LR=3
-        if (props.writing_mode.state == PropState::Single) {
+        if (props.writing_mode.is_single()) {
             int btn = -1;
-            switch (props.writing_mode.value) {
+            switch (props.writing_mode.value()) {
                 case SP_CSS_WRITING_MODE_LR_TB: // fall through
                 case SP_CSS_WRITING_MODE_RL_TB: btn = 0; break;
                 case SP_CSS_WRITING_MODE_TB_RL: btn = 1; break;
@@ -2305,38 +2307,40 @@ private:
         }
 
         // direction
-        if (props.direction.state == PropState::Single && props.direction.value >= 0 && props.direction.value < 2) {
-            _direction_buttons[props.direction.value]->set_active(true);
+        if (props.direction.is_single() && props.direction.value() >= 0 && props.direction.value() < 2) {
+            _direction_buttons[props.direction.value()]->set_active(true);
         }
 
         // text orientation (only applicable to vertical text)
-        bool vertical = props.writing_mode.state == PropState::Single &&
-            (props.writing_mode.value == SP_CSS_WRITING_MODE_TB_RL ||
-             props.writing_mode.value == SP_CSS_WRITING_MODE_TB_LR);
+        bool vertical = props.writing_mode.is_single() &&
+            (props.writing_mode.value() == SP_CSS_WRITING_MODE_TB_RL ||
+             props.writing_mode.value() == SP_CSS_WRITING_MODE_TB_LR);
         for (int i = 0; i < 3; ++i) {
             _orientation_buttons[i]->set_sensitive(vertical);
         }
-        if (vertical && props.text_orientation.state == PropState::Single &&
-            props.text_orientation.value >= 0 && props.text_orientation.value < 3) {
-            for (int j = 0; j < 3; ++j) _orientation_buttons[j]->set_active(j == props.text_orientation.value);
+        if (vertical && props.text_orientation.is_single() &&
+            props.text_orientation.value() >= 0 && props.text_orientation.value() < 3) {
+            for (int j = 0; j < 3; ++j) _orientation_buttons[j]->set_active(j == props.text_orientation.value());
         }
 
         // decoration style
-        if (props.decoration_style.state == PropState::Single &&
-            props.decoration_style.value >= 0 && props.decoration_style.value < 5) {
-            for (int j = 0; j < 5; ++j) _line_style_buttons[j]->set_active(j == props.decoration_style.value);
+        if (props.decoration_style.is_single() &&
+            props.decoration_style.value() >= 0 && props.decoration_style.value() < 5) {
+            for (int j = 0; j < 5; ++j) _line_style_buttons[j]->set_active(j == props.decoration_style.value());
         }
         // decoration style is ignored for spelling/grammar error line types
-        _line_style_box.set_sensitive(props.decoration_spelling_error.state == PropState::Single && !props.decoration_spelling_error.value);
+        _line_style_box.set_sensitive(props.decoration_spelling_error.is_single() && !props.decoration_spelling_error.value());
         //TODO: consider disabling color selection too?
 
         // decoration thickness
         {
-            auto& th = props.decoration_thickness;
+            //TODO: fix logic here
+
+            auto& th = props.decoration_thickness.value();
             if (th.from_font) {
                 _thickness_font.set_active(true);
                 _line_thickness.set_sensitive(false);
-            } else if (!th.auto_val && th.state == PropState::Single) {
+            } else if (props.decoration_thickness.is_single() && !th.auto_val) {
                 _thickness_custom.set_active(true);
                 _line_thickness.set_sensitive(true);
                 _line_thickness.set_value(th.value);
@@ -2347,11 +2351,11 @@ private:
         }
 
         // decoration color
-        _decoration_color.setColor(props.decoration_color.color.value_or(Colors::Color(0)));
-        if (props.decoration_color.state == PropState::Single) {
+        _decoration_color.setColor(props.decoration_color.value().value_or(Colors::Color(0)));
+        if (props.decoration_color.is_single()) {
             _decor_color_custom.set_active(true);
         }
-        else if (props.decoration_color.state == PropState::Unset) {
+        else if (props.decoration_color.is_unset()) {
             _decor_color_default.set_active(true);
         }
         else {
