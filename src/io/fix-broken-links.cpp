@@ -30,16 +30,29 @@
 namespace Inkscape {
 
 #ifdef _WIN32
-constexpr char dir_separators[] = "\\/";
+constexpr bool platform_windows = true;
 #else
-constexpr char dir_separators[] = "/";
+constexpr bool platform_windows = false;
 #endif
+
+constexpr auto dir_separators = platform_windows ? "\\/" : "/";
 
 std::vector<std::string> splitPath(std::string_view path)
 {
     std::vector<std::string> parts;
     boost::split(parts, path, boost::is_any_of(dir_separators), boost::token_compress_on);
-    std::erase_if(parts, [] (auto const &str) { return str.empty() || str == "."; });
+    std::erase_if(parts, [] (auto const &str) { return str.empty(); });
+    if constexpr (platform_windows) {
+        // Ensure absolute paths have e.g. 'C:\' as first part.
+        if (!parts.empty() && !parts[0].empty() && parts[0].back() == ':') {
+            parts[0] += '\\';
+        }
+    } else {
+        // Ensure absolute paths have '/' as first part.
+        if (!path.empty() && path.front() == '/') {
+            parts.insert(parts.begin(), "/");
+        }
+    }
     return parts;
 }
 
