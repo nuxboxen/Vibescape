@@ -31,6 +31,43 @@ namespace Inkscape {
 
 namespace {
 
+// TODO: Once layout iterators conform to std iterator trait,
+// return filtered view instead of vector.
+std::vector<SPItem*> get_text_spans(SPItem* text) {
+    if (!text) {
+        return {};
+    }
+
+    auto layout = te_get_layout(text);
+    if (!layout) {
+        return {};
+    }
+
+    std::vector<SPItem*> styles_list;
+
+    // Get iterators for the entire text object
+    Inkscape::Text::Layout::iterator begin_it = layout->begin();
+    Inkscape::Text::Layout::iterator end_it = layout->end();
+
+    for (auto it = begin_it; it < end_it; it.nextStartOfSpan()) {
+        SPObject *pos_obj = nullptr;
+        layout->getSourceOfCharacter(it, &pos_obj);
+        if (!pos_obj) {
+            continue;
+        }
+        if (!pos_obj->parent) { // the string is not in the document anymore (deleted)
+            return {};
+        }
+
+        if (is<SPString>(pos_obj)) {
+           pos_obj = pos_obj->parent;   // SPStrings don't have style
+        }
+        styles_list.emplace_back(cast_unsafe<SPItem>(pos_obj));
+    }
+
+    return styles_list;
+}
+
 bool is_textual_item(SPObject const* obj) {
     return is<SPText>(obj)
         || is<SPFlowtext>(obj)
@@ -116,14 +153,12 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
         props.text_orientation.merge(style->text_orientation.computed);
 
         // --- baseline shift (superscript / subscript) ---
-        // Only report if baseline_shift is explicitly set on this element
-        if (style->baseline_shift.set) {
-            bool is_super = style->baseline_shift.type == SP_BASELINE_SHIFT_LITERAL &&
-                style->baseline_shift.literal == SP_CSS_BASELINE_SHIFT_SUPER;
-            bool is_sub = style->baseline_shift.type == SP_BASELINE_SHIFT_LITERAL &&
-                style->baseline_shift.literal == SP_CSS_BASELINE_SHIFT_SUB;
-            props.scripts.merge(FontScriptsProp{is_super, is_sub});
-        }
+        bool is_super = style->baseline_shift.set && style->baseline_shift.type == SP_BASELINE_SHIFT_LITERAL &&
+            style->baseline_shift.literal == SP_CSS_BASELINE_SHIFT_SUPER;
+        bool is_sub = style->baseline_shift.set && style->baseline_shift.type == SP_BASELINE_SHIFT_LITERAL &&
+            style->baseline_shift.literal == SP_CSS_BASELINE_SHIFT_SUB;
+        props.superscript.merge(is_super);
+        props.subscript.merge(is_sub);
 
         // --- text decorations ---
         bool ul = style->text_decoration_line.underline;
@@ -133,8 +168,8 @@ TextProperties query_text_properties(const std::vector<SPItem*>& items) {
         props.overline.merge(ol);
         props.strikethrough.merge(st);
 
-        bool syntax_error = style->text_decoration_line.spelling_error;
-        props.decoration_spelling_error.merge(syntax_error);
+        bool spelling_error = style->text_decoration_line.spelling_error;
+        props.decoration_spelling_error.merge(spelling_error);
 
         // --- decoration style ---
         int ds = 0; // solid by default
@@ -557,6 +592,10 @@ std::string format_line_height_css(double value, Util::Unit const *unit) {
         osfs << Util::Quantity::convert(value, unit, "px") << "px";
     }
     return osfs.str();
+}
+
+std::vector<SPItem*> get_all_text_spans(SPItem* text) {
+    return get_text_spans(text);
 }
 
 } // namespace

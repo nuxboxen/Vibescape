@@ -1277,7 +1277,7 @@ popover.popover-menu menuitem:hover {
     background-color: @theme_selected_bg_color;
     color: @theme_selected_fg_color;
 }
-popover.popover-menu menuitem:hover image {    
+popover.popover-menu menuitem:hover image {
     background-color: @theme_selected_bg_color;
     color: @theme_selected_fg_color;
 }
@@ -1744,6 +1744,26 @@ button.reduced-padding {
 
 .active-background {
     background-color: @theme_base_color;
+}
+
+/* Mixed mode state for toggle button */
+.bright .mixed-mode, .mixed-mode {
+    background: repeating-linear-gradient(
+        126deg,
+        transparent,
+        transparent 5px,
+        alpha(@theme_selected_bg_color, 0.35) 5px,
+        alpha(@theme_selected_bg_color, 0.35) 9px
+    ), rgba(255, 255, 255, 0.30);
+}
+.dark .mixed-mode {
+    background: repeating-linear-gradient(
+        126deg,
+        transparent,
+        transparent 5px,
+        @theme_selected_bg_color 5px,
+        @theme_selected_bg_color 9px
+    ), rgba(255, 255, 255, 0.05);
 }
 
 /* Pattern editor in a popup - give it some vertical size to reveal a list of patterns */

@@ -21,6 +21,7 @@
 #include <gtkmm/widget.h>
 #include <memory>
 #include <map>
+#include <sigc++/scoped_connection.h>
 
 #include "desktop.h"
 #include "object/sp-object.h"
@@ -59,6 +60,7 @@ protected:
     virtual void update_paint(SPObject* object);
     bool can_update() const;
     virtual void document_replaced(SPDocument* document) {}
+    virtual void on_tool_changed(Inkscape::UI::Tools::ToolBase* tool) {}
     // value with units changed by the user; modify the current object
     void change_value_px(SPObject* object, const char* key, double input, const char* attr, std::function<void (double)>&& setter);
     // angle in degrees changed by the user; modify the current object
@@ -144,10 +146,10 @@ private:
     Gtk::ListBox& _lpe_list;
     Gtk::MenuButton& _add_lpe;
     Gtk::ScrolledWindow& _lpe_list_wnd;
-    // Glib::RefPtr<Gio::ListStore<LPEMetadata>> _lp_effects;
     Glib::RefPtr<Gtk::BoolFilter> _lpe_filter;
     Glib::RefPtr<Gtk::SingleSelection> _lpe_selection_model;
     Gtk::SearchEntry2& _lpe_search;
+    sigc::scoped_connection _tool_changed;
 };
 
 } // namespace details

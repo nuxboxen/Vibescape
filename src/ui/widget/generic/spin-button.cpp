@@ -881,7 +881,7 @@ void InkSpinButton::on_scroll_end() {
 }
 
 void InkSpinButton::set_value(double new_value) {
-    _placeholder.clear();
+    clear_placeholder();
     set_new_value(new_value * _fmt_scaling_factor);
 }
 
@@ -892,6 +892,7 @@ void InkSpinButton::set_placeholder(const Glib::ustring& text) {
 
 void InkSpinButton::clear_placeholder() {
     if (_placeholder.empty()) return;
+
     _placeholder.clear();
     update(false);
 }

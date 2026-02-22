@@ -38,13 +38,6 @@ namespace Inkscape {
 int get_text_align_button_index(bool rtl, SPCSSTextAlign text_align);
 
 
-// Value type for font scripts: superscript and subscript flags.
-struct FontScriptsProp {
-    bool superscript = false;
-    bool subscript = false;
-    bool operator==(const FontScriptsProp&) const = default;
-};
-
 // Value type for decoration thickness: value + auto/from-font flags.
 struct DecorationThicknessProp {
     double value = 0;
@@ -72,7 +65,8 @@ struct TextProperties {
     mixed_property<int> direction{0};
     mixed_property<int> text_orientation{0};
     // booleans / toggles
-    mixed_property<FontScriptsProp> scripts;
+    mixed_property<bool> superscript;
+    mixed_property<bool> subscript;
     mixed_property<bool> underline{false};
     mixed_property<bool> overline{false};
     mixed_property<bool> strikethrough{false};
@@ -154,6 +148,10 @@ double convert_lineheight_between_units(double value, int old_css_unit,
 // Relative units emit "value + abbr"; absolute units convert to px.
 std::string format_line_height_css(double value, Util::Unit const *unit);
 
-}
+
+// Return all text spans in a text object
+std::vector<SPItem*> get_all_text_spans(SPItem* text);
+
+} // namespace
 
 #endif //INKSCAPE_TEXT_UTILS_H

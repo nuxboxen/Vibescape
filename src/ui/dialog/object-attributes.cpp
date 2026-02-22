@@ -100,6 +100,7 @@
 #include "ui/widget/font-variations.h"
 #include "util/font-discovery.h"
 #include "util/delete-with.h"
+#include "util/mixed-property.h"
 #include "util/object-modified-tags.h"
 #include "util/text-utils.h"
 #include "widgets/sp-attribute-widget.h"
@@ -165,6 +166,27 @@ void remove_lpeffect(SPObject* object, int index) {
             break;
         }
         i++;
+    }
+}
+
+void set_mixed_mode_class(Gtk::Widget& widget, bool mixed_mode) {
+    static Glib::ustring mixed{"mixed-mode"};
+    if (widget.has_css_class(mixed) == mixed_mode) return;
+
+    if (mixed_mode) {
+        widget.add_css_class(mixed);
+    } else {
+        widget.remove_css_class(mixed);
+    }
+}
+
+void set_toggle_button_state(Gtk::ToggleButton& button, mixed_property<bool> prop, bool default_value = false) {
+    set_mixed_mode_class(button, prop.is_mixed());
+    if (prop.is_single()) {
+        button.set_active(prop.value());
+    }
+    else {
+        button.set_active(default_value);
     }
 }
 
@@ -735,8 +757,18 @@ void details::AttributesPanel::set_document(SPDocument* document) {
 
 void details::AttributesPanel::set_desktop(SPDesktop* desktop) {
     _desktop = desktop;
+
     if (_show_fill_stroke) {
         _paint->set_desktop(desktop);
+    }
+
+    if (desktop) {
+        _tool_changed = desktop->connectEventContextChanged([this](SPDesktop*, Inkscape::UI::Tools::ToolBase* tool) {
+            on_tool_changed(tool);
+        });
+    }
+    else {
+        _tool_changed.disconnect();
     }
 }
 
@@ -2114,7 +2146,7 @@ private:
         if (auto tool = get_text_tool()) {
             return tool->get_subselection(true);
         }
-        return {};
+        return Inkscape::get_all_text_spans(_current_item);
     }
 
     // Build item list for querying: subselection spans, or _current_item's children
@@ -2124,16 +2156,8 @@ private:
 
         // No subselection — query children of the text element
         if (_current_item) {
-            std::vector<SPItem*> items;
-            for (auto& child : _current_item->children) {
-                if (auto item = cast<SPItem>(&child)) {
-                    items.push_back(item);
-                }
-            }
-            if (items.empty()) {
-                // text element with no children (single span) — query itself
-                items.push_back(_current_item);
-            }
+            // text element with no children (single span) — query itself
+            std::vector<SPItem*> items(1, _current_item);
             return items;
         }
         return {};
@@ -2263,32 +2287,22 @@ private:
         }
 
         // super/subscript — check subselection first, then fall back to _current_item
-        if (!props.scripts.is_unset()) {
-            auto& scripts = props.scripts.value();
-            _superscript_btn.set_active(scripts.superscript);
-            _subscript_btn.set_active(scripts.subscript);
-        } else if (_current_item && _current_item->style) {
-            // fall back to current item's baseline shift if no subselection
-            auto& bs = _current_item->style->baseline_shift;
-            bool is_super = bs.set && bs.type == SP_BASELINE_SHIFT_LITERAL && bs.literal == SP_CSS_BASELINE_SHIFT_SUPER;
-            bool is_sub   = bs.set && bs.type == SP_BASELINE_SHIFT_LITERAL && bs.literal == SP_CSS_BASELINE_SHIFT_SUB;
-            _superscript_btn.set_active(is_super);
-            _subscript_btn.set_active(is_sub);
-        }
+        set_toggle_button_state(_superscript_btn, props.superscript);
+        set_toggle_button_state(_subscript_btn, props.subscript);
+        // if (_current_item && _current_item->style) {
+        //     // fall back to current item's baseline shift if no subselection
+        //     auto& bs = _current_item->style->baseline_shift;
+        //     bool is_super = bs.set && bs.type == SP_BASELINE_SHIFT_LITERAL && bs.literal == SP_CSS_BASELINE_SHIFT_SUPER;
+        //     bool is_sub   = bs.set && bs.type == SP_BASELINE_SHIFT_LITERAL && bs.literal == SP_CSS_BASELINE_SHIFT_SUB;
+        //     _superscript_btn.set_active(is_super);
+        //     _subscript_btn.set_active(is_sub);
+        // }
 
-        // decorations; TODO: handle mixed state better
-        if (!props.underline.is_unset()) {
-            _underline_btn.set_active(props.underline.value());
-        }
-        if (!props.overline.is_unset()) {
-            _overline_btn.set_active(props.overline.value());
-        }
-        if (!props.strikethrough.is_unset()) {
-            _strikethrough_btn.set_active(props.strikethrough.value());
-        }
-        if (!props.decoration_spelling_error.is_unset()) {
-            _syntax_error_btn.set_active(props.decoration_spelling_error.value());
-        }
+        // decorations
+        set_toggle_button_state(_underline_btn, props.underline);
+        set_toggle_button_state(_overline_btn, props.overline);
+        set_toggle_button_state(_strikethrough_btn, props.strikethrough);
+        set_toggle_button_state(_syntax_error_btn, props.decoration_spelling_error);
 
         // writing mode: map CSS enum to button index
         // buttons: 0=horizontal, 1=vert-r2l, 2=vert-l2r
@@ -2388,6 +2402,12 @@ private:
                 _title += C_("<text> on path", "on path");
             }
         }
+        update_text_properties();
+    }
+
+    void on_tool_changed(Inkscape::UI::Tools::ToolBase* tool) override {
+        // if TextTool is active, we have access to a cursor position and text selection,
+        // which changes which elements are queried for text style
         update_text_properties();
     }
 
