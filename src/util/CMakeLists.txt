@@ -21,6 +21,7 @@ target_sources(inkscape_base PRIVATE
     statics.cpp
     svg-path-parser.cpp
     theme-utils.cpp
+    style-utils.cpp
     text-utils.cpp
     transform-objects.cpp
     recently-used-fonts.cpp
