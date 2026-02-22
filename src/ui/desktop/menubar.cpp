@@ -27,7 +27,9 @@
 #include <regex>
 #include <string>
 #include <unordered_map>
+#include <glibmm/convert.h>
 #include <glibmm/i18n.h>
+#include <glibmm/miscutils.h>
 #include <glibmm/quark.h>
 #include <glibmm/regex.h>
 #include <glibmm/ustring.h>
@@ -229,7 +231,7 @@ build_menu()
                     for (auto j = 0; j < 2; j++) {
 
                         auto display_uri = display_uris[j]; // We always use display_uri as map index.
-                        // Size is always one first element such as '/' or 'C:\\' and the last element is the filename
+                        // Size is always one first element such as '/' or 'C:\' and the last element is the filename
                         auto size = path_parts[j].size();
 
                         if (size <= 3) {
@@ -247,12 +249,12 @@ build_menu()
                                                         path_parts[j][size-2],
                                                         G_DIR_SEPARATOR_S,
                                                         path_parts[j][size-1]);
-                        } else if (i == 1) {
-                            // parts[j][i] is actually a root folder
+                        } else if (i <= 1) {
+                            // parts[j][i] is actually a root folder or drive
                             shortened_path_map[display_uri] =
                                 Glib::ustring::compose ("%1%2%3..%4%5",
                                                         path_parts[j][0],
-                                                        path_parts[j][i],
+                                                        path_parts[j][1],
                                                         G_DIR_SEPARATOR_S,
                                                         G_DIR_SEPARATOR_S,
                                                         path_parts[j][size-1]);
