@@ -29,6 +29,7 @@
 #include "style-internal.h"
 #include "unit-menu.h"
 #include "ui/widget/paint-popover-manager.h"
+#include "util/style-utils.h"
 #include "widget-group.h"
 
 class SPDocument;
@@ -59,6 +60,8 @@ public:
     void update_from_object(SPObject* object);
     // update UI using a queried style (for subselection read-back)
     void update_from_style(SPObject* object, SPStyle* style);
+    // update UI using a StyleProps object
+    void update_from_style_props(const Inkscape::StyleProperties& props);
     // update visibility and lock state
     void update_visibility(SPObject* object);
 
@@ -82,9 +85,10 @@ private:
         void set_preview(const SPIPaint& paint, double paint_opacity, PaintMode mode);
         PaintMode update_preview_indicators(const SPObject* object);
         PaintMode update_preview_indicators(SPStyle* style);
-        void set_paint(const SPObject* object);
-        void set_paint(SPStyle* style);
+        void set_paint_from_object(const SPObject* object);
+        void set_paint_from_style(SPStyle* style);
         void set_paint(const SPIPaint& paint, double opacity, FillRule fill_rule);
+        void set_paint_from_props(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity, const mixed_property<SPWindRule>& fill_rule);
         void set_fill_rule(FillRule rule);
         void set_flat_color(const Colors::Color& color);
         void apply_style(SPCSSAttr* css);
@@ -103,6 +107,7 @@ private:
         Gtk::MenuButton& _paint_btn;
         PaintSwitch* _switch = nullptr;
         ColorPreview& _color_preview;
+        Gtk::Label& _preview_label;
         Gtk::Image& _paint_icon;
         Gtk::Label& _label;
         InkSpinButton& _alpha;

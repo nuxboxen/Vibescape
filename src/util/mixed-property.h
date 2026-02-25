@@ -20,6 +20,11 @@ class mixed_property {
 public:
     mixed_property() = default;
     explicit mixed_property(T default_value) : _value(std::move(default_value)) {}
+    mixed_property(const mixed_property<T>&) = default;
+    mixed_property(mixed_property<T>&&) = default;
+
+    mixed_property& operator = (const mixed_property<T>&) = default;
+    mixed_property& operator = (mixed_property<T>&&) = default;
 
     // --- state queries ---
     bool is_unset()  const { return _state == PropState::Unset; }

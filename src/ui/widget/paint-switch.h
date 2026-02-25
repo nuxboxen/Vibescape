@@ -17,6 +17,7 @@
 #include "colors/color.h"
 #include "object/sp-gradient.h"
 #include "paint-enums.h"
+#include "util/style-utils.h"
 
 namespace Inkscape::UI::Widget {
 
@@ -40,6 +41,7 @@ public:
     virtual void set_document(SPDocument* document) = 0;
     virtual void set_mode(PaintMode mode) = 0;
     virtual void update_from_paint(const SPIPaint& paint) = 0;
+    virtual void update_from_paint_props(const PaintProp& paint) = 0;
     virtual void set_fill_rule(FillRule fill_rule) = 0;
     /**
      * Shows a placeholder for `PaintSwitch`.

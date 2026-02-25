@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <placeholder width="343" height="18"></placeholder>
+  <placeholder width="301" height="9"></placeholder>
   <requires lib="gtk" version="4.0"></requires>
   <object class="GtkGrid" id="paint-strip">
     <property name="row-spacing">0</property>
@@ -26,6 +26,11 @@
         </layout>
         <child>
           <object class="GtkBox" id="paint-preview-stack">
+            <child>
+              <object class="GtkLabel" id="paint-preview-label">
+                <property name="halign">center</property>
+              </object>
+            </child>
             <child>
               <object class="GtkImage" id="paint-icon-preview">
                 <property name="margin-end">4</property>

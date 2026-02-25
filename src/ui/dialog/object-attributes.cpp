@@ -169,26 +169,26 @@ void remove_lpeffect(SPObject* object, int index) {
     }
 }
 
-void set_mixed_mode_class(Gtk::Widget& widget, bool mixed_mode) {
-    static Glib::ustring mixed{"mixed-mode"};
-    if (widget.has_css_class(mixed) == mixed_mode) return;
+// void set_mixed_mode_class(Gtk::Widget& widget, bool mixed_mode) {
+//     static Glib::ustring mixed{"mixed-mode"};
+//     if (widget.has_css_class(mixed) == mixed_mode) return;
 
-    if (mixed_mode) {
-        widget.add_css_class(mixed);
-    } else {
-        widget.remove_css_class(mixed);
-    }
-}
+//     if (mixed_mode) {
+//         widget.add_css_class(mixed);
+//     } else {
+//         widget.remove_css_class(mixed);
+//     }
+// }
 
-void set_toggle_button_state(Gtk::ToggleButton& button, mixed_property<bool> prop, bool default_value = false) {
-    set_mixed_mode_class(button, prop.is_mixed());
-    if (prop.is_single()) {
-        button.set_active(prop.value());
-    }
-    else {
-        button.set_active(default_value);
-    }
-}
+// void set_toggle_button_state(Gtk::ToggleButton& button, mixed_property<bool> prop, bool default_value = false) {
+//     set_mixed_mode_class(button, prop.is_mixed());
+//     if (prop.is_single()) {
+//         button.set_active(prop.value());
+//     }
+//     else {
+//         button.set_active(default_value);
+//     }
+// }
 
 } // namespace
 
@@ -2170,19 +2170,12 @@ private:
         if (items.empty()) return;
 
         auto props = query_text_properties(items);
-        static const Glib::ustring mixed_text = "…";
 
         // font size (stored in px, convert to display unit)
-        if (props.font_size.is_mixed()) {
-            auto unit = _tracker_fs->getActiveUnit();
-            double display_val = Util::Quantity::convert(props.font_size.value(), "px", unit);
-            _font_size.set_value(display_val);
-            _font_size.set_placeholder(mixed_text);
-        } else if (props.font_size.is_single()) {
-            auto unit = _tracker_fs->getActiveUnit();
-            double display_val = Util::Quantity::convert(props.font_size.value(), "px", unit);
-            _font_size.set_value(display_val);
-        }
+        auto font_size= props.font_size;
+        auto unit = _tracker_fs->getActiveUnit();
+        font_size.set(Util::Quantity::convert(font_size.value(), "px", unit));
+        set_spin_button_value(_font_size, font_size);
 
         // line height — set tracker unit and convert value for display
         {
@@ -2214,30 +2207,14 @@ private:
 
             // Save unit for conversion on unit change
             _lineheight_unit = lh_unit;
-
-            if (props.line_height.is_mixed()) {
-                _line_height.set_value(height);
-                _line_height.set_placeholder(mixed_text);
-            } else if (props.line_height.is_single()) {
-                _line_height.set_value(height);
-            }
+            set_spin_button_value(_line_height, props.line_height);
         }
 
         // letter spacing
-        if (props.letter_spacing.is_mixed()) {
-            _letter_spacing.set_value(props.letter_spacing.value());
-            _letter_spacing.set_placeholder(mixed_text);
-        } else if (props.letter_spacing.is_single()) {
-            _letter_spacing.set_value(props.letter_spacing.value());
-        }
+        set_spin_button_value(_letter_spacing, props.letter_spacing);
 
         // word spacing
-        if (props.word_spacing.is_mixed()) {
-            _word_spacing.set_value(props.word_spacing.value());
-            _word_spacing.set_placeholder(mixed_text);
-        } else if (props.word_spacing.is_single()) {
-            _word_spacing.set_value(props.word_spacing.value());
-        }
+        set_spin_button_value(_word_spacing, props.word_spacing);
 
         // font family
         if (props.font_family.is_mixed()) {

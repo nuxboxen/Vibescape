@@ -73,7 +73,7 @@
             <property name="valign">center</property>
             <property name="has-frame">false</property>
             <property name="tooltip-text" translatable="yes">Color Pickers</property>
-            </object>
+          </object>
         </child>
       </object>
     </child>
@@ -88,6 +88,15 @@
         <property name="height-request">120</property>
         <property name="width-request">-1</property>
         <property name="vhomogeneous">false</property>
+        <child>
+          <object class="GtkLabel" id="placeholder">
+            <property name="valign">center</property>
+            <property name="halign">center</property>
+            <style>
+              <class name="dim-label"></class>
+            </style>
+          </object>
+        </child>
       </object>
     </child>
   </object>

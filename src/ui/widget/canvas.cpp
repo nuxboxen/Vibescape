@@ -565,10 +565,10 @@ void Canvas::blink() {
     if (blinking) return;
     blinking = Glib::signal_timeout().connect([this] {
         this->get_style_context()->remove_class("snapshot");
-        return false; 
+        return false;
     }, 300);
 }
- 
+
 /*
  * Redraw process managment
  */
@@ -1136,6 +1136,8 @@ bool Canvas::on_key_pressed(Gtk::EventControllerKey &controller, unsigned keyval
                             Gdk::ModifierType state)
 {
     _state = static_cast<int>(state);
+
+    if (keyval == GDK_KEY_VoidSymbol) return false;
 
     auto event = KeyPressEvent();
     event.modifiers = _state;

@@ -24,6 +24,7 @@
 #include <gtkmm/revealer.h>
 #include <gtkmm/spinbutton.h>
 #include <gtkmm/textbuffer.h>
+#include <gtkmm/togglebutton.h>
 #include <gtkmm/tooltip.h>
 #include <2geom/bezier.h>
 
@@ -643,6 +644,44 @@ Geom::Affine get_event_transform(Glib::RefPtr<Gdk::Surface const> const &event_s
     auto native = Gtk::Native::get_for_surface(event_surface);
     auto &event_widget = dynamic_cast<Gtk::Widget const &>(*native);
     return Geom::Translate{-get_surface_transform(*native)} * compute_transform(event_widget, target);
+}
+
+void set_mixed_mode_class(Gtk::Widget& widget, bool mixed_mode) {
+    static Glib::ustring mixed{"mixed-mode"};
+    if (widget.has_css_class(mixed) == mixed_mode) return;
+
+    if (mixed_mode) {
+        widget.add_css_class(mixed);
+    } else {
+        widget.remove_css_class(mixed);
+    }
+}
+
+void set_toggle_button_state(Gtk::ToggleButton& button, Inkscape::mixed_property<bool> prop, bool default_value) {
+    set_mixed_mode_class(button, prop.is_mixed());
+    if (prop.is_single()) {
+        button.set_active(prop.value());
+    }
+    else {
+        button.set_active(default_value);
+    }
+}
+
+void set_spin_button_value(Inkscape::UI::Widget::InkSpinButton& button, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value) {
+    static const Glib::ustring mixed_text = "…"; // ellipsis
+    static const Glib::ustring no_value = "–"; // en dash
+
+    if (prop.is_mixed()) {
+        button.set_value(prop.value());
+        button.set_placeholder(mixed_text);
+    }
+    else if (prop.is_single()) {
+        button.set_value(prop.value());
+    }
+    else {
+        button.set_value(not_set_value.value_or(prop.value()));
+        button.set_placeholder(no_value);
+    }
 }
 
 /*

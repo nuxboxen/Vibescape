@@ -13,6 +13,7 @@
 #include "object/sp-item-group.h"
 #include "object/sp-linear-gradient.h"
 #include "object/sp-radial-gradient.h"
+#include "object/sp-stop.h"
 #include "object/sp-mesh-gradient.h"
 #include "object/sp-pattern.h"
 #include "object/sp-hatch.h"
@@ -33,17 +34,15 @@ using namespace UI::Widget;
 PaintProp classify_paint(const SPIPaint& paint) {
     PaintProp p;
     if (auto* server = paint.isPaintserver() ? paint.href->getObject() : nullptr) {
+        p.server = server;
+
         if (auto* grad = cast<SPGradient>(server)) {
             auto* vec = grad->getVector();
+            // selected stop (if any) for gradients only
+            p.selected_stop = cast<SPStop>(const_cast<SPIPaint&>(paint).getTag());
             if (vec && vec->isSwatch()) {
                 p.mode   = PaintMode::Swatch;
                 p.swatch = vec;
-            } else if (auto* lg = cast<SPLinearGradient>(server)) {
-                p.mode   = PaintMode::Gradient;
-                p.linear = lg;
-            } else if (auto* rg = cast<SPRadialGradient>(server)) {
-                p.mode   = PaintMode::Gradient;
-                p.radial = rg;
             }
 #ifdef WITH_MESH
             else if (auto* mg = cast<SPMeshGradient>(server)) {
@@ -51,6 +50,10 @@ PaintProp classify_paint(const SPIPaint& paint) {
                 p.mesh = mg;
             }
 #endif
+            else {
+                p.mode   = PaintMode::Gradient;
+                p.gradient = grad;
+            }
         } else if (auto* pat = cast<SPPattern>(server)) {
             p.mode    = PaintMode::Pattern;
             p.pattern = pat;
@@ -64,10 +67,8 @@ PaintProp classify_paint(const SPIPaint& paint) {
     } else if (paint.isNone()) {
         p.mode = PaintMode::None;
     } else {
+        p.derived_mode = get_inherited_paint_mode(paint);
         p.mode = PaintMode::Derived;
-        if (auto dm = get_inherited_paint_mode(paint)) {
-            p.derived_mode = *dm;
-        }
     }
     return p;
 }
@@ -102,7 +103,7 @@ void merge_item_style(StyleProperties& props, SPItem* item) {
     }
 
     props.fill_opacity.merge(static_cast<double>(style->fill_opacity));
-    props.fill_rule.merge(static_cast<int>(style->fill_rule.computed));
+    props.fill_rule.merge(style->fill_rule.computed);
 
     // --- stroke ---
     if (!props.stroke.is_mixed()) {
