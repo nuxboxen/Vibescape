@@ -16,6 +16,7 @@
 #include "colors/color.h"
 #include "object/sp-paint-server.h"
 #include "style-enums.h"
+#include "style-internal.h"
 #include "ui/widget/paint-enums.h"
 #include "mixed-property.h"
 
@@ -96,10 +97,11 @@ struct StyleProperties {
 
     // --- stroke geometry ---
     mixed_property<StrokeWidthProp> stroke_width; // in px (document units, before item transform)
-    mixed_property<int>            stroke_linecap{SP_STROKE_LINECAP_BUTT};
-    mixed_property<int>            stroke_linejoin{SP_STROKE_LINEJOIN_MITER};
-    mixed_property<double>         stroke_miterlimit{4.0};
+    mixed_property<int>             stroke_linecap{SP_STROKE_LINECAP_BUTT};
+    mixed_property<int>             stroke_linejoin{SP_STROKE_LINEJOIN_MITER};
+    mixed_property<double>          stroke_miterlimit{4.0};
     mixed_property<StrokeDashProp>  stroke_dash;
+    mixed_property<bool>            hairline{false};
 
     // --- markers ---
     mixed_property<std::string> marker_start;
@@ -107,7 +109,7 @@ struct StyleProperties {
     mixed_property<std::string> marker_end;
 
     // --- paint order ---
-    mixed_property<std::string> paint_order;  // CSS string e.g. "stroke fill markers"
+    mixed_property<std::vector<SPIPaintOrder>> paint_order;
 
     // --- opacity & blend ---
     mixed_property<double> opacity{1.0};

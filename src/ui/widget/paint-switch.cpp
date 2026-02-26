@@ -630,12 +630,15 @@ void PaintSwitchImpl::update_from_paint(const SPIPaint& paint) {
 void PaintSwitchImpl::update_from_paint_props(const PaintProp& paint) {
     auto scoped(_update.block());
 
+    set_mode(paint.mode);
+
     switch (paint.mode) {
     case PaintMode::None:
         // no op
         break;
     case PaintMode::Solid:
         // set through set_color
+        set_color(paint.color.value_or(Colors::Color(0x000000ff)));
         break;
     case PaintMode::Gradient:
         set_gradient(paint.gradient, paint.selected_stop);

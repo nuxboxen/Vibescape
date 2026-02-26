@@ -15,6 +15,7 @@
 #include "filter-enums.h"
 #include "gradient-chemistry.h"
 #include "inkscape.h"
+#include "object/sp-item.h"
 #include "pattern-manager.h"
 #include "pattern-manipulation.h"
 #include "property-utils.h"
@@ -37,9 +38,11 @@
 #include "ui/util.h"
 #include "ui/dialog/dialog-container.h"
 #include "ui/tools/marker-tool.h"
+#include "ui/widget/paint-enums.h"
 #include "ui/widget/paint-switch.h"
 #include "ui/widget/popover-utils.h"
 #include "util/expression-evaluator.h"
+#include "util/style-utils.h"
 #include "xml/sp-css-attr.h"
 
 namespace Inkscape::UI::Widget {
@@ -493,6 +496,10 @@ void PaintAttribute::PaintStrip::request_update(bool update_preview) {
 
 // set the correct icon for the current fill / stroke type
 void PaintAttribute::PaintStrip::set_preview(const SPIPaint& paint, double paint_opacity, PaintMode mode) {
+    set_preview(paint.href ? paint.href->getObject() : nullptr, paint.getColor(), paint_opacity, mode);
+}
+
+void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, Colors::Color color, double paint_opacity, PaintMode mode) {
     if (mode == PaintMode::None) {
         hide();
         return;
@@ -506,18 +513,18 @@ void PaintAttribute::PaintStrip::set_preview(const SPIPaint& paint, double paint
         _color_preview.set_visible();
 
         if (mode == PaintMode::Solid) {
-            auto color = paint.getColor();
+            // auto color = paint.getColor();
             color.setOpacity(paint_opacity);
             _color_preview.setRgba32(color.toRGBA());
             _color_preview.setIndicator(ColorPreview::None);
         }
         else if (mode == PaintMode::Swatch) {
             // swatch
-            auto server = paint.href->getObject();
+            // auto server = paint.href->getObject();
             auto swatch = cast<SPGradient>(server);
             assert(swatch);
             auto vect = swatch->getVector();
-            auto color = paint.getColor();
+            // auto color = paint.getColor();
             if (auto stop = vect->getFirstStop()) {
                 // swatch color is in the first (and only) stop
                 color = stop->getColor();
@@ -528,7 +535,7 @@ void PaintAttribute::PaintStrip::set_preview(const SPIPaint& paint, double paint
         }
         else if (mode == PaintMode::Pattern || mode == PaintMode::Hatch) {
             // patterns and hatches
-            auto server = cast<SPPaintServer>(paint.href->getObject());
+            // auto server = cast<SPPaintServer>(paint.href->getObject());
             unsigned int background = 0xffffffff; // use white background for patterns
             // create a pattern preview with arbitrarily selected width
             auto surface = PatternManager::get().get_preview(server, 200, COLOR_TILE, background, _color_preview.get_scale_factor());
@@ -539,10 +546,10 @@ void PaintAttribute::PaintStrip::set_preview(const SPIPaint& paint, double paint
         }
         else {
             // gradients
-            auto server = cast<SPGradient>(paint.href->getObject());
+            auto grad = cast<SPGradient>(server);
             std::vector<ColorPreview::GradientStops> gradient;
-            server->ensureVector();
-            for (auto& stop : server->vector.stops) {
+            grad->ensureVector();
+            for (auto& stop : grad->vector.stops) {
                 if (stop.color.has_value()) {
                     double opacity = 1;
                     auto c = stop.color->toRGBA(opacity);
@@ -578,6 +585,19 @@ PaintMode PaintAttribute::PaintStrip::update_preview_indicators(SPStyle* style) 
     auto opacity = _is_fill ? style->fill_opacity : style->stroke_opacity;
     set_preview(paint, opacity, mode);
     return mode;
+}
+
+void PaintAttribute::PaintStrip::update_preview_indicators_from_paint(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity) {
+    if (paint.is_mixed()) {
+        _paint_icon.set_visible(false);
+        _color_preview.set_visible(false);
+        _preview_label.set_label(_("Mixed"));
+        _preview_label.set_visible(true);
+    }
+    else {
+        auto& p = paint.value();
+        set_preview(p.server, p.color.value_or(Colors::Color(0x000000ff)), opacity.value(), p.mode);
+    }
 }
 
 void PaintAttribute::PaintStrip::set_paint_from_object(const SPObject* object) {
@@ -987,6 +1007,123 @@ void PaintAttribute::update_stroke(SPItem* item) {
     dynamic_cast<Gtk::Image*>(icons.at(2))->set_from_icon_name(name);
 }
 
+void PaintAttribute::update_stroke_from_style(const StyleProperties& props) {
+    // Handle hairline mode
+    if (props.hairline.is_single() && props.hairline.value()) {
+        _stroke_width.set_sensitive(false);
+        _stroke_width.set_value(1);
+        //todo: F&S dialog disables dash selector; should it be?
+        _dash_selector.set_sensitive(false);
+        _stroke_presets.set_sensitive(false);
+        _markers.set_sensitive(false);
+        _unit_selector.set_selected(_hairline_item);
+    }
+    else {
+        if (_unit_selector.get_selected() == _hairline_item) {
+            auto unit = _desktop->getNamedView()->display_units;
+            _unit_selector.setUnit(unit->abbr);
+        }
+
+        // Handle stroke width from StyleProperties
+        if (props.stroke_width.is_single()) {
+            auto unit = _unit_selector.getUnit();
+            auto& stroke_width = props.stroke_width.value();
+            double width = stroke_width.value;
+
+            // Note: StyleProperties doesn't have transform info, so we can't apply i2dt transform here
+            // This might need to be handled differently or passed in separately
+            if (!std::isnan(width)) {
+                width = Quantity::convert(width, "px", unit);
+                _stroke_width.set_value(width);
+                _stroke_width.set_sensitive();
+                _dash_selector.set_sensitive();
+                _stroke_presets.set_sensitive();
+                _markers.set_sensitive();
+            }
+        }
+        else {
+            // Mixed state - disable widgets
+            _stroke_width.set_sensitive(false);
+            _dash_selector.set_sensitive(false);
+            _stroke_presets.set_sensitive(false);
+            _markers.set_sensitive(false);
+        }
+    }
+
+    // Handle dash pattern from StyleProperties
+    if (props.stroke_dash.is_single()) {
+        auto& dash_prop = props.stroke_dash.value();
+        _dash_selector.set_dash_pattern(dash_prop.dashes, dash_prop.offset);
+    }
+    else {
+        // Mixed state - clear dash pattern or show mixed indicator
+        _dash_selector.set_dash_pattern({}, 0.0);
+    }
+
+    // stroke options - update icons only
+    auto icons = _stroke_icons.get_children();
+    Glib::ustring name;
+
+    // Handle line join
+    if (props.stroke_linejoin.is_single()) {
+        auto join = props.stroke_linejoin.value();
+        name = "stroke-join-miter";
+        if (join == SP_STROKE_LINEJOIN_BEVEL) {
+            name = "stroke-join-bevel";
+        }
+        else if (join == SP_STROKE_LINEJOIN_ROUND) {
+            name = "stroke-join-round";
+        }
+        dynamic_cast<Gtk::Image*>(icons.at(0))->set_from_icon_name(name);
+    }
+
+    // Handle line cap
+    if (props.stroke_linecap.is_single()) {
+        auto cap = props.stroke_linecap.value();
+        name = "stroke-cap-butt";
+        if (cap == SP_STROKE_LINECAP_SQUARE) {
+            name = "stroke-cap-square";
+        }
+        else if (cap == SP_STROKE_LINECAP_ROUND) {
+            name = "stroke-cap-round";
+        }
+        dynamic_cast<Gtk::Image*>(icons.at(1))->set_from_icon_name(name);
+    }
+
+    // Handle paint order
+    if (props.paint_order.is_single() && !props.paint_order.value().empty()) {
+        auto& order = props.paint_order.value()[0]; // Use first paint order
+        name = "paint-order-fsm"; // "normal" order
+        if (order.layer[0] != SP_CSS_PAINT_ORDER_NORMAL) {
+            if (order.layer[0] == SP_CSS_PAINT_ORDER_FILL) {
+                if (order.layer[1] == SP_CSS_PAINT_ORDER_STROKE) {
+                    name = "paint-order-fsm";
+                }
+                else {
+                    name = "paint-order-fms";
+                }
+            }
+            else if (order.layer[0] == SP_CSS_PAINT_ORDER_STROKE) {
+                if (order.layer[1] == SP_CSS_PAINT_ORDER_FILL) {
+                    name = "paint-order-sfm";
+                }
+                else {
+                    name = "paint-order-smf";
+                }
+            }
+            else {
+                if (order.layer[1] == SP_CSS_PAINT_ORDER_STROKE) {
+                    name = "paint-order-msf";
+                }
+                else {
+                    name = "paint-order-mfs";
+                }
+            }
+        }
+        dynamic_cast<Gtk::Image*>(icons.at(2))->set_from_icon_name(name);
+    }
+}
+
 bool PaintAttribute::can_update() const {
     return _document && _current_item && _current_item->style && !_update.pending();
 }
@@ -1063,13 +1200,13 @@ void PaintAttribute::update_from_style(SPObject* object, SPStyle* style) {
     }
 }
 
-void PaintAttribute::update_from_style_props(const Inkscape::StyleProperties& props) {
+void PaintAttribute::update_from_style_props(SPObject* object, const Inkscape::StyleProperties& props) {
     if (_update.pending()) return;
 
     auto scoped(_update.block());
 
-    _current_object = nullptr;
-    _current_item = nullptr;
+    _current_object = object;
+    _current_item = cast<SPItem>(object);
     _fill._current_item = _current_item;
     _stroke._current_item = _current_item;
     _fill._desktop = _desktop;
@@ -1077,6 +1214,25 @@ void PaintAttribute::update_from_style_props(const Inkscape::StyleProperties& pr
 
     _fill.set_paint_from_props(props.fill, props.fill_opacity, props.fill_rule);
     _stroke.set_paint_from_props(props.stroke, props.stroke_opacity, {});
+    update_stroke_from_style(props);
+
+    if (props.fill.is_single() && props.fill.value().mode == PaintMode::None) {
+        _fill.hide();
+    }
+    else {
+        _fill.show();
+        _fill.update_preview_indicators_from_paint(props.fill, props.fill_opacity);
+    }
+
+    if (props.stroke.is_single() && props.stroke.value().mode == PaintMode::None) {
+        _stroke.hide();
+        show_stroke(false);
+    }
+    else {
+        _stroke.show();
+        show_stroke(true);
+        _stroke.update_preview_indicators_from_paint(props.stroke, props.stroke_opacity);
+    }
 }
 
 void PaintAttribute::update_visibility(SPObject* object) {

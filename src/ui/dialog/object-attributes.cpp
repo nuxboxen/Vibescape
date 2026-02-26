@@ -2266,6 +2266,7 @@ private:
         // super/subscript — check subselection first, then fall back to _current_item
         set_toggle_button_state(_superscript_btn, props.superscript);
         set_toggle_button_state(_subscript_btn, props.subscript);
+        //TODO: verify that we need this fallback
         // if (_current_item && _current_item->style) {
         //     // fall back to current item's baseline shift if no subselection
         //     auto& bs = _current_item->style->baseline_shift;
@@ -2315,12 +2316,13 @@ private:
         }
 
         // decoration style
-        if (props.decoration_style.is_single() &&
-            props.decoration_style.value() >= 0 && props.decoration_style.value() < 5) {
-            for (int j = 0; j < 5; ++j) _line_style_buttons[j]->set_active(j == props.decoration_style.value());
+        if (props.decoration_style.value() >= 0 && props.decoration_style.value() < 5) {
+            bool single = props.decoration_style.is_single();
+            for (int j = 0; j < 5; ++j) _line_style_buttons[j]->set_active(
+                single && j == props.decoration_style.value());
         }
         // decoration style is ignored for spelling/grammar error line types
-        _line_style_box.set_sensitive(props.decoration_spelling_error.is_single() && !props.decoration_spelling_error.value());
+        _line_style_box.set_sensitive(!(props.decoration_spelling_error.is_single() && props.decoration_spelling_error.value()));
         //TODO: consider disabling color selection too?
 
         // decoration thickness
@@ -2386,6 +2388,7 @@ private:
         // if TextTool is active, we have access to a cursor position and text selection,
         // which changes which elements are queried for text style
         update_text_properties();
+        update_paint(_current_object);
     }
 
     void update_paint(SPObject* object) override {
@@ -2400,10 +2403,9 @@ private:
             return;
         }
 
-        SPStyle query_style(_document);
-        sp_desktop_query_style_from_list(items, &query_style, QUERY_STYLE_PROPERTY_FILL);
-        sp_desktop_query_style_from_list(items, &query_style, QUERY_STYLE_PROPERTY_STROKE);
-        _paint->update_from_style(object, &query_style);
+        // query fill and stroke properties
+        auto props = Inkscape::query_style_properties(items);
+        _paint->update_from_style_props(object, props);
     }
 
     void subselection_changed(const std::vector<SPItem*>& items) override {

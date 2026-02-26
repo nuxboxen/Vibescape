@@ -29,6 +29,8 @@
             <child>
               <object class="GtkLabel" id="paint-preview-label">
                 <property name="halign">center</property>
+                <property name="hexpand">true</property>
+                <property name="hexpand-set">true</property>
               </object>
             </child>
             <child>

@@ -61,7 +61,7 @@ public:
     // update UI using a queried style (for subselection read-back)
     void update_from_style(SPObject* object, SPStyle* style);
     // update UI using a StyleProps object
-    void update_from_style_props(const Inkscape::StyleProperties& props);
+    void update_from_style_props(SPObject* object, const Inkscape::StyleProperties& props);
     // update visibility and lock state
     void update_visibility(SPObject* object);
 
@@ -72,6 +72,7 @@ private:
     // show/hide stroke widgets
     void show_stroke(bool show);
     void update_stroke(SPItem* item);
+    void update_stroke_from_style(const StyleProperties& props);
     // true if attributes can be modified now, or false while the update is pending
     bool can_update() const;
     void update_reset_opacity_button();
@@ -83,8 +84,10 @@ private:
 
         // set icon representing the current fill / stroke type
         void set_preview(const SPIPaint& paint, double paint_opacity, PaintMode mode);
+        void set_preview(SPPaintServer* server, Colors::Color color, double paint_opacity, PaintMode mode);
         PaintMode update_preview_indicators(const SPObject* object);
         PaintMode update_preview_indicators(SPStyle* style);
+        void update_preview_indicators_from_paint(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity);
         void set_paint_from_object(const SPObject* object);
         void set_paint_from_style(SPStyle* style);
         void set_paint(const SPIPaint& paint, double opacity, FillRule fill_rule);

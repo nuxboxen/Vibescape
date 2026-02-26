@@ -31,7 +31,7 @@ using namespace UI::Widget;
 
 // Classify a paint into a PaintProp, examining all paint combinations
 // and setting the appropriate mode and associated data.
-PaintProp classify_paint(const SPIPaint& paint) {
+PaintProp classify_paint(const SPIPaint& paint, double opacity) {
     PaintProp p;
     if (auto* server = paint.isPaintserver() ? paint.href->getObject() : nullptr) {
         p.server = server;
@@ -64,6 +64,7 @@ PaintProp classify_paint(const SPIPaint& paint) {
     } else if (paint.isColor() && paint.paintSource == SP_CSS_PAINT_ORIGIN_NORMAL) {
         p.mode  = PaintMode::Solid;
         p.color = paint.getColor();
+        p.color->setOpacity(opacity);
     } else if (paint.isNone()) {
         p.mode = PaintMode::None;
     } else {
@@ -99,7 +100,7 @@ void merge_item_style(StyleProperties& props, SPItem* item) {
 
     // --- fill ---
     if (!props.fill.is_mixed()) {
-        props.fill.merge(classify_paint(style->fill));
+        props.fill.merge(classify_paint(style->fill, style->fill_opacity));
     }
 
     props.fill_opacity.merge(static_cast<double>(style->fill_opacity));
@@ -107,7 +108,7 @@ void merge_item_style(StyleProperties& props, SPItem* item) {
 
     // --- stroke ---
     if (!props.stroke.is_mixed()) {
-        props.stroke.merge(classify_paint(style->stroke));
+        props.stroke.merge(classify_paint(style->stroke, style->stroke_opacity));
     }
 
     props.stroke_opacity.merge(static_cast<double>(style->stroke_opacity));
@@ -122,6 +123,7 @@ void merge_item_style(StyleProperties& props, SPItem* item) {
     props.stroke_linecap.merge(static_cast<int>(style->stroke_linecap.value));
     props.stroke_linejoin.merge(static_cast<int>(style->stroke_linejoin.value));
     props.stroke_miterlimit.merge(style->stroke_miterlimit.value);
+    props.hairline.merge(static_cast<bool>(style->stroke_extensions.hairline));
 
     // --- stroke-dasharray + dashoffset ---
     if (!props.stroke_dash.is_mixed()) {
@@ -140,7 +142,10 @@ void merge_item_style(StyleProperties& props, SPItem* item) {
     props.marker_end.merge(style->marker_end.value()     ? style->marker_end.value()   : "");
 
     // --- paint-order ---
-    props.paint_order.merge(style->paint_order.set ? style->paint_order.value : "normal");
+    if (style->paint_order.set) {
+        SPIPaintOrder order = style->paint_order;
+        props.paint_order.merge(std::vector<SPIPaintOrder>{order});
+    }
 
     props.opacity.merge(static_cast<double>(style->opacity));
 
