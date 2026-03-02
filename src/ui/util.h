@@ -32,6 +32,7 @@ class ToggleButton;
 
 namespace Inkscape::UI::Widget {
 class InkSpinButton;
+class SpinScale;
 }
 
 /*
@@ -308,6 +309,9 @@ void set_toggle_button_state(Gtk::ToggleButton& button, Inkscape::mixed_property
 
 // Set the value of a spin button based on a mixed_property
 void set_spin_button_value(Inkscape::UI::Widget::InkSpinButton& button, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value = {});
+
+// Set the value of a spin scale based on a mixed_property
+void set_spin_scale_value(Inkscape::UI::Widget::SpinScale& scale, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value = {});
 
 /**
  * Given an event received by a widget, return the coordinate transformation that brings the event's

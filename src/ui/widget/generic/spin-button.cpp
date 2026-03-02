@@ -887,7 +887,9 @@ void InkSpinButton::set_value(double new_value) {
 
 void InkSpinButton::set_placeholder(const Glib::ustring& text) {
     _placeholder = text;
-    _value.set_text(_placeholder);
+    if (_value.get_text() != _placeholder) {
+        _value.set_text(_placeholder);
+    }
 }
 
 void InkSpinButton::clear_placeholder() {

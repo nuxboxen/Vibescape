@@ -22,6 +22,7 @@
 #include "style-internal.h"
 #include "style.h"
 #include "ui/widget/paint-enums.h"
+#include "ui/widget/stroke-style.h"
 
 namespace Inkscape {
 
@@ -128,11 +129,9 @@ void merge_item_style(StyleProperties& props, SPItem* item) {
     // --- stroke-dasharray + dashoffset ---
     if (!props.stroke_dash.is_mixed()) {
         StrokeDashProp sd;
-        sd.dashes.reserve(style->stroke_dasharray.values.size());
-        for (auto& d : style->stroke_dasharray.values) {
-            sd.dashes.push_back(d.computed);
-        }
-        sd.offset = style->stroke_dashoffset.computed;
+        auto [pattern, offset] = getDashFromStyle(style);
+        sd.dashes = std::move(pattern);
+        sd.offset = offset;
         props.stroke_dash.merge(std::move(sd));
     }
 
@@ -151,9 +150,7 @@ void merge_item_style(StyleProperties& props, SPItem* item) {
 
     // --- blend mode ---
     {
-        int blend = style->mix_blend_mode.set
-            ? static_cast<int>(style->mix_blend_mode.value)
-            : static_cast<int>(SP_CSS_BLEND_NORMAL);
+        auto blend = style->mix_blend_mode.set ? style->mix_blend_mode.value : SP_CSS_BLEND_NORMAL;
         props.blend_mode.merge(blend);
     }
 

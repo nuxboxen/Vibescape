@@ -69,6 +69,9 @@ public:
         return os.str();
     }
 
+    InkSpinButton& get_spin_button() { return _spin; }
+    ScaleBar& get_scale_bar() { return _scale; }
+
 private:
     void construct()
     {
@@ -86,7 +89,7 @@ private:
         _scale.set_margin_end(2);
         _scale.set_margin_start(5);
         _scale.set_hexpand();
-        _scale.set_adjustment(get_adjustment()); 
+        _scale.set_adjustment(get_adjustment());
 
         append(_scale);
         append(_spin);

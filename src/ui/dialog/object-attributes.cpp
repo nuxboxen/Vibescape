@@ -3135,62 +3135,6 @@ public:
             mgr.reparentPopoverTo(_recolor_btn);
             mgr.widget.showForSelection(_desktop);
         });
-
-if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
-        //todo: should those options be exposed? =======================
-        // auto box = Gtk::make_managed<Gtk::Box>();
-        // box->set_spacing(4);
-        // auto enter = Gtk::make_managed<Gtk::CheckButton>(_("Enter groups"));
-        // enter->set_tooltip_text(_("Scan objects inside groups"));
-        // auto original = Gtk::make_managed<Gtk::CheckButton>(_("Scan originals"));
-        // original->set_tooltip_text(_("Scan originals pointed to be clones"));
-        // box->append(*enter);
-        // box->append(*original);
-        // _grid.add_row(box);
-        // _grid.add_property(_("Fill"), nullptr, )
-        //todo: end ====================================================
-
-        _types.set_hexpand();
-        _grid.add_row(_("Types"), &_types);
-        _grid.add_row(Gtk::make_managed<Gtk::Separator>(), nullptr, true);
-
-        _fill_paint.set_hexpand();
-        _grid.add_row(_("Fills"), &_fill_paint);
-        _grid.add_row(Gtk::make_managed<Gtk::Separator>(), nullptr, true);
-
-        _stroke_paint.set_hexpand();
-        _grid.add_row(_("Strokes"), &_stroke_paint);
-        _grid.add_row(Gtk::make_managed<Gtk::Separator>(), nullptr, true);
-
-        _stroke_width.set_hexpand();
-        _grid.add_row(_("Stroke widths"), &_stroke_width);
-        _stroke_width.get_signal_value_changed().connect([this](auto id, auto orig, auto value) {
-            printf("val chg: %s %.8f -> %.8f\n", id.c_str(), orig, value);
-            auto selection = _desktop->getSelection();
-            bool changed = false;
-            for (auto obj : selection->objects()) {
-                visit_objects(obj, [&](SPObject* o) {
-                    if (auto item = cast<SPItem>(o)) {
-                        if (item->style->stroke_width.computed == orig) {
-                            printf("stroke match %s\n", o->getId());
-                            changed = true;
-    //todo: this is a test
-    auto css = boost::intrusive_ptr(sp_repr_css_attr_new(), false);
-    sp_repr_css_set_property_double(css.get(), "stroke-width", value);
-    item->changeCSS(css.get(), "style");
-    // end of test
-                        }
-                        else {
-                            printf("stroke no match %.8f, %s\n", item->style->stroke_width.computed, o->getId());
-                        }
-                    }
-                });
-            }
-            if (changed) {
-                DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "stroke width"), "");
-            }
-        });
-}
     }
 
 private:
@@ -3205,11 +3149,9 @@ private:
         if (!_desktop) return;
 
         auto selection = _desktop->getSelection();
-
-        SPStyle query(_desktop->doc());
-        const int property = 0;// kind == FILL ? QUERY_STYLE_PROPERTY_FILL : QUERY_STYLE_PROPERTY_STROKE;
-        int result = sp_desktop_query_style(_desktop, &query, property);
-        _paint->update_from_style(nullptr, &query);
+        // query fill and stroke properties
+        auto props = Inkscape::query_style_properties(selection->items());
+        _paint->update_from_style_props(nullptr, props);
     }
 
     void update(SPObject* object) override {
@@ -3217,128 +3159,11 @@ private:
 
         auto selection = _desktop->getSelection();
 
-
-if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
-        std::set<std::string> types;
-        std::set<PaintKey> fills; // fill paints
-        std::set<PaintKey> strokes;
-        std::set<double> stroke_widths;
-
-        //todo: test code ------------------
-        // auto get_paint = [](SPIPaint* paint) {
-        //     auto mode = paint ? Widget::get_mode_from_paint(*paint) : Widget::PaintMode::NotSet;
-        //     PaintKey key;
-        //     key.mode = mode;
-        //     if (mode == Widget::PaintMode::Solid) {
-        //         key.id = paint->getColor().toString(false);
-        //         key.color = paint->getColor();
-        //     }
-        //     else if (auto server = paint->href ? paint->href->getObject() : nullptr) {
-        //         if (auto gradient = cast<SPGradient>(server)) {
-        //             // gradients, meshes
-        //             key.vector = gradient->getVector(false);
-        //         }
-        //         else if (auto pattern = cast<SPPattern>(server)) {
-        //             key.vector = pattern->rootPattern();
-        //         }
-        //         auto s = key.vector ? key.vector : server;
-        //         key.id = s->getId() ? s->getId() : "";
-        //         key.label = s->defaultLabel();
-        //         key.server = server;
-        //     }
-        //     return key;
-        // };
-
-        auto collect_attr = [&](SPObject* obj) {
-            if (auto repr = obj->getRepr()) {
-                types.insert(repr->name());
-            }
-            if (auto item = cast<SPItem>(obj)) {
-                auto fill = item->style->getFillOrStroke(true);
-                fills.insert(get_paint(fill));
-
-                auto stroke = item->style->getFillOrStroke(false);
-                strokes.insert(get_paint(stroke));
-
-                stroke_widths.insert(item->style->stroke_width.computed);
-            }
-            //todo: groups and text
-        };
-
-        for (auto obj : selection->objects()) {
-            visit_objects(obj, collect_attr);
-        }
-
-        {
-            auto it = types.begin();
-            _types.update_store(types.size(), [&](auto i) {
-                auto&& name = *it;
-                ++it;
-                return GridViewList::create_item(name, 0, name, {}, {}, {}, {}, false);
-            });
-        }
-        {
-            auto it = stroke_widths.begin();
-            _stroke_width.update_store(stroke_widths.size(), [&](auto i) {
-                auto width = *it++;
-                auto id = std::to_string(i);
-                return GridViewList::create_item(id, width, {}, {}, {}, {}, {}, false);
-            });
-        }
-
-        {
-            //todo: experiments -------------------
-            // paint servers, colors, or no paint
-            // auto paint_to_item = [](const PaintKey& paint) {
-            //     auto mode_name = get_paint_mode_name(paint.mode);
-            //     auto tooltip = paint.vector || !paint.color ? mode_name : Glib::ustring(paint.color->toString(false));
-            //     if (paint.vector) tooltip = tooltip + " " + paint.vector->defaultLabel();
-            //     auto label = paint.label.empty() ? paint.id : paint.label;
-            //     if (label.empty()) label = mode_name;
-            //     if (paint.mode == Widget::PaintMode::Swatch) {
-            //         Colors::Color color{0};
-            //         auto swatch = cast<SPGradient>(paint.vector);
-            //         if (swatch && swatch->hasStops()) {
-            //             color = swatch->getFirstStop()->getColor();
-            //         }
-            //         return GridViewList::create_item(paint.id, 0, label, {}, tooltip, color, {}, true);
-            //     }
-            //     else if (paint.mode == Widget::PaintMode::Solid) {
-            //         return GridViewList::create_item(paint.id, 0, label, {}, tooltip, paint.color, {}, false);
-            //     }
-            //     else if (paint.mode == Widget::PaintMode::Gradient) {
-            //         // todo: pattern size needs to match tile size
-            //         auto pat_t = cast<SPGradient>(paint.vector)->create_preview_pattern(16);
-            //         auto pat = Cairo::RefPtr<Cairo::Pattern>(new Cairo::Pattern(pat_t, true));
-            //         return GridViewList::create_item(paint.id, 0, label, {}, tooltip, {}, pat, false, is<SPRadialGradient>(paint.server));
-            //     }
-            //     else {
-            //         auto icon = get_paint_mode_icon(paint.mode);
-            //         return GridViewList::create_item(paint.id, 0, label, icon, tooltip, {}, {}, false);
-            //     }
-            // };
-            {
-                auto it = fills.begin();
-                _fill_paint.update_store(fills.size(), [&](auto index) {
-                    return paint_to_item(*it++);
-                });
-            }
-            {
-                auto it = strokes.begin();
-                _stroke_paint.update_store(strokes.size(), [&](auto index) {
-                    return paint_to_item(*it++);
-                });
-            }
-        }
-}
+        //todo: other properties, if any
     }
 
     Glib::RefPtr<Gtk::Builder> _builder;
     Gtk::MenuButton& _recolor_btn = get_widget<Gtk::MenuButton>(_builder, "multi-recolor");
-    GridViewList _types{GridViewList::Label};
-    GridViewList _fill_paint{GridViewList::ColorLong};
-    GridViewList _stroke_paint{GridViewList::ColorLong};
-    GridViewList _stroke_width{Gtk::Adjustment::create(0, 0, 1e5, 0.1, 1), 8};
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -3347,24 +3172,10 @@ class EmptyPanel : public details::AttributesPanel {
 public:
     EmptyPanel(Glib::RefPtr<Gtk::Builder> builder) {
         Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "empty-panel"), _grid);
-
-if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
-        // TODO: panel with default paint and other style attributes
-        _grid.add_property(_("Defaults"), nullptr, nullptr, nullptr);
-        add_fill_and_stroke(Parts::FillPaint);
-}
     }
 
     void update(SPObject* object) override {
-if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
-        if (!_desktop || !_desktop->getDocument()) return;
-
-        if (auto view = _desktop->getDocument()->getNamedView()) {
-            if (view->style) {
-                update_paint(view);
-            }
-        }
-}
+        //TODO: document, grids, guides, pages?, etc
     }
 };
 

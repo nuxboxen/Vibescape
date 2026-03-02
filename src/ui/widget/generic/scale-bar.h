@@ -30,6 +30,9 @@ public:
     // set the height of scale blocks; by default, it is approximately the size of the UI font capital letters
     void set_block_height(int height);
 
+    // change drawing to indicate mixed values mode; cleared when adjustment value changes
+    void set_mixed_mode(bool mixed);
+
 private:
     void snapshot_vfunc(const Glib::RefPtr<Gtk::Snapshot>& snapshot) override;
     void draw_scale(const Glib::RefPtr<Gtk::Snapshot>& snapshot);
@@ -49,6 +52,7 @@ private:
     sigc::scoped_connection _connection;
     Gdk::RGBA _selected;
     Gdk::RGBA _unselected;
+    bool _mixed_mode = false;
 };
 
 } // namespace

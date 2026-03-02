@@ -113,7 +113,7 @@ struct StyleProperties {
 
     // --- opacity & blend ---
     mixed_property<double> opacity{1.0};
-    mixed_property<int>    blend_mode{SP_CSS_BLEND_NORMAL};
+    mixed_property<SPBlendMode> blend_mode{SP_CSS_BLEND_NORMAL};
 
     // --- visibility ---
     mixed_property<bool>   visibility{false};  // true = hidden

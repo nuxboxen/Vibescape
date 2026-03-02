@@ -37,6 +37,7 @@
 #include "ui/dialog-run.h"
 #include "util/numeric/converters.h"
 #include "widget/generic/spin-button.h"
+#include "widget/generic/spin-scale.h"
 
 // NOTE: Include windows stuff last, as it #defines ERROR leading to compilation errors
 #if (defined (_WIN32) || defined (_WIN64))
@@ -659,11 +660,16 @@ void set_mixed_mode_class(Gtk::Widget& widget, bool mixed_mode) {
 
 void set_toggle_button_state(Gtk::ToggleButton& button, Inkscape::mixed_property<bool> prop, bool default_value) {
     set_mixed_mode_class(button, prop.is_mixed());
+    // sync button's state with property; only update if state has changed to avoid repainting
     if (prop.is_single()) {
-        button.set_active(prop.value());
+        if (button.get_active() != prop.value()) {
+            button.set_active(prop.value());
+        }
     }
     else {
-        button.set_active(default_value);
+        if (button.get_active() != default_value) {
+            button.set_active(default_value);
+        }
     }
 }
 
@@ -671,17 +677,30 @@ void set_spin_button_value(Inkscape::UI::Widget::InkSpinButton& button, Inkscape
     static const Glib::ustring mixed_text = "…"; // ellipsis
     static const Glib::ustring no_value = "–"; // en dash
 
+    // save some cycles by only updating widget if value has changed
+    auto update_value = [&button](double value) {
+        if (button.get_value() != value) {
+            button.set_value(value);
+        }
+    };
+
     if (prop.is_mixed()) {
-        button.set_value(prop.value());
+        update_value(prop.value());
         button.set_placeholder(mixed_text);
     }
     else if (prop.is_single()) {
-        button.set_value(prop.value());
+        update_value(prop.value());
+        button.clear_placeholder();
     }
     else {
-        button.set_value(not_set_value.value_or(prop.value()));
+        update_value(not_set_value.value_or(prop.value()));
         button.set_placeholder(no_value);
     }
+}
+
+void set_spin_scale_value(Inkscape::UI::Widget::SpinScale& scale, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value) {
+    set_spin_button_value(scale.get_spin_button(), prop, not_set_value);
+    scale.get_scale_bar().set_mixed_mode(prop.is_mixed());
 }
 
 /*

@@ -591,7 +591,7 @@ void PaintAttribute::PaintStrip::update_preview_indicators_from_paint(const mixe
     if (paint.is_mixed()) {
         _paint_icon.set_visible(false);
         _color_preview.set_visible(false);
-        _preview_label.set_label(_("Mixed"));
+        _preview_label.set_label(C_("Different paints/colors selected", "Mixed"));
         _preview_label.set_visible(true);
     }
     else {
@@ -1233,6 +1233,20 @@ void PaintAttribute::update_from_style_props(SPObject* object, const Inkscape::S
         show_stroke(true);
         _stroke.update_preview_indicators_from_paint(props.stroke, props.stroke_opacity);
     }
+
+    // opacity
+    set_spin_scale_value(_opacity, props.opacity);
+    update_reset_opacity_button();
+
+    // blend mode
+    if (props.blend_mode.is_mixed()) {
+        // todo
+        // mixed state for DroDown
+    }
+    else {
+        _blend.set_active_by_id(props.blend_mode.value());
+    }
+    update_reset_blend_button();
 }
 
 void PaintAttribute::update_visibility(SPObject* object) {
