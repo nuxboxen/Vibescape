@@ -556,7 +556,7 @@ bool pathv_fully_contains(Geom::PathVector const &a, Geom::PathVector const &b, 
     }
 
     // At minimum, bbox of a must contain bbox of b
-    if (!a.boundsExact()->contains(b.boundsExact())) {
+    if (!a.boundsExact().contains(b.boundsExact())) {
         return false;
     }
 
