@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg width="16" height="16" viewBox="0 0 16 16" version="1.1" id="svg1" inkscape:version="1.5-dev (6a01648af5, 2025-01-17, custom)" sodipodi:docname="page-label.svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" inkscape:showpageshadow="2" inkscape:pageopacity="0.0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#e6e6e6" inkscape:document-units="px" inkscape:zoom="10.296968" showgrid="false" inkscape:cx="9.7601549" inkscape:cy="14.955859" inkscape:current-layer="layer1">
+    <inkscape:grid type="xygrid" id="grid1" units="px" originx="0" originy="0" spacingx="1" spacingy="1" empcolor="#0099e5" empopacity="0.30196078" color="#0099e5" opacity="0.14901961" empspacing="5" enabled="true" visible="false" />
+  </sodipodi:namedview>
+  <defs id="defs1" />
+  <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
+    <path id="path34" style="opacity:0.8;fill-rule:evenodd;stroke:none;stroke-width:1" d="M 7.7214921,4.6050402 C 7.5672546,4.9487138 7.355092,5.1976999 7.0850043,5.3519986 6.8149931,5.5027491 6.4204908,5.5974327 5.9014972,5.6360495 l -0.2314709,0.015829 v 1.0730824 h 0.1631078 c 0.6487611,0 1.1589989,-0.075398 1.5307136,-0.2261946 V 11.501234 H 9.0312874 V 4.6050861 Z M 5,3 h 6 c 2.77,0 5,2.23 5,5 0,2.77 -2.23,5 -5,5 H 5 C 2.23,13 0,10.77 0,8 0,5.23 2.23,3 5,3 Z" />
+  </g>
+</svg>

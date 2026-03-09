@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <placeholder width="255" height="267"></placeholder>
+  <requires lib="gtk" version="4.0"></requires>
+  <object class="GtkGrid" id="grids-panel">
+    <property name="valign">fill</property>
+    <property name="row-spacing">0</property>
+    <property name="column-spacing">4</property>
+    <child>
+      <object class="GtkLabel" id="no_grids">
+        <property name="label" translatable="yes">There are no grids defined.</property>
+        <property name="halign">center</property>
+        <property name="hexpand">true</property>
+        <property name="margin-top">40</property>
+        <style>
+          <class name="informational-text"></class>
+        </style>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">0</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkScrolledWindow" id="scroller">
+        <property name="overlay-scrolling">false</property>
+        <property name="min-content-height">80</property>
+        <property name="min-content-width">0</property>
+        <property name="propagate-natural-height">true</property>
+        <property name="hscrollbar-policy">never</property>
+        <property name="vscrollbar-policy">automatic</property>
+        <property name="has-frame">false</property>
+        <property name="hexpand-set">true</property>
+        <property name="hexpand">true</property>
+        <child>
+          <object class="GtkListBox" id="list">
+            <property name="show-separators">false</property>
+            <property name="selection-mode">none</property>
+            <style>
+              <class name="standard-background-color"></class>
+              <class name="no-padding-list"></class>
+            </style>
+          </object>
+        </child>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">1</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+    <!--dim: 2, 4-->
+    <child>
+      <object class="GtkButton" id="new-grid">
+        <property name="has-frame">false</property>
+        <property name="icon-name">plus</property>
+        <property name="valign">center</property>
+        <property name="halign">center</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">3</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <property name="hexpand">true</property>
+        <property name="hexpand-set">true</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="use-markup">false</property>
+            <property name="hexpand">true</property>
+            <property name="hexpand-set">true</property>
+            <property name="halign">center</property>
+            <property name="label" translatable="yes">New grid</property>
+            <style>
+              <class name="informational-text"></class>
+            </style>
+          </object>
+        </child>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">3</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSeparator">
+        <property name="margin-bottom">2</property>
+        <property name="margin-top">0</property>
+        <property name="valign">end</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">2</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+  </object>
+</interface>

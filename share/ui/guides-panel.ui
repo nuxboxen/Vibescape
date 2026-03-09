@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <placeholder width="293" height="345"></placeholder>
+  <requires lib="gtk" version="4.0"></requires>
+  <object class="GtkGrid" id="guides-grid">
+    <property name="valign">start</property>
+    <property name="hexpand">true</property>
+    <property name="hexpand-set">true</property>
+    <property name="orientation">vertical</property>
+    <property name="row-spacing">4</property>
+    <property name="column-spacing">4</property>
+    <child>
+      <object class="GtkCheckButton" id="lock-guides">
+        <property name="label" translatable="yes">Lock all guides</property>
+        <property name="tooltip-text" translatable="yes">Toggle lock of all guides in the document</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">0</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="create-guides-btn">
+        <property name="hexpand">true</property>
+        <property name="hexpand-set">true</property>
+        <property name="label" translatable="yes">Around the page</property>
+        <property name="action-name">doc.create-guides-around-page</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">2</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="delete-guides-btn">
+        <property name="has-frame">false</property>
+        <property name="tooltip-text" translatable="yes">Delete all guidelines</property>
+        <property name="icon-name">edit-delete</property>
+        <property name="valign">center</property>
+        <property name="halign">center</property>
+        <property name="action-name">doc.delete-all-guides</property>
+        <layout>
+          <property name="column">4</property>
+          <property name="row">0</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuButton" id="guide-color">
+        <property name="tooltip-text" translatable="yes">Color of guidelines</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">4</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuButton" id="guide-hi-color">
+        <property name="tooltip-text" translatable="yes">Color of a guideline when under mouse</property>
+        <layout>
+          <property name="column">3</property>
+          <property name="row">4</property>
+        </layout>
+      </object>
+    </child>
+    <!--dim: 5, 6-->
+    <child>
+      <object class="GtkLabel">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Colors</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">4</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Create</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkSwitch" id="show-guides">
+        <property name="tooltip-text" translatable="yes">Show or hide guides</property>
+        <property name="valign">center</property>
+        <property name="halign">start</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">0</property>
+        </layout>
+        <style>
+          <class name="small-switch"></class>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <property name="height-request">4</property>
+        <property name="width-request">-1</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">1</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox" id="spacer">
+        <property name="width-request">65</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">5</property>
+        </layout>
+      </object>
+    </child>
+  </object>
+</interface>

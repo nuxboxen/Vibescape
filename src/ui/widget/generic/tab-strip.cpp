@@ -551,6 +551,53 @@ void TabStrip::construct()
     set_overflow(Gtk::Overflow::HIDDEN);
     containerize(*this);
 
+    // Connect property changes to actual member
+    property_show_labels().signal_changed().connect([this]() {
+        auto value = _show_labels_prop.get_value();
+        _show_labels = parse_show_labels_value(value);
+        // refresh tabs
+        for (auto& tab : _tabs) {
+            tab->_show_labels = _show_labels;
+            tab->update(is_tab_active(*tab));
+        }
+        queue_allocate();
+    });
+
+    property_show_close_button().signal_changed().connect([this]() {
+        auto show = _show_close_btn_prop.get_value();
+        for (auto& tab : _tabs) {
+            tab->_show_close_btn = show;
+            tab->update(is_tab_active(*tab));
+        }
+        queue_allocate();
+    });
+
+    property_show_drag_handles().signal_changed().connect([this]() {
+        auto show = _show_drag_handles_prop.get_value();
+        // propagate changes to tabs
+        for (auto& tab : _tabs) {
+            tab->show_handle(show);
+        }
+    });
+
+    property_rearranging_tabs().signal_changed().connect([this]() {
+        auto value = _rearranging_tabs_prop.get_value();
+        _rearrange = parse_rearranging_tabs_value(value);
+    });
+
+    property_stretch_tabs().signal_changed().connect([this]() {
+        auto stretch = _stretch_tabs_prop.get_value();
+        // propagate changes to tabs
+        for (auto& tab : _tabs) {
+            tab->set_hexpand(stretch);
+        }
+        queue_allocate();
+    });
+
+    property_show_plus_button().signal_changed().connect([this]() {
+        _update_new_tab();
+    });
+
     _plus_btn.set_name("NewTabButton");
     _plus_btn.set_valign(Gtk::Align::CENTER);
     _plus_btn.set_has_frame(false);
@@ -616,6 +663,8 @@ void TabStrip::construct()
 
     auto motion = Gtk::EventControllerMotion::create();
     motion->signal_motion().connect([this, &motion = *motion] (double x, double y) {
+        if (_rearrange == Rearrange::Never) return;
+
         if (!_drag_src) {
             auto const tab = _left_clicked.lock();
             if (!tab) {
@@ -671,8 +720,17 @@ void TabStrip::construct()
     _updateVisibility();
 }
 
+#define INIT_PROPERTIES \
+    _show_labels_prop(*this, "show-labels", "never"), \
+    _show_close_btn_prop(*this, "show-close-button", true), \
+    _show_drag_handles_prop(*this, "show-drag-handles", false), \
+    _rearranging_tabs_prop(*this, "rearranging-tabs", "externally"), \
+    _stretch_tabs_prop(*this, "stretch-tabs", false), \
+    _show_plus_button_prop(*this, "show-plus-button", true)
+
 TabStrip::TabStrip(Gtk::Orientation orientation)
     : Glib::ObjectBase("TabStrip")
+    , INIT_PROPERTIES
     , _overlay{Gtk::make_managed<PointerTransparentWidget>()}
 {
     set_orientation(orientation);
@@ -682,9 +740,14 @@ TabStrip::TabStrip(Gtk::Orientation orientation)
 TabStrip::TabStrip(GtkWidget* cobject, const Glib::RefPtr<Gtk::Builder>& builder)
     : Glib::ObjectBase("TabStrip")
     , BuildableWidget(cobject, builder)
+    , INIT_PROPERTIES
     , _overlay{Gtk::make_managed<PointerTransparentWidget>()}
 {
+    // init orientation (to set correct CSS class)
+    set_orientation(get_orientation());
     construct();
+    // Apply initial property values from UI file (signal handlers not connected yet)
+    apply_initial_property_values();
 }
 
 TabStrip::~TabStrip()
@@ -699,14 +762,55 @@ TabStrip::~TabStrip()
     }
 }
 
+void TabStrip::apply_initial_property_values()
+{
+    // Apply show-labels property using reusable parsing method
+    auto value = _show_labels_prop.get_value();
+    _show_labels = parse_show_labels_value(value);
+
+    // Apply rearranging-tabs property using reusable parsing method
+    auto rearrange_value = _rearranging_tabs_prop.get_value();
+    _rearrange = parse_rearranging_tabs_value(rearrange_value);
+
+    // Note: We don't refresh tabs here because they haven't been created yet.
+    // The property signal handlers will handle tab updates when tabs are added later.
+}
+
+TabStrip::ShowLabels TabStrip::parse_show_labels_value(const Glib::ustring& value)
+{
+    if (value == "never") {
+        return ShowLabels::Never;
+    } else if (value == "always") {
+        return ShowLabels::Always;
+    } else if (value == "active-only") {
+        return ShowLabels::ActiveOnly;
+    }
+    // Default fallback
+    return ShowLabels::Never;
+}
+
+TabStrip::Rearrange TabStrip::parse_rearranging_tabs_value(const Glib::ustring& value)
+{
+    if (value == "never") {
+        return Rearrange::Never;
+    } else if (value == "internally") {
+        return Rearrange::Internally;
+    } else if (value == "externally") {
+        return Rearrange::Externally;
+    }
+    // Default fallback
+    return Rearrange::Externally;
+}
+
 Gtk::Widget* TabStrip::add_tab(const Glib::ustring& label, const Glib::ustring& icon, int pos)
 {
     auto tab = std::make_shared<TabWidget>(this);
-    tab->_handle.set_visible(_show_drag_handles);
+    tab->_handle.set_visible(_show_drag_handles_prop.get_value());
     tab->_name.set_text(label);
     tab->_icon.set_from_icon_name(icon);
-    tab->_show_close_btn = _show_close_btn;
+    tab->_show_close_btn = _show_close_btn_prop.get_value();
     tab->_show_labels = _show_labels;
+    tab->set_hexpand(_stretch_tabs_prop.get_value());
     tab->update(false);
 
     auto ptr_tab = tab.get();
@@ -764,12 +868,7 @@ bool TabStrip::is_tab_active(const Gtk::Widget& tab) const {
 }
 
 void TabStrip::set_show_close_button(bool show) {
-    _show_close_btn = show;
-    for (auto& tab : _tabs) {
-        tab->_show_close_btn = show;
-        tab->update(is_tab_active(*tab));
-    }
-    queue_allocate();
+    _show_close_btn_prop.set_value(show);
 }
 
 GType TabStrip::get_dnd_source_type() {
@@ -787,13 +886,7 @@ std::optional<std::pair<TabStrip*, int>> TabStrip::unpack_drop_source(const Glib
 }
 
 void TabStrip::set_draw_handle(bool show) {
-    if (_show_drag_handles == show) return;
-
-    _show_drag_handles = show;
-    // propagate changes to tabs
-    for (auto& tab : _tabs) {
-        tab->show_handle(show);
-    }
+    _show_drag_handles_prop.set_value(show);
 }
 
 void TabStrip::select_tab(const Gtk::Widget& tab)
@@ -869,7 +962,10 @@ void TabStrip::set_new_tab_popup(Gtk::Popover* popover) {
 void TabStrip::_update_new_tab()
 {
     // show (+) button when there's a popover, but only in horizontal layout
-    _plus_btn.set_visible(_plus_btn.get_popover() && get_orientation() == Gtk::Orientation::HORIZONTAL);
+    _plus_btn.set_visible(
+        _show_plus_button_prop &&
+        _plus_btn.get_popover() &&
+        get_orientation() == Gtk::Orientation::HORIZONTAL);
 }
 
 void TabStrip::set_tabs_context_popup(Gtk::Popover* popover) {
@@ -883,16 +979,23 @@ void TabStrip::set_tabs_context_popup(Gtk::Popover* popover) {
 
 void TabStrip::set_rearranging_tabs(Rearrange rearrange) {
     _rearrange = rearrange;
+    //todo: set property
 }
 
 void TabStrip::set_show_labels(ShowLabels labels) {
-    _show_labels = labels;
-    // refresh tabs
-    for (auto& tab : _tabs) {
-        tab->_show_labels = labels;
-        tab->update(is_tab_active(*tab));
+    Glib::ustring value;
+    switch (labels) {
+        case ShowLabels::Never:
+            value = "never";
+            break;
+        case ShowLabels::Always:
+            value = "always";
+            break;
+        case ShowLabels::ActiveOnly:
+            value = "active-only";
+            break;
     }
-    queue_allocate();
+    _show_labels_prop.set_value(value);
 }
 
 void TabStrip::_updateVisibility()
@@ -1053,7 +1156,9 @@ void Inkscape::UI::Widget::TabStrip::size_allocate_vfunc(int width, int height, 
     _overlay->size_allocate(Gtk::Allocation(0, 0, width, height), -1);
 
     // limit width by removing plus button's size
-    width -= plus_w;
+    if (_show_plus_button_prop) {
+        width -= plus_w;
+    }
 
     struct Drop
     {

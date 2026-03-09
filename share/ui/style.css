@@ -804,10 +804,16 @@ button.square-button image {
     font-weight: bold;
 }
 
+.small-label {
+    font-weight: bold;
+    font-size: smaller;
+    opacity: 0.6;
+    text-transform: uppercase;
+}
+
 /* heading label in dialogs */
 .heading {
     font-weight: bold;
-    font-size: 1.1em; /* make it optically comparable with non-bold */
     margin-top: 0.5em;
 }
 /* topmost heading in dialogs */
@@ -1272,7 +1278,7 @@ popover.popover-menu menuitem:hover {
     background-color: @theme_selected_bg_color;
     color: @theme_selected_fg_color;
 }
-popover.popover-menu menuitem:hover image {    
+popover.popover-menu menuitem:hover image {
     background-color: @theme_selected_bg_color;
     color: @theme_selected_fg_color;
 }
@@ -1705,6 +1711,10 @@ listview row.top-separator {
     min-height: 2.25em;
 }
 
+list.no-padding-list > row {
+    padding: 0;
+}
+
 .border-box {
     border-radius: 2px;
     border: 1px solid @borders;
@@ -1891,4 +1901,13 @@ text-combobox .menuitem {
     padding: 2px 0;
     margin: 0;
     border-spacing: 0;
+}
+
+switch.small-switch slider {
+    min-height: 10px;
+    min-width:  10px;
+}
+
+.standard-background-color {
+    background-color:@theme_bg_color;
 }

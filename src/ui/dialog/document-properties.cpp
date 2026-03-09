@@ -47,6 +47,7 @@
 #include "ui/util.h"
 #include "ui/widget/alignment-selector.h"
 #include "ui/widget/entity-entry.h"
+#include "ui/widget/grid-widget.h"
 #include "ui/widget/notebook-page.h"
 #include "ui/widget/page-properties.h"
 #include "ui/widget/generic/popover-menu.h"
@@ -56,55 +57,7 @@
 namespace Inkscape::UI {
 
 namespace Widget {
-
-class GridWidget final : public Gtk::Box
-{
-public:
-    GridWidget(SPGrid *obj);
-
-    void update();
-    SPGrid *getGrid() { return _grid; }
-    XML::Node *getGridRepr() { return _repr; }
-
-private:
-    SPGrid *_grid = nullptr;
-    XML::Node *_repr = nullptr;
-
-    Gtk::Button* _delete = Gtk::make_managed<Gtk::Button>();
-    Gtk::MenuButton* _options = Gtk::make_managed<Gtk::MenuButton>();
-    Gtk::Popover* _opt_items = Gtk::make_managed<Gtk::Popover>();
-    Gtk::Image* _icon = Gtk::make_managed<Gtk::Image>();
-    Gtk::Label* _id = Gtk::make_managed<Gtk::Label>();
-    Gtk::MenuButton* _align = Gtk::make_managed<Gtk::MenuButton>();
-    Gtk::Popover* _align_popup = Gtk::make_managed<Gtk::Popover>();
-
-    UI::Widget::Registry _wr;
-    Inkscape::UI::Widget::IconComboBox _grid_type;
-    RegisteredSwitchButton *_enabled = nullptr;
-    RegisteredCheckButton *_snap_visible_only = nullptr;
-    RegisteredToggleButton *_visible = nullptr;
-    RegisteredCheckButton *_dotted = nullptr;
-    AlignmentSelector *_alignment = nullptr;
-
-    RegisteredUnitMenu *_units = nullptr;
-    RegisteredScalarUnit *_origin_x = nullptr;
-    RegisteredScalarUnit *_origin_y = nullptr;
-    RegisteredScalarUnit *_spacing_x = nullptr;
-    RegisteredScalarUnit *_spacing_y = nullptr;
-    RegisteredScalar *_angle_x = nullptr;
-    RegisteredScalar *_angle_z = nullptr;
-    RegisteredColorPicker *_grid_color = nullptr;
-    RegisteredInteger *_no_of_lines = nullptr;
-    RegisteredScalarUnit* _gap_x = nullptr;
-    RegisteredScalarUnit* _gap_y = nullptr;
-    RegisteredScalarUnit* _margin_x = nullptr;
-    RegisteredScalarUnit* _margin_y = nullptr;
-    Gtk::MenuButton* _angle_popup = Gtk::make_managed<Gtk::MenuButton>();
-    Gtk::Entry* _aspect_ratio = nullptr;
-
-    sigc::scoped_connection _modified_signal;
-};
-
+using GridWidget = Inkscape::UI::Widget::GridWidget;
 } // namespace Widget
 
 namespace Dialog {
@@ -453,7 +406,8 @@ void DocumentProperties::build_page()
 {
     using UI::Widget::PageProperties;
     _page = Gtk::manage(PageProperties::create());
-    _page_page->table().attach(*_page, 0, 0);
+    _page_page->table().attach(*_page->left_grid(), 0, 0);
+    _page_page->table().attach(*_page->right_grid(), 0, 1);
 
     _page->signal_color_changed().connect([this](Colors::Color const &color, PageProperties::Color const element){
         if (_wr.isUpdating() || !_wr.desktop()) return;
@@ -1056,7 +1010,7 @@ void DocumentProperties::build_metadata()
 
     /* add license selector pull-down and URI */
     ++row;
-    _licensor.init (_wr);
+    _licensor.init();
 
     _licensor.set_hexpand();
     _licensor.set_valign(Gtk::Align::CENTER);
@@ -1341,7 +1295,7 @@ void DocumentProperties::update_grid_placeholder() {
 
 void DocumentProperties::add_grid_widget(SPGrid *grid)
 {
-    auto const widget = Gtk::make_managed<Inkscape::UI::Widget::GridWidget>(grid);
+    auto const widget = Gtk::make_managed<Inkscape::UI::Widget::GridWidget>(grid, grid ? grid->getRepr() : nullptr);
     _grids_list.append(*widget);
     _grids_unified_size->add_widget(*widget);
     // get rid of row highlight - they are not selectable (we just need to change the last one, but there's no API for that)
@@ -1359,7 +1313,7 @@ void DocumentProperties::remove_grid_widget(XML::Node &node)
     int index = 0;
     for (auto row = _grids_list.get_row_at_index(index); row; row = _grids_list.get_row_at_index(++index)) {
         if (auto widget = dynamic_cast<Inkscape::UI::Widget::GridWidget*>(row->get_child())) {
-            if (&node == widget->getGridRepr()) {
+            if (&node == widget->get_tag()) {
                 _grids_unified_size->remove_widget(*widget);
                 _grids_list.remove(*row);
                 break;
@@ -1592,6 +1546,7 @@ void DocumentProperties::documentReplaced()
         if (auto document = desktop->getDocument()) {
             _root_connection.connect(document->getRoot()->getRepr());
             _cms_connection = document->getDocumentCMS().connectChanged(sigc::mem_fun(*this, &DocumentProperties::populate_linked_profiles_box));
+            _licensor.set_document(document);
         }
         populate_linked_profiles_box();
         update_widgets();
@@ -1653,12 +1608,10 @@ void DocumentProperties::display_unit_change(const Inkscape::Util::Unit* doc_uni
 
 namespace Widget {
 
-static const auto grid_types = std::to_array({std::tuple
-    {C_("Grid", "Rectangular"), GridType::RECTANGULAR, "grid-rectangular"},
-    {C_("Grid", "Axonometric"), GridType::AXONOMETRIC, "grid-axonometric"},
-    {C_("Grid", "Modular"), GridType::MODULAR, "grid-modular"}
-});
+// GridWidget implementation lives in ui/widget/grid-widget.cpp
 
+// DEAD CODE START — kept only as reference until old GridWidget is fully removed
+#if 0
 GridWidget::GridWidget(SPGrid *grid)
     : Gtk::Box(Gtk::Orientation::VERTICAL)
     , _grid(grid)
@@ -2082,6 +2035,7 @@ void GridWidget::update()
 
     _wr.setUpdating(false);
 }
+#endif // DEAD CODE END
 
 } // namespace Widget
 

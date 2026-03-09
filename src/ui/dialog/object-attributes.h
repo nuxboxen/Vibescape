@@ -50,7 +50,8 @@ public:
     void set_desktop(SPDesktop* desktop);
     void update_panel(SPObject* object, SPDesktop* desktop, bool tagged);
     virtual void subselection_changed(const std::vector<SPItem*>& items) {}
-    Gtk::Widget& widget() { if(!_widget) throw "missing widget in attributes panel"; return *_widget; }
+    virtual void tool_changed(Inkscape::UI::Tools::ToolBase* tool) {}
+    Gtk::Widget& widget() { if (!_widget) throw "missing widget in attributes panel"; return *_widget; }
     virtual Glib::ustring get_title(Selection* selection) const;
     void update_lock(SPObject* object);
 
@@ -178,9 +179,11 @@ private:
     std::unique_ptr<details::AttributesPanel> create_panel(int key);
     std::map<int, std::unique_ptr<details::AttributesPanel>> _panels;
     std::unique_ptr<details::AttributesPanel> _multi_obj_panel;
-    std::unique_ptr<details::AttributesPanel> _empty_panel;
+    std::unique_ptr<details::AttributesPanel> _document_panel;
+    std::unique_ptr<details::AttributesPanel> _pages_panel;
     details::AttributesPanel* get_panel(Selection* selection);
     void cursor_moved(Tools::TextTool* tool);
+    void tool_changed(Inkscape::UI::Tools::ToolBase* tool);
 
     details::AttributesPanel* _current_panel = nullptr;
     OperationBlocker _update;
@@ -189,6 +192,7 @@ private:
     SPItem* _current_item = nullptr;
     XML::SignalObserver _observer;
     sigc::scoped_connection _cursor_move;
+    sigc::scoped_connection _tool_changed;
 };
 
 } // namespace Inkscape::UI::Dialog

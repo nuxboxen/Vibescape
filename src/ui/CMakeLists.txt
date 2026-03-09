@@ -214,10 +214,17 @@ target_sources(inkscape_base PRIVATE
 	widget/custom-tooltip.cpp
 	widget/dash-selector.cpp
 	widget/desktop-widget.cpp
+	widget/color-system-panel.cpp
+	widget/document-props-panel.cpp
+	widget/display-props-panel.cpp
 	widget/document-templates.cpp
 	widget/drop-down-list.cpp
 	widget/entity-entry.cpp
 	widget/entry.cpp
+	widget/grid-widget.cpp
+	widget/grids-panel.cpp
+	widget/guides-panel.cpp
+	widget/pages-panel.cpp
 	widget/export-lists.cpp
 	widget/export-preview.cpp
 	widget/filter-effect-chooser.cpp
@@ -255,8 +262,10 @@ target_sources(inkscape_base PRIVATE
 	widget/ink-ruler.cpp
 	widget/labelled.cpp
 	widget/layer-selector.cpp
+	widget/license-panel.cpp
 	widget/licensor.cpp
 	widget/memory.cpp
+	widget/metadata-panel.cpp
 	widget/messages.cpp
 	widget/mesh-editor.cpp
 	widget/notebook-page.cpp
@@ -310,6 +319,7 @@ target_sources(inkscape_base PRIVATE
 	widget/recolor-art.cpp
 	widget/multi-marker-color-plate.cpp
 	widget/recolor-art-manager.cpp
+	widget/scripting-panel.cpp
 	view/svg-view-widget.cpp
 
 	# -------
@@ -546,6 +556,7 @@ target_sources(inkscape_base PRIVATE
 	widget/dash-selector.h
 	widget/desktop-widget.h
 	widget/drop-down-list.h
+	widget/display-props-panel.h
 	widget/document-templates.h
 	widget/edit-operation.h
 	widget/entity-entry.h
@@ -563,6 +574,8 @@ target_sources(inkscape_base PRIVATE
 	widget/font-variants.h
 	widget/font-variations.h
 	widget/frame.h
+	widget/guides-panel.h
+	widget/pages-panel.h
 	widget/generic/bin.h
 	widget/generic/css-name-class-init.h
 	widget/generic/dual-spin-scale.h
@@ -646,7 +659,7 @@ target_sources(inkscape_base PRIVATE
 	widget/recolor-art.h
 	widget/multi-marker-color-plate.h
 	widget/recolor-art-manager.h
-	
+
 	view/svg-view-widget.h
 )
 

@@ -37,7 +37,7 @@ public:
     Gtk::Label _label;
     Gtk::Widget *_packable;
 
-protected: 
+protected:
     EntityEntry (rdf_work_entity_t* ent, Registry& wr);
     sigc::connection _changed_connection;
     rdf_work_entity_t *_entity;
@@ -64,7 +64,7 @@ public:
     void load_from_preferences() override;
     Glib::ustring content() const override;
 
-protected: 
+protected:
     void on_changed() override;
     Gtk::TextView _v;
 };

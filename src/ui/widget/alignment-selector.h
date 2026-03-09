@@ -13,6 +13,10 @@
 #include <gtkmm/button.h>
 #include <gtkmm/grid.h>
 
+namespace Gtk {
+class Builder;
+}
+
 namespace Glib {
 class ustring;
 } // namespace Glib
@@ -23,10 +27,12 @@ class AlignmentSelector final : public Gtk::Box
 {
 public:
     AlignmentSelector();
+    AlignmentSelector(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& builder);
 
     sigc::connection connectAlignmentClicked(sigc::slot<void (int)>);
 
 private:
+    void construct();
     std::array<Gtk::Button, 9> _buttons;
     Gtk::Grid   _container;
 

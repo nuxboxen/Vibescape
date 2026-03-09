@@ -44,10 +44,10 @@ EntityEntry::create (rdf_work_entity_t* ent, Registry& wr)
     EntityEntry* obj = nullptr;
     switch (ent->format)
     {
-        case RDF_FORMAT_LINE: 
+        case RDF_FORMAT_LINE:
             obj = new EntityLineEntry (ent, wr);
             break;
-        case RDF_FORMAT_MULTILINE: 
+        case RDF_FORMAT_MULTILINE:
             obj = new EntityMultiLineEntry (ent, wr);
             break;
         default:
