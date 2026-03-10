@@ -965,8 +965,6 @@ void DocumentProperties::build_scripting()
 
     _EmbeddedContent.get_buffer()->signal_changed().connect(sigc::mem_fun(*this, &DocumentProperties::editEmbeddedScript));
 
-    populate_script_lists();
-
     _ExternalScriptsListScroller.set_child(_ExternalScriptsList);
     _ExternalScriptsListScroller.set_has_frame(true);
     _ExternalScriptsListScroller.set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::ALWAYS);
@@ -1291,19 +1289,23 @@ void DocumentProperties::editEmbeddedScript(){
 void DocumentProperties::populate_script_lists(){
     _ExternalScriptsListStore->clear();
     _EmbeddedScriptsListStore->clear();
+
     auto document = getDocument();
     if (!document)
         return;
 
-    std::vector<SPObject *> current = getDocument()->getResourceList( "script" );
+    std::vector<SPObject *> current = document->getResourceList( "script" );
     if (!current.empty()) {
         SPObject *obj = *(current.begin());
         g_assert(obj != nullptr);
+
         _scripts_observer.set(obj->parent);
     }
+
     for (auto obj : current) {
         auto script = cast<SPScript>(obj);
         g_assert(script != nullptr);
+
         if (script->xlinkhref)
         {
             Gtk::TreeModel::Row row = *(_ExternalScriptsListStore->append());
@@ -1502,6 +1504,9 @@ void DocumentProperties::update_widgets()
     _rcb_lgui.setActive (nv->getLockGuides());
     _rcp_gui.setColor(nv->getGuideColor());
     _rcp_hgui.setColor(nv->getGuideHiColor());
+
+    //-----------------------------------------------------------scripting page
+    populate_script_lists();
 
     //-----------------------------------------------------------meta pages
     // update the RDF entities; note that this may modify document, maybe doc-undo should be called?
