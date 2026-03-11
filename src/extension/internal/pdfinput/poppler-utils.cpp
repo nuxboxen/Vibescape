@@ -88,7 +88,11 @@ InkFontDict::InkFontDict(XRef *xref, Ref *fontDictRef, Dict *fontDict)
                 r.num = hashFontObject(&obj2);
             }
             // Newer poppler will require some reworking as it gives a shared ptr.
+#if POPPLER_CHECK_VERSION(26,3,0)
+            fonts[i] = GfxFont::makeFont(xref, fontDict->getKey(i), r, *obj2.getDict());
+#else
             fonts[i] = GfxFont::makeFont(xref, fontDict->getKey(i), r, obj2.getDict());
+#endif
             if (fonts[i] && !fonts[i]->isOk()) {
                 fonts[i] = nullptr;
             }

@@ -2951,7 +2951,11 @@ Stream *PdfParser::buildImageStream() {
 
   // build dictionary
 #if defined(POPPLER_NEW_OBJECT_API)
+#if POPPLER_CHECK_VERSION(26, 3, 0)
+  dict = Object(std::make_unique<Dict>(xref));
+#else
   dict = Object(new Dict(xref));
+#endif
 #else
   dict.initDict(xref);
 #endif
