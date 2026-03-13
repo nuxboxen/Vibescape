@@ -898,7 +898,7 @@
         <layout>
           <property name="column">2</property>
           <property name="row">5</property>
-          <property name="column-span">2</property>
+          <property name="column-span">1</property>
         </layout>
         <style>
           <class name="linked"></class>
@@ -916,6 +916,7 @@
         </child>
         <child>
           <object class="GtkToggleButton" id="text-vert-r2l">
+            <property name="tooltip-text" translatable="yes">Vertical text — lines: right to left</property>
             <property name="group">text-horz-text</property>
             <property name="hexpand">true</property>
             <property name="hexpand-set">true</property>
@@ -927,6 +928,7 @@
         </child>
         <child>
           <object class="GtkToggleButton" id="text-vert-l2r">
+            <property name="tooltip-text" translatable="yes">Vertical text — lines: left to right</property>
             <property name="group">text-horz-text</property>
             <property name="hexpand">true</property>
             <property name="hexpand-set">true</property>
@@ -936,8 +938,18 @@
             </style>
           </object>
         </child>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <layout>
+          <property name="column">3</property>
+          <property name="row">5</property>
+          <property name="column-span">1</property>
+        </layout>
         <child>
           <object class="GtkToggleButton" id="text-dir-auto">
+            <property name="tooltip-text" translatable="yes">Auto glyph orientation in vertical text</property>
             <property name="hexpand">true</property>
             <property name="hexpand-set">true</property>
             <property name="icon-name">text-orientation-auto</property>
@@ -948,6 +960,7 @@
         </child>
         <child>
           <object class="GtkToggleButton" id="text-dir-upright">
+            <property name="tooltip-text" translatable="yes">Upright glyph orientation in vertical text</property>
             <property name="group">text-dir-auto</property>
             <property name="hexpand">true</property>
             <property name="hexpand-set">true</property>
@@ -959,6 +972,7 @@
         </child>
         <child>
           <object class="GtkToggleButton" id="text-dir-sideways">
+            <property name="tooltip-text" translatable="yes">Sideways glyph orientation in vertical text</property>
             <property name="group">text-dir-auto</property>
             <property name="hexpand">true</property>
             <property name="hexpand-set">true</property>

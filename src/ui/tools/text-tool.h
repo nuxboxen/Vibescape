@@ -57,6 +57,8 @@ public:
     Text::Layout::iterator text_sel_end;
 
     std::vector<SPItem*> get_subselection(bool include_empty_selection_item);
+    int has_subselection();
+
 protected:
     bool root_handler(CanvasEvent const &event) override;
     bool item_handler(SPItem *item, CanvasEvent const &event) override;

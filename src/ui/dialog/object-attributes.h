@@ -14,13 +14,16 @@
 #ifndef SEEN_DIALOGS_OBJECT_ATTRIBUTES_H
 #define SEEN_DIALOGS_OBJECT_ATTRIBUTES_H
 
+#include <2geom/point.h>
 #include <glibmm/ustring.h>
 #include <gtkmm/boolfilter.h>
+#include <gtkmm/label.h>
 #include <gtkmm/listbox.h>
 #include <gtkmm/searchentry2.h>
 #include <gtkmm/widget.h>
 #include <memory>
 #include <map>
+#include <optional>
 #include <sigc++/scoped_connection.h>
 
 #include "desktop.h"
@@ -61,6 +64,8 @@ protected:
     bool can_update() const;
     virtual void document_replaced(SPDocument* document) {}
     virtual void on_tool_changed(Inkscape::UI::Tools::ToolBase* tool) {}
+    // override for getting object location
+    virtual std::optional<Geom::Point> get_object_position() { return std::nullopt; }
     // value with units changed by the user; modify the current object
     void change_value_px(SPObject* object, const char* key, double input, const char* attr, std::function<void (double)>&& setter);
     // angle in degrees changed by the user; modify the current object
@@ -78,7 +83,7 @@ protected:
     // add JavaScript interactivity properties
     void add_interactivity_properties();
     // add a header label
-    void add_header(const Glib::ustring& title);
+    Gtk::Label* add_header(const Glib::ustring& title);
     // add live path effects info
     void add_lpes(bool clone = false);
     // add filter info
@@ -96,6 +101,8 @@ protected:
 private:
     // transform the current selection (use x/y/width/height)
     void transform();
+    // only translate the current object; by default delegated to 'transform' method
+    virtual void translate() { transform(); }
     void update_label(SPObject* object, Inkscape::Selection* selection);
     void update_size_location();
     void update_filters(SPObject* object);

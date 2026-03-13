@@ -13,10 +13,12 @@
 
 #include "ui/dialog/object-attributes.h"
 
+#include <2geom/point.h>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <2geom/rect.h>
@@ -470,8 +472,8 @@ void details::AttributesPanel::add_size_properties() {
         }
     });
 
-    _x.signal_value_changed().connect([this](auto){ transform(); });
-    _y.signal_value_changed().connect([this](auto){ transform(); });
+    _x.signal_value_changed().connect([this](auto){ translate(); });
+    _y.signal_value_changed().connect([this](auto){ translate(); });
     _width.signal_value_changed().connect([this](auto){ transform(); });
     _height.signal_value_changed().connect([this](auto){ transform(); });
 
@@ -564,12 +566,13 @@ void details::AttributesPanel::add_interactivity_properties() {
     };
 }
 
-void details::AttributesPanel::add_header(const Glib::ustring& title) {
+Gtk::Label* details::AttributesPanel::add_header(Glib::ustring const &title) {
     auto label = Gtk::make_managed<Gtk::Label>(title);
     label->set_halign(Gtk::Align::START);
     label->set_xalign(0.0f);
     label->add_css_class("grid-section-title");
     _grid.add_row(label);
+    return label;
 }
 
 void details::AttributesPanel::select_lpe_row(int dir) {
@@ -851,8 +854,15 @@ void details::AttributesPanel::update_size_location() {
 
     auto use_visual_box = Preferences::get()->getInt("/tools/bounding_box") == 0;
     auto rect = sp_selection_get_xywh(_desktop, _document->getDisplayUnit(), use_visual_box);
-    _x.set_value(rect.min().x());
-    _y.set_value(rect.min().y());
+    // object specific position? (e.g. text object)
+    auto position = get_object_position();
+    if (position) {
+        _x.set_value(position->x());
+        _y.set_value(position->y());
+    } else {
+        _x.set_value(rect.min().x());
+        _y.set_value(rect.min().y());
+    }
     _width.set_value(rect.width());
     _height.set_value(rect.height());
 }
@@ -1687,28 +1697,6 @@ auto paint_to_item(const PaintKey& paint) {
     }
 }
 
-template <typename T>
-struct type_from_member;
-
-template <typename M, typename T>
-struct type_from_member<M T::*> {
-    using class_type = T;
-    using member_type = M;
-};
-
-// template <typename T>
-// auto tttest(T ptr) -> std::add_const_t<typename type_from_member<T>::member_type>* {
-//     SPStyle s;
-//     return &(s.*ptr);
-// }
-
-// void sometest() {
-//     SPStyle s;
-//     auto style = tttest(&SPStyle::font_style);
-//     if (style) {style->value;}
-// }
-
-
 } // namespace
 
 class TextPanel : public details::AttributesPanel {
@@ -1736,7 +1724,7 @@ public:
         _tracker_lh(std::make_unique<Widget::UnitTracker>(Util::UNIT_TYPE_LINEAR))
     {
         // --- unit tracker setup ---
-        auto const &unit_table = Util::UnitTable::get();
+        const auto& unit_table = Util::UnitTable::get();
 
         // Font-size tracker: restore saved unit (default to pt)
         {
@@ -1765,10 +1753,10 @@ public:
         lh_popover.set_menu_model(lh_unit_menu.menu);
 
         // Update spinbutton suffix when unit changes
-        _tracker_fs->signal_unit_changed().connect([this](Util::Unit const *unit) {
+        _tracker_fs->signal_unit_changed().connect([this](const Util::Unit* unit) {
             if (unit) _font_size.set_suffix(" " + unit->abbr);
         });
-        _tracker_lh->signal_unit_changed().connect([this](Util::Unit const *unit) {
+        _tracker_lh->signal_unit_changed().connect([this](const Util::Unit* unit) {
             if (unit) _line_height.set_suffix(unit->abbr.empty() ? "" : " " + unit->abbr);
         });
 
@@ -1777,7 +1765,7 @@ public:
         if (auto u = _tracker_lh->getActiveUnit()) _line_height.set_suffix(u->abbr.empty() ? "" : " " + u->abbr);
 
         // Font-size unit change: convert displayed value and save preference
-        _tracker_fs->signal_unit_changed().connect([this](Util::Unit const *unit) {
+        _tracker_fs->signal_unit_changed().connect([this](const Util::Unit* unit) {
             if (!unit) return;
 
             Preferences::get()->setInt("/options/font/unitType", unit_to_css_unit(unit));
@@ -1785,7 +1773,7 @@ public:
         });
 
         // Line-height unit change: convert value between old/new units
-        _tracker_lh->signal_unit_changed().connect([this](Util::Unit const *unit) {
+        _tracker_lh->signal_unit_changed().connect([this](const Util::Unit* unit) {
             if (!unit || !can_update()) return;
 
             int new_css = unit_to_css_unit(unit);
@@ -2106,7 +2094,7 @@ public:
             if (!_current_item || !_document) return;
             apply_text_css(_current_item, get_text_tool(), css);
         });
-        add_header(_("Text"));
+        _text_header = add_header(_("Text"));
         Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "text-main"), _grid);
         // remove extra margins added by "reparenting"
         _var_axes.set_margin_top(0);
@@ -2132,6 +2120,13 @@ public:
     }
 
 private:
+    std::optional<Geom::Point> get_object_position() override {
+        // TODO: revise/implement once we have proper text positioning support in Inkscape
+        if (auto text = cast<SPText>(_current_item)) {
+        }
+        return std::nullopt;
+    }
+
     void show_section_properties(bool expand) {
         _section_widgets.set_visible(expand);
         _grid.open_section(_section_toggle, expand);
@@ -2168,6 +2163,16 @@ private:
 
         auto items = get_query_items();
         if (items.empty()) return;
+
+        bool subselection_active = false;
+        // Indicate the kind of active selection
+        auto header = _("Text element"); // entire <text> element
+        if (auto tool = get_text_tool()) {
+            subselection_active = tool->has_subselection();
+            // with text tool active and selected text object, we have a cursor and possible text selection
+            header = subselection_active ? _("Selected text") : _("Text characters");
+        }
+        _text_header->set_text(header);
 
         auto props = query_text_properties(items);
 
@@ -2283,8 +2288,8 @@ private:
         set_toggle_button_state(_syntax_error_btn, props.decoration_spelling_error);
 
         // writing mode: map CSS enum to button index
-        // buttons: 0=horizontal, 1=vert-r2l, 2=vert-l2r
-        // enum: LR_TB=0, RL_TB=1, TB_RL=2, TB_LR=3
+        // buttons: 0=horizontal, 1=vert-r2l, 2=vert-l2r; enum: LR_TB=0, RL_TB=1, TB_RL=2, TB_LR=3
+        // only enabled for entire text element, not subselection
         if (props.writing_mode.is_single()) {
             int btn = -1;
             switch (props.writing_mode.value()) {
@@ -2296,30 +2301,40 @@ private:
             if (btn >= 0) {
                 for (int j = 0; j < 3; ++j) _writing_buttons[j]->set_active(j == btn);
             }
+            for (auto btn : _writing_buttons) {
+                btn->set_sensitive(!subselection_active);
+            }
         }
 
-        // direction
+        // direction: l2r, r2l; only enabled for entire text element, not subselection
         if (props.direction.is_single() && props.direction.value() >= 0 && props.direction.value() < 2) {
             _direction_buttons[props.direction.value()]->set_active(true);
         }
+        for (auto btn : _direction_buttons) {
+            btn->set_sensitive(!subselection_active);
+        }
 
-        // text orientation (only applicable to vertical text)
+        // text orientation (only applicable to vertical text);
+        // enabled for text element as well as subselection range as long as vertical text is used
         bool vertical = props.writing_mode.is_single() &&
             (props.writing_mode.value() == SP_CSS_WRITING_MODE_TB_RL ||
              props.writing_mode.value() == SP_CSS_WRITING_MODE_TB_LR);
-        for (int i = 0; i < 3; ++i) {
-            _orientation_buttons[i]->set_sensitive(vertical);
+        for (auto& btn : _orientation_buttons) {
+            btn->set_sensitive(vertical);
         }
         if (vertical && props.text_orientation.is_single() &&
             props.text_orientation.value() >= 0 && props.text_orientation.value() < 3) {
-            for (int j = 0; j < 3; ++j) _orientation_buttons[j]->set_active(j == props.text_orientation.value());
+            for (int j = 0; j < 3; ++j) {
+                _orientation_buttons[j]->set_active(j == props.text_orientation.value());
+            }
         }
 
         // decoration style
         if (props.decoration_style.value() >= 0 && props.decoration_style.value() < 5) {
             bool single = props.decoration_style.is_single();
-            for (int j = 0; j < 5; ++j) _line_style_buttons[j]->set_active(
-                single && j == props.decoration_style.value());
+            for (int j = 0; j < 5; ++j) {
+                _line_style_buttons[j]->set_active(single && j == props.decoration_style.value());
+            }
         }
         // decoration style is ignored for spelling/grammar error line types
         _line_style_box.set_sensitive(!(props.decoration_spelling_error.is_single() && props.decoration_spelling_error.value()));
@@ -2327,7 +2342,7 @@ private:
 
         // decoration thickness
         {
-            //TODO: fix logic here
+            //TODO: fix logic here; support for mixed state and units is missing
 
             auto& th = props.decoration_thickness.value();
             if (th.from_font) {
@@ -2463,6 +2478,7 @@ private:
         auto model = Gtk::StringList::create({});
         _family_names.clear();
         // Generic CSS font family names; leave it to Pango in font discovery
+        // we cannot add them here, it leads to problems
         // static const char* generic_families[] = {"serif", "sans-serif", "monospace", "cursive", "fantasy"};
         // for (auto name : generic_families) {
         //     _font_families.push_back()
@@ -2617,10 +2633,10 @@ private:
     Gtk::ToggleButton& _overline_btn = get_widget<Gtk::ToggleButton>(_builder, "text-overline");
     Gtk::ToggleButton& _strikethrough_btn = get_widget<Gtk::ToggleButton>(_builder, "text-strike-thru");
     Gtk::ToggleButton& _syntax_error_btn = get_widget<Gtk::ToggleButton>(_builder, "text-decor-syntax");
-    Gtk::ToggleButton* _writing_buttons[3] = {};
-    Gtk::ToggleButton* _direction_buttons[2] = {};
-    Gtk::ToggleButton* _orientation_buttons[3] = {}; // auto, upright, sideways
-    // decoration popover
+    Gtk::ToggleButton* _writing_buttons[3] = {}; // horizontal text vs vertical text (in two flavors)
+    Gtk::ToggleButton* _direction_buttons[2] = {}; // left-to-right, right-to-left
+    Gtk::ToggleButton* _orientation_buttons[3] = {}; // glyph orientation in vertical text only: auto, upright, sideways
+    // line style in decoration popover
     Gtk::ToggleButton* _line_style_buttons[5] = {}; // solid, double, dotted, dashed, wavy
     Gtk::Box& _line_style_box = get_widget<Gtk::Box>(_builder, "text-style-box");
     Gtk::CheckButton& _thickness_auto;
@@ -2645,6 +2661,7 @@ private:
     std::unique_ptr<Widget::UnitTracker> _tracker_fs;
     std::unique_ptr<Widget::UnitTracker> _tracker_lh;
     sigc::scoped_connection _font_stream;
+    Gtk::Label* _text_header = nullptr;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
