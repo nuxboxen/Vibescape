@@ -243,7 +243,7 @@
         <property name="icon-name">pages-resize-symbolic</property>
         <property name="has-frame">false</property>
         <property name="receives-default">True</property>
-        <property name="tooltip-text" translatable="yes">Fit the page to the current selection or the drawing if there&apos;s no selection.</property>
+        <property name="tooltip-text" translatable="yes">Fit the page to the drawing</property>
         <property name="halign">fill</property>
         <layout>
           <property name="column">4</property>

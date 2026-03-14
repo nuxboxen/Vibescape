@@ -30,6 +30,7 @@
 #include "xml/helper-observer.h"
 
 class SPDocument;
+class SPDesktop;
 
 namespace Inkscape::UI::Widget {
 
@@ -42,6 +43,9 @@ class ScriptingPanel : public Gtk::Box {
 public:
     ScriptingPanel();
     ~ScriptingPanel() override;
+
+    // desktop to use for file chooser only
+    void set_desktop(SPDesktop* desktop);
 
     void update(SPDocument* document);
 
@@ -56,9 +60,11 @@ private:
     void on_embedded_script_selected();
     void on_embedded_cursor_changed();
     void edit_embedded_script();
+    void browse_external_script();
 
     Glib::RefPtr<Gtk::Builder> _builder;
     SPDocument* _document = nullptr;
+    SPDesktop* _desktop = nullptr;
 
     Inkscape::UI::Widget::TabStrip& _tab_strip;
     Gtk::Stack& _stack;

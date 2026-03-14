@@ -18,9 +18,14 @@
 #include <ranges>
 #include <glibmm/i18n.h>
 
+#include "desktop.h"
 #include "document.h"
 #include "document-undo.h"
+#include "inkscape-window.h"
 #include "object/sp-script.h"
+#include "preferences.h"
+#include "ui/dialog/choose-file-utils.h"
+#include "ui/dialog/choose-file.h"
 #include "xml/document.h"
 #include "xml/node.h"
 #include "ui/builder-utils.h"
@@ -112,8 +117,24 @@ ScriptingPanel::~ScriptingPanel() {
     _document = nullptr;
 }
 
+void ScriptingPanel::set_desktop(SPDesktop* desktop) {
+    _desktop = desktop;
+}
+
 void ScriptingPanel::update(SPDocument* document) {
     _document = document;
+
+    if (document) {
+        // TODO: review this approach
+        auto current = document->getResourceList("script");
+        if (!current.empty()) {
+            _scripts_observer.set(current.front()->parent);
+        }
+    }
+    else {
+        _scripts_observer.set(nullptr);
+    }
+
     populate_lists(document);
 }
 
@@ -136,11 +157,38 @@ void ScriptingPanel::populate_lists(SPDocument* document) {
     }
 }
 
+void ScriptingPanel::browse_external_script() {
+    if (!_desktop) return;
+
+    auto prefs_path = "/scripts/path";
+    // Get the current directory for finding files.
+    static std::string open_path;
+    Inkscape::UI::Dialog::get_start_directory(open_path, prefs_path);
+    // Create a dialog.
+    static std::vector<std::pair<Glib::ustring, Glib::ustring>> const filters {
+        {_("JavaScript Files"), "*.js"}
+    };
+    auto window = _desktop->getInkscapeWindow();
+    auto file = Inkscape::choose_file_open(_("Select a script to load"), window, filters, open_path);
+    if (!file) {
+        return; // Cancel
+    }
+    auto prefs = Inkscape::Preferences::get();
+    prefs->setString(prefs_path, open_path);
+    _external_entry.set_text(file->get_parse_name());
+}
+
 void ScriptingPanel::add_external_script() {
     if (!_document) return;
 
     auto text = _external_entry.get_text();
-    if (text.empty()) return;
+    if (text.empty()) {
+        if (_external_entry.get_text().empty() ) {
+            // Click Add button with no filename, show a Browse dialog
+            browse_external_script();
+            return;
+        }
+    }
 
     auto repr = _document->getReprDoc()->createElement("svg:script");
     repr->setAttribute("xlink:href", text.c_str());

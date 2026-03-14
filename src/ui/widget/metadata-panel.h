@@ -4,8 +4,6 @@
  * Metadata panel — Dublin Core RDF entities.
  */
 /*
- * Authors:
- *   Michael Kowalski
  *
  * Copyright (C) 2025 Authors
  *
@@ -56,14 +54,12 @@ private:
     void save_to_preferences(const Row& row);
     void load_from_preferences(const Row& row);
     void update_row(Row& row, SPDocument* document);
-
     void save_default();
     void load_default();
 
     SPDocument*      _document = nullptr;
     OperationBlocker _update;
     Gtk::Grid        _grid;
-
     std::vector<Row> _rows;
 };
 

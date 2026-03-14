@@ -24,6 +24,7 @@
 #include <gtkmm/scrolledwindow.h>
 #include <gtkmm/treeview.h>
 #include <gtkmm/label.h>
+#include <sigc++/scoped_connection.h>
 
 class SPDocument;
 
@@ -44,7 +45,7 @@ public:
 
     void set_document(SPDocument* document);
     void update(SPDocument* document);
-    void populate_available_profiles();
+    void populate_available_profiles(bool rebuild);
 
 private:
     void link_selected_profile();
@@ -82,6 +83,8 @@ private:
     };
     LinkedColumns                   _linked_cols;
     Glib::RefPtr<Gtk::ListStore>    _linked_store;
+
+    sigc::scoped_connection _cms_connection;
 };
 
 } // namespace Inkscape::UI::Widget

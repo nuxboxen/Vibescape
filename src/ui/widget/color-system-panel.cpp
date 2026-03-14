@@ -23,6 +23,9 @@
 #include "document-undo.h"
 #include "object/color-profile.h"
 #include "ui/builder-utils.h"
+#include "ui/popup-menu.h"
+#include "ui/widget/generic/popover-bin.h"
+#include "ui/widget/generic/popover-menu.h"
 
 using Inkscape::UI::create_builder;
 using Inkscape::UI::get_widget;
@@ -31,23 +34,81 @@ namespace Inkscape::UI::Widget {
 
 namespace {
 
-void sanitize_name(std::string& str)
-{
+/*
+ * Cleans up name to remove disallowed characters.
+ * Some discussion at http://markmail.org/message/bhfvdfptt25kgtmj
+ * Allowed ASCII first characters:  ':', 'A'-'Z', '_', 'a'-'z'
+ * Allowed ASCII remaining chars add: '-', '.', '0'-'9',
+ *
+ * @param str the string to clean up.
+ *
+ * Note: for use with ICC profiles only.
+ * This function has been restored to make ICC profiles work, as their names need to be sanitized.
+ * BUT, it is not clear to me whether we really need to strip all non-ASCII characters.
+ * We do it currently, because sp_svg_read_icc_color cannot parse Unicode.
+ */
+void sanitize_name(std::string& str) {
     if (str.empty()) return;
+
     auto val = str.at(0);
-    if ((val < 'A' || val > 'Z') && (val < 'a' || val > 'z') && val != '_' && val != ':')
+    if ((val < 'A' || val > 'Z') && (val < 'a' || val > 'z') && val != '_' && val != ':') {
         str.insert(0, "_");
+    }
     for (std::size_t i = 1; i < str.size(); i++) {
         val = str.at(i);
         if ((val < 'A' || val > 'Z') && (val < 'a' || val > 'z') &&
             (val < '0' || val > '9') &&
             val != '_' && val != ':' && val != '-' && val != '.') {
-            if (str.at(i - 1) == '-') { str.erase(i, 1); i--; }
-            else str.replace(i, 1, "-");
+            if (str.at(i - 1) == '-') {
+                str.erase(i, 1);
+                i--;
+            }
+            else {
+                str.replace(i, 1, "-");
+            }
         }
     }
-    if (str.at(str.size() - 1) == '-') str.pop_back();
+    if (str.at(str.size() - 1) == '-') {
+        str.pop_back();
+    }
 }
+
+// This is a hack to add "Remove" popup menu to the linked profiles list
+// It works, but not very well, so it's left unused for now.
+static bool do_remove_popup_menu(PopupMenuOptionalClick const click,
+                                 Gtk::TreeView &tree_view, UI::Widget::PopoverBin &pb, sigc::slot<void ()> const &slot)
+{
+    auto const selection = tree_view.get_selection();
+    if (!selection) return false;
+
+    auto const it = selection->get_selected();
+    if (!it) return false;
+
+    auto const mi = Gtk::make_managed<UI::Widget::PopoverMenuItem>(_("_Remove"), true);
+    mi->signal_activate().connect(slot);
+    auto const menu = Gtk::make_managed<UI::Widget::PopoverMenu>(Gtk::PositionType::BOTTOM);
+    menu->append(*mi);
+
+    pb.setPopover(menu);
+
+    if (click) {
+        menu->popup_at(tree_view, click->x, click->y);
+        return true;
+    }
+
+    auto const column = tree_view.get_column(0);
+    g_return_val_if_fail(column, false);
+    auto rect = Gdk::Rectangle{};
+    tree_view.get_cell_area(Gtk::TreePath{it}, *column, rect);
+    menu->popup_at(tree_view, rect.get_x() + rect.get_width () / 2.0,
+                              rect.get_y() + rect.get_height());
+    return true;
+}
+
+static void connect_remove_popup_menu(Gtk::TreeView &tree_view, UI::Widget::PopoverBin &pb, sigc::slot<void ()> slot) {
+    UI::on_popup_menu(tree_view, sigc::bind(&do_remove_popup_menu, std::ref(tree_view), std::ref(pb), std::move(slot)));
+}
+
 
 } // namespace
 
@@ -98,6 +159,9 @@ ColorSystemPanel::ColorSystemPanel()
     _linked_view.get_selection()->signal_changed().connect(
         sigc::mem_fun(*this, &ColorSystemPanel::on_profile_select_row));
 
+    //TODO: revise when cms gets redesigned
+    // connect_remove_popup_menu(_LinkedProfilesList, _popoverbin, sigc::mem_fun(*this, &DocumentProperties::removeSelectedProfile));
+
     auto& grid = get_widget<Gtk::Grid>(_builder, "color_system_grid");
     append(grid);
 
@@ -106,7 +170,12 @@ ColorSystemPanel::ColorSystemPanel()
 }
 
 void ColorSystemPanel::set_document(SPDocument* document) {
+    _cms_connection.disconnect();
     _document = document;
+    if (document) {
+        _cms_connection = document->getDocumentCMS().connectChanged(
+            [this]{ populate_available_profiles(true); });
+    }
     update(document);
 }
 
@@ -128,8 +197,9 @@ void ColorSystemPanel::update(SPDocument* document) {
     on_profile_select_row();
 }
 
-void ColorSystemPanel::populate_available_profiles() {
-    if (!_avail_store->children().empty()) return;
+void ColorSystemPanel::populate_available_profiles(bool rebuild) {
+    if (!_document) return;
+    if (!rebuild && !_avail_store->children().empty()) return;
 
     _avail_store->clear();
 

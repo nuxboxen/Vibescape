@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <requires lib="gtk" version="4.0"/>
+  <requires lib="gtk" version="4.0"></requires>
   <object class="GtkGrid" id="main-grid">
     <child>
       <object class="gtkmm__CustomObject_TabStrip" id="tab_strip">
@@ -18,6 +18,7 @@
     </child>
     <child>
       <object class="GtkSeparator">
+        <property name="valign">center</property>
         <property name="orientation">horizontal</property>
         <layout>
           <property name="row">1</property>
@@ -31,158 +32,142 @@
           <property name="row">2</property>
           <property name="column">0</property>
         </layout>
-    <child>
-      <object class="GtkStackPage">
-        <property name="name">external</property>
-        <property name="child">
-          <object class="GtkBox" id="external_page">
-            <property name="orientation">vertical</property>
-            <property name="margin-top">8</property>
-            <property name="spacing">4</property>
-            <child>
-              <object class="GtkLabel" id="external_label">
-                <property name="halign">start</property>
-                <property name="label" translatable="yes">External script files</property>
-                <property name="use-markup">True</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkScrolledWindow" id="external_scroller">
-                <property name="has-frame">True</property>
-                <property name="hscrollbar-policy">never</property>
-                <property name="vscrollbar-policy">always</property>
-                <property name="width-request">-1</property>
-                <property name="height-request">90</property>
+        <child>
+          <object class="GtkStackPage">
+            <property name="name">external</property>
+            <property name="child">
+              <object class="GtkBox" id="external_page">
+                <property name="orientation">vertical</property>
+                <property name="margin-top">8</property>
+                <property name="spacing">4</property>
                 <child>
-                  <object class="GtkTreeView" id="external_view">
-                    <property name="headers-visible">True</property>
-                    <property name="enable-search">False</property>
-                  </object>
-                </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkBox" id="external_btns">
-                <property name="orientation">horizontal</property>
-                <property name="spacing">2</property>
-                <child>
-                  <object class="GtkEntry" id="external_entry">
-                    <property name="hexpand">True</property>
+                  <object class="GtkLabel" id="external_label">
+                    <property name="halign">start</property>
+                    <property name="label" translatable="yes">External script files</property>
+                    <property name="use-markup">True</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton" id="external_add_btn">
-                    <property name="has-frame">False</property>
-                    <property name="tooltip-text" translatable="yes">Add the current file name or browse for a file</property>
+                  <object class="GtkScrolledWindow" id="external_scroller">
+                    <property name="has-frame">True</property>
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="vscrollbar-policy">always</property>
+                    <property name="width-request">-1</property>
+                    <property name="height-request">90</property>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkTreeView" id="external_view">
+                        <property name="headers-visible">True</property>
+                        <property name="enable-search">False</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox" id="external_btns">
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">4</property>
+                    <child>
+                      <object class="GtkEntry" id="external_entry">
+                        <property name="hexpand">True</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="external_add_btn">
                         <property name="icon-name">list-add</property>
+                        <property name="has-frame">true</property>
+                        <property name="tooltip-text" translatable="yes">Add the current file name or browse for a file</property>
                       </object>
                     </child>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkButton" id="external_remove_btn">
-                    <property name="has-frame">False</property>
-                    <property name="tooltip-text" translatable="yes">Remove</property>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkButton" id="external_remove_btn">
                         <property name="icon-name">list-remove</property>
+                        <property name="has-frame">true</property>
+                        <property name="tooltip-text" translatable="yes">Remove</property>
                       </object>
                     </child>
                   </object>
                 </child>
               </object>
-            </child>
+            </property>
           </object>
-        </property>
-      </object>
-    </child>
-    <child>
-      <object class="GtkStackPage">
-        <property name="name">embedded</property>
-        <property name="child">
-          <object class="GtkBox" id="embedded_page">
-            <property name="orientation">vertical</property>
-            <property name="margin-top">8</property>
-            <property name="spacing">4</property>
-            <child>
-              <object class="GtkLabel" id="embedded_label">
-                <property name="halign">start</property>
-                <property name="label" translatable="yes">Embedded script files</property>
-                <property name="use-markup">True</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkScrolledWindow" id="embedded_scroller">
-                <property name="has-frame">True</property>
-                <property name="hscrollbar-policy">never</property>
-                <property name="vscrollbar-policy">always</property>
-                <property name="width-request">-1</property>
-                <property name="height-request">90</property>
+        </child>
+        <child>
+          <object class="GtkStackPage">
+            <property name="name">embedded</property>
+            <property name="child">
+              <object class="GtkBox" id="embedded_page">
+                <property name="orientation">vertical</property>
+                <property name="margin-top">8</property>
+                <property name="spacing">4</property>
                 <child>
-                  <object class="GtkTreeView" id="embedded_view">
-                    <property name="headers-visible">True</property>
-                    <property name="enable-search">False</property>
+                  <object class="GtkLabel" id="embedded_label">
+                    <property name="halign">start</property>
+                    <property name="label" translatable="yes">Embedded script files</property>
+                    <property name="use-markup">True</property>
                   </object>
                 </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkBox" id="embedded_btns">
-                <property name="orientation">horizontal</property>
-                <property name="spacing">2</property>
-                <property name="halign">end</property>
                 <child>
-                  <object class="GtkButton" id="embedded_new_btn">
-                    <property name="tooltip-text" translatable="yes">New</property>
+                  <object class="GtkScrolledWindow" id="embedded_scroller">
+                    <property name="has-frame">True</property>
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="vscrollbar-policy">always</property>
+                    <property name="width-request">-1</property>
+                    <property name="height-request">90</property>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkTreeView" id="embedded_view">
+                        <property name="headers-visible">True</property>
+                        <property name="enable-search">False</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox" id="embedded_btns">
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">4</property>
+                    <property name="halign">end</property>
+                    <child>
+                      <object class="GtkButton" id="embedded_new_btn">
                         <property name="icon-name">list-add</property>
+                        <property name="tooltip-text" translatable="yes">New</property>
                       </object>
                     </child>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkButton" id="embedded_remove_btn">
-                    <property name="tooltip-text" translatable="yes">Remove</property>
                     <child>
-                      <object class="GtkImage">
+                      <object class="GtkButton" id="embedded_remove_btn">
                         <property name="icon-name">list-remove</property>
+                        <property name="tooltip-text" translatable="yes">Remove</property>
                       </object>
                     </child>
                   </object>
                 </child>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel" id="content_label">
-                <property name="halign">start</property>
-                <property name="label" translatable="yes">Content</property>
-                <style>
-                  <class name="dialog-heading" />
-                </style>
-              </object>
-            </child>
-            <child>
-              <object class="GtkScrolledWindow" id="content_scroller">
-                <property name="has-frame">True</property>
-                <property name="hscrollbar-policy">automatic</property>
-                <property name="vscrollbar-policy">automatic</property>
-                <property name="width-request">-1</property>
-                <property name="height-request">140</property>
-                <property name="vexpand">True</property>
                 <child>
-                  <object class="GtkTextView" id="content_view">
+                  <object class="GtkLabel" id="content_label">
+                    <property name="halign">start</property>
+                    <property name="label" translatable="yes">Content</property>
+                    <style>
+                      <class name="dialog-heading"></class>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkScrolledWindow" id="content_scroller">
+                    <property name="has-frame">True</property>
+                    <property name="hscrollbar-policy">automatic</property>
+                    <property name="vscrollbar-policy">automatic</property>
+                    <property name="width-request">-1</property>
+                    <property name="height-request">140</property>
+                    <property name="vexpand">True</property>
+                    <child>
+                      <object class="GtkTextView" id="content_view"></object>
+                    </child>
                   </object>
                 </child>
               </object>
-            </child>
+            </property>
           </object>
-        </property>
+        </child>
       </object>
     </child>
-      </object>
-    </child>
+    <!--dim: 1, 4-->
   </object>
 </interface>

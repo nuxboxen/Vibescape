@@ -58,7 +58,7 @@
     </child>
     <child>
       <object class="GtkButton" id="unlink_btn">
-        <property name="has-frame">False</property>
+        <property name="has-frame">True</property>
         <property name="tooltip-text" translatable="yes">Unlink Profile</property>
         <child>
           <object class="GtkImage">

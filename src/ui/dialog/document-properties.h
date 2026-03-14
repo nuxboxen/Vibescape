@@ -59,6 +59,10 @@ namespace Widget {
 class EntityEntry;
 class NotebookPage;
 class PageProperties;
+class GuidesPanel;
+class ColorSystemPanel;
+class ScriptingPanel;
+class MetadataPanel;
 } // namespace Widget
 
 namespace Dialog {
@@ -91,21 +95,6 @@ private:
     void remove_grid_widget(XML::Node &node);
     void update_grid_placeholder();
     virtual void  on_response (int);
-    void  populate_available_profiles();
-    void  populate_linked_profiles_box();
-    void  linkSelectedProfile();
-    void  removeSelectedProfile();
-    void  onColorProfileSelectRow();
-    void  populate_script_lists();
-    void  addExternalScript();
-    void  browseExternalScript();
-    void  addEmbeddedScript();
-    void  removeExternalScript();
-    void  removeEmbeddedScript();
-    void  changeEmbeddedScript();
-    void  onExternalScriptSelectRow();
-    void  onEmbeddedScriptSelectRow();
-    void  editEmbeddedScript();
     void  load_default_metadata();
     void  save_default_metadata();
     void update_viewbox(SPDesktop* desktop);
@@ -116,95 +105,21 @@ private:
     void set_viewbox_pos(SPDesktop* desktop, double x, double y);
     void set_viewbox_size(SPDesktop* desktop, double width, double height);
 
-    Inkscape::XML::SignalObserver _scripts_observer;
     UI::Widget::PopoverBin _popoverbin;
     Gtk::Notebook _notebook;
 
     UI::Widget::NotebookPage   *_page_page;
-    UI::Widget::NotebookPage   *_page_guides;
-    UI::Widget::NotebookPage   *_page_cms;
-    UI::Widget::NotebookPage   *_page_scripting;
-
-    Gtk::Notebook _scripting_notebook;
-    UI::Widget::NotebookPage *_page_external_scripts;
-    UI::Widget::NotebookPage *_page_embedded_scripts;
-
-    UI::Widget::NotebookPage  *_page_metadata1;
+    UI::Widget::GuidesPanel* _guides_panel;
+    UI::Widget::ColorSystemPanel* _cms_panel;
+    UI::Widget::ScriptingPanel* _scripting_panel;
+    UI::Widget::MetadataPanel* _metadata_panel;
     UI::Widget::NotebookPage  *_page_metadata2;
 
     Gtk::Box      _grids_vbox;
 
     UI::Widget::Registry _wr;
     //---------------------------------------------------------------
-    UI::Widget::RegisteredCheckButton _rcb_sgui;
-    UI::Widget::RegisteredCheckButton _rcb_lgui;
-    UI::Widget::RegisteredColorPicker _rcp_gui;
-    UI::Widget::RegisteredColorPicker _rcp_hgui;
-    Gtk::Button                       _create_guides_btn;
-    Gtk::Button                       _delete_guides_btn;
-    //---------------------------------------------------------------
     UI::Widget::PageProperties* _page;
-    //---------------------------------------------------------------
-    Gtk::Button         _unlink_btn;
-    class AvailableProfilesColumns : public Gtk::TreeModel::ColumnRecord
-        {
-        public:
-            AvailableProfilesColumns()
-              { add(fileColumn); add(nameColumn); add(separatorColumn); }
-            Gtk::TreeModelColumn<Glib::ustring> fileColumn;
-            Gtk::TreeModelColumn<Glib::ustring> nameColumn;
-            Gtk::TreeModelColumn<bool> separatorColumn;
-        };
-    AvailableProfilesColumns _AvailableProfilesListColumns;
-    Glib::RefPtr<Gtk::ListStore> _AvailableProfilesListStore;
-    Gtk::ComboBox _AvailableProfilesList;
-    bool _AvailableProfilesList_separator(Glib::RefPtr<Gtk::TreeModel> const &model,
-                                          Gtk::TreeModel::const_iterator const &iter);
-    class LinkedProfilesColumns : public Gtk::TreeModel::ColumnRecord
-        {
-        public:
-            LinkedProfilesColumns()
-              { add(nameColumn); add(previewColumn); }
-            Gtk::TreeModelColumn<Glib::ustring> nameColumn;
-            Gtk::TreeModelColumn<Glib::ustring> previewColumn;
-        };
-    LinkedProfilesColumns _LinkedProfilesListColumns;
-    Glib::RefPtr<Gtk::ListStore> _LinkedProfilesListStore;
-    Gtk::TreeView _LinkedProfilesList;
-    Gtk::ScrolledWindow _LinkedProfilesListScroller;
-
-    //---------------------------------------------------------------
-    Gtk::Button         _external_add_btn;
-    Gtk::Button         _external_remove_btn;
-    Gtk::Button         _embed_new_btn;
-    Gtk::Button         _embed_remove_btn;
-    Gtk::Box            _embed_button_box;
-
-    class ExternalScriptsColumns : public Gtk::TreeModel::ColumnRecord
-    {
-    public:
-        ExternalScriptsColumns()
-        { add(filenameColumn); }
-        Gtk::TreeModelColumn<Glib::ustring> filenameColumn;
-    };
-    ExternalScriptsColumns _ExternalScriptsListColumns;
-    class EmbeddedScriptsColumns : public Gtk::TreeModel::ColumnRecord
-    {
-    public:
-        EmbeddedScriptsColumns()
-        { add(idColumn); }
-        Gtk::TreeModelColumn<Glib::ustring> idColumn;
-    };
-    EmbeddedScriptsColumns _EmbeddedScriptsListColumns;
-    Glib::RefPtr<Gtk::ListStore> _ExternalScriptsListStore;
-    Glib::RefPtr<Gtk::ListStore> _EmbeddedScriptsListStore;
-    Gtk::TreeView _ExternalScriptsList;
-    Gtk::TreeView _EmbeddedScriptsList;
-    Gtk::ScrolledWindow _ExternalScriptsListScroller;
-    Gtk::ScrolledWindow _EmbeddedScriptsListScroller;
-    Gtk::Entry _script_entry;
-    Gtk::TextView _EmbeddedContent;
-    Gtk::ScrolledWindow _EmbeddedContentScroller;
     //---------------------------------------------------------------
     Gtk::ScrolledWindow _grids_wnd;
     Gtk::ListBox _grids_list;
@@ -215,9 +130,6 @@ private:
     sigc::scoped_connection _on_idle_scroll;
     Inkscape::UI::Widget::IconComboBox _grid_type;
     //---------------------------------------------------------------
-
-    using RDFList = std::vector<std::unique_ptr<UI::Widget::EntityEntry>>;
-    RDFList _rdflist;
     UI::Widget::Licensor _licensor;
 
     Gtk::Box& _createPageTabLabel(const Glib::ustring& label, const char *label_image);
@@ -254,8 +166,6 @@ private:
     // nodes connected to listeners
     WatchConnection _namedview_connection;
     WatchConnection _root_connection;
-
-    sigc::scoped_connection _cms_connection;
 };
 
 } // namespace Dialog

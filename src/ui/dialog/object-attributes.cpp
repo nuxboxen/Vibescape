@@ -2561,7 +2561,7 @@ public:
         wire(_sec_display, _pref_display, [this](bool v){ show_section(_sec_display, _display_panel->get_widget(), v); if (v && _dirty.display) update(nullptr); });
         wire(_sec_guides,  _pref_guides,  [this](bool v){ show_section(_sec_guides,  _guides_panel,  v); if (v && _dirty.guides) update(nullptr); });
         wire(_sec_grids,   _pref_grids,   [this](bool v){ show_section(_sec_grids,   _grids_panel,   v); if (v && _dirty.grids) update(nullptr); });
-        wire(_sec_color,   _pref_color,   [this](bool v){ show_section(_sec_color,   _color_panel,   v); if (v) _color_panel->populate_available_profiles(); });
+        wire(_sec_color,   _pref_color,   [this](bool v){ show_section(_sec_color,   _color_panel,   v); if (v) _color_panel->populate_available_profiles(false); });
         wire(_sec_script,  _pref_script,  [this](bool v){ show_section(_sec_script,  _script_panel,  v); if (v && _dirty.script) update(nullptr); });
         wire(_sec_about,   _pref_about,   [this](bool v){ show_section(_sec_about,   _meta_panel, _license_panel, v); if (v && _dirty.about) update(nullptr); });
 
@@ -2676,6 +2676,7 @@ public:
         // Update script panel
         if (_dirty.script && _script_panel->get_visible()) {
             _dirty.script = false;
+            _script_panel->set_desktop(_desktop);
             _script_panel->update(_document);
         }
         // Update document-dependent panels (metadata and license only)

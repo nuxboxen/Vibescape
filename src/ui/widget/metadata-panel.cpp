@@ -4,8 +4,6 @@
  * Metadata panel — Dublin Core RDF entities.
  */
 /*
- * Authors:
- *   Michael Kowalski
  *
  * Copyright (C) 2026 Authors
  *
@@ -203,11 +201,15 @@ void MetadataPanel::update_row(Row& row, SPDocument* document) {
         text = document->getRoot()->title();
     }
 
+    if (!text) {
+        text = "";
+    }
+
     if (row.entry) {
-        row.entry->set_text(text ? text : "");
+        row.entry->set_text(text);
     }
     else if (row.textview) {
-        row.textview->get_buffer()->set_text(text ? text : "");
+        row.textview->get_buffer()->set_text(text);
     }
 }
 

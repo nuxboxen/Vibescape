@@ -472,6 +472,10 @@ void GridWidget::update() {
 
     // Update spacing label based on grid type
     _spacing_label.set_markup_with_mnemonic(modular ? _("Block size") : _("Spacing"));
+    _spacing_x_spin.set_label(modular ? C_("Modular grid block width", "W") : _("X"));
+    _spacing_x_spin.set_tooltip_text(modular ? _("Width of grid modules") : _("Distance between vertical grid lines"));
+    _spacing_y_spin.set_label(modular ? C_("Modular grid block height", "H") : _("Y"));
+    _spacing_y_spin.set_tooltip_text(modular ? _("Height of grid modules") : _("Distance between horizontal grid lines"));
 
     // Update visibility of widgets based on grid type
     _angle_x_spin.set_visible(axonometric);
@@ -523,8 +527,8 @@ void GridWidget::update() {
     if (_dotted_check) {
         _dotted_check->set_visible(rectangular);
     }
-    // _spacing_x_spin.set_visible(!axonometric);
-    _spacing_y_spin.set_visible(!axonometric);
+    _spacing_x_spin.set_visible(!axonometric);
+    // _spacing_y_spin.set_visible(!axonometric);
 
     // Update ID label
     auto id = _grid->getId() ? _grid->getId() : "-";

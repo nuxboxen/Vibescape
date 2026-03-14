@@ -108,7 +108,7 @@
         <property name="has-frame">false</property>
         <property name="popover">units</property>
         <property name="sensitive">true</property>
-        <property name="icon-name">tool-measure</property>
+        <property name="icon-name">unit-measure</property>
         <layout>
           <property name="column">3</property>
           <property name="row">2</property>
@@ -216,7 +216,7 @@
     <child>
       <object class="gtkmm__CustomObject_InkSpinButton" id="angle-x-spin">
         <property name="label" translatable="yes">X</property>
-        <property name="tooltip-text" translatable="yes">Angle of X-axis</property>
+        <property name="tooltip-text" translatable="yes">Angle of X-axis relative to horizontal direction</property>
         <property name="hexpand">true</property>
         <property name="digits">6</property>
         <layout>
@@ -243,7 +243,7 @@ of a single grid parallelogram</property>
     <child>
       <object class="gtkmm__CustomObject_InkSpinButton" id="angle-z-spin">
         <property name="label" translatable="yes">Z</property>
-        <property name="tooltip-text" translatable="yes">Angle of Z-axis</property>
+        <property name="tooltip-text" translatable="yes">Angle of Z-axis relative to horizontal direction</property>
         <property name="hexpand">true</property>
         <property name="digits">6</property>
         <layout>
@@ -311,24 +311,24 @@ of a single grid parallelogram</property>
     </child>
     <child>
       <object class="gtkmm__CustomObject_InkSpinButton" id="gap-x-spin">
-        <property name="label" translatable="yes">Y</property>
+        <property name="label" translatable="yes">X</property>
         <property name="tooltip-text" translatable="yes">Horizontal distance between blocks</property>
         <property name="hexpand">true</property>
         <property name="digits">6</property>
         <layout>
-          <property name="column">2</property>
+          <property name="column">1</property>
           <property name="row">4</property>
         </layout>
       </object>
     </child>
     <child>
       <object class="gtkmm__CustomObject_InkSpinButton" id="gap-y-spin">
-        <property name="label" translatable="yes">X</property>
+        <property name="label" translatable="yes">Y</property>
         <property name="tooltip-text" translatable="yes">Vertical distance between blocks</property>
         <property name="hexpand">true</property>
         <property name="digits">6</property>
         <layout>
-          <property name="column">1</property>
+          <property name="column">2</property>
           <property name="row">4</property>
         </layout>
       </object>
