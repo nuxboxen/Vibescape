@@ -128,9 +128,11 @@ for arch in $(eval echo $ARCH); do
       #/ucrt64/bin/pip3 install --upgrade ${PACKAGES}
       ;;
     mingw-w64-clang-x86_64)
+      eval pacman -S $ARCH-llvm-openmp
       #/clang64/bin/pip3 install --upgrade ${PACKAGES}
       ;;
     mingw-w64-clang-aarch64)
+      eval pacman -S $ARCH-llvm-openmp
       #/clangarm64/bin/pip3 install --upgrade ${PACKAGES}
       ;;
   esac
