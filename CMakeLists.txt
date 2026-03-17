@@ -212,6 +212,7 @@ endif()
 # Uninstall Target
 # -----------------------------------------------------------------------------
 if(WIN32)
+    set_target_properties(inkscape PROPERTIES WIN32_EXECUTABLE ON)
     add_custom_target(uninstall
         "${CMAKE_COMMAND}" -E remove_directory "${CMAKE_INSTALL_PREFIX}")
 else()
