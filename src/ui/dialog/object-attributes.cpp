@@ -421,7 +421,12 @@ void details::AttributesPanel::add_fill_and_stroke(Parts parts) {
     _show_fill_stroke = true;
 }
 
-void details::AttributesPanel::transform() {
+void details::AttributesPanel::translate(double x, double y) {
+    // by default delegate translation to transform with current width/height
+    transform(x, y, _width.get_value(), _height.get_value());
+}
+
+void details::AttributesPanel::transform(double x, double y, double width, double height) {
     if (!_document || _update.pending()) return;
 
     auto scoped(_update.block());
@@ -431,7 +436,7 @@ void details::AttributesPanel::transform() {
     bool transform_stroke = prefs->getBool("/options/transform/stroke", true);
     bool preserve_transform = prefs->getBool("/options/preservetransform/value", false);
     auto use_visual_box = prefs->getInt("/tools/bounding_box") == 0;
-    auto rect = Geom::Rect::from_xywh(_x.get_value(), _y.get_value(), _width.get_value(), _height.get_value());
+    auto rect = Geom::Rect::from_xywh(x, y, width, height);
     sp_transform_selected_items(_desktop, rect, unit, "object-properties-", transform_stroke, preserve_transform, use_visual_box);
 }
 
@@ -472,10 +477,15 @@ void details::AttributesPanel::add_size_properties() {
         }
     });
 
-    _x.signal_value_changed().connect([this](auto){ translate(); });
-    _y.signal_value_changed().connect([this](auto){ translate(); });
-    _width.signal_value_changed().connect([this](auto){ transform(); });
-    _height.signal_value_changed().connect([this](auto){ transform(); });
+    // move
+    _x.signal_value_changed().connect([this](auto x){ translate(x, _y.get_value()); });
+    _y.signal_value_changed().connect([this](auto y){ translate(_x.get_value(), y); });
+
+    // resize
+    _width.signal_value_changed().connect([this](auto width){
+        transform(_x.get_value(), _y.get_value(), width, _height.get_value()); });
+    _height.signal_value_changed().connect([this](auto height){
+        transform(_x.get_value(), _y.get_value(), _width.get_value(), height); });
 
     Widget::reparent_properties(get_widget<Gtk::Grid>(_builder, "size-props"), _grid);
 }
@@ -2127,6 +2137,11 @@ private:
         return std::nullopt;
     }
 
+    // TODO: move text object using its x, y attributes
+    #if false
+    void translate(double x, double y) override {
+    }
+    #endif
     void show_section_properties(bool expand) {
         _section_widgets.set_visible(expand);
         _grid.open_section(_section_toggle, expand);

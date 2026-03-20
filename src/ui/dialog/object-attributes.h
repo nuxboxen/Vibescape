@@ -100,9 +100,9 @@ protected:
     Widget::InkPropertyGrid _grid;
 private:
     // transform the current selection (use x/y/width/height)
-    void transform();
+    void transform(double x, double y, double width, double height);
     // only translate the current object; by default delegated to 'transform' method
-    virtual void translate() { transform(); }
+    virtual void translate(double x, double y);
     void update_label(SPObject* object, Inkscape::Selection* selection);
     void update_size_location();
     void update_filters(SPObject* object);
