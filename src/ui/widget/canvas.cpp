@@ -250,8 +250,9 @@ public:
 
     // Various state affecting what is drawn.
     uint32_t desk   = 0xffffffff; // The background colour, with the alpha channel used to control checkerboard.
-    uint32_t border = 0x00000000; // The border colour, used only to control shadow colour.
+    uint32_t shadow = 0x00000000;
     uint32_t page   = 0xffffffff; // The page colour, also with alpha channel used to control checkerboard.
+    float shadow_width = 0;
 
     bool clip_to_page = false; // Whether to enable clip-to-page mode.
     PageInfo pi; // The list of page rectangles.
@@ -660,7 +661,8 @@ void CanvasPrivate::launch_redraw()
         pi.pages.emplace_back(rect);
     });
 
-    graphics->set_colours(page, desk, border);
+    graphics->set_colours(page, desk, shadow);
+    graphics->set_shadow_size(shadow_width);
     graphics->set_background_in_stores(background_in_stores_required());
 
     q->_drawing->setClip(calc_page_clip());
@@ -1764,13 +1766,13 @@ void Canvas::set_desk(uint32_t rgba)
     queue_draw();
 }
 
-/**
- * Set the page border colour. Although we don't draw the borders, this colour affects the shadows which we do draw (in OpenGL mode).
- */
-void Canvas::set_border(uint32_t rgba)
+void Canvas::set_shadow(uint32_t rgba, float size)
 {
-    if (d->border == rgba) return;
-    d->border = rgba;
+    if (d->shadow == rgba) {
+        return;
+    }
+    d->shadow = rgba;
+    d->shadow_width = size;
     if (get_realized() && get_opengl_enabled()) queue_draw();
 }
 

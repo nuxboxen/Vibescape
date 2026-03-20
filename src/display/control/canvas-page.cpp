@@ -17,7 +17,21 @@
 
 namespace Inkscape {
 
-CanvasPage::CanvasPage() = default;
+Color const CanvasPage::DEFAULT_BACKGROUND_COLOR{0xffffffff};
+Color const CanvasPage::DEFAULT_BORDER_COLOR{0x0000001a};
+Color const CanvasPage::DEFAULT_CANVAS_COLOR{0xffffffff};
+Color const CanvasPage::DEFAULT_MARGIN_COLOR{0x1699d751};
+Color const CanvasPage::DEFAULT_BLEED_COLOR{0xbe310e31};
+Color const CanvasPage::DEFAULT_SHADOW_COLOR{0x000000a0};
+Color const CanvasPage::DEFAULT_SHADOW_COLOR_LIGHT{0xffffffa0};
+
+CanvasPage::CanvasPage()
+    : _background_color(DEFAULT_BACKGROUND_COLOR)
+    , _border_color(DEFAULT_BORDER_COLOR)
+    , _canvas_color(DEFAULT_CANVAS_COLOR)
+    , _margin_color(DEFAULT_MARGIN_COLOR)
+    , _bleed_color(DEFAULT_BLEED_COLOR)
+    , _shadow_color(DEFAULT_SHADOW_COLOR) {};
 CanvasPage::~CanvasPage() = default;
 
 /**
@@ -29,6 +43,7 @@ void CanvasPage::add(Geom::Rect size, CanvasItemGroup *background_group, CanvasI
     if (auto item = new CanvasItemRect(border_group, size)) {
         item->set_name("foreground");
         item->set_is_page(true);
+        item->set_pixel_alignment(RectLineAlignment::Outside);
         canvas_items.emplace_back(item);
     }
 
@@ -39,6 +54,8 @@ void CanvasPage::add(Geom::Rect size, CanvasItemGroup *background_group, CanvasI
         item->set_dashed(false);
         item->set_inverted(false);
         item->set_stroke(0x00000000);
+        item->set_pixel_alignment(RectLineAlignment::Outside);
+        item->set_infill_shift(true);
         canvas_items.emplace_back(item);
     }
 
@@ -110,7 +127,7 @@ void CanvasPage::update(Geom::Rect size, Geom::OptRect margin, Geom::OptRect ble
 {
     // Put these in the preferences?
     bool border_on_top = _border_on_top;
-    guint32 shadow_color = _border_color.toRGBA(); // there's no separate shadow color in the UI, border color is used
+    guint32 shadow_color = _shadow_color.toRGBA();
     guint32 select_color = 0x000000cc;
     guint32 border_color = _border_color.toRGBA();
     guint32 margin_color = _margin_color.toRGBA();
@@ -144,7 +161,7 @@ void CanvasPage::update(Geom::Rect size, Geom::OptRect margin, Geom::OptRect ble
                 }
                 continue;
             }
-
+            // background or foreground, other cases handled above
             rect->set_rect(size);
 
             bool is_foreground = (rect->get_name() == "foreground");
@@ -170,7 +187,7 @@ void CanvasPage::update(Geom::Rect size, Geom::OptRect margin, Geom::OptRect ble
                 }
 */
                 rect->set_fill(_background_color.toRGBA());
-                rect->set_shadow(shadow_color, _shadow_size);
+                rect->set_shadow(shadow_color, _shadow_size, true);
             } else {
                 rect->set_fill(0x0);
                 rect->set_shadow(0x0, 0);
@@ -243,14 +260,17 @@ bool CanvasPage::setShadow(int shadow)
     return false;
 }
 
-bool CanvasPage::setPageColor(Color const &border, Color const &bg, Color const &canvas, Color const &margin, Color const &bleed)
+bool CanvasPage::setPageColor(Color const &border, Color const &bg, Color const &canvas, Color const &margin,
+                              Color const &bleed, Color const &shadow)
 {
-    if (std::tie(border, bg, canvas, margin, bleed) != std::tie(_border_color, _background_color, _canvas_color, _margin_color, _bleed_color)) {
+    if (std::tie(border, bg, canvas, margin, bleed, shadow) !=
+        std::tie(_border_color, _background_color, _canvas_color, _margin_color, _bleed_color, _shadow_color)) {
         _border_color = border;
         _background_color = bg;
         _canvas_color = canvas;
         _margin_color = margin;
         _bleed_color = bleed;
+        _shadow_color = shadow;
         return true;
     }
     return false;

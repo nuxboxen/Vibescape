@@ -357,14 +357,14 @@ void CanvasGrid::updateRulers()
 
     Geom::Point pos(_canvas->get_pos());
     auto d2c = d2c_scalerot * Geom::Translate(-pos);
-    auto pagebox = (pm.getSelectedPageRect() * d2c).roundOutwards();
+    auto pagebox = (pm.getSelectedPageRect() * d2c);
     _hruler->set_page(pagebox.left(), pagebox.right());
     _vruler->set_page(pagebox.top(), pagebox.bottom());
 
     Geom::Rect selbox = Geom::IntRect(0, 0, 0, 0);
     if (sel) {
         if (auto const bbox = sel->preferredBounds()) {
-            selbox = (*bbox * d2c).roundOutwards();
+            selbox = (*bbox * d2c);
         }
     }
     _hruler->set_selection(selbox.left(), selbox.right());

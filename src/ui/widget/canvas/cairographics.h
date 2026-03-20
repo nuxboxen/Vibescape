@@ -26,7 +26,8 @@ public:
     void set_scale_factor(int scale) override { scale_factor = scale; }
     void set_outlines_enabled(bool) override;
     void set_background_in_stores(bool enabled) override { background_in_stores = enabled; }
-    void set_colours(uint32_t p, uint32_t d, uint32_t b) override { page = p; desk = d; border = b; }
+    void set_colours(uint32_t p, uint32_t d, uint32_t b) override { page = p; desk = d; shadow = b; }
+    void set_shadow_size(float size) override {};
     
     void recreate_store(Geom::IntPoint const &dimensions) override;
     void shift_store(Fragment const &dest) override;
@@ -57,7 +58,7 @@ private:
     int scale_factor = 1;
     bool outlines_enabled = false;
     bool background_in_stores = false;
-    uint32_t page, desk, border;
+    uint32_t page, desk, shadow;
 };
 
 } // namespace Inkscape::UI::Widget

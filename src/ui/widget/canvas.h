@@ -84,7 +84,7 @@ public:
 
     // Background
     void set_desk  (uint32_t rgba);
-    void set_border(uint32_t rgba);
+    void set_shadow(uint32_t rgba, float size);
     void set_page  (uint32_t rgba);
 
     //  Rendering modes

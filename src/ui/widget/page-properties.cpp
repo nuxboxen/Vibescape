@@ -25,6 +25,7 @@
 #include <gtkmm/popovermenu.h>
 #include <gtkmm/togglebutton.h>
 
+#include "display/control/canvas-page.h"
 #include "page-size-preview.h"
 #include "ui/builder-utils.h"
 #include "ui/operation-blocker.h"
@@ -109,8 +110,8 @@ class PagePropertiesBox final : public PageProperties {
     }
 
 public:
-  PagePropertiesBox()
-      // clang-format-off
+    // clang-format off
+    PagePropertiesBox()
       : _builder(create_builder("page-properties.glade"))
       , _main_grid            (get_widget<Gtk::Grid>             (_builder, "main-grid"))
       , _left_grid            (get_widget<Gtk::Grid>             (_builder, "left-grid"))
@@ -147,9 +148,9 @@ public:
       , _display_units        (get_derived_widget<UnitMenu>      (_builder, "display-units"))
       , _page_units           (get_derived_widget<UnitMenu>      (_builder, "page-units"))
       , _backgnd_color_picker (get_derived_widget<ColorPicker>   (_builder, "background-color", _("Background color"), false))
-      , _border_color_picker  (get_derived_widget<ColorPicker>   (_builder, "border-color", _("Border and shadow color"), true))
+      , _border_color_picker  (get_derived_widget<ColorPicker>   (_builder, "border-color", _("Border color"), true))
       , _desk_color_picker    (get_derived_widget<ColorPicker>   (_builder, "desk-color", _("Desk color"), false))
-      // clang-format-on
+    // clang-format on
     {
         for (auto element : {Color::Background, Color::Border, Color::Desk}) {
             get_color_picker(element).connectChanged([element, this](Colors::Color const &color) {
@@ -185,6 +186,9 @@ public:
         _checkerboard.signal_toggled().connect([this](){
             _preview->enable_checkerboard(_checkerboard.get_active());
         });
+        // Not ideal, but shadow color is currently not configurable and page properties need a PageManager/multipage
+        // aware redesign.
+        _preview->set_shadow_color(CanvasPage::DEFAULT_SHADOW_COLOR.toRGBA());
 
         _viewbox_expander.property_expanded().signal_changed().connect([this](){
             // hide/show viewbox controls

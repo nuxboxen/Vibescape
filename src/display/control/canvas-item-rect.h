@@ -22,6 +22,7 @@
 #include <2geom/path.h>
 
 #include "canvas-item.h"
+#include "ui/pixel-alignment.h"
 
 namespace Inkscape {
 
@@ -43,7 +44,9 @@ public:
     void set_fill(uint32_t color) override;
     void set_dashed(bool dash = true);
     void set_inverted(bool inverted = false);
-    void set_shadow(uint32_t color, int width);
+    void set_shadow(uint32_t color, int width, bool inside = false);
+    void set_pixel_alignment(RectLineAlignment alignment);
+    void set_infill_shift(bool shift);
 
 protected:
     ~CanvasItemRect() override = default;
@@ -53,6 +56,7 @@ protected:
 
     // Geometry
     double get_shadow_size() const;
+    bool is_infill_shift() const;
 
     Geom::Rect _rect;
     bool _is_page = false;
@@ -60,6 +64,9 @@ protected:
     bool _inverted = false;
     int _shadow_width = 0;
     uint32_t _shadow_color = 0x0;
+    bool _shadow_inside = false; // whether shadow is around fill or border
+    bool _shift_infill = false;
+    RectLineAlignment _pixel_alignment = RectLineAlignment::CenterInside;
 };
 
 } // namespace Inkscape

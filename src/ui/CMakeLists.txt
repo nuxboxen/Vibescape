@@ -14,6 +14,7 @@ target_sources(inkscape_base PRIVATE
 	interface.cpp
 	monitor.cpp
 	pack.cpp
+	pixel-alignment.cpp
 	popup-menu.cpp
 	shape-editor.cpp
 	shape-editor-knotholders.cpp

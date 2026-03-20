@@ -44,7 +44,8 @@ public:
     virtual void set_background_in_stores(bool) = 0; ///< Whether to assume the first layer is drawn on top of background or transparency.
 
     /// Set colours for background/page shadow drawing.
-    virtual void set_colours(std::uint32_t page, std::uint32_t desk, std::uint32_t border) = 0;
+    virtual void set_colours(std::uint32_t page, std::uint32_t desk, std::uint32_t shadow) = 0;
+    virtual void set_shadow_size(float size) = 0;
 
     // Store manipulation.
     virtual void recreate_store(Geom::IntPoint const &dims) = 0; ///< Set the store to a surface of the given size, of unspecified contents.

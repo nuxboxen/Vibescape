@@ -41,11 +41,21 @@ public:
     void set_guides_visible(bool show);
 
     bool setOnTop(bool on_top);
-    bool setShadow(int shadow);
-    bool setPageColor(Color const &border, Color const &bg, Color const &canvas, Color const &margin, Color const &bleed);
+    bool setShadow(int shadow_size);
+    bool setPageColor(Color const &border, Color const &bg, Color const &canvas, Color const &margin,
+                      Color const &bleed, Color const &shadow);
     bool setLabelStyle(const std::string &style);
 
     bool is_selected = false;
+
+    static Color const DEFAULT_BACKGROUND_COLOR;
+    static Color const DEFAULT_BORDER_COLOR;
+    static Color const DEFAULT_CANVAS_COLOR;
+    static Color const DEFAULT_MARGIN_COLOR;
+    static Color const DEFAULT_BLEED_COLOR;
+    static Color const DEFAULT_SHADOW_COLOR;
+    static Color const DEFAULT_SHADOW_COLOR_LIGHT;
+
 private:
     void _updateTextItem(CanvasItemText *label, Geom::Rect page, std::string txt, bool is_yaxisdown);
 
@@ -56,11 +66,12 @@ private:
 
     int _shadow_size = 0;
     bool _border_on_top = true;
-    Color _background_color {0xffffffff};
-    Color _border_color {0x00000040};
-    Color _canvas_color {0xffffffff};
-    Color _margin_color {0x1699d771};
-    Color _bleed_color {0xbe310e62};
+    Color _background_color;
+    Color _border_color;
+    Color _canvas_color;
+    Color _margin_color;
+    Color _bleed_color;
+    Color _shadow_color;
 
     std::string _label_style = "default";
 };
