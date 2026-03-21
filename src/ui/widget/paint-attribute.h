@@ -14,17 +14,14 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <gtkmm/menubutton.h>
-#include <optional>
-#include <variant>
 #include <vector>
 #include <sigc++/signal.h>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
-rinclude <2geom/affine.h>
+#include <2geom/affine.h>
 #include <2geom/point.h>
 #include <2geom/transforms.h>
 
 #include "colors/color.h"
-#include "edit-operation.h"
 #include "color-preview.h"
 #include "combo-enums.h"
 #include "dash-selector.h"

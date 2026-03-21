@@ -2262,8 +2262,9 @@ private:
         // font size (stored in px, convert to display unit)
         auto font_size= props.font_size;
         auto unit = _tracker_fs->getActiveUnit();
-        font_size.set(Util::Quantity::convert(font_size.value(), "px", unit));
-        set_spin_button_value(_font_size, font_size);
+        auto font_size_converted = mixed_property<double>::update_value(
+            font_size, Util::Quantity::convert(font_size.value(), "px", unit));
+        set_spin_button_value(_font_size, font_size_converted);
 
         // line height — set tracker unit and convert value for display
         {

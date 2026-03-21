@@ -573,6 +573,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         auto hairline = _unit_selector.get_selected() == _hairline_item;
         auto unit = _unit_selector.getUnit();
         _delegate->apply(PaintEditDelegate::StrokeWidthOp{width, hairline, unit});
+        _stroke_width.clear_placeholder();
         update_stroke(_current_item);
         DocumentUndo::maybeDone(_document, "set-stroke-width", RC_("Undo", "Set stroke width"), "dialog-fill-and-stroke", _modified_tag);
     };
@@ -612,6 +613,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         auto css = new_css_attr();
         sp_repr_css_set_property(css.get(), attr, value);
         _delegate->apply(PaintEditDelegate::CssOp{css});
+        _stroke_width.clear_placeholder();
         DocumentUndo::maybeDone(_document, "set-stroke-style", RC_("Undo", "Set stroke style"), "dialog-fill-and-stroke", _modified_tag);
         update_stroke(_current_item);
     };
@@ -922,8 +924,10 @@ void PaintAttribute::update_stroke_from_style(const StyleProperties& props) {
             }
         }
         else {
-            // Mixed state - disable widgets
-            _stroke_width.set_sensitive(false);
+            _stroke_width.set_sensitive();
+            _stroke_width.set_placeholder(_("…")); // ellipsis
+            // Mixed state - disable widgets for now
+            //TODO: handle mixed state
             _dash_selector.set_sensitive(false);
             _stroke_presets.set_sensitive(false);
             _markers.set_sensitive(false);

@@ -23,6 +23,12 @@ public:
     mixed_property(const mixed_property<T>&) = default;
     mixed_property(mixed_property<T>&&) = default;
 
+    static mixed_property<T> update_value(const mixed_property<T>& prop, T value) {
+        mixed_property<T> result(prop);
+        result._value = value;
+        return result;
+    }
+
     mixed_property& operator = (const mixed_property<T>&) = default;
     mixed_property& operator = (mixed_property<T>&&) = default;
 
