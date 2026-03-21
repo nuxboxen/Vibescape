@@ -42,6 +42,7 @@
 #include "ui/widget/paint-switch.h"
 #include "ui/widget/popover-utils.h"
 #include "util/expression-evaluator.h"
+#include "util/paint-item-ops.h"
 #include "util/style-utils.h"
 #include "xml/sp-css-attr.h"
 
@@ -78,8 +79,6 @@ PaintAttribute::PaintAttribute(Parts add_parts, unsigned int tag) :
 
     _fill._update = &_update;
     _stroke._update = &_update;
-    _fill._apply_css = &_apply_css_override;
-    _stroke._apply_css = &_apply_css_override;
 
     // when stroke fill is toggled (any paint vs. none), change a set of visible widgets
     _stroke._toggle_definition.connect([this](bool defined){
@@ -90,8 +89,8 @@ PaintAttribute::PaintAttribute(Parts add_parts, unsigned int tag) :
         if (_update.pending() || !_current_item) return;
 
         bool hide = !_current_item->isExplicitlyHidden();
-        _current_item->setExplicitlyHidden(hide);
-        DocumentUndo::done(_current_item->document, hide ? RC_("Undo", "Hide object") : RC_("Undo", "Unhide object"), "dialog-object-properties");
+        _delegate->apply(PaintEditDelegate::VisibilityOp{hide});
+        DocumentUndo::done(_document, hide ? RC_("Undo", "Hide object") : RC_("Undo", "Unhide object"), "dialog-object-properties");
     });
 }
 
@@ -110,76 +109,10 @@ void PaintAttribute::PaintStrip::show() {
 }
 
 bool PaintAttribute::PaintStrip::can_update() const {
-    return _document && _current_item && _update && !_update->pending();
+    return _document && _update && !_update->pending() && _delegate_ptr;
 }
 
 namespace {
-
-void request_item_update(SPObject* item, unsigned int tag) {
-    if (!item) return;
-
-    item->updateRepr();
-    item->requestModified(SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_STYLE_MODIFIED_FLAG | tag);
-    item->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
-}
-
-boost::intrusive_ptr<SPCSSAttr> new_css_attr() {
-    return boost::intrusive_ptr(sp_repr_css_attr_new(), false);
-}
-
-void set_item_style(SPItem* item, SPCSSAttr* css) {
-    double scale = item->i2doc_affine().descrim();
-    if (scale != 0 && scale != 1) {
-        sp_css_attr_scale(css, 1 / scale);
-    }
-    item->changeCSS(css, "style");
-}
-
-void set_item_style_str(SPItem* item, const char* attr, const char* value) {
-    auto css = new_css_attr();
-    sp_repr_css_set_property(css.get(), attr, value);
-    set_item_style(item, css.get());
-}
-
-void set_item_style_dbl(SPItem* item, const char* attr, double value) {
-    CSSOStringStream os;
-    os << value;
-    set_item_style_str(item, attr, os.str().c_str());
-}
-
-void set_stroke_width(SPItem* item, double width_typed, bool hairline, const Unit* unit) {
-    auto css = new_css_attr();
-    if (hairline) {
-        // For renderers that don't understand -inkscape-stroke:hairline, fall back to 1px non-scaling
-        width_typed = 1;
-        sp_repr_css_set_property(css.get(), "vector-effect", "non-scaling-stroke");
-        sp_repr_css_set_property(css.get(), "-inkscape-stroke", "hairline");
-    }
-    else {
-        sp_repr_css_unset_property(css.get(), "vector-effect");
-        sp_repr_css_unset_property(css.get(), "-inkscape-stroke");
-    }
-
-    double width = calc_scale_line_width(width_typed, item, unit);
-    sp_repr_css_set_property_double(css.get(), "stroke-width", width);
-
-    if (Preferences::get()->getBool("/options/dash/scale", true)) {
-        // This will read the old stroke-width to unscale the pattern.
-        auto [dash, offset] = getDashFromStyle(item->style);
-        set_scaled_dash(css.get(), dash.size(), dash.data(), offset, width);
-    }
-    // item->style->stroke_dasharray.values = ;
-    set_item_style(item, css.get());
-}
-
-void set_item_marker(SPItem* item, int location, const char* attr, const std::string& uri) {
-    set_item_style_str(item, attr, uri.c_str());
-    //TODO: verify if any of the below lines are needed
-    // item->requestModified(SP_OBJECT_MODIFIED_FLAG);
-    // item->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_STYLE_MODIFIED_FLAG);
-    // needed?
-    item->document->ensureUpToDate();
-}
 
 void edit_marker(int location, SPDesktop* desktop) {
     if (!desktop) return;
@@ -188,57 +121,6 @@ void edit_marker(int location, SPDesktop* desktop) {
     if (auto marker_tool = dynamic_cast<Tools::MarkerTool*>(desktop->getTool())) {
         marker_tool->editMarkerMode = location;
         marker_tool->selection_changed(desktop->getSelection());
-    }
-}
-
-std::optional<Colors::Color> get_item_color(SPItem* item, bool fill) {
-    if (!item || !item->style) return {};
-
-    auto paint = item->style->getFillOrStroke(fill);
-    return paint && paint->isColor() ? std::optional(paint->getColor()) : std::nullopt;
-}
-
-void swatch_operation(SPItem* item, SPGradient* vector, SPDesktop* desktop, bool fill, EditOperation operation, SPGradient* replacement, std::optional<Color> color, Glib::ustring label, unsigned int tag) {
-    auto kind = fill ? FILL : STROKE;
-
-    switch (operation) {
-    case EditOperation::New:
-        // try to find an existing swatch with matching color definition:
-        if (auto clr = get_item_color(item, fill)) {
-            vector = sp_find_matching_swatch(item->document, *clr);
-        }
-        else {
-            // create a new swatch
-            vector = nullptr;
-        }
-        sp_item_apply_gradient(item, vector, desktop, SP_GRADIENT_TYPE_LINEAR, true, kind);
-        DocumentUndo::done(item->document, fill ? RC_("Undo", "Set swatch on fill") : RC_("Undo", "Set swatch on stroke"), "dialog-fill-and-stroke", tag);
-        break;
-    case EditOperation::Change:
-        if (color.has_value()) {
-            sp_change_swatch_color(vector, *color);
-            DocumentUndo::maybeDone(item->document, "swatch-color", RC_("Undo", "Change swatch color"), "dialog-fill-and-stroke", tag);
-        }
-        else {
-            sp_item_apply_gradient(item, vector, desktop, SP_GRADIENT_TYPE_LINEAR, true, kind);
-            DocumentUndo::maybeDone(
-                item->document,
-                fill ? "fill-swatch-change" : "stroke-swatch-change",
-                fill ? RC_("Undo", "Set swatch on fill") : RC_("Undo", "Set swatch on stroke"),
-                "dialog-fill-and-stroke",
-                tag);
-        }
-        break;
-    case EditOperation::Delete:
-        sp_delete_item_swatch(item, kind, vector, replacement);
-        DocumentUndo::done(item->document, RC_("Undo", "Delete swatch"), "dialog-fill-and-stroke", tag);
-        break;
-    case EditOperation::Rename:
-        vector->setLabel(label.c_str());
-        DocumentUndo::maybeDone(item->document, "swatch-rename", RC_("Undo", "Rename swatch"), "dialog-fill-and-stroke", tag);
-        break;
-    default:
-        break;
     }
 }
 
@@ -374,59 +256,49 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
     conns.push_back(_switch->get_pattern_changed().connect([this, fill, tag](auto pattern, auto color, auto label, auto transform, auto offset, auto uniform, auto gap) {
         if (!can_update()) return;
 
-        if (auto item = cast<SPItem>(_current_item)) {
-            auto kind = fill ? FILL : STROKE;
-            sp_item_apply_pattern(item, pattern, kind, color, label, transform, offset, uniform, gap);
-            DocumentUndo::maybeDone(item->document, fill ? "fill-pattern-change" : "stroke-pattern-change", fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
-            update_preview_indicators(_current_item);
-            set_paint_from_object(_current_item);
-        }
+        _delegate_ptr->apply(PaintEditDelegate::PatternOp{pattern, fill, color, label, transform, offset, uniform, gap});
+        DocumentUndo::maybeDone(_document, fill ? "fill-pattern-change" : "stroke-pattern-change",
+            fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
+        update_preview_indicators(_current_item);
+        set_paint_from_object(_current_item);
     }));
 
-    conns.push_back(_switch->get_hatch_changed().connect([this, fill, tag](auto hatch, auto color, auto label, auto transform, auto offset, auto pitch, auto rotation, auto stroke) {
+    conns.push_back(_switch->get_hatch_changed().connect([this, fill, tag](auto hatch, auto color, auto label, auto transform, auto offset, auto pitch, auto rotation, auto thickness) {
         if (!can_update()) return;
 
-        if (auto item = cast<SPItem>(_current_item)) {
-            auto kind = fill ? FILL : STROKE;
-            sp_item_apply_hatch(item, hatch, kind, color, label, transform, offset, pitch, rotation, stroke);
-            DocumentUndo::maybeDone(_document, fill ? "fill-pattern-change" : "stroke-pattern-change", fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
-            update_preview_indicators(_current_item);
-            set_paint_from_object(_current_item);
-        }
+        _delegate_ptr->apply(PaintEditDelegate::HatchOp{hatch, fill, color, label, transform, offset, pitch, rotation, thickness});
+        DocumentUndo::maybeDone(_document, fill ? "fill-pattern-change" : "stroke-pattern-change",
+            fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
+        update_preview_indicators(_current_item);
+        set_paint_from_object(_current_item);
     }));
 
     conns.push_back(_switch->get_gradient_changed().connect([this, fill, tag](auto vector, auto gradient_type) {
         if (!can_update()) return;
 
-        if (auto item = cast<SPItem>(_current_item)) {
-            auto kind = fill ? FILL : STROKE;
-            sp_item_apply_gradient(item, vector, _desktop, gradient_type, false, kind);
-            DocumentUndo::maybeDone(_document, fill ? "fill-gradient-change" : "stroke-gradient-change", fill ? RC_("Undo", "Set gradient on fill") : RC_("Undo", "Set gradient on stroke"), "dialog-fill-and-stroke", tag);
-            update_preview_indicators(_current_item);
-            set_paint_from_object(_current_item);
-        }
+        _delegate_ptr->apply(PaintEditDelegate::GradientOp{vector, gradient_type, fill});
+        DocumentUndo::maybeDone(_document, fill ? "fill-gradient-change" : "stroke-gradient-change",
+            fill ? RC_("Undo", "Set gradient on fill") : RC_("Undo", "Set gradient on stroke"), "dialog-fill-and-stroke", tag);
+        update_preview_indicators(_current_item);
+        set_paint_from_object(_current_item);
     }));
 
     conns.push_back(_switch->get_mesh_changed().connect([this, fill, tag](auto mesh) {
         if (!can_update()) return;
 
-        if (auto item = cast<SPItem>(_current_item)) {
-            auto kind = fill ? FILL : STROKE;
-            sp_item_apply_mesh(item, mesh, _document, kind);
-            DocumentUndo::maybeDone(_document, fill ? "fill-mesh-change" : "stroke-mesh-change", fill ? RC_("Undo", "Set mesh on fill") : RC_("Undo", "Set mesh on stroke"), "dialog-fill-and-stroke", tag);
-            update_preview_indicators(_current_item);
-            set_paint_from_object(_current_item);
-        }
+        _delegate_ptr->apply(PaintEditDelegate::MeshOp{mesh, fill});
+        DocumentUndo::maybeDone(_document, fill ? "fill-mesh-change" : "stroke-mesh-change",
+            fill ? RC_("Undo", "Set mesh on fill") : RC_("Undo", "Set mesh on stroke"), "dialog-fill-and-stroke", tag);
+        update_preview_indicators(_current_item);
+        set_paint_from_object(_current_item);
     }));
 
     conns.push_back(_switch->get_swatch_changed().connect([this, fill, tag](auto vector, auto operation, auto replacement, std::optional<Color> color, auto label) {
         if (!can_update()) return;
 
-        if (auto item = cast<SPItem>(_current_item)) {
-            swatch_operation(item, vector, _desktop, fill, operation, replacement, color, label, _modified_tag);
-            update_preview_indicators(_current_item);
-            set_paint_from_object(_current_item);
-        }
+        _delegate_ptr->apply(PaintEditDelegate::SwatchOp{vector, operation, replacement, color, label, fill});
+        update_preview_indicators(_current_item);
+        set_paint_from_object(_current_item);
     }));
 
     conns.push_back(_switch->get_flat_color_changed().connect([=,this](auto& color) {
@@ -487,7 +359,9 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
 void PaintAttribute::PaintStrip::request_update(bool update_preview) {
     if (!_current_item) return;
 
-    request_item_update(_current_item, _modified_tag);
+    _current_item->updateRepr();
+    _current_item->requestModified(SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_STYLE_MODIFIED_FLAG | _modified_tag);
+    _current_item->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
 
     if (update_preview) {
         update_preview_indicators(_current_item);
@@ -660,7 +534,10 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         auto set_marker = [this](int location, const char* id, const std::string& uri) {
             if (!can_update()) return;
 
-            set_item_marker(_current_item, location, id, uri);
+            auto css = new_css_attr();
+            sp_repr_css_set_property(css.get(), id, uri.c_str());
+            _delegate->apply(PaintEditDelegate::CssOp{css});
+            _document->ensureUpToDate();
             DocumentUndo::maybeDone(_document, "marker-change", RC_("Undo", "Set marker"), "dialog-fill-and-stroke", _modified_tag);
         };
 
@@ -695,7 +572,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         auto scoped(_update.block());
         auto hairline = _unit_selector.get_selected() == _hairline_item;
         auto unit = _unit_selector.getUnit();
-        set_stroke_width(_current_item, width, hairline, unit);
+        _delegate->apply(PaintEditDelegate::StrokeWidthOp{width, hairline, unit});
         update_stroke(_current_item);
         DocumentUndo::maybeDone(_document, "set-stroke-width", RC_("Undo", "Set stroke width"), "dialog-fill-and-stroke", _modified_tag);
     };
@@ -710,7 +587,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         if (hairline) {
             auto scoped(_update.block());
             _current_unit = new_unit;
-            set_stroke_width(_current_item, 1, hairline, new_unit);
+            _delegate->apply(PaintEditDelegate::StrokeWidthOp{1.0, hairline, new_unit});
             DocumentUndo::maybeDone(_document, "set-stroke-unit", RC_("Undo", "Set stroke unit"), "dialog-fill-and-stroke", _modified_tag);
         }
         else {
@@ -732,7 +609,9 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         if (!can_update()) return;
 
         auto scoped(_update.block());
-        set_item_style_str(_current_item, attr, value);
+        auto css = new_css_attr();
+        sp_repr_css_set_property(css.get(), attr, value);
+        _delegate->apply(PaintEditDelegate::CssOp{css});
         DocumentUndo::maybeDone(_document, "set-stroke-style", RC_("Undo", "Set stroke style"), "dialog-fill-and-stroke", _modified_tag);
         update_stroke(_current_item);
     };
@@ -740,7 +619,11 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         if (!can_update()) return;
 
         auto scoped(_update.block());
-        set_item_style_dbl(_current_item, "stroke-miterlimit", limit);
+        CSSOStringStream os;
+        os << limit;
+        auto css = new_css_attr();
+        sp_repr_css_set_property(css.get(), "stroke-miterlimit", os.str().c_str());
+        _delegate->apply(PaintEditDelegate::CssOp{css});
         DocumentUndo::maybeDone(_document, "set-stroke-miter-limit", RC_("Undo", "Set stroke miter"), "dialog-fill-and-stroke", _modified_tag);
     };
     _stroke_width.signal_value_changed().connect([=,this](auto value) {
@@ -785,20 +668,15 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         if (!can_update()) return;
 
         auto scoped(_update.block());
-        auto item = _current_item;
         auto& dash = pattern_edit ? _dash_selector.get_custom_dash_pattern() : _dash_selector.get_dash_pattern();
         auto offset = _dash_selector.get_offset();
-        double scale = item->i2doc_affine().descrim();
-        if (Preferences::get()->getBool("/options/dash/scale", true)) {
-            scale = item->style->stroke_width.computed * scale;
-        }
-        auto css = new_css_attr();
-        set_scaled_dash(css.get(), dash.size(), dash.data(), offset, scale);
-        set_item_style(item, css.get());
+        _delegate->apply(PaintEditDelegate::DashOp{std::vector<double>(dash.begin(), dash.end()), offset});
         _stroke.request_update(false);
         // update menu selection if the user edits a dash pattern
-        auto [vec, offset2] = getDashFromStyle(item->style);
-        _dash_selector.set_dash_pattern(vec, offset2);
+        if (_current_item && _current_item->style) {
+            auto [vec, offset2] = getDashFromStyle(_current_item->style);
+            _dash_selector.set_dash_pattern(vec, offset2);
+        }
         DocumentUndo::maybeDone(_document, "set-dash-pattern", RC_("Undo", "Set stroke dash pattern"), "dialog-fill-and-stroke", _modified_tag);
     };
     _dash_selector.changed_signal.connect([=](auto change) {
@@ -817,17 +695,12 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
     auto set_object_opacity = [this](double opacity, bool clear) {
         if (!can_update()) return;
 
-        auto item = _current_item;
         auto scoped(_update.block());
-        if (clear) {
-            item->style->opacity.clear();
-            _opacity.set_value(item->style->opacity);
-        }
-        else {
-            item->style->opacity.set_double(opacity);
+        _delegate->apply(PaintEditDelegate::OpacityOp{opacity, clear});
+        if (clear && _current_item && _current_item->style) {
+            _opacity.set_value(_current_item->style->opacity);
         }
         update_reset_opacity_button();
-        request_item_update(item, _modified_tag);
         DocumentUndo::done(_document, clear ? RC_("Undo", "Clear opacity") : RC_("Undo", "Set opacity"), "dialog-fill-and-stroke", _modified_tag);
     };
     _opacity.signal_value_changed().connect([=,this](auto value){ set_object_opacity(value, false); });
@@ -838,15 +711,12 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         if (!can_update()) return;
 
         auto scoped(_update.block());
-        if ( clear && ::clear_blend_mode(_current_item) ||
-            !clear && ::set_blend_mode(_current_item, mode)) {
-
-            if (clear) {
-                _blend.set_active_by_id(SP_CSS_BLEND_NORMAL);
-            }
-            update_reset_blend_button();
-            DocumentUndo::done(_document, clear ? RC_("Undo", "Clear blending mode") : RC_("Undo", "Set blending mode"), "dialog-fill-and-stroke", _modified_tag);
+        _delegate->apply(PaintEditDelegate::BlendModeOp{mode, clear});
+        if (clear) {
+            _blend.set_active_by_id(SP_CSS_BLEND_NORMAL);
         }
+        update_reset_blend_button();
+        DocumentUndo::done(_document, clear ? RC_("Undo", "Clear blending mode") : RC_("Undo", "Set blending mode"), "dialog-fill-and-stroke", _modified_tag);
     };
     _blend.signal_changed().connect([=,this] {
         if (auto id = _blend.get_selected_id()) {
@@ -882,16 +752,26 @@ void PaintAttribute::set_desktop(SPDesktop* desktop) {
     _desktop = desktop;
     if (_fill._switch) _fill._switch->set_desktop(desktop);
     if (_stroke._switch) _stroke._switch->set_desktop(desktop);
+    _fill._desktop = desktop;
+    _stroke._desktop = desktop;
+    if (_delegate) {
+        _delegate->set_desktop(desktop);
+    }
+    _fill._delegate_ptr = _delegate.get();
+    _stroke._delegate_ptr = _delegate.get();
 }
 
-void PaintAttribute::set_apply_css_override(std::function<void(SPCSSAttr*)> override) {
-    _apply_css_override = std::move(override);
+void PaintAttribute::set_delegate(std::unique_ptr<PaintEditDelegate> delegate) {
+    _delegate = std::move(delegate);
+    _fill._delegate_ptr = _delegate.get();
+    _stroke._delegate_ptr = _delegate.get();
 }
 
 void PaintAttribute::PaintStrip::apply_style(SPCSSAttr* css) {
-    if (_apply_css && *_apply_css) {
-        (*_apply_css)(css);
-    } else {
+    if (_delegate_ptr) {
+        auto icss = boost::intrusive_ptr(css);
+        _delegate_ptr->apply(PaintEditDelegate::CssOp{icss});
+    } else if (_current_item) {
         set_item_style(cast<SPItem>(_current_item), css);
     }
 }
@@ -1125,7 +1005,7 @@ void PaintAttribute::update_stroke_from_style(const StyleProperties& props) {
 }
 
 bool PaintAttribute::can_update() const {
-    return _document && _current_item && _current_item->style && !_update.pending();
+    return _document && !_update.pending();
 }
 
 void PaintAttribute::update_reset_opacity_button() {

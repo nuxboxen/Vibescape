@@ -14,6 +14,7 @@ target_sources(inkscape_base PRIVATE
     share.cpp
     object-renderer.cpp
     object-modified-tags.cpp
+    paint-item-ops.cpp
     paper.cpp
     parse-int-range.cpp
     preview.cpp
@@ -58,6 +59,7 @@ target_sources(inkscape_base PRIVATE
     longest-common-suffix.h
     object-renderer.h
     object-modified-tags.h
+    paint-item-ops.h
     optstr.h
     pages-skeleton.h
     paper.h

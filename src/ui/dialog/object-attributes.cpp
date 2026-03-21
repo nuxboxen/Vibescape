@@ -105,9 +105,11 @@
 #include "util/mixed-property.h"
 #include "util/object-modified-tags.h"
 #include "util/text-utils.h"
+#include "util/variant-visitor.h"
 #include "widgets/sp-attribute-widget.h"
 #include "xml/repr.h"
 #include "xml/sp-css-attr.h"
+
 
 namespace Inkscape::UI::Dialog {
 
@@ -378,6 +380,25 @@ void set_location_adj(Widget::InkSpinButton& btn) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// Default delegate: applies every operation to all items in the desktop selection.
+class DefaultPaintEditDelegate : public Util::PaintEditDelegate {
+    SPDesktop* _desktop = nullptr;
+    unsigned int _tag;
+public:
+    explicit DefaultPaintEditDelegate(unsigned int tag) : _tag(tag) {}
+    void set_desktop(SPDesktop* d) override { _desktop = d; }
+    void apply(const Op& op) override {
+        if (!_desktop) return;
+        auto sel = _desktop->getSelection();
+        if (!sel) return;
+        for (auto item : sel->items()) {
+            Util::apply_paint_op_to_item(item, op, _desktop, _tag);
+        }
+    }
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
 details::AttributesPanel::AttributesPanel()
     : _builder(create_builder("object-properties.ui"))
     , _x(get_widget<Widget::InkSpinButton>(_builder, "obj-x"))
@@ -418,6 +439,7 @@ details::AttributesPanel::AttributesPanel()
 void details::AttributesPanel::add_fill_and_stroke(Parts parts) {
     _paint.reset(new Widget::PaintAttribute(parts, TAG));
     _paint->insert_widgets(_grid);
+    _paint->set_delegate(std::make_unique<DefaultPaintEditDelegate>(TAG));
     _show_fill_stroke = true;
 }
 
@@ -1709,6 +1731,50 @@ auto paint_to_item(const PaintKey& paint) {
 
 } // namespace
 
+// Delegate for text items: CSS edits go through apply_text_css (respecting text-tool
+// subselection); all other operations are applied directly to the text item.
+class TextPaintDelegate : public Util::PaintEditDelegate {
+    std::function<SPItem*()>            _get_item;
+    std::function<SPDocument*()>        _get_doc;
+    std::function<SPDesktop*()>         _get_desktop;
+    std::function<Tools::TextTool*()>   _get_tool;
+    unsigned int _tag;
+public:
+    TextPaintDelegate(std::function<SPItem*()> get_item,
+                      std::function<SPDocument*()> get_doc,
+                      std::function<SPDesktop*()> get_desktop,
+                      std::function<Tools::TextTool*()> get_tool,
+                      unsigned int tag)
+        : _get_item(std::move(get_item))
+        , _get_doc(std::move(get_doc))
+        , _get_desktop(std::move(get_desktop))
+        , _get_tool(std::move(get_tool))
+        , _tag(tag)
+    {}
+
+    void apply(const Op& op) override {
+        auto item    = _get_item();
+        auto desktop = _get_desktop();
+        if (!item || !_get_doc()) return;
+        unsigned int t = _tag;
+        std::visit(VariantVisitor{
+            [item, this](const CssOp& o) {
+                apply_text_css(item, _get_tool(), o.css.get());
+            },
+            [item, desktop, t](const GradientOp& o)    { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const PatternOp& o)     { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const HatchOp& o)       { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const MeshOp& o)        { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const SwatchOp& o)      { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const StrokeWidthOp& o) { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const DashOp& o)        { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const OpacityOp& o)     { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const BlendModeOp& o)   { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t](const VisibilityOp& o)  { Util::apply_paint_op_to_item(item, o, desktop, t); },
+        }, op);
+    }
+};
+
 class TextPanel : public details::AttributesPanel {
 public:
     TextPanel(Glib::RefPtr<Gtk::Builder> builder) :
@@ -2100,10 +2166,12 @@ public:
         add_size_properties();
         _grid.add_gap();
         add_fill_and_stroke(static_cast<Widget::PaintAttribute::Parts>(Widget::PaintAttribute::AllParts & ~Widget::PaintAttribute::Markers));
-        _paint->set_apply_css_override([this](SPCSSAttr* css) {
-            if (!_current_item || !_document) return;
-            apply_text_css(_current_item, get_text_tool(), css);
-        });
+        _paint->set_delegate(std::make_unique<TextPaintDelegate>(
+            [this]() -> SPItem*          { return _current_item; },
+            [this]() -> SPDocument*      { return _document; },
+            [this]() -> SPDesktop*       { return _desktop; },
+            [this]() -> Tools::TextTool* { return get_text_tool(); },
+            TAG));
         _text_header = add_header(_("Text"));
         Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "text-main"), _grid);
         // remove extra margins added by "reparenting"
@@ -3154,6 +3222,39 @@ void visit_objects(SPObject* object, F f) {
 
 } // namespace
 
+// Delegate for multi-object editing: iterates every item in the current selection
+// and applies the operation to each one individually.
+class MultiObjPaintDelegate : public Util::PaintEditDelegate {
+    std::function<SPDesktop*()> _get_desktop;
+    unsigned int _tag;
+public:
+    MultiObjPaintDelegate(std::function<SPDesktop*()> get_desktop, unsigned int tag)
+        : _get_desktop(std::move(get_desktop)), _tag(tag) {}
+
+    void apply(const Op& op) override {
+        auto desktop = _get_desktop();
+        if (!desktop) return;
+        auto sel = desktop->getSelection();
+        if (!sel) return;
+        unsigned int t = _tag;
+        for (auto item : sel->items()) {
+            std::visit(VariantVisitor{
+                [item, desktop, t](const CssOp& o)        { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const GradientOp& o)   { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const PatternOp& o)    { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const HatchOp& o)      { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const MeshOp& o)       { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const SwatchOp& o)     { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const StrokeWidthOp& o){ Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const DashOp& o)       { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const OpacityOp& o)    { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const BlendModeOp& o)  { Util::apply_paint_op_to_item(item, o, desktop, t); },
+                [item, desktop, t](const VisibilityOp& o) { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            }, op);
+        }
+    }
+};
+
 class MultiObjPanel : public details::AttributesPanel {
 public:
     MultiObjPanel(Glib::RefPtr<Gtk::Builder> builder): _builder(builder) {
@@ -3161,6 +3262,9 @@ public:
         add_size_properties();
         _grid.add_gap();
         add_fill_and_stroke();
+        _paint->set_delegate(std::make_unique<MultiObjPaintDelegate>(
+            [this]() -> SPDesktop* { return _desktop; }, TAG));
+        _grid.add_gap();
         Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "multiobj-main"), _grid);
         _recolor_btn.set_create_popup_func([this] {
             auto& mgr = Widget::RecolorArtManager::get();
@@ -3177,7 +3281,7 @@ private:
         return Glib::ustring::compose(ngettext("%1 Object", "%1 Objects", n), n);
     }
 
-    void update_paint(SPObject* object) override {
+    void update_paint(SPObject* /*object*/) override {
         if (!_desktop) return;
 
         auto selection = _desktop->getSelection();
@@ -3186,10 +3290,12 @@ private:
         _paint->update_from_style_props(nullptr, props);
     }
 
-    void update(SPObject* object) override {
+    void update(SPObject* /*object*/) override {
         if (!_desktop) return;
 
         auto selection = _desktop->getSelection();
+
+        _recolor_btn.set_visible(Inkscape::UI::Widget::RecolorArtManager::checkSelection(selection));
 
         //todo: other properties, if any
     }

@@ -14,9 +14,17 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <gtkmm/menubutton.h>
-#include <functional>
+#include <optional>
+#include <variant>
+#include <vector>
 #include <sigc++/signal.h>
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+rinclude <2geom/affine.h>
+#include <2geom/point.h>
+#include <2geom/transforms.h>
 
+#include "colors/color.h"
+#include "edit-operation.h"
 #include "color-preview.h"
 #include "combo-enums.h"
 #include "dash-selector.h"
@@ -29,11 +37,16 @@
 #include "style-internal.h"
 #include "unit-menu.h"
 #include "ui/widget/paint-popover-manager.h"
+#include "util/paint-item-ops.h"
 #include "util/style-utils.h"
 #include "widget-group.h"
 
+class SPCSSAttr;
 class SPDocument;
 class SPDesktop;
+class SPGradient;
+class SPHatch;
+class SPPattern;
 
 namespace Inkscape::UI::Widget {
 
@@ -55,7 +68,7 @@ public:
     void insert_widgets(InkPropertyGrid& grid);
     void set_document(SPDocument* document);
     void set_desktop(SPDesktop* desktop);
-    void set_apply_css_override(std::function<void(SPCSSAttr*)> override);
+    void set_delegate(std::unique_ptr<Inkscape::Util::PaintEditDelegate> delegate);
     // update UI from passed object style
     void update_from_object(SPObject* object);
     // update UI using a queried style (for subselection read-back)
@@ -121,7 +134,7 @@ private:
         SPDesktop* _desktop = nullptr;
         OperationBlocker* _update = nullptr;
         unsigned int _modified_tag;
-        std::function<void(SPCSSAttr*)>* _apply_css = nullptr;
+        PaintEditDelegate* _delegate_ptr = nullptr;
         PaintPopoverManager::Registration _connection; // RAII token.
     };
     PaintStrip _fill;
@@ -153,7 +166,7 @@ private:
     Parts _added_parts;
     unsigned int _modified_tag;
     Gtk::Button& _visible;
-    std::function<void(SPCSSAttr*)> _apply_css_override;
+    std::unique_ptr<PaintEditDelegate> _delegate;
 };
 
 } // namespace

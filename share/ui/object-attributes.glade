@@ -982,6 +982,9 @@
             </style>
           </object>
         </child>
+        <style>
+          <class name="linked"></class>
+        </style>
       </object>
     </child>
     <child>
