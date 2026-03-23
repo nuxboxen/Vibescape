@@ -60,7 +60,7 @@ public:
 
     virtual ~PaintEditDelegate() = default;
     virtual void set_desktop(SPDesktop*) {}
-    virtual void apply(const Op& op) = 0;
+    virtual SPPaintServer* apply(const Op& op) = 0;
 };
 
 // Create an empty CSS attribute object wrapped in an intrusive_ptr.
@@ -73,14 +73,16 @@ void set_item_style(SPItem* item, SPCSSAttr* css);
 void set_stroke_width(SPItem* item, double width, bool hairline, const Unit* unit);
 
 // Apply a swatch editing operation (new / change / delete / rename) to item.
-void swatch_operation(SPItem* item, SPGradient* vector, SPDesktop* desktop, bool fill,
-                      Inkscape::UI::EditOperation op, SPGradient* replacement,
-                      std::optional<Colors::Color> color, Glib::ustring label,
-                      unsigned int tag);
+// Returns the swatch gradient assigned to the item after the operation.
+SPGradient* swatch_operation(SPItem* item, SPGradient* vector, SPDesktop* desktop, bool fill,
+                              Inkscape::UI::EditOperation op, SPGradient* replacement,
+                              std::optional<Colors::Color> color, Glib::ustring label,
+                              unsigned int tag);
 
 // Apply a single paint edit operation to one item.
-// Used by custom delegates that need to handle non-CSS ops for a specific item.
-void apply_paint_op_to_item(SPItem* item, const PaintEditDelegate::Op& op,
-                             SPDesktop* desktop, unsigned int tag);
+// Returns the paint server created or applied (gradient, swatch, pattern, hatch, mesh),
+// or nullptr for operations that don't produce a server.
+SPPaintServer* apply_paint_op_to_item(SPItem* item, const PaintEditDelegate::Op& op,
+                                       SPDesktop* desktop, unsigned int tag);
 
 } // namespace Inkscape::Util

@@ -193,10 +193,10 @@ void sp_item_set_pattern_style(SPItem* item, SPPattern* root_pattern, SPCSSAttr*
 }
 
 // set a pattern as item's fill or stroke; modify the pattern's attributes
-void sp_item_apply_pattern(SPItem* item, SPPattern* pattern, FillOrStroke kind, std::optional<Color> color, const Glib::ustring& label,
+SPPattern* sp_item_apply_pattern(SPItem* item, SPPattern* pattern, FillOrStroke kind, std::optional<Color> color, const Glib::ustring& label,
     const Geom::Affine& transform, const Geom::Point& offset, bool uniform_scale, const Geom::Scale& gap) {
 
-    if (!pattern || !item) return;
+    if (!pattern || !item) return nullptr;
 
     auto link_pattern = pattern;
     auto root_pattern = pattern->rootPattern();
@@ -224,6 +224,7 @@ void sp_item_apply_pattern(SPItem* item, SPPattern* pattern, FillOrStroke kind, 
     // create a link to the pattern right away, without waiting for this item to be moved;
     // otherwise the pattern editor may end up modifying a pattern shared by different objects
     item->adjust_pattern(Geom::Affine());
+    return link_pattern;
 }
 
 void sp_hatch_set_pitch(SPHatch* hatch, double pitch) {
@@ -295,10 +296,10 @@ void sp_item_set_hatch_style(SPItem* item, SPHatch* root_hatch, SPCSSAttr* css, 
     item->adjust_hatch(Geom::identity());
 }
 
-void sp_item_apply_hatch(SPItem* item, SPHatch* hatch, FillOrStroke kind, std::optional<Color> color, const Glib::ustring& label,
+SPHatch* sp_item_apply_hatch(SPItem* item, SPHatch* hatch, FillOrStroke kind, std::optional<Color> color, const Glib::ustring& label,
     const Geom::Affine& transform, const Geom::Point& offset, double pitch, double rotation, double thickness) {
 
-    if (!hatch || !item) return;
+    if (!hatch || !item) return nullptr;
 
     auto link_hatch = hatch;
     auto root_hatch = hatch->rootHatch();
@@ -324,4 +325,5 @@ void sp_item_apply_hatch(SPItem* item, SPHatch* hatch, FillOrStroke kind, std::o
     SPCSSAttr* css = sp_repr_css_attr_new();
     sp_repr_css_set_property(css, kind == FILL ? "fill" : "stroke", url.c_str());
     sp_item_set_hatch_style(item, hatch, css, kind);
+    return link_hatch;
 }

@@ -19,6 +19,7 @@
 #include "style-internal.h"
 #include "util/units.h"
 #include "mixed-property.h"
+#include "util/style-utils.h"
 
 class SPCSSAttr;
 class SPDesktop;
@@ -91,6 +92,11 @@ SPCSSTextAlign text_align_to_side(SPCSSTextAlign align, SPCSSDirection direction
 // and triggers a display update. Does NOT call DocumentUndo.
 // Returns true if the text position was moved.
 bool apply_text_alignment(SPText* text, int align_mode);
+
+// Build CSS attr for super/subscript.
+// setSuper or setSub true = enable that mode (also sets font-size: 65%).
+// Both false = clear (resets font-size and sets baseline-shift: baseline).
+CssPtr apply_text_script(bool setSuper, bool setSub);
 
 // Fill CSS attributes from a Pango font description: sets font-family, font-style,
 // font-weight, font-stretch, font-variant and -inkscape-font-specification.

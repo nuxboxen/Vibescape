@@ -12,6 +12,7 @@
 #include "style/paint-order.h"
 
 class SPStyle;
+namespace Inkscape { struct StyleProperties; }
 
 namespace Inkscape::UI::Widget {
 
@@ -21,6 +22,7 @@ public:
 
     // update UI to reflect the item's style
     void update_widgets(SPStyle& style);
+    void update_widgets(const Inkscape::StyleProperties& props);
 
     sigc::signal<void (const char*)> _join_changed;
     sigc::signal<void (const char*)> _cap_changed;

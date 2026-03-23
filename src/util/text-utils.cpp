@@ -294,27 +294,26 @@ bool apply_text_alignment(SPText* text, int align_mode) {
     }
 
     // Set text-anchor and text-align CSS
-    SPCSSAttr* css = sp_repr_css_attr_new();
+    auto css = make_css();
     if ((align_mode == 0 && direction == SP_CSS_DIRECTION_LTR) ||
         (align_mode == 2 && direction == SP_CSS_DIRECTION_RTL)) {
-        sp_repr_css_set_property(css, "text-anchor", "start");
-        sp_repr_css_set_property(css, "text-align",  "start");
+        sp_repr_css_set_property(css.get(), "text-anchor", "start");
+        sp_repr_css_set_property(css.get(), "text-align",  "start");
     }
     if ((align_mode == 0 && direction == SP_CSS_DIRECTION_RTL) ||
         (align_mode == 2 && direction == SP_CSS_DIRECTION_LTR)) {
-        sp_repr_css_set_property(css, "text-anchor", "end");
-        sp_repr_css_set_property(css, "text-align",  "end");
+        sp_repr_css_set_property(css.get(), "text-anchor", "end");
+        sp_repr_css_set_property(css.get(), "text-align",  "end");
     }
     if (align_mode == 1) {
-        sp_repr_css_set_property(css, "text-anchor", "middle");
-        sp_repr_css_set_property(css, "text-align",  "center");
+        sp_repr_css_set_property(css.get(), "text-anchor", "middle");
+        sp_repr_css_set_property(css.get(), "text-align",  "center");
     }
     if (align_mode == 3) {
-        sp_repr_css_set_property(css, "text-anchor", "start");
-        sp_repr_css_set_property(css, "text-align",  "justify");
+        sp_repr_css_set_property(css.get(), "text-anchor", "start");
+        sp_repr_css_set_property(css.get(), "text-align",  "justify");
     }
-    text->changeCSS(css, "style");
-    sp_repr_css_attr_unref(css);
+    text->changeCSS(css.get(), "style");
 
     // Adjust text position to preserve visual bounding box
     Geom::Point XY = text->attributes.firstXY();
@@ -328,6 +327,22 @@ bool apply_text_alignment(SPText* text, int align_mode) {
     text->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
 
     return std::abs(move) > 0;
+}
+
+CssPtr apply_text_script(bool setSuper, bool setSub) {
+    auto css = make_css();
+    // Openoffice 2.3 and Adobe use 58%, Microsoft Word 2002 uses 65%, LaTeX about 70%.
+    // 58% looks too small, especially if a superscript is placed on a superscript.
+    // If you make a change here, consider making a change to baseline-shift amount in style.cpp.
+    sp_repr_css_set_property(css.get(), "font-size", (setSuper || setSub) ? "65%" : "");
+    if (setSuper) {
+        sp_repr_css_set_property(css.get(), "baseline-shift", "super");
+    } else if (setSub) {
+        sp_repr_css_set_property(css.get(), "baseline-shift", "sub");
+    } else {
+        sp_repr_css_set_property(css.get(), "baseline-shift", "baseline");
+    }
+    return css;
 }
 
 void fill_css_from_font_description(SPCSSAttr* css, const Glib::ustring& family,
@@ -512,12 +527,19 @@ void apply_text_css(SPItem* text_item, UI::Tools::TextTool* tool, SPCSSAttr* css
             sptext->rebuildLayout();
             sptext->updateRepr();
         }
-        return;
     }
-
-    // No subselection — apply CSS recursively to the text item
-    sp_desktop_apply_css_recursive(text_item, css, true);
-    text_item->updateRepr();
+    else {
+        // Apply CSS to the entire text using sp_te_apply_style so it operates at the
+        // character/span level and does not touch properties on the root element itself
+        // (e.g. font-size set by the user). sp_desktop_apply_css_recursive is too broad
+        // for text: it sets every property on every node including the root.
+        // sp_desktop_apply_css_recursive(text_item, css, true);
+        if (auto sptext = cast<SPText>(text_item)) {
+            sp_te_apply_style(text_item, sptext->layout.begin(), sptext->layout.end(), css);
+            sptext->rebuildLayout();
+        }
+        text_item->updateRepr();
+    }
 }
 
 // --- Unit helpers for font-size / line-height ---

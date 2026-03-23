@@ -9,6 +9,7 @@
 #ifndef INKSCAPE_STYLE_UTILS_H
 #define INKSCAPE_STYLE_UTILS_H
 
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <string>
@@ -19,6 +20,8 @@
 #include "style-internal.h"
 #include "ui/widget/paint-enums.h"
 #include "mixed-property.h"
+#include "util/delete-with.h"
+#include "xml/repr.h"
 
 class SPItem;
 class SPGradient;
@@ -142,7 +145,9 @@ void query_style_impl(StyleProperties& props, SPItem* item, StyleQueryFlags flag
 inline StyleProperties query_style_properties(SPItem* item,
                                               StyleQueryFlags flags = StyleQueryFlags::None) {
     StyleProperties props;
-    detail::query_style_impl(props, item, flags);
+    if (item) {
+        detail::query_style_impl(props, item, flags);
+    }
     return props;
 }
 
@@ -157,6 +162,12 @@ StyleProperties query_style_properties(Range&& items,
     }
     return props;
 }
+
+// Owning wrapper for SPCSSAttr that calls sp_repr_css_attr_unref on destruction.
+using CssPtr = std::unique_ptr<SPCSSAttr, Util::Deleter<sp_repr_css_attr_unref>>;
+
+// Create an empty SPCSSAttr wrapped in a CssPtr.
+inline CssPtr make_css() { return CssPtr(sp_repr_css_attr_new()); }
 
 } // namespace Inkscape
 

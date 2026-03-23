@@ -101,9 +101,9 @@
 #include "ui/widget/unit-tracker.h"
 #include "ui/widget/font-variations.h"
 #include "util/font-discovery.h"
-#include "util/delete-with.h"
 #include "util/mixed-property.h"
 #include "util/object-modified-tags.h"
+#include "util/style-utils.h"
 #include "util/text-utils.h"
 #include "util/variant-visitor.h"
 #include "widgets/sp-attribute-widget.h"
@@ -367,6 +367,7 @@ std::optional<double> get_number(SPItem* item, const char* attribute) {
     return item->getRepr()->getAttributeDouble(attribute);
 }
 
+#if false
 void set_dimension_adj(Widget::InkSpinButton& btn) {
     btn.set_adjustment(Gtk::Adjustment::create(0, 0, 1'000'000, 1, 5));
 }
@@ -387,13 +388,16 @@ class DefaultPaintEditDelegate : public Util::PaintEditDelegate {
 public:
     explicit DefaultPaintEditDelegate(unsigned int tag) : _tag(tag) {}
     void set_desktop(SPDesktop* d) override { _desktop = d; }
-    void apply(const Op& op) override {
-        if (!_desktop) return;
+    SPPaintServer* apply(const Op& op) override {
+        if (!_desktop) return nullptr;
         auto sel = _desktop->getSelection();
-        if (!sel) return;
+        if (!sel) return nullptr;
+        SPPaintServer* server = nullptr;
         for (auto item : sel->items()) {
-            Util::apply_paint_op_to_item(item, op, _desktop, _tag);
+            auto s = Util::apply_paint_op_to_item(item, op, _desktop, _tag);
+            if (!server) server = s;
         }
+        return server;
     }
 };
 
@@ -871,7 +875,9 @@ void details::AttributesPanel::update_lock(SPObject* object) {
 void details::AttributesPanel::update_paint(SPObject* object) {
     if (_show_fill_stroke) {
         _paint->update_visibility(object);
-        _paint->update_from_object(object);
+        // _paint->update_from_object(object);
+        auto props = Inkscape::query_style_properties(cast<SPItem>(object));
+        _paint->update_from_style_props(object, props);
     }
 }
 
@@ -1752,26 +1758,28 @@ public:
         , _tag(tag)
     {}
 
-    void apply(const Op& op) override {
+    SPPaintServer* apply(const Op& op) override {
         auto item    = _get_item();
         auto desktop = _get_desktop();
-        if (!item || !_get_doc()) return;
+        if (!item || !_get_doc()) return nullptr;
         unsigned int t = _tag;
+        SPPaintServer* server = nullptr;
         std::visit(VariantVisitor{
-            [item, this](const CssOp& o) {
+            [item, this, &server](const CssOp& o) {
                 apply_text_css(item, _get_tool(), o.css.get());
             },
-            [item, desktop, t](const GradientOp& o)    { Util::apply_paint_op_to_item(item, o, desktop, t); },
-            [item, desktop, t](const PatternOp& o)     { Util::apply_paint_op_to_item(item, o, desktop, t); },
-            [item, desktop, t](const HatchOp& o)       { Util::apply_paint_op_to_item(item, o, desktop, t); },
-            [item, desktop, t](const MeshOp& o)        { Util::apply_paint_op_to_item(item, o, desktop, t); },
-            [item, desktop, t](const SwatchOp& o)      { Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t, &server](const GradientOp& o)    { server = Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t, &server](const PatternOp& o)     { server = Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t, &server](const HatchOp& o)       { server = Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t, &server](const MeshOp& o)        { server = Util::apply_paint_op_to_item(item, o, desktop, t); },
+            [item, desktop, t, &server](const SwatchOp& o)      { server = Util::apply_paint_op_to_item(item, o, desktop, t); },
             [item, desktop, t](const StrokeWidthOp& o) { Util::apply_paint_op_to_item(item, o, desktop, t); },
             [item, desktop, t](const DashOp& o)        { Util::apply_paint_op_to_item(item, o, desktop, t); },
             [item, desktop, t](const OpacityOp& o)     { Util::apply_paint_op_to_item(item, o, desktop, t); },
             [item, desktop, t](const BlendModeOp& o)   { Util::apply_paint_op_to_item(item, o, desktop, t); },
             [item, desktop, t](const VisibilityOp& o)  { Util::apply_paint_op_to_item(item, o, desktop, t); },
         }, op);
+        return server;
     }
 };
 
@@ -2027,11 +2035,11 @@ public:
 
         _superscript_btn.signal_toggled().connect([this] {
             if (!can_update()) return;
-            apply_baseline_shift(_superscript_btn.get_active() ? "super" : "baseline");
+            apply_baseline_shift(_superscript_btn.get_active(), false);
         });
         _subscript_btn.signal_toggled().connect([this] {
             if (!can_update()) return;
-            apply_baseline_shift(_subscript_btn.get_active() ? "sub" : "baseline");
+            apply_baseline_shift(false, _subscript_btn.get_active());
         });
 
         auto connect_decoration = [this](Gtk::ToggleButton& btn) {
@@ -2512,10 +2520,6 @@ private:
         update_paint(_current_object);
     }
 
-    using CssPtr = std::unique_ptr<SPCSSAttr, Util::Deleter<sp_repr_css_attr_unref>>;
-
-    static CssPtr make_css() { return CssPtr(sp_repr_css_attr_new()); }
-
     // Apply CSS and record undo with per-property key
     void apply_css(SPCSSAttr* css, const char* undo_key) {
         if (!_current_item || !_document) return;
@@ -2532,10 +2536,26 @@ private:
         }
     }
 
-    void apply_baseline_shift(const char* value) {
-        auto css = make_css();
-        sp_repr_css_set_property(css.get(), "baseline-shift", value);
-        apply_css(css.get(), "ttb:baseline-shift");
+    void apply_baseline_shift(bool setSuper, bool setSub) {
+        if (!_current_item || !_document) return;
+
+        // Re-query actual document state so mixed-state button clicks clear rather than apply.
+        // (GTK transitions an inconsistent button to active=true on click, but the correct
+        // semantic for a mixed-state toggle is to remove the style, not add it.)
+        if (setSuper || setSub) {
+            auto props = query_text_properties(get_query_items());
+            if (setSuper && (props.superscript.is_mixed() || props.superscript.value())) {
+                setSuper = false;
+            }
+            if (setSub && (props.subscript.is_mixed() || props.subscript.value())) {
+                setSub = false;
+            }
+        }
+
+        auto css = apply_text_script(setSuper, setSub);
+        apply_text_css(_current_item, get_text_tool(), css.get());
+        DocumentUndo::maybeDone(_document, "ttb:script",
+            RC_("Undo", "Text: Change superscript or subscript"), INKSCAPE_ICON("draw-text"));
     }
 
     void apply_decorations(Gtk::ToggleButton& source) {
@@ -3232,27 +3252,17 @@ public:
     MultiObjPaintDelegate(std::function<SPDesktop*()> get_desktop, unsigned int tag)
         : _get_desktop(std::move(get_desktop)), _tag(tag) {}
 
-    void apply(const Op& op) override {
+    SPPaintServer* apply(const Op& op) override {
         auto desktop = _get_desktop();
-        if (!desktop) return;
+        if (!desktop) return nullptr;
         auto sel = desktop->getSelection();
-        if (!sel) return;
-        unsigned int t = _tag;
+        if (!sel) return nullptr;
+        SPPaintServer* server = nullptr;
         for (auto item : sel->items()) {
-            std::visit(VariantVisitor{
-                [item, desktop, t](const CssOp& o)        { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const GradientOp& o)   { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const PatternOp& o)    { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const HatchOp& o)      { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const MeshOp& o)       { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const SwatchOp& o)     { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const StrokeWidthOp& o){ Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const DashOp& o)       { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const OpacityOp& o)    { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const BlendModeOp& o)  { Util::apply_paint_op_to_item(item, o, desktop, t); },
-                [item, desktop, t](const VisibilityOp& o) { Util::apply_paint_op_to_item(item, o, desktop, t); },
-            }, op);
+            auto s = Util::apply_paint_op_to_item(item, op, desktop, _tag);
+            if (!server) server = s;
         }
+        return server;
     }
 };
 

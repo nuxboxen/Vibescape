@@ -20,6 +20,7 @@
 #ifndef SEEN_DASH_SELECTOR_H
 #define SEEN_DASH_SELECTOR_H
 
+#include <glibmm/ustring.h>
 #include <gtkmm/box.h>
 #include <gtkmm/entry.h>
 
@@ -51,6 +52,8 @@ public:
     enum Change { Dash, Offset, Pattern };
     sigc::signal<void (Change)> changed_signal;
 
+    void set_placeholder(const Glib::ustring& placeholder);
+
 private:
     void construct(bool compact);
 
@@ -64,7 +67,7 @@ private:
 
     void draw_pattern(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height,
                       const std::vector<double>& pattern);
-    void draw_text(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height);
+    void draw_text(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height, const Glib::ustring& text);
 
     void onDefocus() override;
 
@@ -78,6 +81,7 @@ private:
     Gtk::Popover* popover = nullptr;
     Glib::RefPtr<Gtk::Adjustment> adjustment; // Dash offset
     Gtk::Entry* _pattern_entry = nullptr;
+    Glib::ustring _placeholder;
 };
 
 } // namespace Inkscape::UI::Widget

@@ -11,6 +11,8 @@
 
 #include "property-utils.h"
 #include "style.h"
+#include "ui/util.h"
+#include "util/style-utils.h"
 
 namespace Inkscape::UI::Widget {
 
@@ -149,6 +151,50 @@ void StrokeOptions::update_widgets(SPStyle& style) {
         auto order = _paint_order.getValue().get_value();
         _order_changed.emit(order.c_str());
     });
+}
+
+void StrokeOptions::update_widgets(const StyleProperties& props) {
+    auto scope(_update.block());
+
+    // miter limit — show mixed state if varied
+    set_spin_button_value(_miter_limit, props.stroke_miterlimit);
+
+    // line join; TODO: mixed state
+    auto join = props.stroke_linejoin.value();
+    if (join == SP_STROKE_LINEJOIN_BEVEL) {
+        _join_bevel.set_active();
+        _miter_limit.set_sensitive(false);
+    } else if (join == SP_STROKE_LINEJOIN_ROUND) {
+        _join_round.set_active();
+        _miter_limit.set_sensitive(false);
+    } else {
+        _join_miter.set_active();
+        bool hairline = props.hairline.is_single() && props.hairline.value();
+        _miter_limit.set_sensitive(!hairline && !props.stroke_miterlimit.is_mixed());
+    }
+
+    // line cap; TODO: mixed state
+    auto cap = props.stroke_linecap.value();
+    if (cap == SP_STROKE_LINECAP_SQUARE) {
+        _cap_square.set_active();
+    } else if (cap == SP_STROKE_LINECAP_ROUND) {
+        _cap_round.set_active();
+    } else {
+        _cap_butt.set_active();
+    }
+
+    // paint order — only update for uniform selections
+    if (props.paint_order.is_single()) {
+        auto& orders = props.paint_order.value();
+        if (!orders.empty()) {
+            SPIPaintOrder order = orders.front();
+            bool has_markers = true; // TODO
+            _paint_order.setValue(order, has_markers);
+        }
+    }
+    else {
+        //todo: how to show mixed state in an ordered stack?
+    }
 }
 
 } // namespace

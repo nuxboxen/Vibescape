@@ -79,6 +79,7 @@ private:
     void set_paint(const SPObject* object, bool fill);
     //
     void update_markers(SPIString* markers[], SPObject* object);
+    void update_markers(const Inkscape::StyleProperties& props, SPDocument* document);
     // show/hide stroke widgets
     void show_stroke(bool show);
     void update_stroke(SPItem* item);
@@ -95,6 +96,9 @@ private:
         // set icon representing the current fill / stroke type
         void set_preview(const SPIPaint& paint, double paint_opacity, PaintMode mode);
         void set_preview(SPPaintServer* server, Colors::Color color, double paint_opacity, PaintMode mode);
+        void set_preview(SPPaintServer* server, PaintMode mode);
+        void set_preview(const Colors::Color& color);
+        void set_preview(PaintMode mode); // icon only
         PaintMode update_preview_indicators(const SPObject* object);
         PaintMode update_preview_indicators(SPStyle* style);
         void update_preview_indicators_from_paint(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity);

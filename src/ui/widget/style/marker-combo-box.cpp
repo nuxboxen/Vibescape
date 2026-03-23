@@ -171,7 +171,10 @@ MarkerComboBox::MarkerComboBox(Glib::ustring id, int l) :
     _current_img.set_snapshot_func([this](auto&& ...args) {
         draw_small_preview(args..., get_current());
     });
-    set_child(_current_img);
+    _stack.add(_current_img);
+    _stack.add(_placeholder);
+    set_child(_stack);
+    _stack.set_visible_child(_current_img);
 
     _preview.set_snapshot_func([this](auto&& ...args) {
         draw_big_preview(args...);
@@ -625,6 +628,8 @@ void MarkerComboBox::init_combo() {
  */
 void MarkerComboBox::set_current(SPObject *marker)
 {
+    clear_placeholder();
+
     auto sp_marker = cast<SPMarker>(marker);
 
     bool reselect = sp_marker != get_current();
@@ -820,6 +825,22 @@ sigc::connection MarkerComboBox::connect_edit(sigc::slot<void ()> slot)
 
 void MarkerComboBox::set_flat(bool flat) {
     set_always_show_arrow(!flat);
+}
+
+void MarkerComboBox::set_placeholder(const Glib::ustring& text) {
+    if (text.empty()) {
+        clear_placeholder();
+    } else {
+        _placeholder.set_text(text);
+        _stack.set_visible_child(_placeholder);
+    }
+}
+
+void MarkerComboBox::clear_placeholder() {
+    if (_placeholder.get_text().empty()) return;
+
+    _placeholder.set_text({});
+    _stack.set_visible_child(_current_img);
 }
 
 } // namespace Inkscape::UI::Widget

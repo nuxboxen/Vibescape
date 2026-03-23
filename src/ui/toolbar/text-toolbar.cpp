@@ -549,13 +549,13 @@ void TextToolbar::script_changed(int mode)
 
     _freeze = true;
 
-    // Called by Superscript or Subscript button?
+    // Called by Superscript or Subscript button
 
     if constexpr (DEBUG_TEXT) {
         std::cout << "TextToolbar::script_changed: " << mode << std::endl;
     }
 
-    // Query baseline
+    // Query current baseline-shift state for toggle behavior
     SPStyle query(_desktop->getDocument());
     int result_baseline = sp_desktop_query_style(_desktop, &query, QUERY_STYLE_PROPERTY_BASELINES);
 
@@ -585,28 +585,11 @@ void TextToolbar::script_changed(int mode)
     }
 
     // Set css properties
-    SPCSSAttr *css = sp_repr_css_attr_new();
-    if (setSuper || setSub) {
-        // Openoffice 2.3 and Adobe use 58%, Microsoft Word 2002 uses 65%, LaTex about 70%.
-        // 58% looks too small to me, especially if a superscript is placed on a superscript.
-        // If you make a change here, consider making a change to baseline-shift amount
-        // in style.cpp.
-        sp_repr_css_set_property (css, "font-size", "65%");
-    } else {
-        sp_repr_css_set_property (css, "font-size", "");
-    }
-    if( setSuper ) {
-        sp_repr_css_set_property (css, "baseline-shift", "super");
-    } else if( setSub ) {
-        sp_repr_css_set_property (css, "baseline-shift", "sub");
-    } else {
-        sp_repr_css_set_property (css, "baseline-shift", "baseline");
-    }
+    auto css = apply_text_script(setSuper, setSub);
 
     // Apply css to selected objects.
-    sp_desktop_set_style(_desktop, css, true, false);
+    sp_desktop_set_style(_desktop, css.get(), true, false);
 
-    // Save for undo
     if (result_baseline != QUERY_STYLE_NOTHING) {
         DocumentUndo::maybeDone(_desktop->getDocument(), "ttb:script", RC_("Undo", "Text: Change superscript or subscript"), INKSCAPE_ICON("draw-text"));
     }
