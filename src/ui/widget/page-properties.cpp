@@ -33,6 +33,7 @@
 #include "ui/widget/spinbutton.h"
 #include "ui/widget/unit-menu.h"
 #include "util/paper.h"
+#include "util-string/string-compare.h"
 
 using Inkscape::UI::create_builder;
 using Inkscape::UI::get_widget;
@@ -72,13 +73,25 @@ static std::tuple<int, Glib::ustring, std::string> get_sorter(PaperSize const &p
 class PagePropertiesBox final : public PageProperties {
     void create_template_menu()
     {
+        // TODO: The function get_sorter is being called a significant number of time (when sorting the paper sizes and then when displaying them). To be optimized?
+
         static auto const group_name = "page-properties", action_name = "template";
         static auto const get_detailed_action = [](int const index)
             { return Glib::ustring::compose("%1.%2(%3)", group_name, action_name, index); };
 
         _page_sizes = PaperSize::getPageSizes();
         std::stable_sort(_page_sizes.begin(), _page_sizes.end(), [](auto const &l, auto const &r)
-                         { return get_sorter(l) < get_sorter(r); });
+                        {
+                            // First we order per paper groups
+                            // Within a group, we order by ascending natural order
+                             auto const ls = get_sorter(l);
+                             auto const rs = get_sorter(r);
+
+                             if(ls != rs)
+                                 return ls < rs;
+                             else
+                                 return natural_compare(l.name, r.name);
+                        });
 
         auto group = Gio::SimpleActionGroup::create();
         _template_action = group->add_action_radio_integer(action_name, 0);
