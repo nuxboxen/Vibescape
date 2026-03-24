@@ -5,7 +5,6 @@ target_sources(inkscape_base PRIVATE
   ustring-format.h
   string-convert.cpp
   string-convert.h
-  string-compare.cpp
   string-compare.h
   symbol-convert.c
   symbol-convert.h
