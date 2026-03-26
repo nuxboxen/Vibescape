@@ -34,7 +34,6 @@
 #include "context-fns.h"
 #include "desktop-events.h"
 #include "desktop-style.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "document.h"
 #include "layer-manager.h"

@@ -20,13 +20,17 @@
 
 #include "display/control/canvas-item-ptr.h"
 #include "libnrtype/Layout-TNG.h"
+#include "object/weakptr.h"
 #include "ui/tools/tool-base.h"
 #include "util/delete-with.h"
+
+class SPShape;
 
 using GtkIMContext = struct _GtkIMContext;
 
 namespace Inkscape {
 class CanvasItemCurve; // Cursor
+class CanvasItemCtrl;
 class CanvasItemQuad;  // Highlighted text
 class CanvasItemRect;  // Indicator, Frame
 class CanvasItemBpath;
@@ -65,6 +69,27 @@ private:
     // The text we're editing, or null if none selected
     SPItem *text = nullptr;
 
+    // Shape we're hovering over to add text to its curve
+    struct TextOnPathMetrics
+    {
+        SPWeakPtr<SPShape> path;
+        double offset;
+        int align;
+        bool side;
+        Geom::Angle angle;
+        Geom::Point indicate_point;
+
+        TextOnPathMetrics(SPShape *shape, Geom::Point cursor_point, Geom::Point snap_point);
+        static std::unique_ptr<TextOnPathMetrics> getNearestPath(SPDesktop *desktop, std::vector<SPItem*> const &items, Geom::Point cursor, double distance);
+    };
+    std::unique_ptr<TextOnPathMetrics> _text_on_path_hover;
+    std::unique_ptr<TextOnPathMetrics> _text_on_path;
+
+    SPWeakPtr<SPShape> _text_in_shape_hover;
+    SPWeakPtr<SPShape> _text_in_shape;
+
+    Geom::OptRect _text_in_rect;
+
     // Text item position in root coordinates
     Geom::Point pdoc;
 
@@ -78,6 +103,8 @@ private:
     // On-canvas editing
     CanvasItemPtr<CanvasItemCurve> cursor;
     CanvasItemPtr<CanvasItemRect> indicator;
+    CanvasItemPtr<CanvasItemCtrl> text_path_indicator_pos;
+    CanvasItemPtr<CanvasItemCtrl> text_path_indicator_side;
     CanvasItemPtr<CanvasItemBpath> frame; // Highlighting flowtext shapes or textpath path
     CanvasItemPtr<CanvasItemBpath> padding_frame; // Highlighting flowtext padding
     std::vector<CanvasItemPtr<CanvasItemQuad>> text_selection_quads;
@@ -88,7 +115,6 @@ private:
     int blink_time = 0;
 
     bool nascent_object = false; // clicked on canvas to place cursor, but no text typed yet so ->text still null
-    bool over_text = false; // true if cursor is over a text object
     unsigned dragging_state = 0;  // dragging selection over text
     bool creating = false;  // dragging rubberband to create flowtext
     Geom::Point p0;         // initial point if the flowtext rect

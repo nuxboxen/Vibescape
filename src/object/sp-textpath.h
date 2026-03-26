@@ -48,6 +48,7 @@ inline bool SP_IS_TEXT_TEXTPATH(SPObject const *obj) { return is<SPText>(obj) &&
 
 SPItem *sp_textpath_get_path_item(SPTextPath const *tp);
 void sp_textpath_to_text(SPObject *tp);
+SPText *create_text_on_path (SPGroup *parent, SPCSSAttr *css, SPShape *path, double offset, int align, bool right_side);
 
 #endif /* !INKSCAPE_SP_TEXTPATH_H */
 

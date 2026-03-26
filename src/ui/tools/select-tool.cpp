@@ -19,7 +19,6 @@
 # include "config.h"  // only include where actually required!
 #endif
 
-#include "desktop.h"
 #include "document-undo.h"
 #include "document.h"
 #include "layer-manager.h"

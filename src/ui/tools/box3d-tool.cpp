@@ -19,7 +19,6 @@
 #include <glibmm/i18n.h>
 
 #include "context-fns.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "message-context.h"
 #include "perspective-line.h"

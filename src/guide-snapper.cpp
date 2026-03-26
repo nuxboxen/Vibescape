@@ -26,9 +26,7 @@ Inkscape::GuideSnapper::GuideSnapper(SnapManager *sm, Geom::Coord const d) : Lin
  */
 Geom::Coord Inkscape::GuideSnapper::getSnapperTolerance() const
 {
-    SPDesktop const *dt = _snapmanager->getDesktop();
-    double const zoom =  dt ? dt->current_zoom() : 1;
-    return _snapmanager->snapprefs.getGuideTolerance() / zoom;
+    return _snapmanager->getSnapperTolerance(_snapmanager->snapprefs.getGuideTolerance());
 }
 
 bool Inkscape::GuideSnapper::getSnapperAlwaysSnap(SnapSourceType const &source) const

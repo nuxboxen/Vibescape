@@ -10,7 +10,6 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "desktop.h"
 #include "document.h"
 #include "style.h"
 #include "message-context.h"

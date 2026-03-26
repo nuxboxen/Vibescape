@@ -64,9 +64,7 @@ GridSnapper::GridSnapper(SPGrid const *grid, SnapManager *sm, Geom::Coord const 
  */
 Geom::Coord GridSnapper::getSnapperTolerance() const
 {
-    SPDesktop const *dt = _snapmanager->getDesktop();
-    double const zoom =  dt ? dt->current_zoom() : 1;
-    return _snapmanager->snapprefs.getGridTolerance() / zoom;
+    return _snapmanager->getSnapperTolerance(_snapmanager->snapprefs.getGridTolerance());
 }
 
 bool GridSnapper::getSnapperAlwaysSnap(SnapSourceType const &/*source*/) const

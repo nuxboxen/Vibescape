@@ -15,6 +15,7 @@
 #include <gtkmm/textview.h>
 #include <libnrtype/font-factory.h>
 
+#include "desktop.h"
 #include "document.h"
 #include "inkscape.h"
 #include "object/sp-flowdiv.h"

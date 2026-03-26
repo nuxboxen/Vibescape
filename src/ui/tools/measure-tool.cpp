@@ -22,7 +22,6 @@
 #include <2geom/sbasis-to-bezier.h>
 
 #include "desktop-style.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "layer-manager.h"
 #include "message-context.h"
