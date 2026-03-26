@@ -25,7 +25,6 @@
 #include "async/progress.h"
 #include "context-fns.h"
 #include "desktop-style.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "layer-manager.h"
 #include "message-context.h"

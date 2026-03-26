@@ -14,7 +14,6 @@
 
 #include "zoom-tool.h"
 
-#include "desktop.h"
 #include "rubberband.h"
 #include "selection-chemistry.h"
 #include "ui/widget/events/canvas-event.h"

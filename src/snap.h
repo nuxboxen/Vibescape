@@ -208,6 +208,12 @@ public:
                                     Geom::OptRect const &bbox_to_snap = Geom::OptRect(),
                                     bool to_path_only = false) const;
 
+    /**
+     * Hide any existing snap indicator.
+     */
+    void hideSnapIndicator();
+
+
     void preSnap(Inkscape::SnapCandidatePoint const &p, bool to_path_only = false);
 
     /**
@@ -376,6 +382,13 @@ public:
     bool getSnapIndicator() const {return _snapindicator;}
 
     /**
+     * Get the configured snap tolerance
+     *
+     * @arg tolerance - The preference value for the required type of tolerance
+     */
+    Geom::Coord getSnapperTolerance(double tolerance) const;
+
+    /**
      * Given a set of possible snap targets, find the best target (which is not necessarily
      * also the nearest target), and show the snap indicator if requested.
      *
@@ -418,6 +431,10 @@ public:
                                             Geom::Point const &pointer,
                                             Inkscape::PureTransform &transform);
 
+    /**
+     * Snap the point p to one of the given points.
+     */
+    Geom::Point snapToPoints(Geom::Point const &p, Inkscape::SnapSourceType const source_type, std::vector<Inkscape::SnapCandidatePoint> const &points) const;
 protected:
     SPNamedView const *_named_view;
 

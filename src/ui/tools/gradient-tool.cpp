@@ -16,7 +16,6 @@
 #include <unordered_set>
 #include <glibmm/i18n.h>
 
-#include "desktop.h"
 #include "document-undo.h"
 #include "gradient-chemistry.h"
 #include "gradient-drag.h"

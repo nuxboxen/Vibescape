@@ -29,6 +29,7 @@
 #include <glibmm/i18n.h>
 #include <gtkmm/image.h>
 
+#include "desktop.h"
 #include "document-undo.h"
 #include "inkscape-window.h"
 #include "layer-manager.h"

@@ -29,14 +29,15 @@
 #include <glibmm/i18n.h>
 #include <glibmm/regex.h>
 
+#include "document.h"
 #include "livarot/Path.h"
+#include "sp-item-group.h"
 #include "sp-textpath.h"
 #include "sp-tref.h"
 #include "sp-use-reference.h"
 #include "style.h"
 #include "text-editing.h"
 #include "xml/href-attribute-helper.h"
-
 
 /*#####################################################
 #  SPTSPAN
@@ -518,7 +519,6 @@ void sp_textpath_to_text(SPObject *tp)
     //remove textpath
     tp->deleteObject();
 }
-
 
 /*
   Local Variables:

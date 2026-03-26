@@ -620,9 +620,7 @@ bool Inkscape::DistributionSnapper::getSnapperAlwaysSnap(SnapSourceType const &/
 
 Geom::Coord Inkscape::DistributionSnapper::getSnapperTolerance() const
 {
-    SPDesktop const *dt = _snapmanager->getDesktop();
-    double const zoom = dt ? dt->current_zoom() : 1;
-    return _snapmanager->snapprefs.getDistributionTolerance() / zoom;
+    return _snapmanager->getSnapperTolerance(_snapmanager->snapprefs.getDistributionTolerance());
 }
 
 /*

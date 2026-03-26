@@ -350,7 +350,7 @@ protected:
 
     SPItem *getItemAtPoint(unsigned int key, Geom::Point const &p, bool into_groups, SPItem *upto = nullptr, bool outline = false) const;
 
-    std::vector<SPItem*> getItemsAtPoints(unsigned const key, std::vector<Geom::Point> points, bool all_layers = true, bool topmost_only = true, size_t limit = 0, bool active_only = true, bool outline = false) const;
+    std::vector<SPItem*> getItemsAtPoints(unsigned const key, std::vector<Geom::Point> points, bool all_layers = true, bool topmost_only = true, size_t limit = 0, bool active_only = true, bool outline = false, double distance = 0.25) const;
 
     SPItem *getGroupAtPoint(unsigned int key,  Geom::Point const &p, bool outline = false) const;
 

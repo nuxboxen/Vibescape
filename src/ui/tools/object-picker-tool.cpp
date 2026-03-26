@@ -2,7 +2,6 @@
 
 #include "object-picker-tool.h"
 #include "actions/actions-tools.h"
-#include "desktop.h"
 #include "object/sp-page.h"
 #include "ui/widget/events/canvas-event.h"
 
