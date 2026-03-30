@@ -396,7 +396,7 @@ static void add_ids_recursive(std::vector<const gchar *> &ids, SPObject *obj)
     }
 }
 
-void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer)
+void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer, bool includeHidden)
 {
     if(duplicateLayer && !desktop() ){
         //TODO: understand why layer management is tied to desktop and not to document.
@@ -512,7 +512,7 @@ void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer)
             // please roll back or make some more loops to handle well, keep as it for speed
             // and simplicity
             auto itm = cast<SPItem>(doc->getObjectByRepr(node));
-            if (!sp_repr_is_def(node) && (!itm || !itm->isHidden())) {
+            if (!sp_repr_is_def(node) && includeHidden || (!itm || !itm->isHidden())) {
                 newsel.push_back(node);
             }
         }

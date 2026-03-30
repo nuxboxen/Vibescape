@@ -295,6 +295,31 @@ void PageManager::deletePage(SPPage *page, bool content)
 }
 
 /**
+ * Creates a new page of the size of the currently selected page,
+ * and makes a deep copy of its overlapping elements.
+ */
+SPPage *PageManager::duplicatePage()
+{
+    enablePages();
+
+    auto contents = ObjectSet(_document);
+    contents.setList(_selected_page->getOverlappingItems());
+
+    auto rect = _selected_page->getRect();
+
+    auto new_page = newPage(rect.width(), rect.height());
+    new_page->copyFrom(_selected_page);
+
+    auto new_rect = new_page->getRect();
+    auto move_tr = (new_rect.midpoint() - rect.midpoint()) * _document->getDocumentScale();
+
+    contents.duplicate(true, false, true);
+    contents.applyAffine(Geom::Affine(Geom::Translate(move_tr)));
+
+    return new_page;
+}
+
+/**
  * Delete the selected page.
  *
  * @param content - Also remove the svg objects that are inside the page.
