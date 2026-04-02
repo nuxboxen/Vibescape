@@ -2,6 +2,7 @@
 
 #include "drop-down-list.h"
 
+#include <gtk/gtk.h>
 #include <gtkmm/eventcontrollerkey.h>
 #include <gtkmm/label.h>
 #include <gtkmm/listheader.h>
@@ -108,11 +109,27 @@ void DropDownList::_init() {
 }
 
 Glib::ustring DropDownList::get_item_string(const Glib::RefPtr<Glib::ObjectBase>& item) {
+    if (!item) return {};
+
     if (_to_string) {
         return _to_string(item);
     }
     auto str_item = std::dynamic_pointer_cast<Gtk::StringObject>(item);
-    return str_item->get_string();
+    return str_item ? str_item->get_string() : "";
+}
+
+void DropDownList::select_none() {
+    // DropDown maintains its own selection model and it doesn't allow unslecting items;
+    // so we use its internal stack to show placeholder simulating "no selection"
+    auto stack = GTK_STACK(gtk_widget_get_template_child(
+        GTK_WIDGET(gobj()), GTK_TYPE_DROP_DOWN, "button_stack"));
+    if (!stack) return;
+
+    if (!_placeholder.empty()) {
+        auto* label = GTK_LABEL(gtk_stack_get_child_by_name(stack, "empty"));
+        if (label) gtk_label_set_label(label, _placeholder.c_str());
+    }
+    gtk_stack_set_visible_child_name(stack, "empty");
 }
 
 Gtk::Label* DropDownList::set_up_item(bool ellipsize) {

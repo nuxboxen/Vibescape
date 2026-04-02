@@ -69,8 +69,19 @@ public:
         return os.str();
     }
 
+    void set_mixed_mode(bool mixed) {
+        if (_scale.get_mixed_mode() == mixed) return;
+
+        _scale.set_mixed_mode(mixed);
+        if (mixed) {
+            _spin.set_placeholder("…");
+        }
+        else {
+            _spin.clear_placeholder();
+        }
+    }
+
     InkSpinButton& get_spin_button() { return _spin; }
-    ScaleBar& get_scale_bar() { return _scale; }
 
 private:
     void construct()

@@ -32,6 +32,7 @@ public:
 
     // change drawing to indicate mixed values mode; cleared when adjustment value changes
     void set_mixed_mode(bool mixed);
+    bool get_mixed_mode() const { return _mixed_mode; }
 
 private:
     void snapshot_vfunc(const Glib::RefPtr<Gtk::Snapshot>& snapshot) override;

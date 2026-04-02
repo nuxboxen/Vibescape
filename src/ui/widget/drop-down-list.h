@@ -60,6 +60,11 @@ public:
     // enable ellipsizing strings in the dropdown button itself
     void set_ellipsize_button(bool ellipsize = true) { _ellipsize_button = ellipsize; }
 
+    // text shown in the button when no item is selected
+    void set_placeholder(const Glib::ustring& text) { _placeholder = text; }
+    // switch the button display to the empty/placeholder state
+    void select_none();
+
 private:
     void _init();
     Glib::ustring get_item_string(const Glib::RefPtr<Glib::ObjectBase>& item);
@@ -70,6 +75,7 @@ private:
     std::function<Glib::ustring (const Glib::RefPtr<Glib::ObjectBase>&)> _to_string;
     int _button_max_chars = -1;
     bool _ellipsize_button = false;
+    Glib::ustring _placeholder;
 };
 
 } // namespace

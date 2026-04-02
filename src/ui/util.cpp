@@ -700,7 +700,7 @@ void set_spin_button_value(Inkscape::UI::Widget::InkSpinButton& button, Inkscape
 
 void set_spin_scale_value(Inkscape::UI::Widget::SpinScale& scale, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value) {
     set_spin_button_value(scale.get_spin_button(), prop, not_set_value);
-    scale.get_scale_bar().set_mixed_mode(prop.is_mixed());
+    scale.set_mixed_mode(prop.is_mixed());
 }
 
 /*

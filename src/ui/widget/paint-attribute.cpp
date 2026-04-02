@@ -813,6 +813,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         if (clear && _current_item && _current_item->style) {
             _opacity.set_value(_current_item->style->opacity);
         }
+        _opacity.set_mixed_mode(false);
         update_reset_opacity_button();
         DocumentUndo::done(_document, clear ? RC_("Undo", "Clear opacity") : RC_("Undo", "Set opacity"), "dialog-fill-and-stroke", _modified_tag);
     };
@@ -831,6 +832,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         update_reset_blend_button();
         DocumentUndo::done(_document, clear ? RC_("Undo", "Clear blending mode") : RC_("Undo", "Set blending mode"), "dialog-fill-and-stroke", _modified_tag);
     };
+    _blend.set_placeholder(_("Mixed mode"));
     _blend.signal_changed().connect([=,this] {
         if (auto id = _blend.get_selected_id()) {
             set_blend_mode(*id, false);
@@ -1267,8 +1269,8 @@ void PaintAttribute::update_from_style_props(SPObject* object, const Inkscape::S
 
     // blend mode
     if (props.blend_mode.is_mixed()) {
-        // todo
         // mixed state for DropDown
+        _blend.select_none();
     }
     else {
         _blend.set_active_by_id(props.blend_mode.value());

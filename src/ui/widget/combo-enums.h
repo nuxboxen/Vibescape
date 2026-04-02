@@ -136,6 +136,8 @@ public:
         auto index = get_active_by_id(id);
         if (index >= 0) {
             set_active(index);
+        } else {
+            select_none();
         }
     };
 
@@ -173,7 +175,7 @@ public:
         : Labelled{label, tooltip,
                    Gtk::make_managed<ComboBoxEnum<E>>(c, SPAttr::INVALID, sort),
                    icon, mnemonic}
-    { 
+    {
     }
 
     [[nodiscard]] ComboBoxEnum<E> *getCombobox()
