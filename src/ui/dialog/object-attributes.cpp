@@ -2225,6 +2225,7 @@ private:
 
     Tools::TextTool* get_text_tool() {
         if (!_desktop) return nullptr;
+
         return dynamic_cast<Tools::TextTool*>(_desktop->getTool());
     }
 
@@ -2255,11 +2256,12 @@ private:
         auto items = get_query_items();
         if (items.empty()) return;
 
+        auto text_tool = get_text_tool();
         bool subselection_active = false;
         // Indicate the kind of active selection
         auto header = _("Text element"); // entire <text> element
-        if (auto tool = get_text_tool()) {
-            subselection_active = tool->has_subselection();
+        if (text_tool) {
+            subselection_active = text_tool->has_subselection();
             // with text tool active and selected text object, we have a cursor and possible text selection
             header = subselection_active ? _("Selected text") : _("Text characters");
         }
@@ -2465,18 +2467,20 @@ private:
         }
 
         // Dx, Dy, rotation (not CSS attributes — read from text tag attributes)
-        _kern_horz.set_value(query_text_dx(get_text_tool()).value_or(0));
-        _kern_vert.set_value(query_text_dy(get_text_tool()).value_or(0));
-        _char_rotation.set_value(query_text_char_rotation(get_text_tool()).value_or(0));
+        _kern_horz.set_value(query_text_dx(text_tool).value_or(0));
+        _kern_vert.set_value(query_text_dy(text_tool).value_or(0));
+        _char_rotation.set_value(query_text_char_rotation(text_tool).value_or(0));
 
         // Flow text: SPFlowtext or SPText with shape-inside (same logic as text-toolbar)
         bool is_flow = is<SPFlowtext>(_current_item) || !is_kerning_supported(_current_item);
         _align_buttons[3]->set_sensitive(is_flow); // justify only for flow text
-        _kern_horz.set_sensitive(!is_flow);
-        _kern_vert.set_sensitive(!is_flow);
-        _kerning_label.set_sensitive(!is_flow);
-        _char_rotation.set_sensitive(!is_flow);
-        _rotation_label.set_sensitive(!is_flow);
+        // kerning is only useful with subseleciton (text tool active)
+        _kern_horz.set_sensitive(!is_flow && text_tool != nullptr);
+        _kern_vert.set_sensitive(!is_flow && text_tool != nullptr);
+        _kerning_label.set_sensitive(!is_flow && text_tool != nullptr);
+        // char rotation doesn't work without active text tool currently
+        _char_rotation.set_sensitive(!is_flow && text_tool != nullptr);
+        _rotation_label.set_sensitive(!is_flow && text_tool != nullptr);
     }
 
     void update(SPObject* object) override {
