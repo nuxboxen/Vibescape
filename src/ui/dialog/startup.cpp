@@ -421,7 +421,8 @@ StartScreen::load_document()
             }
 
             // Now we have file, open document.
-            if (auto [document, cancelled] = app->document_open(file); !cancelled) {
+            auto [document, cancelled] = app->document_open(file);
+            if (document && !cancelled) {
                 _finish(document);
             }
         }
