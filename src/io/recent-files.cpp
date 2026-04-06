@@ -15,8 +15,11 @@
 #include <format>
 #include <glibmm/convert.h>
 #include <glibmm/miscutils.h>
+#include <gtkmm/recentmanager.h>
 
 #include "io/split-path.h"
+#include "io/query-file-info.h"
+#include "ui/dialog/startup.h"
 
 namespace Inkscape::IO {
 
@@ -124,6 +127,21 @@ void removeInkscapeRecent(std::string const &filename)
             recentmanager->remove_item(uri);
         } catch (Glib::Error const &) { // lookup failed
         }
+    }
+}
+
+void removeInkscapeRecentNonexistent(Inkscape::UI::Dialog::StartScreen *scr)
+{
+    auto recentmanager = Gtk::RecentManager::get_default();
+    bool modified = false;
+
+    for (auto file : recentmanager->get_items()) {
+        new UI::QueryFileInfo(file->get_uri(), [=](auto info) mutable {
+            if (!info) {
+                recentmanager->remove_item(file->get_uri());
+                modified = true;
+            }
+        }, [=](){ if (scr) scr->enlist_recent_files();});
     }
 }
 

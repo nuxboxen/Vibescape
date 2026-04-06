@@ -184,6 +184,7 @@ StartScreen::StartScreen()
     });
 
     // Setup the lists of items
+    remove_nonexistent_files();
     enlist_recent_files();
     enlist_keys();
     filter_themes(themes);
@@ -342,6 +343,12 @@ StartScreen::enlist_recent_files()
             row[cols.col_crash] = recent_file->has_group("Crash");
         }
     }
+
+}
+
+void StartScreen::remove_nonexistent_files()
+{
+    IO::removeInkscapeRecentNonexistent(this);
 }
 
 /**

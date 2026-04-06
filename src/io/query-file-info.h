@@ -15,7 +15,7 @@ namespace Inkscape::UI {
 
 class QueryFileInfo final {
 public:
-    QueryFileInfo(const std::string& path_to_test, std::function<void (Glib::RefPtr<Gio::FileInfo>)> on_result);
+    QueryFileInfo(const std::string& path_to_test, std::function<void (Glib::RefPtr<Gio::FileInfo>)> on_result, std::function<void()> on_finalize = nullptr);
 
     QueryFileInfo(const QueryFileInfo&) = delete;
     QueryFileInfo& operator = (const QueryFileInfo&) = delete;
@@ -26,6 +26,7 @@ private:
     static void results_callback(QueryFileInfo* self, Glib::RefPtr<Gio::AsyncResult>& result);
 
     std::function<void (Glib::RefPtr<Gio::FileInfo>)> _on_result;
+    std::function<void ()> _on_finalize;
     Glib::RefPtr<Gio::File> _file;
     Glib::RefPtr<Gio::Cancellable> _operation;
 };

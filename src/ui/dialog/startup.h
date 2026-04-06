@@ -39,6 +39,7 @@ public:
     ~StartScreen() override = default;
 
     static int get_start_mode();
+    void enlist_recent_files();
 
     /// The open signal is emitted when the user opens a document.
     /// If the document is null, a default new document should be opened.
@@ -53,7 +54,7 @@ private:
     void set_active_combo(std::string widget_name, std::string unique_id);
     void show_toggle();
     void refresh_keys_warning();
-    void enlist_recent_files();
+    void remove_nonexistent_files();
     void enlist_keys();
     void filter_themes(Gtk::ComboBox *themes);
     void keyboard_changed();

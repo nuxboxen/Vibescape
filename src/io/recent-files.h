@@ -14,12 +14,15 @@
 #include <gtkmm/recentmanager.h>
 #include <gtkmm/recentinfo.h>
 
+#include "ui/dialog/startup.h"
+
 namespace Inkscape::IO {
 
 void resetRecentInkscapeList();
 std::vector<Glib::RefPtr<Gtk::RecentInfo>> getInkscapeRecentFiles(unsigned max_files = 0, bool is_autosave = false);
 void addInkscapeRecentSvg(std::string const &filename, std::string const &name, std::vector<Glib::ustring> group = {}, std::optional<std::string> original = {});
 void removeInkscapeRecent(std::string const &filename);
+void removeInkscapeRecentNonexistent(Inkscape::UI::Dialog::StartScreen *scr);
 std::optional<std::string> openAsInkscapeRecentOriginalFile(std::string const &filename);
 Glib::RefPtr<Gtk::RecentInfo> getInkscapeRecent(std::string const &filename);
 std::map<Glib::ustring, std::string> getShortenedPathMap(std::vector<Glib::RefPtr<Gtk::RecentInfo>> const &recent_files);
