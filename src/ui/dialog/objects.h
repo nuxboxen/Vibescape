@@ -37,6 +37,7 @@
 #include "ui/widget/color-picker.h"
 #include "ui/widget/preferences-widget.h"
 #include "xml/node-observer.h"
+#include "ui/widget/style-subject.h"
 
 namespace Gtk {
 class Builder;
@@ -150,6 +151,9 @@ private:
     Gtk::TreeRow _clicked_item_row;
 
     Gtk::Button *_addBarButton(char const* iconName, char const* tooltip, char const *action_name);
+
+    // Manage selection and apply style changes
+    UI::Widget::StyleSubject::Selection _subject;
 
     void _activateAction(const std::string& layerAction, const std::string& selectionAction);
 
