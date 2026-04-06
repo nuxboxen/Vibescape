@@ -2,6 +2,7 @@
 
 #include "paint-attribute.h"
 
+#include <cassert>
 #include <glib.h>
 #include <numeric>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
@@ -17,6 +18,7 @@
 #include "gradient-chemistry.h"
 #include "inkscape.h"
 #include "object/sp-item.h"
+#include "object/sp-marker.h"
 #include "object/sp-mesh-gradient.h"
 #include "pattern-manager.h"
 #include "pattern-manipulation.h"
@@ -146,7 +148,7 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
     _clear(get_widget<Gtk::Button>(builder, "paint-clear")),
     _box(get_widget<Gtk::Box>(builder, "paint-buttons")),
     _connection(PaintPopoverManager::get().register_button(_paint_btn, fill,
-        [this]() { set_paint_from_object(_current_item); },
+        [this]() { /* no op so far */ },
         [this]() { return connect_signals(); }
     ))
 {
@@ -198,6 +200,7 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
         // add fill or stroke
         set_flat_color(Color(0x909090ff));
         // paint defined
+        show();
         _toggle_definition.emit(true);
     });
 
@@ -233,7 +236,7 @@ void PaintAttribute::PaintStrip::set_flat_color(const Color& color) {
         c = Colors::to_gamut_css(color, color.getSpace());
     }
 
-    //TODO: paint selection should be remembered
+    //TODO: paint selection should be remembered? If so, it doesn't belong to this widget
     // sp_desktop_set_color(_desktop, color, false, fill);
 
     c.enableOpacity(false);
@@ -356,7 +359,6 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
         }
         apply_style(css.get());
         DocumentUndo::done(_document,  fill ? RC_("Undo", "Inherit fill") : RC_("Undo", "Inherit stroke"), "dialog-fill-and-stroke", tag);
-        // update_preview_indicators(_current_item);
         set_preview(PaintMode::Derived);
     }));
 
@@ -371,8 +373,7 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
             if (auto paint = _current_item->style->getFillOrStroke(fill)) {
                 _switch->update_from_paint(*paint);
             }
-            // update_preview_indicators(_current_item);
-            set_preview(PaintMode::None);
+            set_preview(PaintMode::Derived);
         }
     }));
     return conns;
@@ -411,8 +412,11 @@ void PaintAttribute::PaintStrip::set_preview(PaintMode mode) {
 }
 
 void PaintAttribute::PaintStrip::set_preview(const Colors::Color& color) {
-    //todo: set alpha
+    //todo: set alpha?
     auto scoped(_update->block());
+    _preview_label.set_visible(false);
+    _paint_icon.set_visible(false);
+    _color_preview.set_visible();
     _alpha.set_value(color.getOpacity());
 
     // color.setOpacity(_alpha.get_value());
@@ -421,7 +425,20 @@ void PaintAttribute::PaintStrip::set_preview(const Colors::Color& color) {
 }
 
 void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, PaintMode mode) {
+    if (mode == PaintMode::None) {
+        hide();
+        return;
+    }
+
+    show();
     _preview_label.set_visible(false);
+
+    if (mode == PaintMode::Solid || mode == PaintMode::Derived) {
+        return;
+    }
+
+    assert(server);
+    if (!server) return;
 
     if (mode == PaintMode::Swatch || mode == PaintMode::Gradient || mode == PaintMode::Pattern || mode == PaintMode::Hatch) {
         // _alpha.set_value(paint_opacity);
@@ -429,19 +446,11 @@ void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, PaintMode mo
         _paint_icon.set_visible(false);
         _color_preview.set_visible();
 
-        /*if (mode == PaintMode::Solid) {
-            // auto color = paint.getColor();
-            color.setOpacity(paint_opacity);
-            _color_preview.setRgba32(color.toRGBA());
-            _color_preview.setIndicator(ColorPreview::None);
-        }
-        else */ if (mode == PaintMode::Swatch) {
+        if (mode == PaintMode::Swatch) {
             // swatch
-            // auto server = paint.href->getObject();
             auto swatch = cast<SPGradient>(server);
             assert(swatch);
             auto vect = swatch->getVector();
-            // auto color = paint.getColor();
             Colors::Color color(0);
             if (auto stop = vect->getFirstStop()) {
                 // swatch color is in the first (and only) stop
@@ -453,7 +462,6 @@ void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, PaintMode mo
         }
         else if (mode == PaintMode::Pattern || mode == PaintMode::Hatch) {
             // patterns and hatches
-            // auto server = cast<SPPaintServer>(paint.href->getObject());
             unsigned int background = 0xffffffff; // use white background for patterns
             // create a pattern preview with arbitrarily selected width
             auto surface = PatternManager::get().get_preview(server, 200, COLOR_TILE, background, _color_preview.get_scale_factor());
@@ -479,7 +487,6 @@ void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, PaintMode mo
             _color_preview.set_gradient(gradient);
             _color_preview.setIndicator(ColorPreview::None);
         }
-        show();
     }
 }
 
@@ -508,7 +515,6 @@ void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, Colors::Colo
             if (!swatch) return;
 
             auto vect = swatch->getVector();
-            // auto color = paint.getColor();
             if (auto stop = vect->getFirstStop()) {
                 // swatch color is in the first (and only) stop
                 color = stop->getColor();
@@ -519,7 +525,6 @@ void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, Colors::Colo
         }
         else if (mode == PaintMode::Pattern || mode == PaintMode::Hatch) {
             // patterns and hatches
-            // auto server = cast<SPPaintServer>(paint.href->getObject());
             unsigned int background = 0xffffffff; // use white background for patterns
             // create a pattern preview with arbitrarily selected width
             auto surface = PatternManager::get().get_preview(server, 200, COLOR_TILE, background, _color_preview.get_scale_factor());
@@ -586,41 +591,6 @@ void PaintAttribute::PaintStrip::update_preview_indicators_from_paint(const mixe
     }
 }
 
-void PaintAttribute::PaintStrip::set_paint_from_object(const SPObject* object) {
-    if (!object || !object->style) return;
-    set_paint_from_style(object->style);
-}
-
-void PaintAttribute::PaintStrip::set_paint_from_style(SPStyle* style) {
-    if (!style) return;
-
-    if (_is_fill) {
-        if (auto fill = style->getFillOrStroke(true)) {
-            auto fill_rule = style->fill_rule.computed == SP_WIND_RULE_NONZERO ? FillRule::NonZero : FillRule::EvenOdd;
-            set_paint(*fill, style->fill_opacity, fill_rule);
-        }
-    }
-    else {
-        if (auto stroke = style->getFillOrStroke(false)) {
-            set_paint(*stroke, style->stroke_opacity, FillRule::NonZero);
-        }
-    }
-}
-
-void PaintAttribute::PaintStrip::set_paint(const SPIPaint& paint, double opacity, FillRule fill_rule) {
-    auto scoped(_update->block());
-
-    auto mode = get_mode_from_paint(paint);
-    _switch->set_mode(mode);
-    if (paint.isColor()) {
-        auto color = paint.getColor();
-        color.setOpacity(opacity);
-        _switch->set_color(color);
-    }
-    _switch->update_from_paint(paint);
-    _switch->set_fill_rule(fill_rule);
-}
-
 void PaintAttribute::PaintStrip::set_paint_from_props(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity, const mixed_property<SPWindRule>& fill_rule) {
     auto scoped(_update->block());
 
@@ -643,6 +613,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         _markers.append(_marker_mid);
         _markers.append(_marker_end);
 
+        // assign selected marker
         auto set_marker = [this](int location, const char* id, const std::string& uri) {
             if (!can_update()) return;
 
@@ -653,10 +624,33 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
             DocumentUndo::maybeDone(_document, "marker-change", RC_("Undo", "Set marker"), "dialog-fill-and-stroke", _modified_tag);
         };
 
+        // get marker from URI
+        auto get_marker = [this](const std::string& uri) -> SPMarker* {
+            if (!_document) return nullptr;
+
+            // Parse url(#marker-id) to extract marker-id
+            if (uri.empty() || uri == "none") return nullptr;
+
+            std::string id;
+            if (uri.find("url(#") == 0) {
+                id = uri.substr(5, uri.length() - 6); // Remove "url(#" and ")"
+            } else {
+                id = uri;
+            }
+
+            return dynamic_cast<SPMarker*>(_document->getObjectById(id));
+        };
+
         for (auto combo : {&_marker_start, &_marker_mid, &_marker_end}) {
             combo->connect_changed([=] {
                 if (!combo->in_update()) {
-                    set_marker(combo->get_loc(), combo->get_id(), combo->get_active_marker_uri());
+                    auto uri = combo->get_active_marker_uri();
+                    // apply marker
+                    set_marker(combo->get_loc(), combo->get_id(), uri);
+                    // update marker editor with selected marker
+                    if (auto marker = get_marker(uri)) {
+                        combo->set_current(marker);
+                    }
                 }
             });
 
@@ -886,24 +880,6 @@ void PaintAttribute::PaintStrip::apply_style(SPCSSAttr* css) {
         _delegate_ptr->apply(PaintEditDelegate::CssOp{icss});
     } else if (_current_item) {
         set_item_style(cast<SPItem>(_current_item), css);
-    }
-}
-
-void PaintAttribute::set_paint(const SPObject* object, bool fill) {
-    auto& strip = fill ? _fill : _stroke;
-    strip.set_paint_from_object(object);
-}
-
-void PaintAttribute::update_markers(SPIString* markers[], SPObject* object) {
-    for (auto combo : {&_marker_start, &_marker_mid, &_marker_end}) {
-        if (combo->in_update()) continue;
-
-        SPObject* marker = nullptr;
-        if (auto value = markers[combo->get_loc()]->value()) {
-            marker = getMarkerObj(value, object->document);
-        }
-        combo->setDocument(object->document);
-        combo->set_current(marker);
     }
 }
 
@@ -1165,62 +1141,6 @@ void PaintAttribute::update_reset_blend_button() {
 
     auto blend_mode = _current_item->style->mix_blend_mode.set ? _current_item->style->mix_blend_mode.value : SP_CSS_BLEND_NORMAL;
     _reset_blend.set_visible(blend_mode != SP_CSS_BLEND_NORMAL);
-}
-
-void PaintAttribute::update_from_object(SPObject* object) {
-    update_from_style(object, object ? object->style : nullptr);
-}
-
-void PaintAttribute::update_from_style(SPObject* object, SPStyle* style) {
-    if (_update.pending()) return;
-
-    auto scoped(_update.block());
-
-    _current_object = object;
-    _current_item = cast<SPItem>(object);
-    _fill._current_item = _current_item;
-    _stroke._current_item = _current_item;
-    _fill._desktop = _desktop;
-    _stroke._desktop = _desktop;
-
-    if (!_current_object || !style) {
-        _fill.hide();
-        _stroke.hide();
-    }
-    else {
-        // use queried style for fill/stroke preview
-        _fill.update_preview_indicators(style);
-        if (auto pop = _fill._paint_btn.get_popover(); pop && pop->is_visible()) {
-            _fill.set_paint_from_style(style);
-        }
-
-        auto stroke_mode = _stroke.update_preview_indicators(style);
-        if (auto pop = _stroke._paint_btn.get_popover(); pop && pop->is_visible()) {
-            _stroke.set_paint_from_style(style);
-        }
-
-        // stroke attributes, markers, opacity, blend — read from the object
-        auto& obj_style = object->style;
-        update_stroke(_current_item);
-        if (_added_parts & Markers) {
-            update_markers(obj_style->marker_ptrs, object);
-        }
-        if (stroke_mode != PaintMode::None) {
-            _stroke_options.update_widgets(*obj_style);
-            show_stroke(true);
-        }
-        else {
-            show_stroke(false);
-        }
-
-        double opacity = obj_style->opacity;
-        _opacity.set_value(opacity);
-        update_reset_opacity_button();
-
-        auto blend_mode = obj_style->mix_blend_mode.set ? obj_style->mix_blend_mode.value : SP_CSS_BLEND_NORMAL;
-        _blend.set_active_by_id(blend_mode);
-        update_reset_blend_button();
-    }
 }
 
 void PaintAttribute::update_from_style_props(SPObject* object, const Inkscape::StyleProperties& props) {

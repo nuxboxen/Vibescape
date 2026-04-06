@@ -2509,10 +2509,8 @@ private:
         _paint->update_visibility(object);
 
         auto items = get_query_items();
-        if (items.empty()) {
-            _paint->update_from_object(object);
-            return;
-        }
+        // "items" cannot be empty, unless there is no current item (at that point we shouldn't be here)
+        if (items.empty()) return;
 
         // query fill and stroke properties
         auto props = Inkscape::query_style_properties(items);

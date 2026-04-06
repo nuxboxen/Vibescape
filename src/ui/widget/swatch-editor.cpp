@@ -292,7 +292,6 @@ void SwatchEditor::build_settings() {
 
 void SwatchEditor::set_desktop(SPDesktop* desktop) {
     _desktop = desktop;
-    _cur_swatch_id.clear();
 }
 
 void SwatchEditor::set_document(SPDocument* document) {
@@ -503,7 +502,7 @@ void SwatchEditor::update_store() {
     if (changed) {
         rebuild();
     }
-    else if (!_cur_swatch_id.empty() && !_selection_model->get_selected_item()) {
+    else if (!_cur_swatch_id.empty()) {
         update_selection(_cur_swatch_id);
     }
 }

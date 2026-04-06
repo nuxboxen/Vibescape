@@ -34,7 +34,7 @@ using namespace UI::Widget;
 // and setting the appropriate mode and associated data.
 PaintProp classify_paint(const SPIPaint& paint, double opacity) {
     PaintProp p;
-    if (auto* server = paint.isPaintserver() ? paint.href->getObject() : nullptr) {
+    if (auto server = paint.isPaintserver() ? paint.href->getObject() : nullptr) {
         p.server = server;
 
         if (auto* grad = cast<SPGradient>(server)) {
@@ -46,7 +46,7 @@ PaintProp classify_paint(const SPIPaint& paint, double opacity) {
                 p.swatch = vec;
             }
 #ifdef WITH_MESH
-            else if (auto* mg = cast<SPMeshGradient>(server)) {
+            else if (auto mg = cast<SPMeshGradient>(server)) {
                 p.mode = PaintMode::Mesh;
                 p.mesh = mg;
             }
@@ -55,20 +55,25 @@ PaintProp classify_paint(const SPIPaint& paint, double opacity) {
                 p.mode   = PaintMode::Gradient;
                 p.gradient = grad;
             }
-        } else if (auto* pat = cast<SPPattern>(server)) {
+        }
+        else if (auto pat = cast<SPPattern>(server)) {
             p.mode    = PaintMode::Pattern;
             p.pattern = pat;
-        } else if (auto* hatch = cast<SPHatch>(server)) {
+        }
+        else if (auto hatch = cast<SPHatch>(server)) {
             p.mode  = PaintMode::Hatch;
             p.hatch = hatch;
         }
-    } else if (paint.isColor() && paint.paintSource == SP_CSS_PAINT_ORIGIN_NORMAL) {
+    }
+    else if (paint.isColor() && paint.paintSource == SP_CSS_PAINT_ORIGIN_NORMAL && !paint.isDerived()) {
         p.mode  = PaintMode::Solid;
         p.color = paint.getColor();
         p.color->setOpacity(opacity);
-    } else if (paint.isNone()) {
+    }
+    else if (paint.isNone()) {
         p.mode = PaintMode::None;
-    } else {
+    }
+    else {
         p.derived_mode = get_inherited_paint_mode(paint);
         p.mode = PaintMode::Derived;
     }
@@ -84,19 +89,20 @@ void visit_items(SPItem* item, StyleQueryFlags flags, const std::function<void(S
                        && (is<SPText>(item) || is<SPFlowtext>(item));
 
     if (enter_group || enter_text) {
-        for (auto* child = item->firstChild(); child; child = child->getNext()) {
+        for (auto child = item->firstChild(); child; child = child->getNext()) {
             if (auto* child_item = cast<SPItem>(child)) {
                 visit_items(child_item, flags, fn);
             }
         }
-    } else {
+    }
+    else {
         fn(item);
     }
 }
 
 // Merge one item's style into props.
 void merge_item_style(StyleProperties& props, SPItem* item) {
-    auto* style = item->style;
+    auto style = item->style;
     if (!style) return;
 
     // --- fill ---

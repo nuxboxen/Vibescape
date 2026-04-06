@@ -66,19 +66,12 @@ public:
     void set_document(SPDocument* document);
     void set_desktop(SPDesktop* desktop);
     void set_delegate(std::unique_ptr<Inkscape::Util::PaintEditDelegate> delegate);
-    // update UI from passed object style
-    void update_from_object(SPObject* object);
-    // update UI using a queried style (for subselection read-back)
-    void update_from_style(SPObject* object, SPStyle* style);
-    // update UI using a StyleProps object
+    // update UI using a StyleProps instance
     void update_from_style_props(SPObject* object, const Inkscape::StyleProperties& props);
     // update visibility and lock state
     void update_visibility(SPObject* object);
 
 private:
-    void set_paint(const SPObject* object, bool fill);
-    //
-    void update_markers(SPIString* markers[], SPObject* object);
     void update_markers(const Inkscape::StyleProperties& props, SPDocument* document);
     // show/hide stroke widgets
     void show_stroke(bool show);
@@ -102,9 +95,6 @@ private:
         PaintMode update_preview_indicators(const SPObject* object);
         PaintMode update_preview_indicators(SPStyle* style);
         void update_preview_indicators_from_paint(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity);
-        void set_paint_from_object(const SPObject* object);
-        void set_paint_from_style(SPStyle* style);
-        void set_paint(const SPIPaint& paint, double opacity, FillRule fill_rule);
         void set_paint_from_props(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity, const mixed_property<SPWindRule>& fill_rule);
         void set_fill_rule(FillRule rule);
         void set_flat_color(const Colors::Color& color);

@@ -89,11 +89,16 @@ SPGradient* swatch_operation(SPItem* item, SPGradient* vector, SPDesktop* deskto
         if (auto clr = get_item_color(item, fill)) {
             vector = sp_find_matching_swatch(item->document, *clr);
         }
-        else {
-            // create a new swatch
-            vector = nullptr;
+        // if item has non-solid paint (pattern, gradient), keep the passed-in vector
+        // (the previously selected swatch) so we don't create a spurious new swatch
+        if (vector) {
+            // We have a swatch vector to reuse, apply it and return the vector itself
+            sp_item_apply_gradient(item, vector, desktop, SP_GRADIENT_TYPE_LINEAR, true, kind);
         }
-        vector = sp_item_apply_gradient(item, vector, desktop, SP_GRADIENT_TYPE_LINEAR, true, kind);
+        else {
+            // No existing swatch, create a new one
+            vector = sp_item_apply_gradient(item, vector, desktop, SP_GRADIENT_TYPE_LINEAR, true, kind);
+        }
         DocumentUndo::done(item->document,
             fill ? RC_("Undo", "Set swatch on fill") : RC_("Undo", "Set swatch on stroke"),
             "dialog-fill-and-stroke", tag);
