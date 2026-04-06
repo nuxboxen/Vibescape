@@ -647,7 +647,7 @@ SPObject *file_import(SPDocument *in_doc, std::string const &path, Inkscape::Ext
     if (!doc) {
         // Open failed or canceled
         if (!cancelled) {
-            auto text = Glib::ustring::compose(_("Failed to load the requested file %s"), path);
+            auto text = Glib::ustring::compose(_("Cannot open file %1. It may be moved, renamed or removed."), path);
             sp_ui_error_dialog(text.c_str());
         }
         return nullptr;
