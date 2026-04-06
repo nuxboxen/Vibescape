@@ -345,8 +345,17 @@ void SwatchEditor::select_vector(SPGradient* vector) {
     _label.set_sensitive(vector != nullptr);
     // todo
 
-    if (vector && vector->getId()) {
-        update_selection(vector->getId());
+    if (!_cur_swatch_id.empty()) {
+        if (_delayed_update) {
+            // we need updated store to select the swatch; update now
+            remove_tick_callback(_delayed_update);
+            _delayed_update = 0;
+            // update store and set selection
+            update_store();
+        }
+        else {
+            update_selection(_cur_swatch_id);
+        }
     }
 }
 
@@ -362,6 +371,7 @@ void SwatchEditor::update_selection(const std::string& id) {
             }
         }
     }
+
     if (pos >= 0) {
         _selection_model->set_selected(pos);
         _gridview.scroll_to(pos);
@@ -492,6 +502,9 @@ void SwatchEditor::update_store() {
 
     if (changed) {
         rebuild();
+    }
+    else if (!_cur_swatch_id.empty() && !_selection_model->get_selected_item()) {
+        update_selection(_cur_swatch_id);
     }
 }
 

@@ -2,6 +2,7 @@
 
 #include "paint-attribute.h"
 
+#include <glib.h>
 #include <numeric>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <glibmm/ustring.h>
@@ -260,10 +261,10 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
         DocumentUndo::maybeDone(_document, fill ? "fill-pattern-change" : "stroke-pattern-change",
             fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
         PaintProp property;
-        property.pattern = cast<SPPattern>(server);
         property.mode = PaintMode::Pattern;
+        property.pattern = cast<SPPattern>(server);
         set_preview(property.pattern, property.mode);
-        // _switch->update_from_paint_props(property);
+        _switch->update_from_paint_props(property);
     }));
 
     conns.push_back(_switch->get_hatch_changed().connect([this, fill, tag](auto hatch, auto color, auto label, auto transform, auto offset, auto pitch, auto rotation, auto thickness) {
@@ -273,10 +274,10 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
         DocumentUndo::maybeDone(_document, fill ? "fill-pattern-change" : "stroke-pattern-change",
             fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), "dialog-fill-and-stroke", tag);
         PaintProp property;
-        property.hatch = cast<SPHatch>(server);
         property.mode = PaintMode::Hatch;
+        property.hatch = cast<SPHatch>(server);
         set_preview(property.hatch, property.mode);
-        // _switch->update_from_paint_props(property);
+        _switch->update_from_paint_props(property);
     }));
 
     conns.push_back(_switch->get_gradient_changed().connect([this, fill, tag](auto vector, auto gradient_type) {
@@ -305,7 +306,7 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
         property.mesh = cast<SPMeshGradient>(server);
         property.mode = PaintMode::Mesh;
         set_preview(property.mesh, property.mode);
-        // _switch->update_from_paint_props(property);
+        // mesh editor doesn't need to be updated with the new mesh
     }));
 
     conns.push_back(_switch->get_swatch_changed().connect([this, fill, tag](auto vector, auto operation, auto replacement, std::optional<Color> color, auto label) {
@@ -316,9 +317,7 @@ std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
         property.swatch = cast<SPGradient>(server);
         property.mode = PaintMode::Swatch;
         set_preview(property.swatch, property.mode);
-        if (operation == EditOperation::New) {
-            _switch->update_from_paint_props(property);
-        }
+        _switch->update_from_paint_props(property);
     }));
 
     conns.push_back(_switch->get_flat_color_changed().connect([=,this](auto& color) {
@@ -465,7 +464,6 @@ void PaintAttribute::PaintStrip::set_preview(SPPaintServer* server, PaintMode mo
         }
         else {
             // gradients
-if (!server) return;
             auto grad = cast<SPGradient>(server);
             std::vector<ColorPreview::GradientStops> gradient;
             grad->ensureVector();

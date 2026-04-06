@@ -166,18 +166,18 @@ std::string sp_get_pattern_label(SPPaintServer* pattern) {
     return std::string(pat_id ? pat_id : "");
 }
 
-void sp_item_set_pattern_style(SPItem* item, SPPattern* root_pattern, SPCSSAttr* css, FillOrStroke kind) {
+SPPattern* sp_item_set_pattern_style(SPItem* item, SPPattern* root_pattern, SPCSSAttr* css, FillOrStroke kind) {
     if (!item || !item->style || !item->getRepr()) {
         g_warning("No valid item provided to sp_item_set_pattern");
-        return;
+        return nullptr;
     }
 
     SPStyle* style = item->style;
     auto server = kind == FILL ? style->getFillPaintServer() : style->getStrokePaintServer();
 
     if (auto pattern = cast<SPPattern>(server); pattern && pattern->rootPattern() == root_pattern) {
-        // only if this object's pattern is not rooted in our selected pattern, apply
-        return;
+        // item already uses this root pattern — return the existing per-object link
+        return pattern;
     }
 
     if (kind == FILL) {
@@ -189,7 +189,7 @@ void sp_item_set_pattern_style(SPItem* item, SPPattern* root_pattern, SPCSSAttr*
 
     // create a link to the pattern right away, without waiting for an object to be moved;
     // otherwise the pattern editor may end up modifying a pattern shared by different objects
-    item->adjust_pattern(Geom::Affine());
+    return item->adjust_pattern(Geom::Affine(), false, kind == FILL ? TRANSFORM_FILL : TRANSFORM_STROKE);
 }
 
 // set a pattern as item's fill or stroke; modify the pattern's attributes
@@ -219,12 +219,8 @@ SPPattern* sp_item_apply_pattern(SPItem* item, SPPattern* pattern, FillOrStroke 
 
     SPCSSAttr* css = sp_repr_css_attr_new();
     sp_repr_css_set_property(css, kind == FILL ? "fill" : "stroke", url.c_str());
-    sp_item_set_pattern_style(item, root_pattern, css, kind);
-
-    // create a link to the pattern right away, without waiting for this item to be moved;
-    // otherwise the pattern editor may end up modifying a pattern shared by different objects
-    item->adjust_pattern(Geom::Affine());
-    return link_pattern;
+    auto link = sp_item_set_pattern_style(item, root_pattern, css, kind);
+    return link ? link : link_pattern;
 }
 
 void sp_hatch_set_pitch(SPHatch* hatch, double pitch) {
@@ -270,18 +266,18 @@ void sp_hatch_set_stroke_width(SPHatch* hatch, double thickness) {
     sp_repr_css_attr_unref(css);
 }
 
-void sp_item_set_hatch_style(SPItem* item, SPHatch* root_hatch, SPCSSAttr* css, FillOrStroke kind) {
+SPHatch* sp_item_set_hatch_style(SPItem* item, SPHatch* root_hatch, SPCSSAttr* css, FillOrStroke kind) {
     if (!item || !item->style || !item->getRepr()) {
         g_warning("No valid item provided to sp_item_set_hatch_style");
-        return;
+        return nullptr;
     }
 
     SPStyle* style = item->style;
     auto server = kind == FILL ? style->getFillPaintServer() : style->getStrokePaintServer();
 
     if (auto hatch = cast<SPHatch>(server); hatch && hatch->rootHatch() == root_hatch) {
-        // only if this object's hatch is not rooted in our selected hatch, apply
-        return;
+        // item already uses this root hatch — return the existing per-object link
+        return hatch;
     }
 
     if (kind == FILL) {
@@ -293,7 +289,7 @@ void sp_item_set_hatch_style(SPItem* item, SPHatch* root_hatch, SPCSSAttr* css, 
 
     // create a link to the hatch right away, without waiting for this item to be moved;
     // otherwise the pattern editor may end up modifying a hatch shared by different objects
-    item->adjust_hatch(Geom::identity());
+    return item->adjust_hatch(Geom::identity(), false, kind == FILL ? TRANSFORM_FILL : TRANSFORM_STROKE);
 }
 
 SPHatch* sp_item_apply_hatch(SPItem* item, SPHatch* hatch, FillOrStroke kind, std::optional<Color> color, const Glib::ustring& label,
@@ -324,6 +320,6 @@ SPHatch* sp_item_apply_hatch(SPItem* item, SPHatch* hatch, FillOrStroke kind, st
 
     SPCSSAttr* css = sp_repr_css_attr_new();
     sp_repr_css_set_property(css, kind == FILL ? "fill" : "stroke", url.c_str());
-    sp_item_set_hatch_style(item, hatch, css, kind);
-    return link_hatch;
+    auto link = sp_item_set_hatch_style(item, hatch, css, kind);
+    return link ? link : link_hatch;
 }
