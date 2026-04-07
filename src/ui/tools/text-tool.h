@@ -112,6 +112,7 @@ private:
     void _blinkCursor();
     void _resetBlinkTimer();
     void _showCursor();
+    void _hideCursor();
     void _forgetText();
     void _insertUnichar();
     void _showCurrUnichar();
