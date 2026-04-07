@@ -84,6 +84,7 @@ NodeToolbar::NodeToolbar(SPDesktop *desktop)
     , _show_transform_handles_btn(&get_widget<Gtk::ToggleButton>(_builder, "_show_transform_handles_btn"))
     , _object_edit_mask_path_btn(&get_widget<Gtk::ToggleButton>(_builder, "_object_edit_mask_path_btn"))
     , _object_edit_clip_path_btn(&get_widget<Gtk::ToggleButton>(_builder, "_object_edit_clip_path_btn"))
+    , _add_corners_btn(get_widget<Gtk::Button>(_builder, "_add_corners_btn"))
     , _nodes_x_item(get_derived_widget<UI::Widget::SpinButton>(_builder, "_nodes_x_item"))
     , _nodes_y_item(get_derived_widget<UI::Widget::SpinButton>(_builder, "_nodes_y_item"))
 {
@@ -268,13 +269,19 @@ void NodeToolbar::value_changed(Geom::Dim2 d)
 void NodeToolbar::sel_changed(Inkscape::Selection *selection)
 {
     SPItem *item = selection->singleItem();
+
+    if (is<SPGroup>(item)) {
+        _add_corners_btn.set_sensitive(false);
+    } else {
+        _add_corners_btn.set_sensitive(true);
+    }
+
     if (item && is<SPLPEItem>(item)) {
         if (cast_unsafe<SPLPEItem>(item)->hasPathEffect()) {
             _nodes_lpeedit_btn.set_sensitive(true);
         } else {
             _nodes_lpeedit_btn.set_sensitive(false);
         }
-    } else {
         _nodes_lpeedit_btn.set_sensitive(false);
     }
 }
