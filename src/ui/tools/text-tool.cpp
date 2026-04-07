@@ -115,8 +115,16 @@ TextTool::TextTool(SPDesktop *desktop)
         gtk_im_context_set_client_window(imc, canvas->get_window()->gobj());
 
         // Note: Connecting to property_is_focus().signal_changed() would result in slight regression due to signal emisssion ordering.
-        focus_in_conn = canvas->signal_focus_in_event().connect([this] (GdkEventFocus*) { gtk_im_context_focus_in(imc); return false; });
-        focus_out_conn = canvas->signal_focus_out_event().connect([this] (GdkEventFocus*) { gtk_im_context_focus_out(imc); return false; });
+        focus_in_conn = canvas->signal_focus_in_event().connect([this] (GdkEventFocus*) {
+            gtk_im_context_focus_in(imc);
+            _showCursor();
+            return false;
+        });
+        focus_out_conn = canvas->signal_focus_out_event().connect([this] (GdkEventFocus*) {
+            gtk_im_context_focus_out(imc);
+            _hideCursor();
+            return false;
+        });
         g_signal_connect(G_OBJECT(imc), "commit", Util::make_g_callback<&TextTool::_commit>, this);
 
         if (canvas->has_focus()) {
@@ -1481,6 +1489,12 @@ void TextTool::_showCursor()
     cursor->set_stroke(0x000000ff);
     cursor->set_visible(true);
     _resetBlinkTimer();
+}
+
+void TextTool::_hideCursor()
+{
+    show = false;
+    cursor->set_visible(false);
 }
 
 void TextTool::_updateCursor(bool scroll_to_see)
