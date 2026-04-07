@@ -49,9 +49,6 @@ public:
 
     void param_transform_multiply(Geom::Affine const &postmul, bool set) override;
 
-    void set_vector_oncanvas_looks(CanvasItemCtrlShape shape, uint32_t color);
-    void set_origin_oncanvas_looks(CanvasItemCtrlShape shape, uint32_t color);
-    void set_oncanvas_color(guint32 color);
     void param_update_default(Geom::Point default_point);
     void param_update_default(const gchar * default_point) override;
     bool providesKnotHolderEntities() const override { return true; }
@@ -65,12 +62,6 @@ private:
 
     Geom::Point origin;
     Geom::Point vector;
-
-    /// The looks of the vector and origin knots oncanvas
-    Inkscape::CanvasItemCtrlShape vec_knot_shape = Inkscape::CANVAS_ITEM_CTRL_SHAPE_DIAMOND;
-    uint32_t                      vec_knot_color = 0xffffb500;
-    Inkscape::CanvasItemCtrlShape ori_knot_shape = Inkscape::CANVAS_ITEM_CTRL_SHAPE_CIRCLE;
-    uint32_t                      ori_knot_color = 0xffffb500;
 
     friend class VectorParamKnotHolderEntity_Origin;
     friend class VectorParamKnotHolderEntity_Vector;

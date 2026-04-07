@@ -34,7 +34,7 @@
 void KnotHolderEntity::create(SPDesktop *desktop, SPItem *item, KnotHolder *parent,
                               Inkscape::CanvasItemCtrlType type,
                               Glib::ustring const &name,
-                              char const *tip, uint32_t color)
+                              char const *tip)
 {
     if (!desktop) {
         desktop = parent->getDesktop();

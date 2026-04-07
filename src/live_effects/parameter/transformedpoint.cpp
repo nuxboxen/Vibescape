@@ -138,18 +138,6 @@ TransformedPointParam::param_transform_multiply(Geom::Affine const& postmul, boo
     }
 }
 
-void TransformedPointParam::set_vector_oncanvas_looks(CanvasItemCtrlShape shape, uint32_t color)
-{
-    vec_knot_shape = shape;
-    vec_knot_color = color;
-}
-
-void
-TransformedPointParam::set_oncanvas_color(guint32 color)
-{
-    vec_knot_color = color;
-}
-
 class TransformedPointParamKnotHolderEntity_Vector : public KnotHolderEntity {
 public:
     TransformedPointParamKnotHolderEntity_Vector(TransformedPointParam *p) : param(p) { }
@@ -181,8 +169,7 @@ void
 TransformedPointParam::addKnotHolderEntities(KnotHolder *knotholder, SPDesktop *desktop, SPItem *item)
 {
     TransformedPointParamKnotHolderEntity_Vector *vector_e = new TransformedPointParamKnotHolderEntity_Vector(this);
-    vector_e->create(desktop, item, knotholder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:Point", handleTip(),
-                     vec_knot_color);
+    vector_e->create(desktop, item, knotholder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:Point", handleTip());
     knotholder->add(vector_e);
 }
 

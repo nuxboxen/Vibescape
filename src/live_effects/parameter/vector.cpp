@@ -133,24 +133,6 @@ VectorParam::param_transform_multiply(Geom::Affine const& postmul, bool /*set*/)
     set_and_write_new_values( origin * postmul, vector * postmul.withoutTranslation() );
 }
 
-void VectorParam::set_vector_oncanvas_looks(CanvasItemCtrlShape shape, uint32_t color)
-{
-    vec_knot_shape = shape;
-    vec_knot_color = color;
-}
-
-void VectorParam::set_origin_oncanvas_looks(CanvasItemCtrlShape shape, uint32_t color)
-{
-    ori_knot_shape = shape;
-    ori_knot_color = color;
-}
-
-void VectorParam::set_oncanvas_color(uint32_t color)
-{
-    vec_knot_color = color;
-    ori_knot_color = color;
-}
-
 class VectorParamKnotHolderEntity_Origin : public KnotHolderEntity {
 public:
     VectorParamKnotHolderEntity_Origin(VectorParam *p) : param(p) { }
@@ -209,12 +191,12 @@ VectorParam::addKnotHolderEntities(KnotHolder *knotholder, SPItem *item)
 {
     VectorParamKnotHolderEntity_Origin *origin_e = new VectorParamKnotHolderEntity_Origin(this);
     origin_e->create(nullptr, item, knotholder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:Origin",
-                     handleTip(), ori_knot_color);
+                     handleTip());
     knotholder->add(origin_e);
 
     VectorParamKnotHolderEntity_Vector *vector_e = new VectorParamKnotHolderEntity_Vector(this);
     vector_e->create(nullptr, item, knotholder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:Vector",
-                     handleTip(), vec_knot_color);
+                     handleTip());
     knotholder->add(vector_e);
 }
 
