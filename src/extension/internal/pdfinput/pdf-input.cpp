@@ -28,6 +28,7 @@
 #include <poppler/PDFDoc.h>
 #include <poppler/Page.h>
 #include <poppler/goo/GooString.h>
+#include <poppler/goo/gmem.h>
 
 #ifdef HAVE_POPPLER_CAIRO
 #include <poppler/glib/poppler.h>
