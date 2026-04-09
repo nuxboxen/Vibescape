@@ -10,6 +10,8 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include "font-instance.h"
+
 #ifdef HAVE_CONFIG_H
 # include "config.h"  // only include where actually required!
 #endif
@@ -47,7 +49,7 @@
 #include <2geom/pathvector.h>
 #include <2geom/path-sink.h>
 
-#include "font-instance.h"
+#include "preferences.h"
 
 /*
  * Outline extraction
@@ -235,14 +237,15 @@ uint32_t compose_tag(Glib::ustring tag_name) {
 
 void FontInstance::init_face()
 {
-    const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
-    if (color_font_debug) {
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    bool debug_color_fonts = prefs->getBool("/options/rendering/debug_color_fonts");
+    if (debug_color_fonts) {
       std::cout << "FontInstance::init_face: " << pango_font_description_to_string(descr) << ":" << std::endl;
     }
     auto hb_font = pango_font_get_hb_font(p_font); // Pango owns hb_font.
     assert(hb_font); // Guaranteed since already tested in acquire().
 
-    if (color_font_debug) {
+    if (debug_color_fonts) {
         readOpenTypeTableList(hb_font, openTypeTableList);
         std::cout << "  OpenType Table list: ";
         for (const auto& table : openTypeTableList) {
@@ -256,7 +259,7 @@ void FontInstance::init_face()
     has_layers = hb_ot_color_has_layers(hb_face); // Has COLRv0 table.  HB 2.1.0
     has_paint  = hb_ot_color_has_paint(hb_face);  // Has COLRv1 table.  HB 7.0.0
 
-    if (color_font_debug) {
+    if (debug_color_fonts) {
         std::cout << "  " << pango_font_description_to_string(descr)
                   << "  Has SVG: "    << std::setw(5) << std::boolalpha << has_svg
                   << "  Has PNG: "    << std::setw(5) << std::boolalpha << has_png
@@ -272,7 +275,7 @@ void FontInstance::init_face()
         readOpenTypeSVGTable(hb_font, data->openTypeSVGGlyphs, data->openTypeSVGData);
     }
 
-    if (color_font_debug) {
+    if (debug_color_fonts) {
         std::vector<Glib::RefPtr<Gdk::Pixbuf>> pixbufs;
         if (has_png) {
             readOpenTypePNG(hb_font, pixbufs);
@@ -452,10 +455,10 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 
     auto n_g = std::make_unique<FontGlyph>();
     
-    const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
-    const char* font_paths_debug = std::getenv("FONT_PATHS_DEBUG");
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    bool debug_color_fonts = prefs->getBool("/options/rendering/debug_color_fonts");
 
-    if (color_font_debug) {
+    if (debug_color_fonts) {
         // For debugging
         const unsigned int MAX_CHAR = 65; // Maximum length + 1 per OpenType spec.
         char name[MAX_CHAR] = {};
@@ -546,9 +549,7 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 
         path_builder_hb.flush();
         Geom::PathVector pv = path_builder_hb.peek();
-        if (font_paths_debug) {
-            std::cout << "HB Path: " << pv << std::endl;
-        }
+        //    std::cout << "HB Path: " << pv << std::endl;
 
         if (!pv.empty()) {
             n_g->pathvector = std::move(pv);

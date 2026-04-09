@@ -23,6 +23,8 @@
 #include "drawing-text.h"
 #include "drawing.h"
 
+#include "preferences.h"
+
 #include "helper/geom.h"
 
 #include "libnrtype/font-instance.h"
@@ -627,7 +629,9 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
             dc.newPath(); // Clear text-decoration path
         }
 
-        const char* color_font_debug = std::getenv("COLOR_FONT_DEBUG");
+        Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+        bool debug_color_fonts = prefs->getBool("/options/rendering/debug_color_fonts");
+        bool debug_glyph_boxes = prefs->getBool("/options/rendering/debug_glyph_boxes");
 
         // Accumulate the path that represents the glyphs and/or draw color glyphs.
         for (auto &i : _children) {
@@ -641,8 +645,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
             }
             dc.transform(g->_ctm);
 
-            const char* draw_text_boxes = std::getenv("DRAW_TEXT_BOXES");
-            if (draw_text_boxes) {
+            if (debug_glyph_boxes) {
                 // Draw various boxes for debugging
                 auto path_copy = cairo_copy_path(dc.raw()); // Cairo save/restore doesn't apply to path!
                 {
@@ -674,7 +677,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 // End debug boxes.
             }
 
-            if (color_font_debug) {
+            if (debug_color_fonts) {
                 std::cout << "DrawingText::_renderItem: "
                           << std::setw(6) << g->_glyph
                           << "  " << std::setw(20) << (g->font_descr ? g->font_descr : " No font description!!")

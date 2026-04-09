@@ -10,6 +10,7 @@
 
 #include "OpenTypeUtil.h"
 
+
 //#define DEBUG_OPENTYPEUTIL
 #ifdef DEBUG_OPENTYPEUTIL
 #include <filesystem> // For debugging
@@ -17,7 +18,7 @@
 #include <iomanip>    // For debugging
 #endif
 
-#include <iostream>
+#include <iostream> // errors
 #include <memory>
 #include <unordered_map>
 
@@ -637,17 +638,20 @@ void readOpenTypePNG(hb_font_t* hb_font,
         glyph_to_unicode_map[hb_map_get(hb_unicode_to_glyph_map, current_unicode)] = current_unicode; 
     }
 
+#ifdef DEBUG_OPENTYPEUTIL
     std::cout << "readOpenTypePNG: glyph count: " << glyph_count << std::endl;
+#endif
 
     for (unsigned int i = 0; i < glyph_count; ++i) {
         hb_blob_t* png_data = hb_ot_color_glyph_reference_png(hb_font, i);
 
 //        hb_codepoint_t unicode = hb_map_get(hb_glyph_map, i);
+#ifdef DEBUG_OPENTYPEUTIL
         auto unicode = glyph_to_unicode_map[i];
         if (i < 20) {
             std::cout << " glyph: " << i << " unicode: " << unicode << std::endl;
         }
-
+#endif
 
         unsigned int length = 0;
         auto data = hb_blob_get_data(png_data, &length);
@@ -669,7 +673,6 @@ void readOpenTypePNG(hb_font_t* hb_font,
             png_stream << data[j];
         }
         png_stream.close();
-#endif
 
         GdkPixbufLoader *loader = gdk_pixbuf_loader_new();
         if (gdk_pixbuf_loader_write(loader, (guchar*)data, length, nullptr)) {
@@ -677,6 +680,7 @@ void readOpenTypePNG(hb_font_t* hb_font,
             GdkPixbuf *pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
         }
         g_object_unref(loader);
+#endif
 
         // auto loader2 = Gdk::PixbufLoader::create();
         // try {

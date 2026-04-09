@@ -3158,6 +3158,11 @@ void InkscapePreferences::initPageRendering()
     _canvas_debug_animate.init("", "/options/rendering/debug_animate", false);
     add_devmode_line(_("Animate"), _canvas_debug_animate, "", _("Continuously adjust viewing parameters in an animation loop."));
 
+    add_devmode_line(_("Draw glyph boxes"), _canvas_debug_glyph_boxes, "", _("Show boxes around glyphs"));
+    _canvas_debug_glyph_boxes.init("", "/options/rendering/debug_glyph_boxes", false);
+    add_devmode_line(_("Debug color fonts"), _canvas_debug_color_fonts, "", _("Enable debug output for color fonts"));
+    _canvas_debug_color_fonts.init("", "/options/rendering/debug_color_fonts", false);
+
     AddPage(_page_rendering, _("Rendering"), PREFS_PAGE_RENDERING);
 }
 
