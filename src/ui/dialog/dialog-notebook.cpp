@@ -356,10 +356,7 @@ void DialogNotebook::close_tab_callback()
         _selected_page = nullptr;
     }
 
-    // Get page widget
-    auto page_widget = _notebook.get_nth_page(page_number);
-
-    if (dynamic_cast<DialogBase*>(page_widget)) {
+    if (dynamic_cast<DialogBase*>(_notebook.get_nth_page(page_number))) {
         // is this a dialog in a floating window?
         if (auto window = dynamic_cast<DialogWindow*>(_container->get_toplevel())) {
             // store state of floating dialog before it gets deleted
@@ -367,14 +364,11 @@ void DialogNotebook::close_tab_callback()
         }
     }
 
-    // Delete the page
-    delete page_widget;
+    // Remove page from notebook
+    _notebook.remove_page(page_number);
 
     // Delete the signal connection
     remove_tab_connections(_selected_page);
-
-    // Remove page from notebook
-    _notebook.remove_page(page_number);
 
     if (_notebook.get_n_pages() == 0) {
         close_notebook_callback();
