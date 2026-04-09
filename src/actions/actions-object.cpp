@@ -15,6 +15,7 @@
 #include "actions-helper.h"
 #include "document-undo.h"
 #include "inkscape-application.h"
+#include "object/sp-star.h"
 #include "selection.h"
 
 #include "live_effects/effect.h"
@@ -24,6 +25,7 @@
 #include "trace/potrace/inkscape-potrace.h"
 #include "trace/trace.h"
 #include "ui/icon-names.h"
+#include "util/cast.h"
 
 namespace {
 
@@ -320,6 +322,30 @@ object_flip_vertical(InkscapeApplication *app)
     Inkscape::DocumentUndo::done(app->get_active_document(), _("Flip vertically"), INKSCAPE_ICON("object-flip-vertical"));
 }
 
+void
+object_star_turn_upright(InkscapeApplication *app)
+{
+    auto selection = app->get_active_selection();
+    if (!selection || selection->isEmpty()) {
+        show_output("action:object_star_turn_upright: selection empty!");
+        return;
+    }
+
+    bool has_stars = false;
+    for (auto obj : selection->objects()) {
+        if (auto star = cast<SPStar>(obj)) {
+            has_stars = true;
+            star->turn_upright();
+        }
+    }
+
+    if (!has_stars) {
+        show_output("action:objects_star_turn_upright: no SPStar in selection!");
+        return;
+    }
+
+    Inkscape::DocumentUndo::done(app->get_active_document(), _("Turn stars upright"), INKSCAPE_ICON("object-level"));
+}
 
 void
 object_to_path(InkscapeApplication *app)
@@ -394,7 +420,8 @@ std::vector<std::vector<Glib::ustring>> raw_data_object =
     {"app.object-rotate-90-cw",       N_("Object Rotate 90"),        SECTION, N_("Rotate selection 90° clockwise")},
     {"app.object-rotate-90-ccw",      N_("Object Rotate 90 CCW"),    SECTION, N_("Rotate selection 90° counter-clockwise")},
     {"app.object-flip-horizontal",    N_("Object Flip Horizontal"),  SECTION, N_("Flip selected objects horizontally")},
-    {"app.object-flip-vertical",      N_("Object Flip Vertical"),    SECTION, N_("Flip selected objects vertically")}
+    {"app.object-flip-vertical",      N_("Object Flip Vertical"),    SECTION, N_("Flip selected objects vertically")},
+    {"app.object-star-turn-upright",  N_("Object Star Turn Upright"), SECTION, N_("Turn stars and polygons upright")}
     // clang-format on
 };
 
@@ -441,6 +468,7 @@ add_actions_object(InkscapeApplication* app)
     gapp->add_action(                "object-rotate-90-ccw",            sigc::bind(sigc::ptr_fun(&object_rotate_90_ccw),          app));
     gapp->add_action(                "object-flip-horizontal",          sigc::bind(sigc::ptr_fun(&object_flip_horizontal),        app));
     gapp->add_action(                "object-flip-vertical",            sigc::bind(sigc::ptr_fun(&object_flip_vertical),          app));
+    gapp->add_action(                "object-star-turn-upright",        sigc::bind(sigc::ptr_fun(&object_star_turn_upright),      app));
     // clang-format on
 
     app->get_action_extra_data().add_data(raw_data_object);
