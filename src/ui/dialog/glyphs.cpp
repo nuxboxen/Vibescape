@@ -535,7 +535,10 @@ GlyphsPanel::GlyphsPanel()
     show_all_children();
 }
 
-GlyphsPanel::~GlyphsPanel() = default;
+GlyphsPanel::~GlyphsPanel()
+{
+    instanceConns.clear();
+};
 
 void GlyphsPanel::selectionChanged(Selection *selection)
 {
