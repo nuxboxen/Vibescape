@@ -263,27 +263,6 @@ std::optional<double> get_number(SPItem* item, const char* attribute) {
     return item->getRepr()->getAttributeDouble(attribute);
 }
 
-void align_star_shape(SPStar* path) {
-    if (!path || !path->sides) return;
-
-    auto arg1 = path->arg[0];
-    auto arg2 = path->arg[1];
-    auto delta = arg2 - arg1;
-    auto top = -M_PI / 2;
-    auto odd = path->sides & 1;
-    if (odd) {
-        arg1 = top;
-    }
-    else {
-        arg1 = top - M_PI / path->sides;
-    }
-    arg2 = arg1 + delta;
-
-    path->setAttributeDouble("sodipodi:arg1", arg1);
-    path->setAttributeDouble("sodipodi:arg2", arg2);
-    path->updateRepr();
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 details::AttributesPanel::AttributesPanel() {
@@ -741,7 +720,7 @@ public:
         _star.signal_toggled().connect([=](){ set_flat(false); });
 
         _align.signal_clicked().connect([=](){
-            change_value(_path, {}, [=](double) { align_star_shape(_path); });
+            change_value(_path, {}, [=](double) { _path->turn_upright(); });
         });
     }
 

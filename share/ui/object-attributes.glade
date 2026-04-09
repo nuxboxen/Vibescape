@@ -876,7 +876,7 @@
             <property name="visible">True</property>
             <property name="can-focus">True</property>
             <property name="receives-default">True</property>
-            <property name="tooltip-text" translatable="yes">Level shape</property>
+            <property name="tooltip-text" translatable="yes">Turn star or polygon upright</property>
             <child>
               <object class="GtkImage" id="image-level">
                 <property name="visible">True</property>

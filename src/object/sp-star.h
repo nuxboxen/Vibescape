@@ -55,6 +55,7 @@ public:
     void update_patheffect(bool write) override;
 	void set_shape() override;
 	Geom::Affine set_transform(Geom::Affine const& xform) override;
+	void turn_upright();
 };
 
 void sp_star_position_set (SPStar *star, int sides, Geom::Point center, double r1, double r2, double arg1, double arg2, bool isflat, double rounded, double randomized);
