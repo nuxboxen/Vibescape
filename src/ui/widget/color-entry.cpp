@@ -11,6 +11,7 @@
 #include <glibmm.h>
 #include <glibmm/i18n.h>
 #include <iomanip>
+#include "ui/widget/fill-style.h"
 
 #include "color-entry.h"
 
@@ -25,11 +26,11 @@ ColorEntry::ColorEntry(SelectedColor &color)
     , _prevpos(0)
     , _lastcolor(0)
 {
-    _color_changed_connection = color.signal_changed.connect(sigc::mem_fun(*this, &ColorEntry::_onColorChanged));
-    _color_dragged_connection = color.signal_dragged.connect(sigc::mem_fun(*this, &ColorEntry::_onColorChanged));
-    signal_activate().connect(sigc::mem_fun(*this, &ColorEntry::_onColorChanged));
+    _color_changed_connection = color.signal_changed.connect(sigc::bind(sigc::mem_fun(*this, &ColorEntry::_onColorChanged), false));
+    _color_dragged_connection = color.signal_dragged.connect(sigc::bind(sigc::mem_fun(*this, &ColorEntry::_onColorChanged), true));
+    signal_activate().connect(sigc::bind(sigc::mem_fun(*this, &ColorEntry::_onColorChanged), false));
     get_buffer()->signal_inserted_text().connect(sigc::mem_fun(*this, &ColorEntry::_inputCheck));
-    _onColorChanged();
+    _onColorChanged(false);
 
     // add extra character for pasting a hash, '#11223344'
     set_max_length(9);
@@ -123,7 +124,7 @@ void ColorEntry::on_changed()
 }
 
 
-void ColorEntry::_onColorChanged()
+void ColorEntry::_onColorChanged(bool is_dragging)
 {
     if (_updatingrgba) {
         return;
@@ -134,6 +135,9 @@ void ColorEntry::_onColorChanged()
 
     _lastcolor = color.toRGBA32(alpha);
     Glib::ustring text = Glib::ustring::format(std::hex, std::setw(8), std::setfill(L'0'), _lastcolor);
+
+    // swap undo label ONLY on value confirmation
+    if (is_focus() && !is_dragging) FillNStroke::swapUndoLabel();
 
     Glib::ustring old_text = get_text();
     if (old_text != text) {

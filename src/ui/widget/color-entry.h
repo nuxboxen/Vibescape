@@ -29,7 +29,7 @@ protected:
     void on_changed() override;
 
 private:
-    void _onColorChanged();
+    void _onColorChanged(bool is_dragging = false);
     void _inputCheck(guint pos, const gchar * /*chars*/, guint /*n_chars*/);
 
     SelectedColor &_color;

@@ -62,6 +62,7 @@ class FillNStroke : public Gtk::Box {
     
     void selectionModifiedCB(guint flags);
     void performUpdate();
+    static void swapUndoLabel();
 
     void setFillrule(PaintSelector::FillRule mode);
     void setDesktop(SPDesktop *desktop);
