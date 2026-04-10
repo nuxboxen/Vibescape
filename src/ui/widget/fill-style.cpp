@@ -294,6 +294,18 @@ static gchar const *undo_S_label_2 = "stroke:flatcolor:2";
 static gchar const *undo_F_label = undo_F_label_1;
 static gchar const *undo_S_label = undo_S_label_1;
 
+void FillNStroke::swapUndoLabel() {
+    // NOTE this is to separate undo steps when the user explicitly sets the color
+    // from the color entry. See ColorEntry::_onColorChanged in ui/widget/color-entry.
+    if (undo_F_label == undo_F_label_1) {
+        undo_F_label = undo_F_label_2;
+        undo_S_label = undo_S_label_2;
+    } else {
+        undo_F_label = undo_F_label_1;
+        undo_S_label = undo_S_label_1;
+    }
+}
+
 gboolean FillNStroke::dragDelayCB(gpointer data)
 {
     gboolean keepGoing = TRUE;
@@ -434,15 +446,6 @@ void FillNStroke::updateFromPaint(bool switch_style)
             DocumentUndo::maybeDone(_desktop->getDocument(), (kind == FILL) ? undo_F_label : undo_S_label,
                                     (kind == FILL) ? _("Set fill color") : _("Set stroke color"),
                                     INKSCAPE_ICON("dialog-fill-and-stroke"));
-
-            // on release, toggle undo_label so that the next drag will not be lumped with this one
-            if (undo_F_label == undo_F_label_1) {
-                undo_F_label = undo_F_label_2;
-                undo_S_label = undo_S_label_2;
-            } else {
-                undo_F_label = undo_F_label_1;
-                undo_S_label = undo_S_label_1;
-            }
 
             break;
         }
