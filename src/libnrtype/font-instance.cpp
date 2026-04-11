@@ -773,14 +773,15 @@ Glib::ustring FontInstance::SvgDocument(unsigned int glyph_id)
     Glib::MatchInfo matchInfo;
     regex->match(svg, matchInfo);
 
-    if (matchInfo.matches()) {
+    if (matchInfo.matches() && matchInfo.get_match_count() != 5) { // Number of matches plus original string.
+        std::cerr << "FontInstance::SVGDocument: Found viewBox but didn't find four numbers! glyph: " << glyph_id
+                  << "  count: " << matchInfo.get_match_count()
+                  << "  svg: " << svg << std::endl;
+    }
+    if (matchInfo.matches() && matchInfo.get_match_count() == 5) {
+
         // We have viewBox! We must transform so viewBox corresponds to design units.
-
-        // Replace viewbox
-        svg = regex->replace_literal(svg, 0, viewbox, static_cast<Glib::Regex::MatchFlags>(0));
-
-        // Insert group with required transform to map glyph to new viewbox.
-
+        // Get box before we change svg string.
         double x = Glib::Ascii::strtod(matchInfo.fetch(1));
         double y = Glib::Ascii::strtod(matchInfo.fetch(2));
         double w = Glib::Ascii::strtod(matchInfo.fetch(3));
@@ -789,6 +790,11 @@ Glib::ustring FontInstance::SvgDocument(unsigned int glyph_id)
         //           << " y: " << y
         //           << " w: " << w
         //           << " h: " << h << std::endl;
+
+        // Replace viewbox
+        svg = regex->replace_literal(svg, 0, viewbox, static_cast<Glib::Regex::MatchFlags>(0));
+
+        // Insert group with required transform to map glyph to new viewbox.
 
         if (w <= 0.0 || h <= 0.0) {
             std::cerr << "FontInstance::PixBuf: Invalid glyph width or height!" << std::endl;
