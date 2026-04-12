@@ -2787,7 +2787,8 @@ void set_defocus_target(Gtk::Widget& parent, DefocusTarget* target) {
     });
 }
 
-}
+} // namespace
+
 details::AttributesPanel* ObjectAttributes::get_panel(Selection* selection) {
     if (auto item = selection->singleItem()) {
         int tag = item->tag();
@@ -2799,6 +2800,7 @@ details::AttributesPanel* ObjectAttributes::get_panel(Selection* selection) {
             panel = obj_panel.get();
             _panels[tag] = std::move(obj_panel);
             if (panel) {
+                panel->widget().set_margin_top(4);
                 panel->set_document(getDocument());
                 set_defocus_target(panel->widget(), this);
             }
