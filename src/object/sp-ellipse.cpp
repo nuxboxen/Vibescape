@@ -760,6 +760,15 @@ double SPGenericEllipse::getVisibleRy() const
     return ry.computed * vectorStretch({0, 1}, i2doc_affine());
 }
 
+void SPGenericEllipse::reset()
+{
+    // back to the whole ellipse from slice
+    start = end = 0;
+    normalize();
+    updateRepr();
+    requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
+}
+
 /*
   Local Variables:
   mode:c++

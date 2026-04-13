@@ -24,7 +24,6 @@
 #include "sp-guide.h"
 #include "style.h"
 
-#include "display/curve.h"
 #include "svg/svg.h"
 
 #define noRECT_VERBOSE
@@ -642,6 +641,15 @@ void SPRect::convert_to_guides() const {
     pts.emplace_back(A4, A1);
 
     sp_guide_pt_pairs_to_guides(this->document, pts);
+}
+
+void SPRect::reset()
+{
+    // removeAttribute resets the knots and spinbutton values
+    removeAttribute("rx");
+    removeAttribute("ry");
+    updateRepr();
+    requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
 }
 
 /*

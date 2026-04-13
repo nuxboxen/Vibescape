@@ -97,6 +97,9 @@ public:
 
     bool is_whole() const { return !_isSlice(); }
 
+    // Reset ellipse values (start, end and type).
+    void reset();
+
 protected:
     /**
      * @brief Determines whether the shape is a part of an ellipse.

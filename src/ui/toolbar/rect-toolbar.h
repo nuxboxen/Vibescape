@@ -96,12 +96,21 @@ private:
     sigc::connection _selection_changed_conn;
     void _selectionChanged(Selection *selection);
 
+    // Make the reset button (in)sensitive based on rx and ry values.
     void _sensitivize();
+
+    // Reset rx and ry values to the default.
     void _setDefaults();
 
     void notifyAttributeChanged(XML::Node &node, GQuark name, Util::ptr_shared old_value, Util::ptr_shared new_value) override;
+
+    // Queue an update to the toolbar values. Cancel with _cancelUndate.
     void _queueUpdate();
+
+    // Cancel queued updates.
     void _cancelUpdate();
+
+    // Update the toolbar values.
     void _update();
     unsigned _tick_callback = 0;
 };

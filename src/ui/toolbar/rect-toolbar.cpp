@@ -235,16 +235,20 @@ void RectToolbar::_valueChanged(DerivedSpinButton &btn)
 void RectToolbar::_sensitivize()
 {
     bool disabled = _rx_item.get_adjustment()->get_value() == 0 &&
-                    _ry_item.get_adjustment()->get_value() == 0 &&
-                    _single; // only for a single selected rect (for now)
+                    _ry_item.get_adjustment()->get_value() == 0;
     _not_rounded.set_sensitive(!disabled);
 }
 
 void RectToolbar::_setDefaults()
 {
-    _rx_item.get_adjustment()->set_value(0.0);
-    _ry_item.get_adjustment()->set_value(0.0);
-    _sensitivize();
+    activate_action("app.object-rect-reset");
+    // TODO revisit when spinbuttons can handle mixed modes.
+    // The following means that the radii gets reset twice, which is not ideal.
+    if (!_single) {
+        _rx_item.get_adjustment()->set_value(0.0);
+        _ry_item.get_adjustment()->set_value(0.0);
+    }
+    onDefocus();
 }
 
 void RectToolbar::_selectionChanged(Selection *selection)

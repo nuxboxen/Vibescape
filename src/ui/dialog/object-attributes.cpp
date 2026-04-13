@@ -1191,8 +1191,7 @@ public:
 
             // remove rounded corners if LPE is there (first one found)
             remove_lpeffect(_rect, LivePathEffect::FILLET_CHAMFER);
-            _rx.set_value(0);
-            _ry.set_value(0);
+            _rect->reset();
         });
         _corners.signal_clicked().connect([this]{
             if (!_rect || !_desktop) return;
@@ -1200,8 +1199,7 @@ public:
             // switch to the node tool to show handles
             set_active_tool(_desktop, "Node");
             // rx/ry need to be reset first, LPE doesn't handle them too well
-            _rx.set_value(0);
-            _ry.set_value(0);
+            _rect->reset();
             // add flexible corners effect if not yet present
             if (!find_lpeffect(_rect, LivePathEffect::FILLET_CHAMFER)) {
                 LivePathEffect::Effect::createAndApply("fillet_chamfer", _rect->document, _rect);
@@ -1298,11 +1296,7 @@ public:
             if (_update.pending() || !_ellipse || !_whole.get_active()) return;
 
             auto scoped(_update.block());
-            // back to the whole ellipse from slice:
-            _start.set_value(0);
-            _end.set_value(0);
-            _ellipse->start = _ellipse->end = 0;
-            normalize();
+            _ellipse->reset();
             DocumentUndo::done(_ellipse->document, RC_("Undo", "Change ellipse type"), "");
         });
 

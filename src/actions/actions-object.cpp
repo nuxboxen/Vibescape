@@ -15,7 +15,10 @@
 #include "actions-helper.h"
 #include "document-undo.h"
 #include "inkscape-application.h"
+#include "object/sp-ellipse.h"
+#include "object/sp-rect.h"
 #include "object/sp-star.h"
+#include "object/tags.h"
 #include "preferences.h"
 #include "selection.h"
 
@@ -430,6 +433,67 @@ object_flip_vertical(InkscapeApplication *app)
 }
 
 void
+object_rect_reset(InkscapeApplication *app)
+{
+    auto selection = app->get_active_selection();
+    if (!selection || selection->isEmpty()) {
+        show_output("action:object_rect_reset: selection empty!");
+        return;
+    }
+
+    bool has_rects = false;
+    for (auto obj : selection->objects()) {
+        if (auto rect = cast<SPRect>(obj)) {
+            has_rects = true;
+            rect->reset();
+        }
+    }
+
+    if (!has_rects) {
+        show_output("action:objects_rect_reset: no SPRect in selection!");
+        return;
+    }
+
+    Inkscape::DocumentUndo::done(app->get_active_document(), RC_("Undo", "Make corners sharp"), INKSCAPE_ICON("rectangle-make-corners-sharp"));
+}
+
+void
+object_ellipse_reset(InkscapeApplication *app)
+{
+    auto selection = app->get_active_selection();
+    if (!selection || selection->isEmpty()) {
+        show_output("action:object_ellipse_reset: selection empty!");
+        return;
+    }
+
+    bool has_ellipses = false;
+    for (auto obj : selection->objects()) {
+        if (auto ellipse = cast<SPGenericEllipse>(obj)) {
+            has_ellipses = true;
+            ellipse->reset();
+        }
+    }
+
+    if (!has_ellipses) {
+        show_output("action:objects_ellipse_reset: no SPGenericEllipse in selection!");
+        return;
+    }
+
+    Inkscape::DocumentUndo::done(app->get_active_document(), RC_("Undo", "Change ellipse type"), INKSCAPE_ICON("draw-ellipse-whole"));
+}
+
+void
+object_star_reset(InkscapeApplication *app)
+{
+    auto selection = app->get_active_selection();
+    if (!selection || selection->isEmpty()) {
+        show_output("action:object_star_reset: selection empty!");
+        return;
+    }
+
+}
+
+void
 object_star_turn_upright(InkscapeApplication *app)
 {
     auto selection = app->get_active_selection();
@@ -537,6 +601,9 @@ std::vector<std::vector<Glib::ustring>> raw_data_object =
     {"app.object-rotate-90-ccw",      N_("Object Rotate 90 CCW"),    SECTION, N_("Rotate selection 90° counter-clockwise")},
     {"app.object-flip-horizontal",    N_("Object Flip Horizontal"),  SECTION, N_("Flip selected objects horizontally")},
     {"app.object-flip-vertical",      N_("Object Flip Vertical"),    SECTION, N_("Flip selected objects vertically")},
+    {"app.object-rect-reset",         N_("Object Rectangle Reset"),  SECTION, N_("Reset rectangle adjustment parameters")},
+    {"app.object-ellipse-reset",      N_("Object Ellipse Reset"),    SECTION, N_("Reset ellipse adjustment parameters")},
+    {"app.object-star-reset",         N_("Object Star Reset"),       SECTION, N_("Reset star/polygon adjustment parameters")},
     {"app.object-star-turn-upright",  N_("Object Star Turn Upright"), SECTION, N_("Turn stars and polygons upright")}
     // clang-format on
 };
@@ -588,6 +655,9 @@ add_actions_object(InkscapeApplication* app)
     gapp->add_action(                "object-rotate-90-ccw",            sigc::bind(sigc::ptr_fun(&object_rotate_90_ccw),          app));
     gapp->add_action(                "object-flip-horizontal",          sigc::bind(sigc::ptr_fun(&object_flip_horizontal),        app));
     gapp->add_action(                "object-flip-vertical",            sigc::bind(sigc::ptr_fun(&object_flip_vertical),          app));
+    gapp->add_action(                "object-rect-reset",               sigc::bind(sigc::ptr_fun(&object_rect_reset),             app));
+    gapp->add_action(                "object-ellipse-reset",            sigc::bind(sigc::ptr_fun(&object_ellipse_reset),          app));
+    gapp->add_action(                "object-star-reset",               sigc::bind(sigc::ptr_fun(&object_star_reset),             app));
     gapp->add_action(                "object-star-turn-upright",        sigc::bind(sigc::ptr_fun(&object_star_turn_upright),      app));
     // clang-format on
 

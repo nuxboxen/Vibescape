@@ -329,8 +329,13 @@ void ArcToolbar::_typeChanged(int type)
 
 void ArcToolbar::_setDefaults()
 {
-    _start_item.get_adjustment()->set_value(0.0);
-    _end_item.get_adjustment()->set_value(0.0);
+    activate_action("app.object-ellipse-reset");
+    // TODO revisit when spinbuttons can handle mixed modes.
+    // The following means that the radii gets reset twice, which is not ideal.
+    if (!_single) {
+        _start_item.get_adjustment()->set_value(0.0);
+        _end_item.get_adjustment()->set_value(0.0);
+    }
     onDefocus();
 }
 
