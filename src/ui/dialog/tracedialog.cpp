@@ -16,21 +16,33 @@
 
 #include "tracedialog.h"
 
+#include <gtkmm/checkbutton.h>
 #include <gtkmm/comboboxtext.h>
 #include <gtkmm/dropdown.h>
 #include <gtkmm/eventcontrollerfocus.h>
+#include <gtkmm/flowbox.h>
 #include <gtkmm/frame.h>
+#include <gtkmm/gestureclick.h>
 #include <gtkmm/grid.h>
 #include <gtkmm/picture.h>
-#include <gtkmm/checkbutton.h>
 #include <gtkmm/progressbar.h>
+#include <gtkmm/snapshot.h>
+#include <gtkmm/spinbutton.h>
 #include <gtkmm/stack.h>
 
+#include "colors/color.h"
 #include "desktop.h"
+#include "display/cairo-utils.h"
 #include "preferences.h"
+#include "object/sp-image.h"
+#include "selection.h"
+#include "ui/tools/dropper-tool.h"
+#include "ui/tools/tool-base.h"
 #include "trace/autotrace/inkscape-autotrace.h"
 #include "trace/depixelize/inkscape-depixelize.h"
+#include "trace/imagemap-gdk.h"
 #include "trace/potrace/inkscape-potrace.h"
+#include "trace/quantize.h"
 #include "ui/builder-utils.h"
 #include "ui/util.h"
 #include "ui/widget/generic/bin.h"
@@ -58,6 +70,57 @@ enum class EngineType
     Potrace,
     Autotrace,
     Depixelize
+};
+
+// CBT_MS index 1 = "Colors" mode
+bool isCustomPaletteMode(int ms_selection)
+{
+    return ms_selection == 1;
+}
+
+/// A simple colored rectangle widget using GtkSnapshot (no Cairo).
+class PaletteSwatchWidget : public Gtk::Widget
+{
+public:
+    PaletteSwatchWidget()
+    {
+        set_size_request(24, 24);
+    }
+
+    void set_color(Gdk::RGBA const &c) { color = c; queue_draw(); }
+    Gdk::RGBA get_color() const { return color; }
+
+protected:
+    void snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot) override
+    {
+        int w = get_width();
+        int h = get_height();
+        if (w <= 0 || h <= 0) return;
+
+        // Fill with the swatch color.
+        auto fill = GdkRGBA{
+            static_cast<float>(color.get_red()),
+            static_cast<float>(color.get_green()),
+            static_cast<float>(color.get_blue()),
+            1.0f
+        };
+        auto rect = GRAPHENE_RECT_INIT(0, 0, static_cast<float>(w), static_cast<float>(h));
+        gtk_snapshot_append_color(snapshot->gobj(), &fill, &rect);
+
+        // Draw a 1px border.
+        auto border_color = GdkRGBA{0.3f, 0.3f, 0.3f, 1.0f};
+        auto top    = GRAPHENE_RECT_INIT(0, 0, static_cast<float>(w), 1);
+        auto bottom = GRAPHENE_RECT_INIT(0, static_cast<float>(h - 1), static_cast<float>(w), 1);
+        auto left   = GRAPHENE_RECT_INIT(0, 0, 1, static_cast<float>(h));
+        auto right  = GRAPHENE_RECT_INIT(static_cast<float>(w - 1), 0, 1, static_cast<float>(h));
+        gtk_snapshot_append_color(snapshot->gobj(), &border_color, &top);
+        gtk_snapshot_append_color(snapshot->gobj(), &border_color, &bottom);
+        gtk_snapshot_append_color(snapshot->gobj(), &border_color, &left);
+        gtk_snapshot_append_color(snapshot->gobj(), &border_color, &right);
+    }
+
+private:
+    Gdk::RGBA color;
 };
 
 struct TraceData
@@ -116,6 +179,22 @@ private:
     Gtk::Stack &stack;
     Gtk::ProgressBar &progressbar;
     Gtk::Box &boxchild1, &boxchild2;
+    // Palette editor widgets
+    Gtk::Box &palette_box;
+    Gtk::FlowBox &palette_flowbox;
+    Gtk::Button &B_palette_add, &B_palette_remove, &B_palette_extract;
+    Gtk::SpinButton &palette_extract_spin;
+    Glib::RefPtr<Gtk::Adjustment> palette_extract_count;
+    std::vector<PaletteSwatchWidget*> palette_swatches;
+    sigc::scoped_connection _dropper_connection;
+
+    void addPaletteColor(Gdk::RGBA const &color);
+    void removeLastPaletteColor();
+    void extractPaletteFromImage();
+    void updatePaletteVisibility();
+    void pickColorForSwatch(int index);
+    std::vector<Trace::RGB> getCustomPalette() const;
+
     sigc::scoped_connection _page_switched;
 };
 
@@ -154,11 +233,19 @@ TraceData TraceDialogImpl::getTraceData() const
     }
 
     auto setup_potrace = [&, this] {
+        auto palette = getCustomPalette();
+        int nrColors = palette.empty() ? (int)MS_scans->get_value() : (int)palette.size();
+
         auto eng = std::make_unique<Trace::Potrace::PotraceTracingEngine>(
             trace_type, CB_invert.get_active(), (int)SS_CQ_T->get_value(), SS_BC_T->get_value(),
             0, // Brightness floor
-            SS_ED_T->get_value(), (int)MS_scans->get_value(), CB_MS_stack.get_active(), CB_MS_smooth.get_active(),
+            SS_ED_T->get_value(), nrColors, CB_MS_stack.get_active(), CB_MS_smooth.get_active(),
             CB_MS_rb.get_active());
+
+        // Set custom palette if in Colors mode with user-defined colors.
+        if (current_page == Page::MultiScan && isCustomPaletteMode(CBT_MS.get_selected()) && !palette.empty()) {
+            eng->setCustomPalette(std::move(palette));
+        }
 
         auto &cb_optimize = current_page == Page::SingleScan ? CB_optimize : CB_optimize1;
         eng->setOptiCurve(cb_optimize.get_active());
@@ -364,6 +451,14 @@ TraceDialogImpl::TraceDialogImpl()
   , progressbar    (get_widget<Gtk::ProgressBar> (builder,         "progressbar"))
   , boxchild1      (get_widget<Gtk::Box>         (builder,           "boxchild1"))
   , boxchild2      (get_widget<Gtk::Box>         (builder,           "boxchild2"))
+    // Palette editor
+  , palette_box    (get_widget<Gtk::Box>         (builder,        "palette_box"))
+  , palette_flowbox(get_widget<Gtk::FlowBox>     (builder,    "palette_flowbox"))
+  , B_palette_add  (get_widget<Gtk::Button>      (builder,     "B_palette_add"))
+  , B_palette_remove(get_widget<Gtk::Button>     (builder,  "B_palette_remove"))
+  , B_palette_extract(get_widget<Gtk::Button>    (builder, "B_palette_extract"))
+  , palette_extract_spin(get_widget<Gtk::SpinButton>(builder, "palette_extract_spin"))
+  , palette_extract_count(get_object<Gtk::Adjustment>(builder, "palette_extract_count"))
 {
     builder->get_objects(); // instantiate all InkSpinButton instances
     append(bin);
@@ -401,6 +496,18 @@ TraceDialogImpl::TraceDialogImpl()
 
     CBT_SS.property_selected().signal_changed().connect([this] { adjustParamsVisible(); });
     adjustParamsVisible();
+
+    // Palette editor signals
+    B_palette_add.signal_clicked().connect([this] {
+        Gdk::RGBA white;
+        white.set_red(1.0); white.set_green(1.0); white.set_blue(1.0); white.set_alpha(1.0);
+        addPaletteColor(white);
+        schedulePreviewUpdate(200, true);
+    });
+    B_palette_remove.signal_clicked().connect([this] { removeLastPaletteColor(); });
+    B_palette_extract.signal_clicked().connect([this] { extractPaletteFromImage(); });
+    CBT_MS.property_selected().signal_changed().connect([this] { updatePaletteVisibility(); });
+    updatePaletteVisibility();
 
     // watch for changes, but only in params that can impact preview bitmap
     for (auto adj : {SS_BC_T, SS_ED_T, SS_CQ_T, SS_AT_FI_T, SS_AT_ET_T, /* optimize, smooth, speckles,*/ MS_scans, PA_curves, PA_islands, PA_sparse1, PA_sparse2 }) {
@@ -479,6 +586,134 @@ void TraceDialogImpl::updatePreview(bool force)
     if (!preview_future) {
         // On instant failure:
         previewArea.set_paintable({});
+    }
+}
+
+void TraceDialogImpl::addPaletteColor(Gdk::RGBA const &color)
+{
+    int index = palette_swatches.size();
+
+    auto swatch = Gtk::make_managed<PaletteSwatchWidget>();
+    swatch->set_color(color);
+
+    // Left-click: pick color from canvas with eyedropper.
+    auto click = Gtk::GestureClick::create();
+    click->set_button(GDK_BUTTON_PRIMARY);
+    click->signal_released().connect([this, index] (int, double, double) {
+        pickColorForSwatch(index);
+    });
+    swatch->add_controller(click);
+
+    swatch->set_tooltip_text("Click to pick a color from the canvas");
+
+    palette_flowbox.append(*swatch);
+    palette_swatches.push_back(swatch);
+}
+
+void TraceDialogImpl::removeLastPaletteColor()
+{
+    if (palette_swatches.empty()) return;
+    auto *swatch = palette_swatches.back();
+    palette_swatches.pop_back();
+    palette_flowbox.remove(*swatch);
+    schedulePreviewUpdate(500);
+}
+
+std::vector<Trace::RGB> TraceDialogImpl::getCustomPalette() const
+{
+    std::vector<Trace::RGB> palette;
+    palette.reserve(palette_swatches.size());
+    for (auto *swatch : palette_swatches) {
+        auto c = swatch->get_color();
+        palette.push_back({
+            static_cast<unsigned char>(c.get_red()   * 255),
+            static_cast<unsigned char>(c.get_green() * 255),
+            static_cast<unsigned char>(c.get_blue()  * 255)
+        });
+    }
+    return palette;
+}
+
+void TraceDialogImpl::pickColorForSwatch(int index)
+{
+    if (index < 0 || index >= (int)palette_swatches.size()) return;
+
+    auto desktop = getDesktop();
+    if (!desktop) return;
+
+    // Disconnect any previous pick-in-progress.
+    _dropper_connection.disconnect();
+
+    // Activate the dropper tool in one-time pick mode.
+    Tools::sp_toggle_dropper(desktop);
+    if (auto tool = dynamic_cast<Tools::DropperTool*>(desktop->getTool())) {
+        _dropper_connection = tool->onetimepick_signal.connect([this, index] (Colors::Color const &picked) {
+            if (index >= (int)palette_swatches.size()) return;
+            uint32_t rgba = picked.toRGBA();
+            Gdk::RGBA gdk_color;
+            gdk_color.set_red(  ((rgba >> 24) & 0xFF) / 255.0);
+            gdk_color.set_green(((rgba >> 16) & 0xFF) / 255.0);
+            gdk_color.set_blue( ((rgba >>  8) & 0xFF) / 255.0);
+            gdk_color.set_alpha(1.0);
+            palette_swatches[index]->set_color(gdk_color);
+            schedulePreviewUpdate(200, true);
+        });
+    }
+}
+
+void TraceDialogImpl::extractPaletteFromImage()
+{
+    auto desktop = getDesktop();
+    if (!desktop) return;
+
+    auto selection = desktop->getSelection();
+    if (!selection) return;
+
+    auto item = selection->singleItem();
+    auto img = cast<SPImage>(item);
+    if (!img || !img->pixbuf) return;
+
+    // Make a non-const copy to allow pixel format conversion (Cairo -> GDK).
+    auto copy = Inkscape::Pixbuf(*img->pixbuf);
+    auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
+    auto rgbmap = Trace::gdkPixbufToRgbMap(gdkpixbuf);
+
+    int ncolors = static_cast<int>(palette_extract_count->get_value());
+    auto imap = Trace::rgbMapQuantize(rgbmap, ncolors);
+
+    // Clear existing palette.
+    while (!palette_swatches.empty()) {
+        removeLastPaletteColor();
+    }
+
+    // Add extracted colors.
+    for (int i = 0; i < imap.nrColors; i++) {
+        auto rgb = imap.clut[i];
+        Gdk::RGBA color;
+        color.set_red(rgb.r / 255.0);
+        color.set_green(rgb.g / 255.0);
+        color.set_blue(rgb.b / 255.0);
+        color.set_alpha(1.0);
+        addPaletteColor(color);
+    }
+
+    schedulePreviewUpdate(200, true);
+}
+
+void TraceDialogImpl::updatePaletteVisibility()
+{
+    bool custom = isCustomPaletteMode(CBT_MS.get_selected());
+    palette_box.set_visible(custom);
+
+    // Hide the scans row (row 2 widgets) when in custom palette mode.
+    // The scans row has widgets at columns 0-3, row 2 in the grid.
+    auto grid = dynamic_cast<Gtk::Grid*>(palette_box.get_parent());
+    if (grid) {
+        for (int col = 0; col < 4; col++) {
+            if (auto widget = grid->get_child_at(col, 2)) {
+                widget->set_visible(!custom);
+            }
+        }
     }
 }
 

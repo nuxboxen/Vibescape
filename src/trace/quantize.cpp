@@ -9,9 +9,11 @@
  *
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
-#include <memory>
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
+#include <memory>
+#include <vector>
 #include <glib.h>
 
 #include "pool.h"
@@ -544,6 +546,41 @@ IndexedMap rgbMapQuantize(RgbMap const &rgbmap, int ncolor)
         for (int x = 0; x < rgbmap.width; x++) {
             auto rgb = rgbmap.getPixel(x, y);
             int index = findRGB(rgbs.get(), ncolor, rgb);
+            imap.setPixel(x, y, index);
+        }
+    }
+
+    return imap;
+}
+
+/**
+ * Map an RGB image to a user-supplied palette of colors.
+ * Each pixel is assigned to the nearest color in the palette.
+ */
+IndexedMap rgbMapWithPalette(RgbMap const &rgbmap, std::vector<RGB> const &palette)
+{
+    int ncolor = palette.size();
+    assert(ncolor > 0);
+
+    auto imap = IndexedMap(rgbmap.width, rgbmap.height);
+
+    // Sort palette by brightness for consistent stacking order.
+    auto sorted = palette;
+    std::sort(sorted.begin(), sorted.end(), [] (auto &a, auto &b) {
+        return (a.r + a.g + a.b) < (b.r + b.g + b.b);
+    });
+
+    // Fill in the color lookup table.
+    imap.nrColors = ncolor;
+    for (int i = 0; i < ncolor; i++) {
+        imap.clut[i] = sorted[i];
+    }
+
+    // Map each pixel to the nearest palette color.
+    for (int y = 0; y < rgbmap.height; y++) {
+        for (int x = 0; x < rgbmap.width; x++) {
+            auto rgb = rgbmap.getPixel(x, y);
+            int index = findRGB(sorted.data(), ncolor, rgb);
             imap.setPixel(x, y, index);
         }
     }
