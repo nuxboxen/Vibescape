@@ -11,8 +11,10 @@
  */
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdio>
 #include <memory>
+#include <numeric>
 #include <vector>
 #include <glib.h>
 
@@ -509,6 +511,182 @@ int findRGB(RGB const *rgbs, int ncolor, RGB rgb)
     return index;
 }
 
+// ---- Oklab perceptual color space ----
+
+struct OklabColor { float L; float a; float b; };
+
+/**
+ * Convert sRGB (0-255) to Oklab.
+ * sRGB -> linear sRGB -> Oklab, following Björn Ottosson's formulation.
+ */
+OklabColor rgbToOklab(RGB c)
+{
+    // sRGB to linear sRGB
+    auto linearize = [] (unsigned char v) -> float {
+        float x = v / 255.0f;
+        return x <= 0.04045f ? x / 12.92f : std::pow((x + 0.055f) / 1.055f, 2.4f);
+    };
+    float r = linearize(c.r);
+    float g = linearize(c.g);
+    float b = linearize(c.b);
+
+    // Linear sRGB to LMS
+    float l = 0.4122214708f * r + 0.5363325363f * g + 0.0514459929f * b;
+    float m = 0.2119034982f * r + 0.6806995451f * g + 0.1073969566f * b;
+    float s = 0.0883024619f * r + 0.2817188376f * g + 0.6299787005f * b;
+
+    // LMS to Oklab
+    float l_ = std::cbrt(l);
+    float m_ = std::cbrt(m);
+    float s_ = std::cbrt(s);
+
+    return {
+        0.2104542553f * l_ + 0.7936177850f * m_ - 0.0040720468f * s_,
+        1.9779984951f * l_ - 2.4285922050f * m_ + 0.4505937099f * s_,
+        0.0259040371f * l_ + 0.7827717662f * m_ - 0.8086757660f * s_
+    };
+}
+
+/**
+ * Convert Oklab back to sRGB (0-255), clamping to valid range.
+ */
+RGB oklabToRgb(OklabColor c)
+{
+    // Oklab to LMS
+    float l_ = c.L + 0.3963377774f * c.a + 0.2158037573f * c.b;
+    float m_ = c.L - 0.1055613458f * c.a - 0.0638541728f * c.b;
+    float s_ = c.L - 0.0894841775f * c.a - 1.2914855480f * c.b;
+
+    float l = l_ * l_ * l_;
+    float m = m_ * m_ * m_;
+    float s = s_ * s_ * s_;
+
+    // LMS to linear sRGB
+    float r = +4.0767416621f * l - 3.3077115913f * m + 0.2309699292f * s;
+    float g = -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s;
+    float b = -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s;
+
+    // Linear sRGB to sRGB
+    auto delinearize = [] (float x) -> unsigned char {
+        x = std::max(0.0f, std::min(1.0f, x));
+        float v = x <= 0.0031308f ? 12.92f * x : 1.055f * std::pow(x, 1.0f / 2.4f) - 0.055f;
+        return static_cast<unsigned char>(std::round(std::max(0.0f, std::min(255.0f, v * 255.0f))));
+    };
+
+    return { delinearize(r), delinearize(g), delinearize(b) };
+}
+
+/**
+ * Squared distance in Oklab space (perceptual).
+ */
+float distOklab(OklabColor a, OklabColor b)
+{
+    float dL = a.L - b.L;
+    float da = a.a - b.a;
+    float db = a.b - b.b;
+    return dL * dL + da * da + db * db;
+}
+
+/**
+ * Find the index of the perceptually closest color in an Oklab palette.
+ */
+int findOklab(OklabColor const *palette, int ncolor, OklabColor c)
+{
+    int best = 0;
+    float bestDist = distOklab(palette[0], c);
+    for (int k = 1; k < ncolor; k++) {
+        float d = distOklab(palette[k], c);
+        if (d < bestDist) { bestDist = d; best = k; }
+    }
+    return best;
+}
+
+// ---- Median cut in Oklab for k-means initialization ----
+
+struct OklabBox {
+    std::vector<int> indices; // indices into the sample array
+};
+
+/**
+ * Median-cut initialization: split the samples into ncolor boxes,
+ * return the centroid of each box as initial k-means centroids.
+ */
+std::vector<OklabColor> medianCutInit(std::vector<OklabColor> const &samples, int ncolor)
+{
+    std::vector<OklabBox> boxes(1);
+    boxes[0].indices.resize(samples.size());
+    std::iota(boxes[0].indices.begin(), boxes[0].indices.end(), 0);
+
+    while ((int)boxes.size() < ncolor) {
+        // Find the box with the largest range on any axis.
+        int splitBox = -1;
+        float maxRange = -1;
+        int splitAxis = 0;
+
+        for (int i = 0; i < (int)boxes.size(); i++) {
+            if (boxes[i].indices.size() < 2) continue;
+
+            float minL = 1e9, maxL = -1e9;
+            float mina = 1e9, maxa = -1e9;
+            float minb = 1e9, maxb = -1e9;
+            for (int idx : boxes[i].indices) {
+                auto &s = samples[idx];
+                minL = std::min(minL, s.L); maxL = std::max(maxL, s.L);
+                mina = std::min(mina, s.a); maxa = std::max(maxa, s.a);
+                minb = std::min(minb, s.b); maxb = std::max(maxb, s.b);
+            }
+            float rangeL = maxL - minL;
+            float rangea = maxa - mina;
+            float rangeb = maxb - minb;
+            float range = std::max({rangeL, rangea, rangeb});
+            int axis = (range == rangeL) ? 0 : (range == rangea) ? 1 : 2;
+
+            if (range > maxRange) {
+                maxRange = range;
+                splitBox = i;
+                splitAxis = axis;
+            }
+        }
+
+        if (splitBox < 0) break; // can't split further
+
+        // Sort the box on the split axis and split at median.
+        auto &box = boxes[splitBox];
+        std::sort(box.indices.begin(), box.indices.end(), [&](int a, int b) {
+            auto &sa = samples[a];
+            auto &sb = samples[b];
+            switch (splitAxis) {
+                case 0: return sa.L < sb.L;
+                case 1: return sa.a < sb.a;
+                default: return sa.b < sb.b;
+            }
+        });
+
+        int mid = box.indices.size() / 2;
+        OklabBox newBox;
+        newBox.indices.assign(box.indices.begin() + mid, box.indices.end());
+        box.indices.resize(mid);
+        boxes.push_back(std::move(newBox));
+    }
+
+    // Compute centroids.
+    std::vector<OklabColor> centroids;
+    centroids.reserve(boxes.size());
+    for (auto &box : boxes) {
+        if (box.indices.empty()) continue;
+        float sumL = 0, suma = 0, sumb = 0;
+        for (int idx : box.indices) {
+            sumL += samples[idx].L;
+            suma += samples[idx].a;
+            sumb += samples[idx].b;
+        }
+        float n = box.indices.size();
+        centroids.push_back({ sumL / n, suma / n, sumb / n });
+    }
+
+    return centroids;
+}
+
 } // namespace
 
 /**
@@ -555,7 +733,7 @@ IndexedMap rgbMapQuantize(RgbMap const &rgbmap, int ncolor)
 
 /**
  * Map an RGB image to a user-supplied palette of colors.
- * Each pixel is assigned to the nearest color in the palette.
+ * Each pixel is assigned to the perceptually nearest color (Oklab distance).
  */
 IndexedMap rgbMapWithPalette(RgbMap const &rgbmap, std::vector<RGB> const &palette)
 {
@@ -564,11 +742,17 @@ IndexedMap rgbMapWithPalette(RgbMap const &rgbmap, std::vector<RGB> const &palet
 
     auto imap = IndexedMap(rgbmap.width, rgbmap.height);
 
-    // Sort palette by brightness for consistent stacking order.
+    // Sort palette by perceptual lightness (Oklab L) for consistent stacking.
     auto sorted = palette;
     std::sort(sorted.begin(), sorted.end(), [] (auto &a, auto &b) {
-        return (a.r + a.g + a.b) < (b.r + b.g + b.b);
+        return rgbToOklab(a).L < rgbToOklab(b).L;
     });
+
+    // Precompute Oklab values for the palette.
+    std::vector<OklabColor> palOklab(ncolor);
+    for (int i = 0; i < ncolor; i++) {
+        palOklab[i] = rgbToOklab(sorted[i]);
+    }
 
     // Fill in the color lookup table.
     imap.nrColors = ncolor;
@@ -576,11 +760,124 @@ IndexedMap rgbMapWithPalette(RgbMap const &rgbmap, std::vector<RGB> const &palet
         imap.clut[i] = sorted[i];
     }
 
-    // Map each pixel to the nearest palette color.
+    // Map each pixel to the perceptually nearest palette color.
     for (int y = 0; y < rgbmap.height; y++) {
         for (int x = 0; x < rgbmap.width; x++) {
             auto rgb = rgbmap.getPixel(x, y);
-            int index = findRGB(sorted.data(), ncolor, rgb);
+            auto lab = rgbToOklab(rgb);
+            int index = findOklab(palOklab.data(), ncolor, lab);
+            imap.setPixel(x, y, index);
+        }
+    }
+
+    return imap;
+}
+
+/**
+ * Quantize an RGB image using k-means in Oklab perceptual color space.
+ *
+ * Steps:
+ * 1. Downsample the image to a manageable number of pixel samples.
+ * 2. Convert samples to Oklab.
+ * 3. Initialize centroids via median cut in Oklab.
+ * 4. Run k-means (max 15 iterations, early termination).
+ * 5. Assign all pixels to the nearest centroid using Oklab distance.
+ */
+IndexedMap rgbMapQuantizePerceptual(RgbMap const &rgbmap, int ncolor)
+{
+    assert(ncolor > 0);
+
+    int const totalPixels = rgbmap.width * rgbmap.height;
+
+    // Step 1: Downsample - collect up to ~10000 pixel samples.
+    int const maxSamples = 10000;
+    int step = std::max(1, totalPixels / maxSamples);
+
+    std::vector<OklabColor> samples;
+    samples.reserve(std::min(totalPixels, maxSamples));
+    for (int i = 0; i < totalPixels; i += step) {
+        int x = i % rgbmap.width;
+        int y = i / rgbmap.width;
+        samples.push_back(rgbToOklab(rgbmap.getPixel(x, y)));
+    }
+
+    int const nsamples = samples.size();
+
+    // Step 2: Initialize centroids via median cut in Oklab.
+    auto centroids = medianCutInit(samples, ncolor);
+    int const actualColors = centroids.size();
+
+    // Step 3: K-means iteration.
+    std::vector<int> assignments(nsamples, 0);
+    int const maxIter = 15;
+    float const convergenceThreshold = 1e-6f;
+
+    for (int iter = 0; iter < maxIter; iter++) {
+        // Assign each sample to nearest centroid.
+        for (int i = 0; i < nsamples; i++) {
+            assignments[i] = findOklab(centroids.data(), actualColors, samples[i]);
+        }
+
+        // Recompute centroids.
+        std::vector<float> sumL(actualColors, 0), suma(actualColors, 0), sumb(actualColors, 0);
+        std::vector<int> counts(actualColors, 0);
+
+        for (int i = 0; i < nsamples; i++) {
+            int c = assignments[i];
+            sumL[c] += samples[i].L;
+            suma[c] += samples[i].a;
+            sumb[c] += samples[i].b;
+            counts[c]++;
+        }
+
+        float maxShift = 0;
+        for (int c = 0; c < actualColors; c++) {
+            if (counts[c] == 0) continue;
+            OklabColor newCentroid = {
+                sumL[c] / counts[c],
+                suma[c] / counts[c],
+                sumb[c] / counts[c]
+            };
+            maxShift = std::max(maxShift, distOklab(centroids[c], newCentroid));
+            centroids[c] = newCentroid;
+        }
+
+        if (maxShift < convergenceThreshold) break;
+    }
+
+    // Step 4: Convert centroids back to RGB.
+    std::vector<RGB> rgbPalette(actualColors);
+    for (int i = 0; i < actualColors; i++) {
+        rgbPalette[i] = oklabToRgb(centroids[i]);
+    }
+
+    // Sort by perceptual lightness for stacking order.
+    // Keep centroids in sync for the final pixel assignment.
+    std::vector<int> order(actualColors);
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&](int a, int b) {
+        return centroids[a].L < centroids[b].L;
+    });
+
+    std::vector<OklabColor> sortedCentroids(actualColors);
+    std::vector<RGB> sortedRgb(actualColors);
+    for (int i = 0; i < actualColors; i++) {
+        sortedCentroids[i] = centroids[order[i]];
+        sortedRgb[i] = rgbPalette[order[i]];
+    }
+
+    // Step 5: Build the IndexedMap.
+    auto imap = IndexedMap(rgbmap.width, rgbmap.height);
+    imap.nrColors = actualColors;
+    for (int i = 0; i < actualColors; i++) {
+        imap.clut[i] = sortedRgb[i];
+    }
+
+    // Assign every pixel to nearest centroid in Oklab space.
+    for (int y = 0; y < rgbmap.height; y++) {
+        for (int x = 0; x < rgbmap.width; x++) {
+            auto lab = rgbToOklab(rgbmap.getPixel(x, y));
+            int index = findOklab(sortedCentroids.data(), actualColors, lab);
             imap.setPixel(x, y, index);
         }
     }

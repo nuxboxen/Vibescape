@@ -679,7 +679,7 @@ void TraceDialogImpl::extractPaletteFromImage()
     auto rgbmap = Trace::gdkPixbufToRgbMap(gdkpixbuf);
 
     int ncolors = static_cast<int>(palette_extract_count->get_value());
-    auto imap = Trace::rgbMapQuantize(rgbmap, ncolors);
+    auto imap = Trace::rgbMapQuantizePerceptual(rgbmap, ncolors);
 
     // Clear existing palette.
     while (!palette_swatches.empty()) {

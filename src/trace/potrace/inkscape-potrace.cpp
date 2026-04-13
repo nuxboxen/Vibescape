@@ -205,9 +205,16 @@ IndexedMap PotraceTracingEngine::filterIndexed(Glib::RefPtr<Gdk::Pixbuf> const &
         map = rgbMapGaussian(map);
     }
 
-    auto imap = customPalette.empty()
-              ? rgbMapQuantize(map, multiScanNrColors)
-              : rgbMapWithPalette(map, customPalette);
+    IndexedMap imap = [&] {
+        if (!customPalette.empty()) {
+            return rgbMapWithPalette(map, customPalette);
+        } else if (traceType == TraceType::QUANT_COLOR) {
+            // Use perceptual quantization for color mode.
+            return rgbMapQuantizePerceptual(map, multiScanNrColors);
+        } else {
+            return rgbMapQuantize(map, multiScanNrColors);
+        }
+    }();
 
     auto tomono = [] (RGB c) -> RGB {
         unsigned char s = ((int)c.r + (int)c.g + (int)c.b) / 3;
