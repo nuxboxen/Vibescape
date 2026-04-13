@@ -16,21 +16,40 @@
 
 #include "tracedialog.h"
 
+#include <map>
+#include <string>
+#include <gtkmm/box.h>
+#include <gtkmm/button.h>
+#include <gtkmm/checkbutton.h>
 #include <gtkmm/comboboxtext.h>
 #include <gtkmm/dropdown.h>
 #include <gtkmm/eventcontrollerfocus.h>
+#include <gtkmm/eventcontrollermotion.h>
 #include <gtkmm/frame.h>
+#include <gtkmm/gestureclick.h>
 #include <gtkmm/grid.h>
+#include <gtkmm/icontheme.h>
+#include <gtkmm/image.h>
 #include <gtkmm/picture.h>
-#include <gtkmm/checkbutton.h>
 #include <gtkmm/progressbar.h>
+#include <gtkmm/snapshot.h>
 #include <gtkmm/stack.h>
 
+#include "colors/color.h"
+#include "colors/color-set.h"
 #include "desktop.h"
+#include "display/cairo-utils.h"
 #include "preferences.h"
+#include "object/sp-image.h"
+#include "selection.h"
+#include "ui/tools/dropper-tool.h"
+#include "ui/tools/tool-base.h"
 #include "trace/autotrace/inkscape-autotrace.h"
 #include "trace/depixelize/inkscape-depixelize.h"
+#include "trace/imagemap-gdk.h"
 #include "trace/potrace/inkscape-potrace.h"
+#include "trace/quantize.h"
+#include "ui/widget/color-picker-panel.h"
 #include "ui/builder-utils.h"
 #include "ui/util.h"
 #include "ui/widget/generic/bin.h"
@@ -58,6 +77,168 @@ enum class EngineType
     Potrace,
     Autotrace,
     Depixelize
+};
+
+// CBT_MS index 1 = "Colors" mode
+bool isCustomPaletteMode(int ms_selection)
+{
+    return ms_selection == 1;
+}
+
+/// Colored rectangle widget with an eyedropper icon overlay on hover.
+class ColorSwatchRect : public Gtk::Widget
+{
+public:
+    ColorSwatchRect()
+    {
+        set_size_request(32, 24);
+
+        auto motion = Gtk::EventControllerMotion::create();
+        motion->signal_enter().connect([this] (double, double) { hovered = true; queue_draw(); });
+        motion->signal_leave().connect([this] { hovered = false; queue_draw(); });
+        add_controller(motion);
+    }
+
+    void set_color(Gdk::RGBA const &c) { color = c; queue_draw(); }
+    Gdk::RGBA get_color() const { return color; }
+
+protected:
+    void snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot) override
+    {
+        int w = get_width();
+        int h = get_height();
+        if (w <= 0 || h <= 0) return;
+
+        auto fill = GdkRGBA{
+            static_cast<float>(color.get_red()),
+            static_cast<float>(color.get_green()),
+            static_cast<float>(color.get_blue()),
+            1.0f
+        };
+        auto rect = GRAPHENE_RECT_INIT(0, 0, static_cast<float>(w), static_cast<float>(h));
+        gtk_snapshot_append_color(snapshot->gobj(), &fill, &rect);
+
+        // 1px border.
+        auto bc = GdkRGBA{0.3f, 0.3f, 0.3f, 1.0f};
+        auto top    = GRAPHENE_RECT_INIT(0, 0, (float)w, 1);
+        auto bottom = GRAPHENE_RECT_INIT(0, (float)(h-1), (float)w, 1);
+        auto left   = GRAPHENE_RECT_INIT(0, 0, 1, (float)h);
+        auto right  = GRAPHENE_RECT_INIT((float)(w-1), 0, 1, (float)h);
+        gtk_snapshot_append_color(snapshot->gobj(), &bc, &top);
+        gtk_snapshot_append_color(snapshot->gobj(), &bc, &bottom);
+        gtk_snapshot_append_color(snapshot->gobj(), &bc, &left);
+        gtk_snapshot_append_color(snapshot->gobj(), &bc, &right);
+
+        // Eyedropper icon on hover.
+        if (hovered) {
+            auto theme = Gtk::IconTheme::get_for_display(get_display());
+            auto icon = theme->lookup_icon("color-picker-symbolic", 16);
+            if (icon) {
+                auto overlay_bg = GdkRGBA{0.0f, 0.0f, 0.0f, 0.4f};
+                gtk_snapshot_append_color(snapshot->gobj(), &overlay_bg, &rect);
+                float ix = (w - 16) / 2.0f;
+                float iy = (h - 16) / 2.0f;
+                auto pt = GRAPHENE_POINT_INIT(ix, iy);
+                gtk_snapshot_save(snapshot->gobj());
+                gtk_snapshot_translate(snapshot->gobj(), &pt);
+                icon->snapshot(snapshot, 16, 16);
+                gtk_snapshot_restore(snapshot->gobj());
+            }
+        }
+    }
+
+private:
+    Gdk::RGBA color;
+    bool hovered = false;
+};
+
+/// A palette row: [color swatch] [#RRGGBB label] [delete button].
+/// Clicking the hex label or swatch opens/closes a shared color picker below.
+class PaletteRowWidget : public Gtk::Box
+{
+public:
+    PaletteRowWidget()
+        : Gtk::Box(Gtk::Orientation::HORIZONTAL, 4)
+    {
+        set_hexpand(true);
+        swatch.set_valign(Gtk::Align::CENTER);
+        hex_label.set_xalign(0);
+        hex_label.set_hexpand(true);
+        hex_label.set_valign(Gtk::Align::CENTER);
+        delete_btn.set_icon_name("edit-delete-symbolic");
+        delete_btn.set_valign(Gtk::Align::CENTER);
+        delete_btn.set_tooltip_text("Remove this color");
+        delete_btn.add_css_class("flat");
+
+        expand_arrow.set_from_icon_name("pan-end-symbolic");
+        expand_arrow.set_valign(Gtk::Align::CENTER);
+
+        append(swatch);
+        append(expand_arrow);
+        append(hex_label);
+        append(delete_btn);
+
+        // Initialize the ColorSet for this row's color.
+        color_set = std::make_shared<Colors::ColorSet>();
+        color_set->signal_changed.connect([this] {
+            if (updating) return;
+            auto opt = color_set->get();
+            if (!opt) return;
+            uint32_t rgba = opt->toRGBA();
+            Gdk::RGBA c;
+            c.set_red(  ((rgba >> 24) & 0xFF) / 255.0);
+            c.set_green(((rgba >> 16) & 0xFF) / 255.0);
+            c.set_blue( ((rgba >>  8) & 0xFF) / 255.0);
+            c.set_alpha(1.0);
+            swatch.set_color(c);
+            update_hex_label();
+            if (on_color_changed) on_color_changed();
+        });
+    }
+
+    void set_color(Gdk::RGBA const &c)
+    {
+        updating = true;
+        swatch.set_color(c);
+        // Push into the ColorSet.
+        color_set->set(Colors::Color(
+            static_cast<uint32_t>(
+                (static_cast<int>(c.get_red()   * 255) << 24) |
+                (static_cast<int>(c.get_green() * 255) << 16) |
+                (static_cast<int>(c.get_blue()  * 255) <<  8) |
+                0xFF
+            )
+        ));
+        update_hex_label();
+        updating = false;
+    }
+
+    Gdk::RGBA get_color() const { return swatch.get_color(); }
+
+    void set_expanded(bool expanded) {
+        expand_arrow.set_from_icon_name(expanded ? "pan-down-symbolic" : "pan-end-symbolic");
+    }
+
+    void update_hex_label()
+    {
+        auto c = swatch.get_color();
+        char buf[8];
+        std::snprintf(buf, sizeof(buf), "#%02X%02X%02X",
+            static_cast<int>(c.get_red()   * 255),
+            static_cast<int>(c.get_green() * 255),
+            static_cast<int>(c.get_blue()  * 255));
+        hex_label.set_label(buf);
+    }
+
+    ColorSwatchRect swatch;
+    Gtk::Image expand_arrow;
+    Gtk::Label hex_label;
+    Gtk::Button delete_btn;
+    std::shared_ptr<Colors::ColorSet> color_set;
+    std::function<void()> on_color_changed;
+    std::function<void()> on_delete;
+    std::function<void()> on_expand;
+    bool updating = false;
 };
 
 struct TraceData
@@ -116,6 +297,33 @@ private:
     Gtk::Stack &stack;
     Gtk::ProgressBar &progressbar;
     Gtk::Box &boxchild1, &boxchild2;
+    // Palette editor widgets
+    Gtk::Box &palette_box;
+    Gtk::Box &palette_list;
+    Gtk::Button &B_palette_add, &B_palette_reset;
+    Gtk::Label &L_palette_count;
+    std::vector<PaletteRowWidget*> palette_rows;
+    sigc::scoped_connection _dropper_connection;
+    // Shared color picker panel (expanded below the active row).
+    std::unique_ptr<UI::Widget::ColorPickerPanel> color_panel;
+    int active_panel_index = -1; // which row has the panel open, or -1
+    void toggleColorPanel(int index);
+
+    void addPaletteColor(Gdk::RGBA const &color);
+    void removePaletteColor(int index);
+    void clearPalette();
+    void extractPaletteFromImage();
+    void updatePaletteVisibility();
+    void updatePaletteCountLabel();
+    void pickColorForSwatch(int index);
+    std::vector<Trace::RGB> getCustomPalette() const;
+
+    // Per-image palette cache: preserves user edits across deselect/reselect cycles.
+    std::map<std::string, std::vector<Trace::RGB>> _palette_cache;
+    std::string _current_image_id;
+    void savePaletteToCache();
+    void restorePaletteFromCache(std::string const &image_id);
+
     sigc::scoped_connection _page_switched;
 };
 
@@ -154,11 +362,19 @@ TraceData TraceDialogImpl::getTraceData() const
     }
 
     auto setup_potrace = [&, this] {
+        auto palette = getCustomPalette();
+        int nrColors = palette.empty() ? (int)MS_scans->get_value() : (int)palette.size();
+
         auto eng = std::make_unique<Trace::Potrace::PotraceTracingEngine>(
             trace_type, CB_invert.get_active(), (int)SS_CQ_T->get_value(), SS_BC_T->get_value(),
             0, // Brightness floor
-            SS_ED_T->get_value(), (int)MS_scans->get_value(), CB_MS_stack.get_active(), CB_MS_smooth.get_active(),
+            SS_ED_T->get_value(), nrColors, CB_MS_stack.get_active(), CB_MS_smooth.get_active(),
             CB_MS_rb.get_active());
+
+        // Set custom palette if in Colors mode with user-defined colors.
+        if (current_page == Page::MultiScan && isCustomPaletteMode(CBT_MS.get_selected()) && !palette.empty()) {
+            eng->setCustomPalette(std::move(palette));
+        }
 
         auto &cb_optimize = current_page == Page::SingleScan ? CB_optimize : CB_optimize1;
         eng->setOptiCurve(cb_optimize.get_active());
@@ -227,6 +443,33 @@ TraceData TraceDialogImpl::getTraceData() const
 
 void TraceDialogImpl::selectionChanged(Inkscape::Selection *selection)
 {
+    if (isCustomPaletteMode(CBT_MS.get_selected())) {
+        // Save current palette for the previous image before switching.
+        savePaletteToCache();
+
+        // Determine the newly selected image's id.
+        std::string new_id;
+        if (selection) {
+            if (auto img = cast<SPImage>(selection->singleItem())) {
+                if (auto id = img->getId()) {
+                    new_id = id;
+                }
+            }
+        }
+        _current_image_id = new_id;
+
+        if (!new_id.empty()) {
+            // Restore cached palette if available, otherwise extract from image.
+            auto it = _palette_cache.find(new_id);
+            if (it != _palette_cache.end()) {
+                restorePaletteFromCache(new_id);
+            } else {
+                extractPaletteFromImage();
+            }
+        } else {
+            clearPalette();
+        }
+    }
     updatePreview();
 }
 
@@ -370,6 +613,12 @@ TraceDialogImpl::TraceDialogImpl()
   , progressbar    (get_widget<Gtk::ProgressBar> (builder,         "progressbar"))
   , boxchild1      (get_widget<Gtk::Box>         (builder,           "boxchild1"))
   , boxchild2      (get_widget<Gtk::Box>         (builder,           "boxchild2"))
+    // Palette editor
+  , palette_box    (get_widget<Gtk::Box>         (builder,        "palette_box"))
+  , palette_list   (get_widget<Gtk::Box>         (builder,     "palette_list"))
+  , B_palette_add  (get_widget<Gtk::Button>      (builder,     "B_palette_add"))
+  , B_palette_reset(get_widget<Gtk::Button>      (builder,  "B_palette_reset"))
+  , L_palette_count(get_widget<Gtk::Label>       (builder, "L_palette_count"))
 {
     builder->get_objects(); // instantiate all InkSpinButton instances
     append(bin);
@@ -407,6 +656,48 @@ TraceDialogImpl::TraceDialogImpl()
 
     CBT_SS.property_selected().signal_changed().connect([this] { adjustParamsVisible(); });
     adjustParamsVisible();
+
+    // Palette editor signals
+    B_palette_add.signal_clicked().connect([this] {
+        // Find the best next color using constrained k-means on the image.
+        auto desktop = getDesktop();
+        if (desktop) {
+            auto selection = desktop->getSelection();
+            if (selection) {
+                auto item = selection->singleItem();
+                auto img = cast<SPImage>(item);
+                if (img && img->pixbuf) {
+                    auto copy = Inkscape::Pixbuf(*img->pixbuf);
+                    auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
+                    auto rgbmap = Trace::gdkPixbufToRgbMap(gdkpixbuf);
+                    auto currentPalette = getCustomPalette();
+                    auto next = Trace::findNextPaletteColor(rgbmap, currentPalette);
+                    Gdk::RGBA color;
+                    color.set_red(next.r / 255.0);
+                    color.set_green(next.g / 255.0);
+                    color.set_blue(next.b / 255.0);
+                    color.set_alpha(1.0);
+                    addPaletteColor(color);
+                    schedulePreviewUpdate(200, true);
+                    return;
+                }
+            }
+        }
+        // Fallback: add white if no image is selected.
+        Gdk::RGBA white;
+        white.set_red(1.0); white.set_green(1.0); white.set_blue(1.0); white.set_alpha(1.0);
+        addPaletteColor(white);
+        schedulePreviewUpdate(200, true);
+    });
+    B_palette_reset.signal_clicked().connect([this] { extractPaletteFromImage(); });
+    CBT_MS.property_selected().signal_changed().connect([this] {
+        updatePaletteVisibility();
+        // Auto-extract palette when switching to Colors mode for the first time.
+        if (isCustomPaletteMode(CBT_MS.get_selected()) && palette_rows.empty()) {
+            extractPaletteFromImage();
+        }
+    });
+    updatePaletteVisibility();
 
     // watch for changes, but only in params that can impact preview bitmap
     for (auto adj : {SS_BC_T, SS_ED_T, SS_CQ_T, SS_AT_FI_T, SS_AT_ET_T, /* optimize, smooth, speckles,*/ MS_scans, PA_curves, PA_islands, PA_sparse1, PA_sparse2 }) {
@@ -485,6 +776,252 @@ void TraceDialogImpl::updatePreview(bool force)
     if (!preview_future) {
         // On instant failure:
         previewArea.set_paintable({});
+    }
+}
+
+void TraceDialogImpl::addPaletteColor(Gdk::RGBA const &color)
+{
+    int index = palette_rows.size();
+
+    auto row = Gtk::make_managed<PaletteRowWidget>();
+    row->set_color(color);
+
+    // Click on the color swatch: pick from canvas with eyedropper.
+    auto swatch_click = Gtk::GestureClick::create();
+    swatch_click->set_button(GDK_BUTTON_PRIMARY);
+    swatch_click->signal_released().connect([this, index] (int, double, double) {
+        pickColorForSwatch(index);
+    });
+    row->swatch.add_controller(swatch_click);
+
+    // Click on the hex label: toggle inline color picker.
+    auto label_click = Gtk::GestureClick::create();
+    label_click->set_button(GDK_BUTTON_PRIMARY);
+    label_click->signal_released().connect([this, index] (int, double, double) {
+        toggleColorPanel(index);
+    });
+    row->hex_label.add_controller(label_click);
+
+    // Delete button: remove this row.
+    row->on_delete = [this, index] { removePaletteColor(index); };
+    row->delete_btn.signal_clicked().connect([row] { if (row->on_delete) row->on_delete(); });
+
+    // Color changed (from ColorSet via panel): update preview.
+    row->on_color_changed = [this] { schedulePreviewUpdate(500); };
+
+    palette_list.append(*row);
+    palette_rows.push_back(row);
+    updatePaletteCountLabel();
+}
+
+void TraceDialogImpl::removePaletteColor(int index)
+{
+    if (index < 0 || index >= (int)palette_rows.size()) return;
+
+    // Close the color panel if it's showing for this or a later row.
+    if (color_panel && active_panel_index >= index) {
+        palette_list.remove(*color_panel);
+        color_panel.reset();
+        active_panel_index = -1;
+    }
+
+    auto *row = palette_rows[index];
+    palette_list.remove(*row);
+    palette_rows.erase(palette_rows.begin() + index);
+
+    // Re-bind indices for remaining rows (closures capture index by value).
+    for (int i = index; i < (int)palette_rows.size(); i++) {
+        palette_rows[i]->on_delete = [this, i] { removePaletteColor(i); };
+    }
+
+    updatePaletteCountLabel();
+    schedulePreviewUpdate(200, true);
+}
+
+void TraceDialogImpl::clearPalette()
+{
+    // Close any open color panel first.
+    if (color_panel) {
+        palette_list.remove(*color_panel);
+        color_panel.reset();
+        active_panel_index = -1;
+    }
+    while (!palette_rows.empty()) {
+        auto *row = palette_rows.back();
+        palette_rows.pop_back();
+        palette_list.remove(*row);
+    }
+    updatePaletteCountLabel();
+}
+
+std::vector<Trace::RGB> TraceDialogImpl::getCustomPalette() const
+{
+    std::vector<Trace::RGB> palette;
+    palette.reserve(palette_rows.size());
+    for (auto *row : palette_rows) {
+        auto c = row->get_color();
+        palette.push_back({
+            static_cast<unsigned char>(c.get_red()   * 255),
+            static_cast<unsigned char>(c.get_green() * 255),
+            static_cast<unsigned char>(c.get_blue()  * 255)
+        });
+    }
+    return palette;
+}
+
+void TraceDialogImpl::pickColorForSwatch(int index)
+{
+    if (index < 0 || index >= (int)palette_rows.size()) return;
+
+    auto desktop = getDesktop();
+    if (!desktop) return;
+
+    _dropper_connection.disconnect();
+
+    Tools::sp_toggle_dropper(desktop);
+    if (auto tool = dynamic_cast<Tools::DropperTool*>(desktop->getTool())) {
+        _dropper_connection = tool->onetimepick_signal.connect([this, index] (Colors::Color const &picked) {
+            if (index >= (int)palette_rows.size()) return;
+            uint32_t rgba = picked.toRGBA();
+            Gdk::RGBA gdk_color;
+            gdk_color.set_red(  ((rgba >> 24) & 0xFF) / 255.0);
+            gdk_color.set_green(((rgba >> 16) & 0xFF) / 255.0);
+            gdk_color.set_blue( ((rgba >>  8) & 0xFF) / 255.0);
+            gdk_color.set_alpha(1.0);
+            palette_rows[index]->set_color(gdk_color);
+            schedulePreviewUpdate(200, true);
+        });
+    }
+}
+
+void TraceDialogImpl::extractPaletteFromImage()
+{
+    auto desktop = getDesktop();
+    if (!desktop) return;
+
+    auto selection = desktop->getSelection();
+    if (!selection) return;
+
+    auto item = selection->singleItem();
+    auto img = cast<SPImage>(item);
+    if (!img || !img->pixbuf) return;
+
+    // Clear the cache entry so the fresh extraction replaces any user edits.
+    if (auto id = img->getId()) {
+        _palette_cache.erase(id);
+        _current_image_id = id;
+    }
+
+    // Make a non-const copy to allow pixel format conversion (Cairo -> GDK).
+    auto copy = Inkscape::Pixbuf(*img->pixbuf);
+    auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
+    auto rgbmap = Trace::gdkPixbufToRgbMap(gdkpixbuf);
+
+    // Automatically determine optimal number of colors.
+    auto prefs = Preferences::get();
+    int maxColors = prefs->getIntLimited(getPrefsPath() + "maxBitmapTracingAutoPaletteColors", 10, 2, 50);
+    auto palette = Trace::estimateOptimalPalette(rgbmap, maxColors);
+
+    // Clear existing palette.
+    clearPalette();
+
+    // Add extracted colors.
+    for (auto const &rgb : palette) {
+        Gdk::RGBA color;
+        color.set_red(rgb.r / 255.0);
+        color.set_green(rgb.g / 255.0);
+        color.set_blue(rgb.b / 255.0);
+        color.set_alpha(1.0);
+        addPaletteColor(color);
+    }
+
+    schedulePreviewUpdate(200, true);
+}
+
+void TraceDialogImpl::savePaletteToCache()
+{
+    if (_current_image_id.empty()) return;
+    auto palette = getCustomPalette();
+    if (!palette.empty()) {
+        _palette_cache[_current_image_id] = std::move(palette);
+    }
+}
+
+void TraceDialogImpl::restorePaletteFromCache(std::string const &image_id)
+{
+    auto it = _palette_cache.find(image_id);
+    if (it == _palette_cache.end()) return;
+
+    clearPalette();
+    for (auto const &rgb : it->second) {
+        Gdk::RGBA color;
+        color.set_red(rgb.r / 255.0);
+        color.set_green(rgb.g / 255.0);
+        color.set_blue(rgb.b / 255.0);
+        color.set_alpha(1.0);
+        addPaletteColor(color);
+    }
+    schedulePreviewUpdate(200, true);
+}
+
+void TraceDialogImpl::toggleColorPanel(int index)
+{
+    if (index < 0 || index >= (int)palette_rows.size()) return;
+
+    // If the panel is already showing for this row, close it.
+    if (active_panel_index == index && color_panel) {
+        palette_rows[index]->set_expanded(false);
+        palette_list.remove(*color_panel);
+        color_panel.reset();
+        active_panel_index = -1;
+        return;
+    }
+
+    // Remove the panel from its current position if open.
+    if (color_panel) {
+        if (active_panel_index >= 0 && active_panel_index < (int)palette_rows.size()) {
+            palette_rows[active_panel_index]->set_expanded(false);
+        }
+        palette_list.remove(*color_panel);
+        color_panel.reset();
+    }
+
+    // Create a new panel bound to this row's ColorSet.
+    auto *row = palette_rows[index];
+    color_panel = UI::Widget::ColorPickerPanel::create(
+        Colors::Space::Type::HSL,
+        UI::Widget::ColorPickerPanel::None,
+        row->color_set
+    );
+    color_panel->set_margin_start(36); // indent under the swatch
+
+    // Insert the panel right after the target row.
+    // Gtk::Box::insert_child_after places the child after the reference widget.
+    palette_list.insert_child_after(*color_panel, *row);
+    row->set_expanded(true);
+    active_panel_index = index;
+}
+
+void TraceDialogImpl::updatePaletteCountLabel()
+{
+    int n = palette_rows.size();
+    L_palette_count.set_text(std::to_string(n) + (n == 1 ? " color" : " colors"));
+}
+
+void TraceDialogImpl::updatePaletteVisibility()
+{
+    bool custom = isCustomPaletteMode(CBT_MS.get_selected());
+    palette_box.set_visible(custom);
+
+    // Hide the scans row (row 2 widgets) when in custom palette mode.
+    // The scans row has widgets at columns 0-3, row 2 in the grid.
+    auto grid = dynamic_cast<Gtk::Grid*>(palette_box.get_parent());
+    if (grid) {
+        for (int col = 0; col < 4; col++) {
+            if (auto widget = grid->get_child_at(col, 2)) {
+                widget->set_visible(!custom);
+            }
+        }
     }
 }
 

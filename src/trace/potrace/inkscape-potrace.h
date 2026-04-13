@@ -19,6 +19,7 @@
 
 #include <optional>
 #include <unordered_set>
+#include <vector>
 #include <boost/functional/hash.hpp>
 #include <2geom/point.h>
 #include <2geom/path-sink.h>
@@ -71,6 +72,7 @@ public:
     void setOptTolerance(double);
     void setAlphaMax(double);
     void setTurdSize(int);
+    void setCustomPalette(std::vector<RGB> palette);
 
 private:
     potrace_param_t *potraceParams;
@@ -95,6 +97,10 @@ private:
     bool multiScanStack = true; // do we tile or stack?
     bool multiScanSmooth = false; // do we use gaussian filter?
     bool multiScanRemoveBackground = false; // do we remove the bottom trace?
+
+    // Optional user-supplied palette for QUANT_COLOR mode.
+    // When non-empty, overrides octree quantization.
+    std::vector<RGB> customPalette;
 
     void common_init();
 
