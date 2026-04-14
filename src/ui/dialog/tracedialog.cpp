@@ -27,7 +27,6 @@
 #include <gtkmm/picture.h>
 #include <gtkmm/progressbar.h>
 #include <gtkmm/snapshot.h>
-#include <gtkmm/spinbutton.h>
 #include <gtkmm/stack.h>
 
 #include "colors/color.h"
@@ -182,9 +181,7 @@ private:
     // Palette editor widgets
     Gtk::Box &palette_box;
     Gtk::FlowBox &palette_flowbox;
-    Gtk::Button &B_palette_add, &B_palette_remove, &B_palette_extract;
-    Gtk::SpinButton &palette_extract_spin;
-    Glib::RefPtr<Gtk::Adjustment> palette_extract_count;
+    Gtk::Button &B_palette_add, &B_palette_remove, &B_palette_reset;
     std::vector<PaletteSwatchWidget*> palette_swatches;
     sigc::scoped_connection _dropper_connection;
 
@@ -308,6 +305,10 @@ TraceData TraceDialogImpl::getTraceData() const
 
 void TraceDialogImpl::selectionChanged(Inkscape::Selection *selection)
 {
+    // Auto-extract palette when the selected image changes in Colors mode.
+    if (isCustomPaletteMode(CBT_MS.get_selected())) {
+        extractPaletteFromImage();
+    }
     updatePreview();
 }
 
@@ -456,9 +457,7 @@ TraceDialogImpl::TraceDialogImpl()
   , palette_flowbox(get_widget<Gtk::FlowBox>     (builder,    "palette_flowbox"))
   , B_palette_add  (get_widget<Gtk::Button>      (builder,     "B_palette_add"))
   , B_palette_remove(get_widget<Gtk::Button>     (builder,  "B_palette_remove"))
-  , B_palette_extract(get_widget<Gtk::Button>    (builder, "B_palette_extract"))
-  , palette_extract_spin(get_widget<Gtk::SpinButton>(builder, "palette_extract_spin"))
-  , palette_extract_count(get_object<Gtk::Adjustment>(builder, "palette_extract_count"))
+  , B_palette_reset(get_widget<Gtk::Button>      (builder,  "B_palette_reset"))
 {
     builder->get_objects(); // instantiate all InkSpinButton instances
     append(bin);
@@ -499,14 +498,45 @@ TraceDialogImpl::TraceDialogImpl()
 
     // Palette editor signals
     B_palette_add.signal_clicked().connect([this] {
+        // Find the best next color using constrained k-means on the image.
+        auto desktop = getDesktop();
+        if (desktop) {
+            auto selection = desktop->getSelection();
+            if (selection) {
+                auto item = selection->singleItem();
+                auto img = cast<SPImage>(item);
+                if (img && img->pixbuf) {
+                    auto copy = Inkscape::Pixbuf(*img->pixbuf);
+                    auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
+                    auto rgbmap = Trace::gdkPixbufToRgbMap(gdkpixbuf);
+                    auto currentPalette = getCustomPalette();
+                    auto next = Trace::findNextPaletteColor(rgbmap, currentPalette);
+                    Gdk::RGBA color;
+                    color.set_red(next.r / 255.0);
+                    color.set_green(next.g / 255.0);
+                    color.set_blue(next.b / 255.0);
+                    color.set_alpha(1.0);
+                    addPaletteColor(color);
+                    schedulePreviewUpdate(200, true);
+                    return;
+                }
+            }
+        }
+        // Fallback: add white if no image is selected.
         Gdk::RGBA white;
         white.set_red(1.0); white.set_green(1.0); white.set_blue(1.0); white.set_alpha(1.0);
         addPaletteColor(white);
         schedulePreviewUpdate(200, true);
     });
     B_palette_remove.signal_clicked().connect([this] { removeLastPaletteColor(); });
-    B_palette_extract.signal_clicked().connect([this] { extractPaletteFromImage(); });
-    CBT_MS.property_selected().signal_changed().connect([this] { updatePaletteVisibility(); });
+    B_palette_reset.signal_clicked().connect([this] { extractPaletteFromImage(); });
+    CBT_MS.property_selected().signal_changed().connect([this] {
+        updatePaletteVisibility();
+        // Auto-extract palette when switching to Colors mode for the first time.
+        if (isCustomPaletteMode(CBT_MS.get_selected()) && palette_swatches.empty()) {
+            extractPaletteFromImage();
+        }
+    });
     updatePaletteVisibility();
 
     // watch for changes, but only in params that can impact preview bitmap
@@ -678,8 +708,8 @@ void TraceDialogImpl::extractPaletteFromImage()
     auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
     auto rgbmap = Trace::gdkPixbufToRgbMap(gdkpixbuf);
 
-    int ncolors = static_cast<int>(palette_extract_count->get_value());
-    auto imap = Trace::rgbMapQuantizePerceptual(rgbmap, ncolors);
+    // Automatically determine optimal number of colors (max 10).
+    auto palette = Trace::estimateOptimalPalette(rgbmap, 10);
 
     // Clear existing palette.
     while (!palette_swatches.empty()) {
@@ -687,8 +717,7 @@ void TraceDialogImpl::extractPaletteFromImage()
     }
 
     // Add extracted colors.
-    for (int i = 0; i < imap.nrColors; i++) {
-        auto rgb = imap.clut[i];
+    for (auto const &rgb : palette) {
         Gdk::RGBA color;
         color.set_red(rgb.r / 255.0);
         color.set_green(rgb.g / 255.0);
