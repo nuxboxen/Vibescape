@@ -1079,10 +1079,9 @@ void ObjectsPanel::desktopReplaced()
 
     auto desktop = getDesktop();
 
-    // Update the _subject with the new desktop
-    _subject.setDesktop(desktop);
-
     if (desktop) {
+        // Update the _subject with the new desktop
+        _subject.setDesktop(desktop);
         layer_changed = desktop->layerManager().connectCurrentLayerChanged(sigc::mem_fun(*this, &ObjectsPanel::layerChanged));
     }
 }
