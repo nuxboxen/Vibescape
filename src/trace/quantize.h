@@ -4,8 +4,9 @@
  *
  * Authors:
  *   Stéphane Gimenez <dev@gim.name>
+ *   Séverin Lemaignan <severin@guakamole.org>
  *
- * Copyright (C) 2006 Authors
+ * Copyright (C) 2006-2026 Authors
  *
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */

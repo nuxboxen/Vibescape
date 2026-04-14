@@ -1,11 +1,47 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Quantization for Inkscape
+ * Color quantization for bitmap tracing.
+ *
+ * This file implements several color quantization algorithms used to
+ * reduce a bitmap image to a small number of representative colors
+ * before vectorization:
+ *
+ * 1. Octree quantization (rgbMapQuantize)
+ *    The original algorithm. Builds an octree in RGB space and prunes
+ *    leaves by pixel-count-weighted impact. Fast and deterministic,
+ *    but operates in raw RGB (not perceptually uniform) and tends to
+ *    allocate palette entries proportionally to pixel count, which can
+ *    miss small but visually distinctive color regions.
+ *    Used for QUANT_MONO and BRIGHTNESS_MULTI modes where the output
+ *    is converted to grayscale.
+ *
+ * 2. Saliency-weighted k-means in Oklab (rgbMapQuantizePerceptual)
+ *    A perceptually-aware algorithm designed for the QUANT_COLOR mode.
+ *    Operates in the Oklab perceptual color space, where Euclidean
+ *    distance matches perceived color difference. Before clustering,
+ *    each pixel is weighted by its local chroma saliency (how much its
+ *    hue/saturation differs from its immediate neighborhood), so that
+ *    color edges and small vivid regions attract cluster centroids
+ *    more strongly than uniform background areas. See the detailed
+ *    comment block above the implementation for the full rationale.
+ *
+ * 3. Palette mapping (rgbMapWithPalette)
+ *    Maps pixels to a user-supplied palette using Oklab distance.
+ *
+ * 4. Optimal palette estimation (estimateOptimalPalette)
+ *    Runs saliency-weighted k-means for k=2..maxK and selects the
+ *    best k using the elbow method on inertia.
+ *
+ * 5. Incremental palette extension (findNextPaletteColor)
+ *    Given an existing palette, finds the best next color via
+ *    constrained k-means (existing colors frozen, only the new
+ *    centroid moves).
  *
  * Authors:
  *   Stéphane Gimenez <dev@gim.name>
+ *   Séverin Lemaignan <severin@guakamole.org>
  *
- * Copyright (C) 2006 Authors
+ * Copyright (C) 2006-2026 Authors
  *
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
@@ -28,6 +64,23 @@ namespace Trace {
 
 namespace {
 
+// =====================================================================
+// 1. Octree quantization in RGB space
+// =====================================================================
+
+/*
+-- Octree algorithm principle:
+
+Builds a tree where each level corresponds to one bit of the R, G, B
+channels. Leaf nodes accumulate pixel counts and color sums. The tree
+is pruned to the target number of colors by removing leaves with the
+smallest "impact" (pixel count × color range²). Final palette colors
+are the weighted averages of the remaining leaves.
+
+See the detailed comments below for merge/prune mechanics and
+optimizations over the standard octree method.
+*/
+
 /**
  * an octree node datastructure
  */
@@ -46,7 +99,7 @@ struct Ocnode
 };
 
 /*
--- algorithm principle:
+-- Detailed octree algorithm description:
 
 - inspired by the octree method, we associate a tree to a given color map
 
@@ -512,7 +565,22 @@ int findRGB(RGB const *rgbs, int ncolor, RGB rgb)
     return index;
 }
 
-// ---- Oklab perceptual color space ----
+// =====================================================================
+// 2. Oklab perceptual color space utilities
+// =====================================================================
+//
+// Oklab is a perceptual color space designed by Björn Ottosson where
+// Euclidean distance closely matches human-perceived color difference.
+// L encodes lightness (0–1), a and b encode green-red and blue-yellow
+// opponent channels (roughly ±0.35).
+//
+// The conversion is: sRGB → linear sRGB → LMS (via 3×3 matrix) →
+// cube root → Oklab (via another 3×3 matrix). Inverse is the reverse.
+//
+// We implement these directly here rather than reusing the existing
+// ok_color.h functions in src/colors/spaces/, because those are
+// internal to the color picker widget, use different types, and
+// require callers to handle sRGB linearization separately.
 
 struct OklabColor { float L; float a; float b; };
 
@@ -602,7 +670,9 @@ int findOklab(OklabColor const *palette, int ncolor, OklabColor c)
     return best;
 }
 
-// ---- Median cut in Oklab for k-means initialization ----
+// =====================================================================
+// 3. Median cut in Oklab (k-means initialization)
+// =====================================================================
 
 struct OklabBox {
     std::vector<int> indices; // indices into the sample array
@@ -688,8 +758,11 @@ std::vector<OklabColor> medianCutInit(std::vector<OklabColor> const &samples, in
     return centroids;
 }
 
+// =====================================================================
+// 4. Saliency-weighted k-means for perceptual color quantization
+// =====================================================================
+
 /*
--- Saliency-weighted k-means for perceptual color quantization --
 
 Standard k-means allocates clusters proportionally to pixel count: a
 large gray background gets many centroids while a small vivid region
@@ -874,8 +947,13 @@ std::vector<WeightedSample> downsampleWithSaliency(RgbMap const &rgbmap, int max
 
 } // namespace
 
+// =====================================================================
+// Public API
+// =====================================================================
+
 /**
- * quantize an RGB image to a reduced number of colors.
+ * Quantize an RGB image to a reduced number of colors (octree, RGB space).
+ * Used for QUANT_MONO and BRIGHTNESS_MULTI modes.
  */
 IndexedMap rgbMapQuantize(RgbMap const &rgbmap, int ncolor)
 {
