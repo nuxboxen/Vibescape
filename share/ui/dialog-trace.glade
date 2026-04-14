@@ -584,35 +584,28 @@
                         <child>
                           <object class="GtkBox" id="palette_box">
                             <property name="orientation">vertical</property>
-                            <property name="spacing">4</property>
+                            <property name="spacing">2</property>
                             <property name="visible">False</property>
                             <child>
-                              <object class="GtkFlowBox" id="palette_flowbox">
-                                <property name="selection-mode">none</property>
-                                <property name="min-children-per-line">4</property>
-                                <property name="max-children-per-line">16</property>
-                                <property name="homogeneous">True</property>
+                              <object class="GtkBox" id="palette_list">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">2</property>
                               </object>
                             </child>
                             <child>
                               <object class="GtkBox">
                                 <property name="spacing">4</property>
+                                <property name="margin-top">2</property>
                                 <child>
                                   <object class="GtkButton" id="B_palette_add">
-                                    <property name="label" translatable="yes">Add</property>
+                                    <property name="label">+</property>
                                     <property name="tooltip-text" translatable="yes">Add a new color to the palette</property>
                                   </object>
                                 </child>
                                 <child>
-                                  <object class="GtkButton" id="B_palette_remove">
-                                    <property name="label" translatable="yes">Remove last</property>
-                                    <property name="tooltip-text" translatable="yes">Remove the last color from the palette</property>
-                                  </object>
-                                </child>
-                                <child>
                                   <object class="GtkButton" id="B_palette_reset">
-                                    <property name="label" translatable="yes">Reset palette</property>
-                                    <property name="tooltip-text" translatable="yes">Re-extract optimal colors from the selected image</property>
+                                    <property name="icon-name">view-refresh-symbolic</property>
+                                    <property name="tooltip-text" translatable="yes">Reset palette and re-extract colors</property>
                                   </object>
                                 </child>
                               </object>
