@@ -905,8 +905,10 @@ void TraceDialogImpl::extractPaletteFromImage()
     auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
     auto rgbmap = Trace::gdkPixbufToRgbMap(gdkpixbuf);
 
-    // Automatically determine optimal number of colors (max 10).
-    auto palette = Trace::estimateOptimalPalette(rgbmap, 10);
+    // Automatically determine optimal number of colors.
+    auto prefs = Preferences::get();
+    int maxColors = prefs->getIntLimited(getPrefsPath() + "maxBitmapTracingAutoPaletteColors", 10, 2, 50);
+    auto palette = Trace::estimateOptimalPalette(rgbmap, maxColors);
 
     // Clear existing palette.
     clearPalette();
