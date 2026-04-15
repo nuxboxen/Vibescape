@@ -240,8 +240,8 @@ Pixbuf *Pixbuf::create_from_data_uri(gchar const *uri_data, double svgdpi)
         Inkscape::Util::Quantity svgWidth = svgDoc->getWidth();
         Inkscape::Util::Quantity svgHeight = svgDoc->getHeight();
         // Limit the size of the document to 100 inches square, mirroring create_from_buffer
-        const double svgWidth_px = std::min(svgWidth.value("px"), dpi * 100);
-        const double svgHeight_px = std::min(svgHeight.value("px"), dpi * 100);
+        double const svgWidth_px = std::min(svgWidth.value("px"), dpi * 100);
+        double const svgHeight_px = std::min(svgHeight.value("px"), dpi * 100);
         if (svgWidth_px < 0 || svgHeight_px < 0) {
             g_warning("create_from_data_uri: malformed document: svgWidth_px=%f, svgHeight_px=%f", svgWidth_px,
                       svgHeight_px);
