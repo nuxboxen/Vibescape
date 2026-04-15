@@ -46,6 +46,7 @@ public:
 
     void selectionChanged (Selection *selection                ) final;
     void selectionModified(Selection *selection, unsigned flags) final;
+    void on_unrealize() final;
 
 private:
     static GlyphColumns *getColumns();
