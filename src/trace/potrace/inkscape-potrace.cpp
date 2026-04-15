@@ -89,6 +89,11 @@ void PotraceTracingEngine::setTurdSize(int turdsize)
     potraceParams->turdsize = turdsize;
 }
 
+void PotraceTracingEngine::setCustomPalette(std::vector<RGB> palette)
+{
+    customPalette = std::move(palette);
+}
+
 /**
  * Recursively descend the potrace_path_t node tree \a paths, writing paths to \a builder.
  * The \a points set is used to prevent redundant paths.
@@ -200,7 +205,16 @@ IndexedMap PotraceTracingEngine::filterIndexed(Glib::RefPtr<Gdk::Pixbuf> const &
         map = rgbMapGaussian(map);
     }
 
-    auto imap = rgbMapQuantize(map, multiScanNrColors);
+    IndexedMap imap = [&] {
+        if (!customPalette.empty()) {
+            return rgbMapWithPalette(map, customPalette);
+        } else if (traceType == TraceType::QUANT_COLOR) {
+            // Use perceptual quantization for color mode.
+            return rgbMapQuantizePerceptual(map, multiScanNrColors);
+        } else {
+            return rgbMapQuantize(map, multiScanNrColors);
+        }
+    }();
 
     auto tomono = [] (RGB c) -> RGB {
         unsigned char s = ((int)c.r + (int)c.g + (int)c.b) / 3;

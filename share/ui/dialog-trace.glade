@@ -582,6 +582,42 @@
                           </object>
                         </child>
                         <child>
+                          <object class="GtkBox" id="palette_box">
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">2</property>
+                            <property name="visible">False</property>
+                            <child>
+                              <object class="GtkBox" id="palette_list">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">2</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkBox">
+                                <property name="spacing">4</property>
+                                <property name="margin-top">2</property>
+                                <child>
+                                  <object class="GtkButton" id="B_palette_add">
+                                    <property name="label">+</property>
+                                    <property name="tooltip-text" translatable="yes">Add a new color to the palette</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkButton" id="B_palette_reset">
+                                    <property name="icon-name">view-refresh-symbolic</property>
+                                    <property name="tooltip-text" translatable="yes">Reset palette and re-extract colors</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            <layout>
+                              <property name="column">0</property>
+                              <property name="row">3</property>
+                              <property name="column-span">4</property>
+                            </layout>
+                          </object>
+                        </child>
+                        <child>
                           <object class="GtkCheckButton" id="CB_MS_smooth">
                             <property name="label" translatable="yes">Smooth</property>
                             <property name="focusable">True</property>
