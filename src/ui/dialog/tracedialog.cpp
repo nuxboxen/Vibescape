@@ -16,6 +16,8 @@
 
 #include "tracedialog.h"
 
+#include <map>
+#include <string>
 #include <gtkmm/box.h>
 #include <gtkmm/button.h>
 #include <gtkmm/checkbutton.h>
@@ -314,6 +316,12 @@ private:
     void pickColorForSwatch(int index);
     std::vector<Trace::RGB> getCustomPalette() const;
 
+    // Per-image palette cache: preserves user edits across deselect/reselect cycles.
+    std::map<std::string, std::vector<Trace::RGB>> _palette_cache;
+    std::string _current_image_id;
+    void savePaletteToCache();
+    void restorePaletteFromCache(std::string const &image_id);
+
     sigc::scoped_connection _page_switched;
 };
 
@@ -427,9 +435,32 @@ TraceData TraceDialogImpl::getTraceData() const
 
 void TraceDialogImpl::selectionChanged(Inkscape::Selection *selection)
 {
-    // Auto-extract palette when the selected image changes in Colors mode.
     if (isCustomPaletteMode(CBT_MS.get_selected())) {
-        extractPaletteFromImage();
+        // Save current palette for the previous image before switching.
+        savePaletteToCache();
+
+        // Determine the newly selected image's id.
+        std::string new_id;
+        if (selection) {
+            if (auto img = cast<SPImage>(selection->singleItem())) {
+                if (auto id = img->getId()) {
+                    new_id = id;
+                }
+            }
+        }
+        _current_image_id = new_id;
+
+        if (!new_id.empty()) {
+            // Restore cached palette if available, otherwise extract from image.
+            auto it = _palette_cache.find(new_id);
+            if (it != _palette_cache.end()) {
+                restorePaletteFromCache(new_id);
+            } else {
+                extractPaletteFromImage();
+            }
+        } else {
+            clearPalette();
+        }
     }
     updatePreview();
 }
@@ -863,6 +894,12 @@ void TraceDialogImpl::extractPaletteFromImage()
     auto img = cast<SPImage>(item);
     if (!img || !img->pixbuf) return;
 
+    // Clear the cache entry so the fresh extraction replaces any user edits.
+    if (auto id = img->getId()) {
+        _palette_cache.erase(id);
+        _current_image_id = id;
+    }
+
     // Make a non-const copy to allow pixel format conversion (Cairo -> GDK).
     auto copy = Inkscape::Pixbuf(*img->pixbuf);
     auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
@@ -884,6 +921,32 @@ void TraceDialogImpl::extractPaletteFromImage()
         addPaletteColor(color);
     }
 
+    schedulePreviewUpdate(200, true);
+}
+
+void TraceDialogImpl::savePaletteToCache()
+{
+    if (_current_image_id.empty()) return;
+    auto palette = getCustomPalette();
+    if (!palette.empty()) {
+        _palette_cache[_current_image_id] = std::move(palette);
+    }
+}
+
+void TraceDialogImpl::restorePaletteFromCache(std::string const &image_id)
+{
+    auto it = _palette_cache.find(image_id);
+    if (it == _palette_cache.end()) return;
+
+    clearPalette();
+    for (auto const &rgb : it->second) {
+        Gdk::RGBA color;
+        color.set_red(rgb.r / 255.0);
+        color.set_green(rgb.g / 255.0);
+        color.set_blue(rgb.b / 255.0);
+        color.set_alpha(1.0);
+        addPaletteColor(color);
+    }
     schedulePreviewUpdate(200, true);
 }
 
