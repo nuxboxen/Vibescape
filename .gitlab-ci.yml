@@ -232,7 +232,7 @@ inkscape:macos:
 
 .windows_build_script: &windows_build_script
   # configure
-  - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc 'cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=$CI_PROJECT_DIR/inkscape'
+  - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc 'cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=$CI_PROJECT_DIR/inkscape'
   # make + make install
   - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build install"
   # run dependency checker
