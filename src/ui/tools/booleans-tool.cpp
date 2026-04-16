@@ -80,7 +80,7 @@ void InteractiveBooleansTool::hide_selected_objects(bool hide)
         if (hide && boolean_builder && boolean_builder->contains_image(item))
             continue;
         if (auto ditem = item->get_arenaitem(_desktop->dkey)) {
-            ditem->setOpacity(hide ? 0.0 : SP_SCALE24_TO_FLOAT(item->style->opacity.value));
+            ditem->setOpacity(hide ? 0.0 : (double)item->style->opacity);
         }
     }
 }

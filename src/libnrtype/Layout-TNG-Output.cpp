@@ -512,7 +512,7 @@ void Layout::showGlyphs(CairoRenderContext *ctx) const
             font_matrix = flip_matrix * font_matrix;
 
             SPStyle const *style = text_source->style;
-            float opacity = SP_SCALE24_TO_FLOAT(style->opacity.value);
+            double opacity = (double)style->opacity;
 
             if (opacity != 1.0) {
                 ctx->pushState();

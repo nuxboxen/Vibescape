@@ -1297,8 +1297,7 @@ bool OdfOutput::processStyle(SPItem *item, const Glib::ustring &id, const Glib::
         snprintf(buf, 15, "#%02x%02x%02x", r, g, b);
         si.fillColor = buf;
         si.fill      = "solid";
-        double opacityPercent = 100.0 *
-             (SP_SCALE24_TO_FLOAT(style->fill_opacity.value));
+        double opacityPercent = 100.0 * (double)style->fill_opacity;
         snprintf(buf, 15, "%.3f%%", opacityPercent);
         si.fillOpacity = buf;
     }
@@ -1324,8 +1323,7 @@ bool OdfOutput::processStyle(SPItem *item, const Glib::ustring &id, const Glib::
         snprintf(buf, 15, "%.3fpt", style->stroke_width.value);
         si.strokeWidth = buf;
         si.stroke      = "solid";
-        double opacityPercent = 100.0 *
-             (SP_SCALE24_TO_FLOAT(style->stroke_opacity.value));
+        double opacityPercent = 100.0 * (double)style->stroke_opacity;
         snprintf(buf, 15, "%.3f%%", opacityPercent);
         si.strokeOpacity = buf;
     }

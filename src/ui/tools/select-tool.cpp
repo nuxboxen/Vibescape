@@ -392,7 +392,7 @@ void SelectTool::sp_select_context_reset_opacities() {
     for (auto item : cycling_items_cmp) {
         if (item) {
             Inkscape::DrawingItem *arenaitem = item->get_arenaitem(_desktop->dkey);
-            arenaitem->setOpacity(SP_SCALE24_TO_FLOAT(item->style->opacity.value));
+            arenaitem->setOpacity((double)item->style->opacity);
         } else {
             g_assert_not_reached();
         }

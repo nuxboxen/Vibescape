@@ -228,7 +228,7 @@ void StyleSwatch::setStyle(SPStyle *query)
             }
         } else if (paint->set && paint->isColor()) {
             auto color = paint->getColor();
-            color.addOpacity(i == SS_FILL ? query->fill_opacity : query->stroke_opacity);
+            color.addOpacity(i == SS_FILL ? (double)query->fill_opacity : (double)query->stroke_opacity);
             _color_preview[i]->setRgba32(color.toRGBA());
             place->append(*_color_preview[i]);
             gchar *tip;
@@ -290,7 +290,7 @@ void StyleSwatch::setStyle(SPStyle *query)
         _stroke_width.set_markup("");
     }
 
-    gdouble op = SP_SCALE24_TO_FLOAT(query->opacity.value);
+    gdouble op = (double)query->opacity;
     if (op != 1) {
         {
             gchar *str;

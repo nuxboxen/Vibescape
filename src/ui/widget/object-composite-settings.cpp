@@ -210,7 +210,7 @@ ObjectCompositeSettings::_subjectChanged() {
         case QUERY_STYLE_SINGLE:
         case QUERY_STYLE_MULTIPLE_AVERAGED: // TODO: treat this slightly differently
         case QUERY_STYLE_MULTIPLE_SAME:
-            _filter_modifier.set_opacity_value(query.opacity);
+            _filter_modifier.set_opacity_value((double)query.opacity);
             break;
     }
 

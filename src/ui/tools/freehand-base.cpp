@@ -161,7 +161,7 @@ void spdc_apply_style(SPObject *obj)
             }
         } else if (obj->style->stroke.isColor()) {
             auto color = obj->style->stroke.getColor();
-            color.addOpacity(obj->style->stroke_opacity);
+            color.addOpacity((double)obj->style->stroke_opacity);
             sp_repr_css_set_property_string(css, "fill", color.toString());
         } else {
             sp_repr_css_set_property(css, "fill", "none");

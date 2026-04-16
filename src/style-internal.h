@@ -112,6 +112,8 @@ enum class SPStyleSrc : unsigned char
  *   operator=:  Assignment operator required due to use of templates (in original C code).
  *   operator==: True if computed values are equal.  TO DO: DEFINE EXACTLY WHAT THIS MEANS
  *   operator!=: Inverse of operator==.
+ *   operator T(): Return the value that is used when rendering after all calculation is done
+ *                 for example `operator double()` returns the computed value for SPILength.
  *
  *
  * Outside dependencies:
@@ -256,6 +258,7 @@ public:
     void merge(   const SPIBase* const parent ) override;
 
     SPIFloat& operator=(const SPIFloat& rhs) = default;
+    explicit operator double() const { return value; }
 
     bool equals(const SPIBase& rhs) const override;
 
@@ -289,8 +292,6 @@ private:
  * colours and opacities, to be safe from rounding bugs.
  */
 static const unsigned SP_SCALE24_MAX = 0xff0000;
-#define SP_SCALE24_TO_FLOAT(v) ((double) (v) / SP_SCALE24_MAX)
-#define SP_SCALE24_FROM_FLOAT(v) unsigned(((v) * SP_SCALE24_MAX) + .5)
 
 /** Returns a scale24 for the product of two scale24 values. */
 #define SP_SCALE24_MUL(_v1, _v2) unsigned((double)(_v1) * (_v2) / SP_SCALE24_MAX + .5)
@@ -308,11 +309,10 @@ public:
         : SPIBase(inherits),
           value(get_default())
     {}
+    ~SPIScale24() override = default;
 
-    ~SPIScale24() override
-    = default;
-
-    operator double() const { return SP_SCALE24_TO_FLOAT(value); }
+    SPIScale24& operator=(const SPIScale24& rhs) = default;
+    explicit operator double() const { return (double)value / SP_SCALE24_MAX; }
 
     void read( gchar const *str ) override;
     const Glib::ustring get_value() const override;
@@ -321,14 +321,13 @@ public:
         value = get_default();
     }
     void set_double(const double& other) {
-        value = SP_SCALE24_FROM_FLOAT(other);
+        value = (unsigned)((other * SP_SCALE24_MAX) + 0.5);
         set = true;
     }
 
     void cascade( const SPIBase* const parent ) override;
     void merge(   const SPIBase* const parent ) override;
 
-    SPIScale24& operator=(const SPIScale24& rhs) = default;
 
     bool equals(const SPIBase& rhs) const override;
 
@@ -369,9 +368,10 @@ public:
           computed(value),
           value_default(value)
     {}
+    ~SPILength() override = default;
 
-    ~SPILength() override
-    = default;
+    SPILength& operator=(const SPILength& rhs) = default;
+    explicit operator double() const { return computed; }
 
     void read( gchar const *str ) override;
     const Glib::ustring get_value() const override;
@@ -383,8 +383,6 @@ public:
 
     void cascade( const SPIBase* const parent ) override;
     void merge(   const SPIBase* const parent ) override;
-
-    SPILength& operator=(const SPILength& rhs) = default;
 
     bool equals(const SPIBase& rhs) const override;
     void setDouble(double v);
@@ -491,9 +489,9 @@ public:
     {
         update_computed();
     }
+    ~SPIEnum() override = default;
 
-    ~SPIEnum() override
-    = default;
+    explicit operator T() const { return computed; }
 
     void read( gchar const *str ) override;
     const Glib::ustring get_value() const override;
@@ -988,6 +986,7 @@ public:
     void merge(   const SPIBase* const parent ) override;
 
     SPIFontSize& operator=(const SPIFontSize& rhs) = default;
+    operator double() const { return computed; }
 
     bool equals(const SPIBase& rhs) const override;
 

@@ -274,12 +274,12 @@ void LaTeXTextRenderer::sp_text_render(SPText *textobj)
     Inkscape::Colors::Color color(0x0);
     if (style->fill.set && style->fill.isColor()) {
         color = style->fill.getColor();
-        color.addOpacity(style->fill_opacity);
+        color.addOpacity((double)style->fill_opacity);
     } else if (style->stroke.set && style->stroke.isColor()) {
         color = style->stroke.getColor();
-        color.addOpacity(style->stroke_opacity);
+        color.addOpacity((double)style->stroke_opacity);
     }
-    color.addOpacity(style->opacity);
+    color.addOpacity((double)style->opacity);
 
     // get rotation
     Geom::Affine i2doc = textobj->i2doc_affine();
@@ -451,15 +451,15 @@ Flowing in rectangle is possible, not in arb shape.
     // TODO: how to handle ICC colors?
     // give priority to fill color
     guint32 rgba = 0;
-    float opacity = SP_SCALE24_TO_FLOAT(style->opacity.value);
+    float opacity = (double)style->opacity;
     if (style->fill.set && style->fill.isColor()) {
         has_color = true;
         rgba = style->fill.getColor().toRGBA();
-        opacity *= SP_SCALE24_TO_FLOAT(style->fill_opacity.value);
+        opacity *= (double)style->fill_opacity;
     } else if (style->stroke.set && style->stroke.isColor()) {
         has_color = true;
         rgba = style->stroke.getColor().toRGBA();
-        opacity *= SP_SCALE24_TO_FLOAT(style->stroke_opacity.value);
+        opacity *= (double)style->stroke_opacity;
     }
     if (opacity < 1.0) {
         has_transparency = true;

@@ -606,7 +606,7 @@ static void tweak_stop_color(guint mode, SPStop *stop, Color const &goal, double
     static void
 tweak_opacity (guint mode, SPIScale24 *style_opacity, double opacity_goal, double force)
 {
-    double opacity = SP_SCALE24_TO_FLOAT (style_opacity->value);
+    double opacity = (double)*style_opacity;
 
     if (mode == TWEAK_MODE_COLORPAINT) {
         double d = opacity_goal - opacity;
@@ -615,7 +615,7 @@ tweak_opacity (guint mode, SPIScale24 *style_opacity, double opacity_goal, doubl
         opacity += g_random_double_range(-opacity, 1 - opacity) * force;
     }
 
-    style_opacity->value = SP_SCALE24_FROM_FLOAT(opacity);
+    style_opacity->set_double(opacity);
 }
 
 

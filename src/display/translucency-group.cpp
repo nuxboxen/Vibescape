@@ -41,7 +41,7 @@ void TranslucencyGroup::setSolidItem(SPItem *item)
     // Reset all the items in the list.
     for (auto &item : _translucent_items) {
         if (auto arenaitem = item->get_arenaitem(_dkey)) {
-            arenaitem->setOpacity(SP_SCALE24_TO_FLOAT(item->style->opacity.value));
+            arenaitem->setOpacity((double)item->style->opacity);
         }
     }
     _translucent_items.clear();

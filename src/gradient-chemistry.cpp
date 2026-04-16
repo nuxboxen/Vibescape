@@ -1784,7 +1784,7 @@ SPGradient *sp_gradient_vector_for_object( SPDocument *const doc, SPDesktop *con
             }
         } else if (paint.isColor()) {
             color = paint.getColor();
-            opacity = for_fill ? style.fill_opacity : style.stroke_opacity;
+            opacity = for_fill ? (double)style.fill_opacity : (double)style.stroke_opacity;
         }
     }
 

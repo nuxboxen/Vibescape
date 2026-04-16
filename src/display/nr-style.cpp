@@ -124,9 +124,9 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
     }
     
     fill.set(style_fill);
-    fill.opacity = style->fill_opacity;
+    fill.opacity = (double)style->fill_opacity;
 
-    switch (style->fill_rule.computed) {
+    switch ((SPWindRule)style->fill_rule) {
         case SP_WIND_RULE_EVENODD:
             fill_rule = CAIRO_FILL_RULE_EVEN_ODD;
             break;
@@ -153,10 +153,10 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
     }
 
     stroke.set(style_stroke);
-    stroke.opacity = SP_SCALE24_TO_FLOAT(style->stroke_opacity.value);
-    stroke_width = style->stroke_width.computed;
+    stroke.opacity = (double)style->stroke_opacity;
+    stroke_width = (double)style->stroke_width;
     hairline = style->stroke_extensions.hairline;
-    switch (style->stroke_linecap.computed) {
+    switch ((SPStrokeCapType)style->stroke_linecap) {
         case SP_STROKE_LINECAP_ROUND:
             line_cap = CAIRO_LINE_CAP_ROUND;
             break;
@@ -169,7 +169,7 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
         default:
             g_assert_not_reached();
     }
-    switch (style->stroke_linejoin.computed) {
+    switch ((SPStrokeJoinType)style->stroke_linejoin) {
         case SP_STROKE_LINEJOIN_ROUND:
             line_join = CAIRO_LINE_JOIN_ROUND;
             break;
@@ -182,14 +182,14 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
         default:
             g_assert_not_reached();
     }
-    miter_limit = style->stroke_miterlimit.value;
+    miter_limit = (double)style->stroke_miterlimit;
 
     int const n_dash = style->stroke_dasharray.values.size();
     if (n_dash > 0 && style->stroke_dasharray.is_valid()) {
-        dash_offset = style->stroke_dashoffset.computed;
+        dash_offset = (double)style->stroke_dashoffset;
         dash.resize(n_dash);
         for (int i = 0; i < n_dash; ++i) {
-            dash[i] = style->stroke_dasharray.values[i].computed;
+            dash[i] = (double)style->stroke_dasharray.values[i];
         }
     }
 
@@ -244,8 +244,8 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
     // decoration to the fill and stroke values of that ancestor.
     auto style_td = style;
     if (style->text_decoration.style_td) style_td = style->text_decoration.style_td;
-    text_decoration_stroke.opacity = SP_SCALE24_TO_FLOAT(style_td->stroke_opacity.value);
-    text_decoration_stroke_width = style_td->stroke_width.computed;
+    text_decoration_stroke.opacity = (double)style_td->stroke_opacity;
+    text_decoration_stroke_width = (double)style_td->stroke_width;
 
     // Priority is given in order:
     //   * text_decoration_fill
@@ -292,10 +292,10 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
         underline_position     = style->text_decoration_data.underline_position;
         line_through_thickness = style->text_decoration_data.line_through_thickness;
         line_through_position  = style->text_decoration_data.line_through_position;
-        font_size              = style->font_size.computed;
+        font_size              = style->font_size;
     }
 
-    text_direction = style->direction.computed;
+    text_direction = (SPCSSDirection)style->direction;
 }
 
 auto NRStyle::preparePaint(Inkscape::DrawingContext &dc, Inkscape::RenderContext &rc, Geom::IntRect const &area, Geom::OptRect const &paintbox, Inkscape::DrawingPattern const *pattern, NRStyleData::Paint const &paint, CachedPattern const &cp) const -> CairoPatternUniqPtr

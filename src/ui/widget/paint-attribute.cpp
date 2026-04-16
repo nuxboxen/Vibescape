@@ -585,7 +585,7 @@ PaintMode PaintAttribute::PaintStrip::update_preview_indicators(const SPObject* 
     auto& style = object->style;
     auto& paint = *style->getFillOrStroke(_is_fill);
     auto mode = get_mode_from_paint(paint);
-    auto opacity = _is_fill ? style->fill_opacity : style->stroke_opacity;
+    auto opacity = _is_fill ? (double)style->fill_opacity : (double)style->stroke_opacity;
     set_preview(paint, opacity, mode);
     return mode;
 }
@@ -596,12 +596,12 @@ void PaintAttribute::PaintStrip::set_paint(const SPObject* object) {
     if (_is_fill) {
         if (auto fill = object->style->getFillOrStroke(true)) {
             auto fill_rule = object->style->fill_rule.computed == SP_WIND_RULE_NONZERO ? FillRule::NonZero : FillRule::EvenOdd;
-            set_paint(*fill, object->style->fill_opacity, fill_rule);
+            set_paint(*fill, (double)object->style->fill_opacity, fill_rule);
         }
     }
     else {
         if (auto stroke = object->style->getFillOrStroke(false)) {
-            set_paint(*stroke, object->style->stroke_opacity, FillRule::NonZero);
+            set_paint(*stroke, (double)object->style->stroke_opacity, FillRule::NonZero);
         }
     }
 }
@@ -781,7 +781,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         auto scoped(_update.block());
         if (clear) {
             item->style->opacity.clear();
-            _opacity.set_value(item->style->opacity);
+            _opacity.set_value((double)item->style->opacity);
         }
         else {
             item->style->opacity.set_double(opacity);
@@ -1010,7 +1010,7 @@ void PaintAttribute::update_from_object(SPObject* object) {
             show_stroke(false);
         }
 
-        double opacity = style->opacity;
+        double opacity = (double)style->opacity;
         _opacity.set_value(opacity);
         update_reset_opacity_button();
 

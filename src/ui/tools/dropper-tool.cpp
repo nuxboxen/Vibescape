@@ -123,10 +123,10 @@ bool DropperTool::root_handler(CanvasEvent const &event)
             if (obj->style) {
                 if (!stroke && obj->style->fill.set) {
                     apply_color = obj->style->fill.getColor();
-                    apply_color->addOpacity(obj->style->fill_opacity);
+                    apply_color->addOpacity((double)obj->style->fill_opacity);
                 } else if (stroke && obj->style->stroke.set) {
                     apply_color = obj->style->stroke.getColor();
-                    apply_color->addOpacity(obj->style->stroke_opacity);
+                    apply_color->addOpacity((double)obj->style->stroke_opacity);
                 }
             }
         }
