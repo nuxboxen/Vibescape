@@ -67,6 +67,7 @@ set(TEST_SOURCES
     async_funclog-test
     async_progress-test
     boolop-attr-test
+    boolop-single-point-test
     colors/cms-system-test
     colors/cms-transform-color-test
     colors/document-cms-test
