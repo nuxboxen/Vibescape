@@ -6,9 +6,6 @@
  */
 
 #include <gtest/gtest.h>
-#include <cstring>
-#include <memory>
-#include <span>
 #include <string>
 #include <string_view>
 
@@ -29,7 +26,7 @@ public:
     }
 
 protected:
-    std::unique_ptr<SPDocument> doc;
+    SPDocument *doc;
     SPObject *root = nullptr;
 
     void SetUp() override {
@@ -39,8 +36,7 @@ protected:
             </svg>
         )A"sv;
 
-        auto span = std::span<char const>(svg_data.data(), svg_data.size());
-        doc = SPDocument::createNewDocFromMem(span, "uri-ref-test.svg");
+        doc = SPDocument::createNewDocFromMem(svg_data.data(), svg_data.size(), true);
 
         ASSERT_NE(doc, nullptr) << "Failed to create test document";
 
