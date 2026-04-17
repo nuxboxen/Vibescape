@@ -459,17 +459,17 @@ bool Layout::Calculator::_measureUnbrokenSpan(ParagraphInfo const &para,
 
         if (char_attributes.is_cursor_position)
             char_width += text_source->style->letter_spacing.computed * _flow.getTextLengthMultiplierDue();
-        if (char_attributes.is_white)
+        if (char_attributes.is_expandable_space)
             char_width += text_source->style->word_spacing.computed * _flow.getTextLengthMultiplierDue();
         char_width += _flow.getTextLengthIncrementDue();
         span->width += char_width;
         IFTRACE(char_count++);
 
-        if (char_attributes.is_white) {
+        if (char_attributes.is_expandable_space) {
             span->whitespace_count++;
             span->each_whitespace_width = char_width;
         }
-        span->ends_with_whitespace = char_attributes.is_white;
+        span->ends_with_whitespace = char_attributes.is_expandable_space;
 
         is_soft_hyphen = (UNICODE_SOFT_HYPHEN == *Glib::ustring::const_iterator(span->end.iter_span->input_stream_first_character.base() + span->end.char_byte));
         if (is_soft_hyphen)
@@ -1137,7 +1137,7 @@ void Layout::Calculator::_outputLine(ParagraphInfo const &para,
                         _flow._characters.push_back(new_character);
 
                         // Letter/word spacing and justification
-                        if (new_character.char_attributes.is_white)
+                        if (new_character.char_attributes.is_expandable_space)
                             advance_width += text_source->style->word_spacing.computed * _flow.getTextLengthMultiplierDue() + add_to_each_whitespace;    // justification
                         if (new_character.char_attributes.is_cursor_position)
                             advance_width += text_source->style->letter_spacing.computed * _flow.getTextLengthMultiplierDue();

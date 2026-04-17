@@ -64,10 +64,12 @@ set(TEST_SOURCES
     async_progress-test
     boolop-attr-test
     uri-test
+    uri-references-test
     util-test
     drag-and-drop-svgz
     drawing-pattern-test
     extract-uri-test
+    fix-broken-links-test
     attributes-test
     color-profile-test
     dir-util-test
@@ -92,6 +94,7 @@ set(TEST_SOURCES
     svg-box-test
     svg-color-test
     svg-length-test
+    svg-path-parser-test
     svg-stringstream-test
     sp-gradient-test
     svg-path-geom-test

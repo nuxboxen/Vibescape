@@ -3,6 +3,7 @@
 #include "pool.h"
 
 #include <cassert>
+#include <cstdint>
 #include <utility>
 
 namespace Inkscape::Util {

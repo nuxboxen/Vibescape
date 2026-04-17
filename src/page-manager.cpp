@@ -122,12 +122,14 @@ void PageManager::reorderPage(Inkscape::XML::Node *child)
 
 /**
  * Enables multi page support by turning the document viewBox into
- * the first page.
+ * the first page. Ensures that there is a selected page.
  */
 void PageManager::enablePages()
 {
     if (!hasPages()) {
         _selected_page = newDocumentPage(*_document->preferredBounds(), true);
+    } else if (!_selected_page) {
+        _selected_page = pages.back();
     }
 }
 

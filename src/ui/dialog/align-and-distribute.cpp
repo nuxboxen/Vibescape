@@ -174,6 +174,10 @@ AlignAndDistribute::AlignAndDistribute(Inkscape::UI::Dialog::DialogBase *dlg)
     set_icon_size_prefs();
 }
 
+AlignAndDistribute::~AlignAndDistribute() {
+    tool_connection.disconnect();
+}
+
 void
 AlignAndDistribute::desktop_changed(SPDesktop* desktop)
 {

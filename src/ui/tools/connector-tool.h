@@ -22,8 +22,8 @@
 
 #include "display/curve.h"
 
+#include "object/weakptr.h"
 #include "ui/tools/tool-base.h"
-
 #include "xml/node-observer.h"
 
 class SPItem;
@@ -112,7 +112,7 @@ public:
     Inkscape::XML::Node *active_shape_layer_repr{nullptr};
 
     // Same as above, but for the active connector
-    SPItem *active_conn{nullptr};
+    SPWeakPtr<SPItem> active_conn;
     Inkscape::XML::Node *active_conn_repr{nullptr};
     sigc::connection sel_changed_connection;
 

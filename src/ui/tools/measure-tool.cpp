@@ -916,6 +916,7 @@ void MeasureTool::setMeasureCanvasText(bool is_angle, double precision, double a
     measure += (is_angle ? "°" : unit_name);
     auto canvas_tooltip = new Inkscape::CanvasItemText(_desktop->getCanvasTemp(), position, measure);
     canvas_tooltip->set_fontsize(fontsize);
+    canvas_tooltip->set_border(_tooltip_border_size);
     canvas_tooltip->set_fill(0xffffffff);
     canvas_tooltip->set_background(background);
     if (to_left) {
@@ -983,10 +984,10 @@ void MeasureTool::showItemInfoText(Geom::Point pos, Glib::ustring const &measure
 {
     auto canvas_tooltip = make_canvasitem<CanvasItemText>(_desktop->getCanvasTemp(), pos, measure_str);
     canvas_tooltip->set_fontsize(fontsize);
+    canvas_tooltip->set_border(_tooltip_border_size);
     canvas_tooltip->set_fill(0xffffffff);
     canvas_tooltip->set_background(0x00000099);
     canvas_tooltip->set_anchor(Geom::Point());
-    canvas_tooltip->set_fixed_line(true);
     canvas_tooltip->set_visible(true);
     measure_item.emplace_back(std::move(canvas_tooltip));
 }
@@ -1045,7 +1046,7 @@ void MeasureTool::showInfoBox(Geom::Point cursor, bool into_groups)
     Geom::Point rel_position = Geom::Point(origin, origin + yaxis_shift);
     /* Keeps infobox just above the cursor */
     Geom::Point pos = _desktop->w2d(cursor);
-    double gap = Quantity::convert(7 + fontsize, "px", unit->abbr);
+    double gap = Quantity::convert(2 * _tooltip_border_size + 1 + fontsize, "px", unit->abbr);
     double yaxisdir = _desktop->yaxisdir();
 
     if (selected) {

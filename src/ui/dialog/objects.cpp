@@ -1004,7 +1004,9 @@ ObjectsPanel::ObjectsPanel()
     show_all_children();
 }
 
-ObjectsPanel::~ObjectsPanel() = default;
+ObjectsPanel::~ObjectsPanel() {
+    _subject.setDesktop(nullptr);
+};
 
 void ObjectsPanel::desktopReplaced()
 {
@@ -1779,21 +1781,8 @@ SPItem *ObjectsPanel::getItem(Gtk::TreeModel::Row const &row) const
 }
 
 /**
- * Return true if this row has dummy children.
- */
-bool ObjectsPanel::hasDummyChildren(Gtk::TreeModel::Row const &row) const
-{
-    for (auto &c : row.children()) {
-        if (isDummy(c)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
  * If the given row has dummy children, remove them.
- * @pre Eiter all, or no children are dummies
+ * @pre Either all, or no children are dummies
  * @post If the function returns true, the row has no children
  * @return False if there are children and they are not dummies
  */
@@ -1803,7 +1792,6 @@ bool ObjectsPanel::removeDummyChildren(Gtk::TreeModel::Row const &row)
     if (!children.empty()) {
         Gtk::TreeStore::iterator child = children[0];
         if (!isDummy(*child)) {
-            assert(!hasDummyChildren(row));
             return false;
         }
 

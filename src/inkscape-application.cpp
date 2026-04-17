@@ -595,9 +595,9 @@ InkscapeApplication::_start_main_option_section(const Glib::ustring& section_nam
     auto *gapp = gio_app();
 
     if (section_name.empty()) {
-        gapp->add_main_option_entry(Gio::Application::OPTION_TYPE_BOOL, Glib::ustring("\b\b  "));
+        gapp->add_main_option_entry(Gio::Application::OPTION_TYPE_BOOL, Glib::ustring("\b\b  "), '\0', " ");
     } else {
-        gapp->add_main_option_entry(Gio::Application::OPTION_TYPE_BOOL, Glib::ustring("\b\b  \n") + section_name + ":");
+        gapp->add_main_option_entry(Gio::Application::OPTION_TYPE_BOOL, Glib::ustring("\b\b  \n") + section_name + ":", '\0', " ");
     }
 }
 
