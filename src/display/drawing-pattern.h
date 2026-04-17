@@ -56,6 +56,12 @@ public:
     void setOverflow(Geom::Affine const &initial_transform, int steps, Geom::Affine const &step_transform);
 
     /**
+     * Hint whether the pattern contents include bitmap images.
+     * Used to decide if pattern caching is safe.
+     */
+    void setContainsImages(bool contains_images);
+
+    /**
      * Render the pattern.
      *
      * Returns cairo_pattern_t structure that can be set as source surface.
@@ -80,6 +86,8 @@ protected:
 
     // Set on update.
     Geom::IntPoint _pattern_resolution;
+
+    bool _contains_images = false;
 
     struct Surface
     {

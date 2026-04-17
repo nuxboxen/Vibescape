@@ -1102,6 +1102,21 @@ void DrawingItem::recursivePrintTree(unsigned level) const
     }
 }
 
+bool DrawingItem::_containsTagRecursive(int tag) const
+{
+    if (this->tag() == tag) {
+        return true;
+    }
+
+    for (auto const &child : _children) {
+        if (child._containsTagRecursive(tag)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /**
  * Marks the current visual bounding box of the item for redrawing.
  * This is called whenever the object changes its visible appearance.

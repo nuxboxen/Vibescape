@@ -135,6 +135,7 @@ private:
     /* patternTransform attribute */
     Geom::Affine _pattern_transform;
     bool _pattern_transform_set : 1;
+    bool _contains_images = false;
     /* Tile rectangle */
     SVGLength _x;
     SVGLength _y;

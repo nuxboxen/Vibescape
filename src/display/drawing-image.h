@@ -16,7 +16,6 @@
 #include <memory>
 #include <2geom/transforms.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
-#include <cairo.h>
 
 #include "display/drawing-item.h"
 

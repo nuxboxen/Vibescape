@@ -1603,6 +1603,7 @@ bool CairoRenderContext::renderImage(Inkscape::Pixbuf const *pb,
 
     _prepareRenderGraphic();
 
+    auto pixbuf_lock = pb->lock();
     int w = pb->width();
     int h = pb->height();
 

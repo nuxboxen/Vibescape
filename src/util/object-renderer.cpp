@@ -491,6 +491,7 @@ Cairo::RefPtr<Cairo::Surface> render_image(const Inkscape::Pixbuf* pixbuf, int w
 
     if (!pixbuf || width <= 0 || height <= 0 || pixbuf->width() <= 0 || pixbuf->height() <= 0) return surface;
 
+    auto pixbuf_lock = pixbuf->lock();
     auto src = Cairo::RefPtr<Cairo::Surface>(new Cairo::Surface(pixbuf->getSurfaceRaw(), false));
     surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width * device_scale, height * device_scale);
     cairo_surface_set_device_scale(surface->cobj(), device_scale, device_scale);

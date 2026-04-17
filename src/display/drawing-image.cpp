@@ -106,7 +106,9 @@ unsigned DrawingImage::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::
     bool const outline = (flags & RENDER_OUTLINE) && !_drawing.imageOutlineMode();
 
     if (!outline) {
-        if (!_pixbuf) return RENDER_OK;
+        auto pixbuf_ref = _pixbuf;
+        if (!pixbuf_ref)
+            return RENDER_OK;
         if (_scale.vector().x() * _scale.vector().y() == 0.0) return RENDER_OK;
 
         Inkscape::DrawingContext::Save save(dc);
@@ -115,12 +117,27 @@ unsigned DrawingImage::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::
         dc.rectangle(_clipbox);
         dc.clip();
 
+        auto const *pixbuf = pixbuf_ref.get();
+        auto pixbuf_lock = pixbuf->lock();
+
+        std::unique_ptr<Inkscape::Pixbuf> pixbuf_copy;
+        if (pixbuf->pixelFormat() != Inkscape::Pixbuf::PF_CAIRO) {
+            pixbuf_copy = std::make_unique<Inkscape::Pixbuf>(*pixbuf);
+            pixbuf_copy->ensurePixelFormat(Inkscape::Pixbuf::PF_CAIRO);
+            pixbuf = pixbuf_copy.get();
+        }
+
+        auto surface =
+            cairo_image_surface_create_for_data(const_cast<unsigned char *>(pixbuf->pixels()), CAIRO_FORMAT_ARGB32,
+                                                pixbuf->width(), pixbuf->height(), pixbuf->rowstride());
+        if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+            cairo_surface_destroy(surface);
+            return RENDER_OK;
+        }
+
         dc.translate(_origin);
         dc.scale(_scale);
-        // const_cast required since Cairo needs to modify the internal refcount variable, but we do not want to give up the
-        // benefits of const for the rest of our code. The underlying object is guaranteed to be non-const, so this is well-defined.
-        // It is also thread-safe to modify the refcount in this way, since Cairo uses atomics internally.
-        dc.setSource(const_cast<cairo_surface_t*>(_pixbuf->getSurfaceRaw()), 0, 0);
+        dc.setSource(surface, 0, 0);
         dc.patternSetExtend(CAIRO_EXTEND_PAD);
 
         // See: http://www.w3.org/TR/SVG/painting.html#ImageRenderingProperty
@@ -158,6 +175,8 @@ unsigned DrawingImage::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::
             dc.popGroupToSource();
             dc.paint();
         }
+
+        cairo_surface_destroy(surface);
 
     } else { // outline; draw a rect instead
 
@@ -222,6 +241,7 @@ DrawingItem *DrawingImage::_pickItem(Geom::Point const &p, double delta, unsigne
         return nullptr;
 
     } else {
+        auto pixbuf_lock = _pixbuf->lock();
         auto pixels = _pixbuf->pixels();
         int width = _pixbuf->width();
         int height = _pixbuf->height();

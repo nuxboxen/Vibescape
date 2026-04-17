@@ -73,7 +73,8 @@ public:
 
     Inkscape::URI getURI() const;
 private:
-    static Inkscape::Pixbuf *readImage(gchar const *href, gchar const *absref, gchar const *base, double svgdpi = 0);
+    static std::shared_ptr<Inkscape::Pixbuf> readImage(gchar const *href, gchar const *absref, gchar const *base,
+                                                       double svgdpi = 0);
     static Inkscape::Pixbuf *getBrokenImage(double width, double height);
 };
 

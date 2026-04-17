@@ -13,8 +13,10 @@
 #ifndef SEEN_INKSCAPE_DISPLAY_CAIRO_UTILS_H
 #define SEEN_INKSCAPE_DISPLAY_CAIRO_UTILS_H
 
-#include <2geom/forward.h>
+#include <mutex>
 #include <cairomm/cairomm.h>
+#include <2geom/forward.h>
+
 #include "style.h"
 
 typedef struct _GdkPixbuf GdkPixbuf;
@@ -70,6 +72,7 @@ public:
     time_t modificationTime() const { return _mod_time; }
 
     PixelFormat pixelFormat() const { return _pixel_format; }
+    std::unique_lock<std::recursive_mutex> lock() const;
     void ensurePixelFormat(PixelFormat fmt);
     static void ensure_pixbuf(GdkPixbuf *pb);
     static void ensure_argb32(GdkPixbuf *pb);
@@ -94,6 +97,7 @@ public:
     std::string _path;
     PixelFormat _pixel_format;
     bool _cairo_store;
+    mutable std::recursive_mutex _mutex;
 };
 
 } // namespace Inkscape

@@ -16,15 +16,17 @@
 
 #include "sp-image.h"
 
-#include <cstring>
 #include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <mutex>
 #include <string>
-
+#include <unordered_map>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #include <giomm/error.h>
 #include <glib/gstdio.h>
 #include <glibmm/convert.h>
 #include <glibmm/i18n.h>
-
 #include <2geom/rect.h>
 #include <2geom/transforms.h>
 
@@ -68,6 +70,60 @@
 static void sp_image_set_curve(SPImage *image);
 static void sp_image_update_arenaitem (SPImage *img, Inkscape::DrawingImage *ai);
 static void sp_image_update_canvas_image (SPImage *image);
+
+namespace {
+
+std::mutex pixbuf_cache_mutex;
+std::unordered_map<std::string, std::weak_ptr<Inkscape::Pixbuf>> pixbuf_cache;
+
+std::string make_pixbuf_cache_key(std::string const &path, time_t mtime, double svgdpi)
+{
+    return path + "\n" + std::to_string(static_cast<long long>(mtime)) + "\n" + std::to_string(svgdpi);
+}
+
+std::shared_ptr<Inkscape::Pixbuf> load_pixbuf_cached(std::string const &path, double svgdpi)
+{
+    GStatBuf st = {};
+    if (g_stat(path.c_str(), &st) != 0) {
+        auto raw = Inkscape::Pixbuf::create_from_file(path, svgdpi);
+        if (!raw) {
+            return {};
+        }
+        raw->ensurePixelFormat(Inkscape::Pixbuf::PF_CAIRO);
+        return std::shared_ptr<Inkscape::Pixbuf>(raw);
+    }
+
+    auto key = make_pixbuf_cache_key(path, st.st_mtime, svgdpi);
+
+    {
+        std::lock_guard<std::mutex> lock(pixbuf_cache_mutex);
+        auto it = pixbuf_cache.find(key);
+        if (it != pixbuf_cache.end()) {
+            if (auto cached = it->second.lock()) {
+                return cached;
+            }
+            pixbuf_cache.erase(it);
+        }
+    }
+
+    auto raw = Inkscape::Pixbuf::create_from_file(path, svgdpi);
+    if (!raw) {
+        return {};
+    }
+
+    // Convert once before sharing to avoid concurrent format conversion races.
+    raw->ensurePixelFormat(Inkscape::Pixbuf::PF_CAIRO);
+
+    auto shared = std::shared_ptr<Inkscape::Pixbuf>(raw);
+    {
+        std::lock_guard<std::mutex> lock(pixbuf_cache_mutex);
+        pixbuf_cache.emplace(std::move(key), shared);
+    }
+
+    return shared;
+}
+
+} // namespace
 
 #ifdef DEBUG_LCMS
 extern guint update_in_progress;
@@ -245,7 +301,7 @@ void SPImage::update(SPCtx *ctx, unsigned int flags) {
     if (flags & SP_IMAGE_HREF_MODIFIED_FLAG) {
         pixbuf.reset();
         if (href) {
-            Inkscape::Pixbuf *pb = nullptr;
+            std::shared_ptr<Inkscape::Pixbuf> pb;
             double svgdpi = 96;
             if (getRepr()->attribute("inkscape:svg-dpi")) {
                 svgdpi = g_ascii_strtod(getRepr()->attribute("inkscape:svg-dpi"), nullptr);
@@ -259,7 +315,7 @@ void SPImage::update(SPCtx *ctx, unsigned int flags) {
                 // Passing in our previous size allows us to preserve the image's expected size.
                 auto broken_width = width._set ? width.computed : 640;
                 auto broken_height = height._set ? height.computed : 640;
-                pb = getBrokenImage(broken_width, broken_height);
+                pb = std::shared_ptr<Inkscape::Pixbuf>(getBrokenImage(broken_width, broken_height));
             }
             else {
                 missing = false;
@@ -268,12 +324,14 @@ void SPImage::update(SPCtx *ctx, unsigned int flags) {
             if (pb) {
                 if (color_profile) {
                     if (auto cp = document->getDocumentCMS().getSpace(color_profile)) {
-                        pb->ensurePixelFormat(Inkscape::Pixbuf::PF_GDK);
                         // XXX TODO cp->transformToRGB(pb);
                     }
                 }
-                pb->ensurePixelFormat(Inkscape::Pixbuf::PF_CAIRO); // Expected by rendering code, so convert now before making immutable.
-                pixbuf = std::shared_ptr<Inkscape::Pixbuf>(pb);
+                if (pb->pixelFormat() != Inkscape::Pixbuf::PF_CAIRO) {
+                    // Expected by rendering code, so convert now before making immutable.
+                    pb->ensurePixelFormat(Inkscape::Pixbuf::PF_CAIRO);
+                }
+                pixbuf = pb;
             }
         }
     }
@@ -479,7 +537,7 @@ gchar* SPImage::description() const {
 
     if (!pixbuf && document)
     {
-        Inkscape::Pixbuf * pb = nullptr;
+        std::shared_ptr<Inkscape::Pixbuf> pb;
         double svgdpi = 96;
         if (this->getRepr()->attribute("inkscape:svg-dpi")) {
             svgdpi = g_ascii_strtod(this->getRepr()->attribute("inkscape:svg-dpi"), nullptr);
@@ -493,7 +551,6 @@ gchar* SPImage::description() const {
                                         pb->width(),
                                         pb->height(),
                                         href_desc);
-            delete pb;
         } else {
             ret = g_strdup(_("{Broken Image}"));
         }
@@ -511,10 +568,10 @@ Inkscape::DrawingItem* SPImage::show(Inkscape::Drawing &drawing, unsigned int /*
     return ai;
 }
 
-
-Inkscape::Pixbuf *SPImage::readImage(gchar const *href, gchar const *absref, gchar const *base, double svgdpi)
+std::shared_ptr<Inkscape::Pixbuf> SPImage::readImage(gchar const *href, gchar const *absref, gchar const *base,
+                                                     double svgdpi)
 {
-    Inkscape::Pixbuf *inkpb = nullptr;
+    std::shared_ptr<Inkscape::Pixbuf> inkpb;
 
     char const *filename = href;
     
@@ -522,22 +579,22 @@ Inkscape::Pixbuf *SPImage::readImage(gchar const *href, gchar const *absref, gch
         if (g_ascii_strncasecmp(filename, "data:", 5) == 0) {
             /* data URI - embedded image */
             filename += 5;
-            inkpb = Inkscape::Pixbuf::create_from_data_uri(filename, svgdpi);
+            inkpb = std::shared_ptr<Inkscape::Pixbuf>(Inkscape::Pixbuf::create_from_data_uri(filename, svgdpi));
         } else {
             auto url = Inkscape::URI::from_href_and_basedir(href, base);
 
             if (url.hasScheme("file")) {
                 try {
                     auto native = url.toNativeFilename();
-                    inkpb = Inkscape::Pixbuf::create_from_file(native.c_str(), svgdpi);
+                    inkpb = load_pixbuf_cached(native, svgdpi);
                 } catch (Glib::ConvertError const &e) {
                     g_warning("readImage: %s", e.what());
-                    inkpb = nullptr;
+                    inkpb.reset();
                 }
             } else {
                 try {
                     auto contents = url.getContents();
-                    inkpb = Inkscape::Pixbuf::create_from_buffer(contents, svgdpi);
+                    inkpb = std::shared_ptr<Inkscape::Pixbuf>(Inkscape::Pixbuf::create_from_buffer(contents, svgdpi));
                 } catch (const Gio::Error &e) {
                     g_warning("URI::getContents failed for '%.100s'", href);
                 }
@@ -559,7 +616,7 @@ Inkscape::Pixbuf *SPImage::readImage(gchar const *href, gchar const *absref, gch
             g_warning ("xlink:href did not resolve to a valid image file, now trying sodipodi:absref=\"%s\"", absref);
         }
 
-        inkpb = Inkscape::Pixbuf::create_from_file(filename, svgdpi);
+        inkpb = load_pixbuf_cached(filename, svgdpi);
         if (inkpb != nullptr) {
             return inkpb;
         }
@@ -587,6 +644,13 @@ static std::string broken_image_svg = R"A(
  */
 Inkscape::Pixbuf *SPImage::getBrokenImage(double width, double height)
 {
+    if (!std::isfinite(width) || width <= 0) {
+        width = 1.0;
+    }
+    if (!std::isfinite(height) || height <= 0) {
+        height = 1.0;
+    }
+
     // Limit the size of the broken image raster. smaller than the size in cairo-utils.
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     double dpi = prefs->getDouble("/dialogs/import/defaultxdpi/value", 96.0);
@@ -603,11 +667,19 @@ Inkscape::Pixbuf *SPImage::getBrokenImage(double width, double height)
             width > height ? "xMinYMid" : "xMidYMin");
 
     auto inkpb = Inkscape::Pixbuf::create_from_buffer(copy, 0, "brokenimage.svg");
+    if (inkpb) {
+        return inkpb;
+    }
 
-    /* It's included here so if it still does not does load, our libraries are broken! */
-    g_assert (inkpb != nullptr);
-
-    return inkpb;
+    g_warning("getBrokenImage: failed to render placeholder, using blank pixbuf");
+    int w = std::max(1, static_cast<int>(std::round(width)));
+    int h = std::max(1, static_cast<int>(std::round(height)));
+    GdkPixbuf *blank = gdk_pixbuf_new(GDK_COLORSPACE_RGB, TRUE, 8, w, h);
+    if (!blank) {
+        return nullptr;
+    }
+    gdk_pixbuf_fill(blank, 0x00000000);
+    return new Inkscape::Pixbuf(blank);
 }
 
 /* We assert that realpixbuf is either NULL or identical size to pixbuf */

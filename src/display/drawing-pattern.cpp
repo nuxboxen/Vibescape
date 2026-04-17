@@ -10,12 +10,15 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include <cairomm/region.h>
+#include "drawing-pattern.h"
+
 #include <cairo.h>
+#include <cairomm/region.h>
+
 #include "cairo-utils.h"
 #include "display/drawing-item.h"
 #include "drawing-context.h"
-#include "drawing-pattern.h"
+#include "drawing-image.h"
 #include "drawing-surface.h"
 #include "drawing.h"
 #include "helper/geom.h"
@@ -68,6 +71,17 @@ void DrawingPattern::setOverflow(Geom::Affine const &initial_transform, int step
     });
 }
 
+void DrawingPattern::setContainsImages(bool contains_images)
+{
+    defer([=, this] {
+        if (_contains_images == contains_images) {
+            return;
+        }
+        _contains_images = contains_images;
+        _dropPatternCache();
+    });
+}
+
 cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect const &area, float opacity, int device_scale) const
 {
     if (opacity < 1e-3) {
@@ -77,6 +91,9 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
 
     if (!_tile_rect || _tile_rect->hasZeroArea()) {
         // Empty.
+        return nullptr;
+    }
+    if (_pattern_resolution.x() <= 0 || _pattern_resolution.y() <= 0) {
         return nullptr;
     }
 
@@ -90,7 +107,7 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
     auto const screen_to_tile = _ctm.inverse() * pattern_to_tile;
 
     // Return a canonical choice of rectangle with the same periodic tiling as rect.
-    auto canonicalised = [&, this] (Geom::IntRect rect) {
+    auto canonicalised = [&, this](Geom::IntRect rect) {
         for (int i = 0; i < 2; i++) {
             if (rect.dimensions()[i] >= _pattern_resolution[i]) {
                 rect[i] = {0, _pattern_resolution[i]};
@@ -102,29 +119,33 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
     };
 
     // Return whether the periodic tiling of a contains the periodic tiling of b.
-    auto wrapped_contains = [&] (Geom::IntRect const &a, Geom::IntRect const &b) {
-        auto check = [&] (int i) {
+    auto wrapped_contains = [&](Geom::IntRect const &a, Geom::IntRect const &b) {
+        auto check = [&](int i) {
             int const period = _pattern_resolution[i];
-            if (a[i].extent() >= period) return true;
-            if (b[i].extent() > a[i].extent()) return false;
+            if (a[i].extent() >= period)
+                return true;
+            if (b[i].extent() > a[i].extent())
+                return false;
             return Util::round_down(b[i].min() - a[i].min(), period) >= b[i].max() - a[i].max();
         };
         return check(0) && check(1);
     };
 
     // Return whether the periodic tiling of a intersects with or touches the periodic tiling of b.
-    auto wrapped_touches = [&] (Geom::IntRect const &a, Geom::IntRect const &b) {
-        auto check = [&] (int i) {
+    auto wrapped_touches = [&](Geom::IntRect const &a, Geom::IntRect const &b) {
+        auto check = [&](int i) {
             int const period = _pattern_resolution[i];
-            if (a[i].extent() >= period) return true;
-            if (b[i].extent() >= period) return true;
+            if (a[i].extent() >= period)
+                return true;
+            if (b[i].extent() >= period)
+                return true;
             return Util::round_down(b[i].max() - a[i].min(), period) >= b[i].min() - a[i].max();
         };
         return check(0) && check(1);
     };
 
     // Calculate the minimum and maximum translates of a that overlap with b.
-    auto overlapping_translates = [&, this] (Geom::IntRect const &a, Geom::IntRect const &b) {
+    auto overlapping_translates = [&, this](Geom::IntRect const &a, Geom::IntRect const &b) {
         Geom::IntPoint min, max;
         for (int i = 0; i < 2; i++) {
             min[i] = Util::round_up  (b[i].min() - a[i].max() + 1, _pattern_resolution[i]);
@@ -134,7 +155,8 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
     };
 
     // Paint the periodic tiling of a into b, and remove the painted region from dirty.
-    auto wrapped_paint = [&, this] (Surface const &a, Geom::IntRect &b, Cairo::RefPtr<Cairo::Context> const &cr, Cairo::RefPtr<Cairo::Region> const &dirty) {
+    auto wrapped_paint = [&, this](Surface const &a, Geom::IntRect &b, Cairo::RefPtr<Cairo::Context> const &cr,
+                                   Cairo::RefPtr<Cairo::Region> const &dirty) {
         auto const [min, max] = overlapping_translates(a.rect, b);
         for (int x = min.x(); x <= max.x(); x += _pattern_resolution.x()) {
             for (int y = min.y(); y <= max.y(); y += _pattern_resolution.y()) {
@@ -150,11 +172,53 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
     auto const area_orig = (Geom::Rect(area) * screen_to_tile).roundOutwards();
     auto const area_tile = canonicalised(area_orig);
 
+    auto paint = [&, this](DrawingContext &dc, Geom::IntRect const &rect) {
+        if (_overflow_steps == 1) {
+            render(dc, rc, rect);
+        } else {
+            // Overflow transforms need to be transformed to the old coordinate system
+            // before stretching to the pattern resolution.
+            auto const initial_transform = idt * _overflow_initial_transform * dt;
+            auto const step_transform = idt * _overflow_step_transform * dt;
+            dc.transform(initial_transform);
+            for (int i = 0; i < _overflow_steps; i++) {
+                // render() fails to handle transforms applied here when using cache.
+                render(dc, rc, rect, RENDER_BYPASS_CACHE);
+                dc.transform(step_transform);
+            }
+        }
+    };
+
+    if (_contains_images) {
+        auto rect = Geom::IntRect::from_xywh(0, 0, _pattern_resolution.x(), _pattern_resolution.y());
+        Surface surface(rect, device_scale);
+        Inkscape::DrawingContext dc(surface.surface->cobj(), surface.rect.min());
+        if (rc.antialiasing_override) {
+            apply_antialias(dc, rc.antialiasing_override.value());
+        }
+
+        paint(dc, rect);
+        if (opacity < 1.0 - 1e-3) {
+            dc.setOperator(CAIRO_OPERATOR_DEST_IN);
+            dc.setSource(0.0, 0.0, 0.0, opacity);
+            dc.paint();
+        }
+
+        auto cp = cairo_pattern_create_for_surface(surface.surface->cobj());
+        auto const shift = surface.rect.min() + round_down(area_orig.min() - surface.rect.min(), _pattern_resolution);
+        ink_cairo_pattern_set_matrix(cp, pattern_to_tile * Geom::Translate(-shift));
+        cairo_pattern_set_extend(cp, CAIRO_EXTEND_REPEAT);
+        if (rc.antialiasing_override && rc.antialiasing_override.value() == Antialiasing::None) {
+            cairo_pattern_set_filter(cp, CAIRO_FILTER_NEAREST);
+        }
+        return cp;
+    }
+
     // Simplest solution for now to protecting pattern cache is a mutex. This makes all
     // pattern rendering single-threaded, however patterns are typically not the bottleneck.
     auto lock = std::lock_guard(mutables);
 
-    auto get_surface = [&, this] () -> std::pair<Surface*, Cairo::RefPtr<Cairo::Region>> {
+    auto get_surface = [&, this]() -> std::pair<Surface *, Cairo::RefPtr<Cairo::Region>> {
         // If there is a rectangle containing the requested area, just use that.
         for (auto &s : surfaces) {
             if (wrapped_contains(s.rect, area_tile)) {
@@ -181,7 +245,8 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
                 }
             }
 
-            if (!modified) break;
+            if (!modified)
+                break;
         }
 
         // Canonicalise the expanded rectangle. (Stops Cairo's coordinates overflowing and the pattern disappearing.)
@@ -213,26 +278,6 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
         apply_antialias(dc, rc.antialiasing_override.value());
     }
 
-    auto paint = [&, this] (Geom::IntRect const &rect) {
-        if (_overflow_steps == 1) {
-            render(dc, rc, rect);
-        } else {
-            // Overflow transforms need to be transformed to the old coordinate system
-            // before stretching to the pattern resolution.
-            auto const initial_transform = idt * _overflow_initial_transform * dt;
-            auto const step_transform    = idt * _overflow_step_transform    * dt;
-            dc.transform(initial_transform);
-            for (int i = 0; i < _overflow_steps; i++) {
-                // render() fails to handle transforms applied here when using cache.
-                render(dc, rc, rect, RENDER_BYPASS_CACHE);
-                dc.transform(step_transform);
-                // auto raw = pattern_surface.raw();
-                // auto filename = "drawing-pattern" + std::to_string(i) + ".png";
-                // cairo_surface_write_to_png(pattern_surface.raw(), filename.c_str());
-            }
-        }
-    };
-
     if (dirty) {
         for (int i = 0; i < dirty->get_num_rectangles(); i++) {
             auto const rect = cairo_to_geom(dirty->get_rectangle(i));
@@ -247,7 +292,7 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
                     dc.clip();
                     // Draw the pattern.
                     dc.translate(wrap);
-                    paint(*rect2 - wrap);
+                    paint(dc, *rect2 - wrap);
                     // Apply opacity, if necessary.
                     if (opacity < 1.0 - 1e-3) {
                         dc.setOperator(CAIRO_OPERATOR_DEST_IN);
@@ -277,6 +322,7 @@ cairo_pattern_t *DrawingPattern::renderPattern(RenderContext &rc, Geom::IntRect 
 unsigned DrawingPattern::_updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset)
 {
     _dropPatternCache();
+    _contains_images = _containsTagRecursive(tag_of<DrawingImage>);
 
     if (!_tile_rect || _tile_rect->hasZeroArea()) {
         return STATE_NONE;
@@ -301,6 +347,7 @@ unsigned DrawingPattern::_updateItem(Geom::IntRect const &area, UpdateContext co
 
 void DrawingPattern::_dropPatternCache()
 {
+    auto lock = std::lock_guard(mutables);
     surfaces.clear();
 }
 

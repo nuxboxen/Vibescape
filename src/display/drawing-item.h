@@ -196,6 +196,7 @@ protected:
     virtual DrawingItem *_pickItem(Geom::Point const &p, double delta, unsigned flags) { return nullptr; }
     virtual bool _canClip() const { return false; }
     virtual void _dropPatternCache() {}
+    bool _containsTagRecursive(int tag) const;
 
     Drawing &_drawing;
     DrawingItem *_parent;

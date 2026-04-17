@@ -11,14 +11,8 @@
 
 #include "display/cairo-utils.h"
 
-#include <2geom/affine.h>
-#include <2geom/curves.h>
-#include <2geom/path-sink.h>
-#include <2geom/path.h>
-#include <2geom/pathvector.h>
-#include <2geom/point.h>
-#include <2geom/sbasis-to-bezier.h>
-#include <2geom/transforms.h>
+#include <cmath>
+#include <cstdint>
 #include <boost/algorithm/string.hpp>
 #include <boost/operators.hpp>
 #include <boost/optional/optional.hpp>
@@ -27,11 +21,17 @@
 #include <cairomm/pattern.h>
 #include <cairomm/refptr.h>
 #include <cairomm/surface.h>
-#include <cmath>
-#include <cstdint>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <glib/gstdio.h>
 #include <glibmm/fileutils.h>
+#include <2geom/affine.h>
+#include <2geom/curves.h>
+#include <2geom/path-sink.h>
+#include <2geom/path.h>
+#include <2geom/pathvector.h>
+#include <2geom/point.h>
+#include <2geom/sbasis-to-bezier.h>
+#include <2geom/transforms.h>
 
 #include "cairo-templates.h"
 #include "colors/manager.h"
@@ -39,6 +39,7 @@
 #include "colors/utils.h"
 #include "document.h"
 #include "helper/pixbuf-ops.h"
+#include "object/sp-root.h"
 #include "preferences.h"
 #include "ui/util.h"
 #include "util/scope_exit.h"
@@ -110,21 +111,28 @@ Pixbuf::Pixbuf(GdkPixbuf *pb)
     , _cairo_store(false)
 {
     _forceAlpha();
-    _surface = cairo_image_surface_create_for_data(
-        gdk_pixbuf_get_pixels(_pixbuf), CAIRO_FORMAT_ARGB32,
-        gdk_pixbuf_get_width(_pixbuf), gdk_pixbuf_get_height(_pixbuf), gdk_pixbuf_get_rowstride(_pixbuf));
+    _surface = cairo_image_surface_create_for_data(gdk_pixbuf_get_pixels(_pixbuf), CAIRO_FORMAT_ARGB32,
+                                                   gdk_pixbuf_get_width(_pixbuf), gdk_pixbuf_get_height(_pixbuf),
+                                                   gdk_pixbuf_get_rowstride(_pixbuf));
 }
 
 Pixbuf::Pixbuf(Inkscape::Pixbuf const &other)
-    : _pixbuf(gdk_pixbuf_copy(other._pixbuf))
-    , _surface(cairo_image_surface_create_for_data(
-        gdk_pixbuf_get_pixels(_pixbuf), CAIRO_FORMAT_ARGB32,
-        gdk_pixbuf_get_width(_pixbuf), gdk_pixbuf_get_height(_pixbuf), gdk_pixbuf_get_rowstride(_pixbuf)))
-    , _mod_time(other._mod_time)
-    , _path(other._path)
-    , _pixel_format(other._pixel_format)
+    : _pixbuf(nullptr)
+    , _surface(nullptr)
+    , _mod_time(0)
+    , _path()
+    , _pixel_format(PF_GDK)
     , _cairo_store(false)
-{}
+{
+    auto lock = other.lock();
+    _pixbuf = gdk_pixbuf_copy(other._pixbuf);
+    _surface = cairo_image_surface_create_for_data(gdk_pixbuf_get_pixels(_pixbuf), CAIRO_FORMAT_ARGB32,
+                                                   gdk_pixbuf_get_width(_pixbuf), gdk_pixbuf_get_height(_pixbuf),
+                                                   gdk_pixbuf_get_rowstride(_pixbuf));
+    _mod_time = other._mod_time;
+    _path = other._path;
+    _pixel_format = other._pixel_format;
+}
 
 Pixbuf::~Pixbuf()
 {
@@ -132,6 +140,11 @@ Pixbuf::~Pixbuf()
         cairo_surface_destroy(_surface);
     }
     g_object_unref(_pixbuf);
+}
+
+std::unique_lock<std::recursive_mutex> Pixbuf::lock() const
+{
+    return std::unique_lock<std::recursive_mutex>(_mutex);
 }
 
 #if !GDK_PIXBUF_CHECK_VERSION(2, 41, 0)
@@ -227,6 +240,7 @@ Pixbuf *Pixbuf::create_from_data_uri(gchar const *uri_data, double svgdpi)
         auto svgDoc = SPDocument::createNewDocFromMem({reinterpret_cast<char const *>(decoded), decoded_len});
         // Check the document loaded properly
         if (!svgDoc || !svgDoc->getRoot()) {
+            g_free(decoded);
             return nullptr;
         }
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
@@ -238,17 +252,28 @@ Pixbuf *Pixbuf::create_from_data_uri(gchar const *uri_data, double svgdpi)
         // Get the size of the document
         Inkscape::Util::Quantity svgWidth = svgDoc->getWidth();
         Inkscape::Util::Quantity svgHeight = svgDoc->getHeight();
-        const double svgWidth_px = svgWidth.value("px");
-        const double svgHeight_px = svgHeight.value("px");
-        if (svgWidth_px < 0 || svgHeight_px < 0) {
+        double svgWidth_px = svgWidth.value("px");
+        double svgHeight_px = svgHeight.value("px");
+        if (svgWidth_px <= 0 || svgHeight_px <= 0) {
+            if (auto root = svgDoc->getRoot(); root && root->viewBox_set) {
+                svgWidth_px = root->viewBox.width();
+                svgHeight_px = root->viewBox.height();
+            }
+        }
+        if (svgWidth_px <= 0 || svgHeight_px <= 0) {
             g_warning("create_from_data_uri: malformed document: svgWidth_px=%f, svgHeight_px=%f", svgWidth_px,
                       svgHeight_px);
+            g_free(decoded);
             return nullptr;
         }
-        
+
         assert(!pixbuf);
         Geom::Rect area(0, 0, svgWidth_px, svgHeight_px);
         pixbuf = sp_generate_internal_bitmap(svgDoc.get(), area, dpi);
+        if (!pixbuf) {
+            g_free(decoded);
+            return nullptr;
+        }
         GdkPixbuf const *buf = pixbuf->getPixbufRaw();
 
         // Tidy up
@@ -370,6 +395,7 @@ Pixbuf *Pixbuf::create_from_buffer(gchar *&&data, gsize len, double svgdpi, std:
 
                 // Check the document loaded properly
                 if (!svgDoc || !svgDoc->getRoot()) {
+                    g_free(data);
                     return nullptr;
                 }
 
@@ -382,25 +408,37 @@ Pixbuf *Pixbuf::create_from_buffer(gchar *&&data, gsize len, double svgdpi, std:
                 // Get the size of the document
                 Inkscape::Util::Quantity svgWidth = svgDoc->getWidth();
                 Inkscape::Util::Quantity svgHeight = svgDoc->getHeight();
+                double svgWidth_px = svgWidth.value("px");
+                double svgHeight_px = svgHeight.value("px");
+                if (svgWidth_px <= 0 || svgHeight_px <= 0) {
+                    if (auto root = svgDoc->getRoot(); root && root->viewBox_set) {
+                        svgWidth_px = root->viewBox.width();
+                        svgHeight_px = root->viewBox.height();
+                    }
+                }
                 // Limit the size of the document to 100 inches square
-                const double svgWidth_px = std::min(svgWidth.value("px"), dpi * 100);
-                const double svgHeight_px = std::min(svgHeight.value("px"), dpi * 100);
-                if (svgWidth_px < 0 || svgHeight_px < 0) {
+                svgWidth_px = std::min(svgWidth_px, dpi * 100);
+                svgHeight_px = std::min(svgHeight_px, dpi * 100);
+                if (svgWidth_px <= 0 || svgHeight_px <= 0) {
                     g_warning("create_from_buffer: malformed document: svgWidth_px=%f, svgHeight_px=%f", svgWidth_px,
                               svgHeight_px);
+                    g_free(data);
                     return nullptr;
                 }
 
                 Geom::Rect area(0, 0, svgWidth_px, svgHeight_px);
                 pb = sp_generate_internal_bitmap(svgDoc.get(), area, dpi);
-                if (!pb)
+                if (!pb) {
+                    g_free(data);
                     return nullptr;
+                }
 
                 buf = pb->getPixbufRaw();
 
                 // Tidy up
                 if (buf == nullptr) {
                     delete pb;
+                    g_free(data);
                     return nullptr;
                 }
                 buf = Pixbuf::apply_embedded_orientation(buf);
@@ -600,6 +638,7 @@ void Pixbuf::_setMimeData(guchar *data, gsize len, Glib::ustring const &format)
  */
 void Pixbuf::ensurePixelFormat(PixelFormat fmt)
 {
+    std::lock_guard<std::recursive_mutex> lock(_mutex);
     if (fmt == PF_CAIRO && _pixel_format == PF_GDK) {
         ensure_argb32(_pixbuf);
         _pixel_format = fmt;

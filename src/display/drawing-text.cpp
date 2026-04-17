@@ -657,6 +657,7 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
 
                 if (g->pixbuf) {
                     {
+                        auto pixbuf_lock = g->pixbuf->lock();
                         // pixbuf is in font design units, scale to embox.
                         double scale = g->design_units;
                         if (scale <= 0) scale = 1000;
