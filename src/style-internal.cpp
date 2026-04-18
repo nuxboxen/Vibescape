@@ -281,7 +281,8 @@ SPIScale24::read( gchar const *str ) {
 const Glib::ustring SPIScale24::get_value() const
 {
     if (this->inherit) return Glib::ustring("inherit");
-    return Inkscape::ustring::format_classic((double)*this);
+
+    return Inkscape::ustring::format_classic(as_double());
 }
 
 void
