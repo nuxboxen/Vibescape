@@ -45,6 +45,10 @@ ColorPage::ColorPage(std::shared_ptr<Space::AnySpace> space, std::shared_ptr<Col
     });
 
     // Keep the child in-sync with the selected colorset.
+    _selected_colors->signal_cleared.connect([this]() {
+        auto scoped = SignalBlocker{_specific_changed_connection};
+        _specific_colors->clear();
+    });
     _selected_changed_connection = _selected_colors->signal_changed.connect([this]() {
         auto scoped = SignalBlocker{_specific_changed_connection};
         for (auto &[id, color] : *_selected_colors) {

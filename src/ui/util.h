@@ -13,21 +13,26 @@
 #ifndef UI_UTIL_SEEN
 #define UI_UTIL_SEEN
 
+#include <optional>
 #include <ranges>
 #include <boost/iterator/iterator_facade.hpp>
 #include <gtkmm/notebook.h>
 #include <gtkmm/button.h>
 #include <gtkmm/gestureclick.h>
 #include <2geom/rect.h>
+#include "ui/widget/generic/spin-button.h"
+#include "util/mixed-property.h"
 
 class SPObject;
 
 namespace Gtk {
 class Button;
+class ToggleButton;
 }
 
 namespace Inkscape::UI::Widget {
 class InkSpinButton;
+class SpinScale;
 }
 
 /*
@@ -294,6 +299,19 @@ Geom::Point get_surface_transform(Gtk::Native const &native);
 
 /// Simply wraps Gtk::Widget::compute_transform(). (Missing in GTKmm.)
 Geom::Affine compute_transform(Gtk::Widget const &widget, Gtk::Widget const &target);
+
+// Set or remove the "mixed-mode" CSS class on a widget (typically toggle button)
+//  that signals "undetermined" or "mixed" state.
+void set_mixed_mode_class(Gtk::Widget& widget, bool mixed_mode);
+
+// Set the state of a toggle button based on a mixed_property
+void set_toggle_button_state(Gtk::ToggleButton& button, Inkscape::mixed_property<bool> prop, bool default_value = false);
+
+// Set the value of a spin button based on a mixed_property
+void set_spin_button_value(Inkscape::UI::Widget::InkSpinButton& button, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value = {});
+
+// Set the value of a spin scale based on a mixed_property
+void set_spin_scale_value(Inkscape::UI::Widget::SpinScale& scale, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value = {});
 
 /**
  * Given an event received by a widget, return the coordinate transformation that brings the event's

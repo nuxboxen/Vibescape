@@ -14,13 +14,17 @@
 #ifndef SEEN_DIALOGS_OBJECT_ATTRIBUTES_H
 #define SEEN_DIALOGS_OBJECT_ATTRIBUTES_H
 
+#include <2geom/point.h>
 #include <glibmm/ustring.h>
 #include <gtkmm/boolfilter.h>
+#include <gtkmm/label.h>
 #include <gtkmm/listbox.h>
 #include <gtkmm/searchentry2.h>
 #include <gtkmm/widget.h>
 #include <memory>
 #include <map>
+#include <optional>
+#include <sigc++/scoped_connection.h>
 
 #include "desktop.h"
 #include "object/sp-object.h"
@@ -59,6 +63,9 @@ protected:
     virtual void update_paint(SPObject* object);
     bool can_update() const;
     virtual void document_replaced(SPDocument* document) {}
+    virtual void on_tool_changed(Inkscape::UI::Tools::ToolBase* tool) {}
+    // override for getting object location
+    virtual std::optional<Geom::Point> get_object_position() { return std::nullopt; }
     // value with units changed by the user; modify the current object
     void change_value_px(SPObject* object, const char* key, double input, const char* attr, std::function<void (double)>&& setter);
     // angle in degrees changed by the user; modify the current object
@@ -76,7 +83,7 @@ protected:
     // add JavaScript interactivity properties
     void add_interactivity_properties();
     // add a header label
-    void add_header(const Glib::ustring& title);
+    Gtk::Label* add_header(const Glib::ustring& title);
     // add live path effects info
     void add_lpes(bool clone = false);
     // add filter info
@@ -93,7 +100,9 @@ protected:
     Widget::InkPropertyGrid _grid;
 private:
     // transform the current selection (use x/y/width/height)
-    void transform();
+    void transform(double x, double y, double width, double height);
+    // only translate the current object; by default delegated to 'transform' method
+    virtual void translate(double x, double y);
     void update_label(SPObject* object, Inkscape::Selection* selection);
     void update_size_location();
     void update_filters(SPObject* object);
@@ -144,10 +153,10 @@ private:
     Gtk::ListBox& _lpe_list;
     Gtk::MenuButton& _add_lpe;
     Gtk::ScrolledWindow& _lpe_list_wnd;
-    // Glib::RefPtr<Gio::ListStore<LPEMetadata>> _lp_effects;
     Glib::RefPtr<Gtk::BoolFilter> _lpe_filter;
     Glib::RefPtr<Gtk::SingleSelection> _lpe_selection_model;
     Gtk::SearchEntry2& _lpe_search;
+    sigc::scoped_connection _tool_changed;
 };
 
 } // namespace details

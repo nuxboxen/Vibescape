@@ -14,6 +14,7 @@ target_sources(inkscape_base PRIVATE
     share.cpp
     object-renderer.cpp
     object-modified-tags.cpp
+    paint-item-ops.cpp
     paper.cpp
     parse-int-range.cpp
     preview.cpp
@@ -21,6 +22,8 @@ target_sources(inkscape_base PRIVATE
     statics.cpp
     svg-path-parser.cpp
     theme-utils.cpp
+    style-utils.cpp
+    text-utils.cpp
     transform-objects.cpp
     recently-used-fonts.cpp
     pool.cpp
@@ -56,6 +59,7 @@ target_sources(inkscape_base PRIVATE
     longest-common-suffix.h
     object-renderer.h
     object-modified-tags.h
+    paint-item-ops.h
     optstr.h
     pages-skeleton.h
     paper.h
@@ -72,6 +76,7 @@ target_sources(inkscape_base PRIVATE
     static-doc.h
     svg-path-parser.h
     theme-utils.h
+    text-utils.h
     transform-objects.h
     treeify.h
     trim.h

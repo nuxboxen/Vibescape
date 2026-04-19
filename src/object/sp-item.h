@@ -40,6 +40,7 @@ class SPClipPathReference;
 class SPMask;
 class SPMaskReference;
 class SPAvoidRef;
+class SPHatch;
 class SPPattern;
 struct SPPrintContext;
 
@@ -339,9 +340,9 @@ public:
     void invoke_hide_except(unsigned key, const std::vector<SPItem const *> &to_keep);
 
     void getSnappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs=nullptr) const;
-    void adjust_pattern(/* Geom::Affine const &premul, */ Geom::Affine const &postmul, bool set = false,
-                        PaintServerTransform = TRANSFORM_BOTH);
-    void adjust_hatch(/* Geom::Affine const &premul, */ Geom::Affine const &postmul, bool set = false,
+    SPPattern* adjust_pattern(/* Geom::Affine const &premul, */ Geom::Affine const &postmul, bool set = false,
+                              PaintServerTransform = TRANSFORM_BOTH);
+    SPHatch* adjust_hatch(/* Geom::Affine const &premul, */ Geom::Affine const &postmul, bool set = false,
                       PaintServerTransform = TRANSFORM_BOTH);
     void adjust_gradient(/* Geom::Affine const &premul, */ Geom::Affine const &postmul, bool set = false);
     void adjust_clip(/* Geom::Affine const &premul, */ Geom::Affine const &postmul, bool set = false);

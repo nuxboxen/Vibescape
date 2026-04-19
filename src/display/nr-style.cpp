@@ -84,6 +84,7 @@ NRStyleData::NRStyleData()
     , text_decoration_fill()
     , text_decoration_stroke()
     , text_decoration_stroke_width(0.0)
+    , text_decoration_thickness(0.0)
     , phase_length(0.0)
     , tspan_line_start(false)
     , tspan_line_end(false)
@@ -122,7 +123,7 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
             //std::cerr << "NRStyleData::set: 'context-stroke': 'context_style' is NULL" << std::endl;
         }
     }
-    
+
     fill.set(style_fill);
     fill.opacity = style->fill_opacity;
 
@@ -211,30 +212,49 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
     }
 
     text_decoration_line = TEXT_DECORATION_LINE_CLEAR;
+    text_decoration_thickness = 0.0;
     if (style->text_decoration_line.inherit     ) { text_decoration_line |= TEXT_DECORATION_LINE_INHERIT;                                }
     if (style->text_decoration_line.underline   ) { text_decoration_line |= TEXT_DECORATION_LINE_UNDERLINE   + TEXT_DECORATION_LINE_SET; }
     if (style->text_decoration_line.overline    ) { text_decoration_line |= TEXT_DECORATION_LINE_OVERLINE    + TEXT_DECORATION_LINE_SET; }
     if (style->text_decoration_line.line_through) { text_decoration_line |= TEXT_DECORATION_LINE_LINETHROUGH + TEXT_DECORATION_LINE_SET; }
     if (style->text_decoration_line.blink       ) { text_decoration_line |= TEXT_DECORATION_LINE_BLINK       + TEXT_DECORATION_LINE_SET; }
 
-    text_decoration_style = TEXT_DECORATION_STYLE_CLEAR;
-    if (style->text_decoration_style.inherit ) { text_decoration_style |= TEXT_DECORATION_STYLE_INHERIT;                              }
-    if (style->text_decoration_style.solid   ) { text_decoration_style |= TEXT_DECORATION_STYLE_SOLID    + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.isdouble) { text_decoration_style |= TEXT_DECORATION_STYLE_ISDOUBLE + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.dotted  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DOTTED   + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.dashed  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DASHED   + TEXT_DECORATION_STYLE_SET; }
-    if (style->text_decoration_style.wavy    ) { text_decoration_style |= TEXT_DECORATION_STYLE_WAVY     + TEXT_DECORATION_STYLE_SET; }
- 
+    // Note: When using spelling-error and grammar-error values, the browser disregards the other properties
+    // in the text-decoration shorthand (such as text-underline-position, color, or stroke).
+    // They also ignore other decoration line settings, like underline, overline, etc.
+    // TODO: apply colors too? Red for spelling, green for grammar errors.
+    if (style->text_decoration_line.spelling_error || style->text_decoration_line.grammar_error) {
+        // remove other types, the browsers do not combine them with spelling/grammar error
+        text_decoration_line &=
+            ~(TEXT_DECORATION_LINE_UNDERLINE | TEXT_DECORATION_LINE_OVERLINE | TEXT_DECORATION_LINE_LINETHROUGH | TEXT_DECORATION_LINE_BLINK);
+        // add only the error type
+        text_decoration_line |=
+            (style->text_decoration_line.spelling_error ? TEXT_DECORATION_LINE_SPELLING_ERROR : TEXT_DECORATION_LINE_GRAMMAR_ERROR)
+            | TEXT_DECORATION_LINE_SET;
+
+        // for errors, always use dotted style to mimic what browsers do
+        text_decoration_style = TEXT_DECORATION_STYLE_DOTTED | TEXT_DECORATION_STYLE_SET;
+    }
+    else {
+        text_decoration_style = TEXT_DECORATION_STYLE_CLEAR;
+        if (style->text_decoration_style.inherit ) { text_decoration_style |= TEXT_DECORATION_STYLE_INHERIT;                              }
+        if (style->text_decoration_style.solid   ) { text_decoration_style |= TEXT_DECORATION_STYLE_SOLID    + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.isdouble) { text_decoration_style |= TEXT_DECORATION_STYLE_ISDOUBLE + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.dotted  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DOTTED   + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.dashed  ) { text_decoration_style |= TEXT_DECORATION_STYLE_DASHED   + TEXT_DECORATION_STYLE_SET; }
+        if (style->text_decoration_style.wavy    ) { text_decoration_style |= TEXT_DECORATION_STYLE_WAVY     + TEXT_DECORATION_STYLE_SET; }
+    }
+
     /* FIXME
        The meaning of text-decoration-color in CSS3 for SVG is ambiguous (2014-05-06).  Set
        it for fill, for stroke, for both?  Both would seem like the obvious choice but what happens
        is that for text which is just fill (very common) it makes the lines fatter because it
        enables stroke on the decorations when it wasn't present on the text.  That contradicts the
        usual behavior where the text and decorations by default have the same fill/stroke.
-       
+
        The behavior here is that if color is defined it is applied to text_decoration_fill/stroke
        ONLY if the corresponding fill/stroke is also present.
-       
+
        Hopefully the standard will be clarified to resolve this issue.
     */
 
@@ -247,16 +267,23 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
     text_decoration_stroke.opacity = SP_SCALE24_TO_FLOAT(style_td->stroke_opacity.value);
     text_decoration_stroke_width = style_td->stroke_width.computed;
 
+    // text-decoration-color is not inherited — walk up to parent if unset
+    auto const *tdc = &style->text_decoration_color;
+    if (!tdc->set && style->object && style->object->parent &&
+        style->object->parent->style) {
+        tdc = &style->object->parent->style->text_decoration_color;
+    }
+
     // Priority is given in order:
     //   * text_decoration_fill
     //   * text_decoration_color (only if fill set)
     //   * fill
     if (style_td->text_decoration_fill.set) {
         text_decoration_fill.set(&(style_td->text_decoration_fill));
-    } else if (style_td->text_decoration_color.set) {
+    } else if (tdc->set) {
         if(style->fill.isPaintserver() || style->fill.isColor()) {
             // SVG sets color specifically
-            text_decoration_fill.set(style->text_decoration_color.getColor());
+            text_decoration_fill.set(tdc->getColor());
         } else {
             // No decoration fill because no text fill
             text_decoration_fill.clear();
@@ -268,10 +295,10 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
 
     if (style_td->text_decoration_stroke.set) {
         text_decoration_stroke.set(&style_td->text_decoration_stroke);
-    } else if (style_td->text_decoration_color.set) {
+    } else if (tdc->set) {
         if(style->stroke.isPaintserver() || style->stroke.isColor()) {
             // SVG sets color specifically
-            text_decoration_stroke.set(style->text_decoration_color.getColor());
+            text_decoration_stroke.set(tdc->getColor());
         } else {
             // No decoration stroke because no text stroke
             text_decoration_stroke.clear();
@@ -293,6 +320,27 @@ NRStyleData::NRStyleData(SPStyle const *style, SPStyle const *context_style)
         line_through_thickness = style->text_decoration_data.line_through_thickness;
         line_through_position  = style->text_decoration_data.line_through_position;
         font_size              = style->font_size.computed;
+
+        // CSS text-decoration-thickness override (not inherited — walk up to parent)
+        const auto* tdt_ptr = &style->text_decoration_thickness;
+        if (!tdt_ptr->set && style->object && style->object->parent &&
+            style->object->parent->style) {
+            tdt_ptr = &style->object->parent->style->text_decoration_thickness;
+        }
+        auto& tdt = *tdt_ptr;
+        if (tdt.set && !tdt.auto_val) {
+            if (tdt.from_font) {
+                // Use raw font metric in user units (bypass CLAMP in renderer)
+                text_decoration_thickness = underline_thickness * font_size;
+            } else {
+                // Explicit length or percentage (percentage resolved against font-size)
+                double val = tdt.computed;
+                if (tdt.unit == SP_CSS_UNIT_PERCENT) {
+                    val = tdt.value * font_size;
+                }
+                text_decoration_thickness = val;
+            }
+        }
     }
 
     text_direction = style->direction.computed;

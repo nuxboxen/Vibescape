@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "paint-switch.h"
+#include <array>
+#include <glib.h>
 #include <glib/gi18n.h>
 #include <glibmm/markup.h>
 #include <gtkmm/box.h>
@@ -16,6 +18,7 @@
 #include "colors/color-set.h"
 #include "colors/manager.h"
 #include "colors/spaces/base.h"
+#include "object/sp-gradient.h"
 #include "style-internal.h"
 #include "ui/builder-utils.h"
 #include "ui/operation-blocker.h"
@@ -179,6 +182,8 @@ public:
     sigc::signal<void (const Colors::Color&)> get_flat_color_changed() override;
     sigc::signal<void (PaintMode)> get_signal_mode_changed() override;
     void update_from_paint(const SPIPaint& paint) override;
+    void update_from_paint_props(const PaintProp& paint) override;
+    void set_gradient(SPGradient* gradient, SPStop* selected_stop);
     void set_fill_rule(FillRule fill_rule) override;
     void _set_mode(PaintMode mode);
 
@@ -305,22 +310,18 @@ public:
     Gtk::ToggleButton _mode_group;
     WidgetGroup _plate_type;
     SPDesktop* _desktop = nullptr;
-    Gtk::Label _placeholder;
+    Gtk::Label& _placeholder;
 };
 
 PaintSwitchImpl::PaintSwitchImpl(bool support_no_paint, bool support_fill_rule, bool compact_mode) :
     _builder(create_builder("paint-switch.ui")),
     _use_compact_mode(compact_mode),
     _stack(get_widget<Gtk::Stack>(_builder, "stack")),
+    _placeholder(get_widget<Gtk::Label>(_builder, "placeholder")),
     _inherited(get_derived_widget<PaintInherited>(_builder, "inherited")),
     _fill_rule_btn(get_widget<Gtk::Button>(_builder, "btn-fill-rule")),
     _menu_btn(get_widget<Gtk::MenuButton>(_builder, "btn-menu")),
     _menu_popover(std::make_unique<UI::Widget::PopoverMenu>(Gtk::PositionType::BOTTOM)) {
-
-    _placeholder.set_halign(Gtk::Align::CENTER);
-    _placeholder.set_valign(Gtk::Align::CENTER);
-    _placeholder.get_style_context()->add_class("dim-label");
-    _stack.add(_placeholder, "placeholder");
 
     if (!support_fill_rule) {
         _fill_rule_btn.hide();
@@ -357,17 +358,17 @@ PaintSwitchImpl::PaintSwitchImpl(bool support_no_paint, bool support_fill_rule, 
     }
 
     static auto const pickers = std::to_array({
-        std::tuple{ 
-            ColorPickerPanel::PlateType::Rect,   
+        std::tuple{
+            ColorPickerPanel::PlateType::Rect,
             "btn-rect", "color-picker-rect", _("Color Map"), _("Show color map")
         },
-        std::tuple{ 
-            ColorPickerPanel::PlateType::Circle, 
+        std::tuple{
+            ColorPickerPanel::PlateType::Circle,
             "btn-circle", "color-picker-circle", _("Color Wheel"), _("Show color wheel")
         },
         std::tuple{
-            ColorPickerPanel::PlateType::None,   
-            "btn-input", "color-picker-input", _("Only Sliders"), _("Show color sliders only") 
+            ColorPickerPanel::PlateType::None,
+            "btn-input", "color-picker-input", _("Only Sliders"), _("Show color sliders only")
         }
     });
     for (const auto& [type, button_id, icon, label, tooltip] : pickers) {
@@ -378,7 +379,7 @@ PaintSwitchImpl::PaintSwitchImpl(bool support_no_paint, bool support_fill_rule, 
         if (_use_compact_mode) {
             auto menu_item = Gtk::make_managed<UI::Widget::PopoverMenuItem>(label, false, icon);
             menu_item->set_tooltip_text(tooltip);
-            
+
             menu_item->signal_activate().connect([this, type, icon] {
                 if (!_update.pending()) {
                     set_plate_type(type);
@@ -532,21 +533,8 @@ void PaintSwitchImpl::_set_mode(PaintMode mode) {
             if (auto btn = _plate_buttons[*type]) {
                 btn->set_active();
                 if (_use_compact_mode) {
-                    Glib::ustring icon_name;
-                    switch(*type) {
-                        case ColorPickerPanel::PlateType::Rect:
-                            icon_name = "color-picker-rect";
-                            break;
-                        case ColorPickerPanel::PlateType::Circle:
-                            icon_name = "color-picker-circle";
-                            break;
-                        case ColorPickerPanel::PlateType::None:
-                            icon_name = "color-picker-input";
-                            break;
-                    }
-                    if (!icon_name.empty()) {
-                        _menu_btn.set_icon_name(icon_name);
-                    }
+                    std::array icons = {"color-picker-rect", "color-picker-circle", "color-picker-input"};
+                    _menu_btn.set_icon_name(icons.at(*type));
                 }
             }
         }
@@ -591,6 +579,18 @@ std::optional<ColorPickerPanel::PlateType> PaintSwitchImpl::get_plate_type(Gtk::
     return {};
 }
 
+void PaintSwitchImpl::set_gradient(SPGradient* gradient, SPStop* selected_stop) {
+    auto vector = gradient->getVector();
+    _gradient.setMode(is<SPLinearGradient>(gradient) ? GradientSelector::MODE_LINEAR : GradientSelector::MODE_RADIAL);
+    _gradient.setGradient(gradient);
+    _gradient.setVector(vector ? vector->document : nullptr, vector);
+    _gradient.selectStop(selected_stop);
+    if (vector) {
+        _gradient.setUnits(vector->getUnits());
+        _gradient.setSpread(vector->getSpread());
+    }
+}
+
 void PaintSwitchImpl::update_from_paint(const SPIPaint& paint) {
     auto scoped(_update.block());
 
@@ -603,16 +603,8 @@ void PaintSwitchImpl::update_from_paint(const SPIPaint& paint) {
         else if (is<SPLinearGradient>(server) || is<SPRadialGradient>(server)) {
             // normal gradient
             auto gradient = cast<SPGradient>(server);
-            auto vector = gradient->getVector();
-            _gradient.setMode(is<SPLinearGradient>(gradient) ? GradientSelector::MODE_LINEAR : GradientSelector::MODE_RADIAL);
-            _gradient.setGradient(gradient);
-            _gradient.setVector(vector ? vector->document : nullptr, vector);
             auto stop = cast<SPStop>(const_cast<SPIPaint&>(paint).getTag());
-            _gradient.selectStop(stop);
-            if (vector) {
-                _gradient.setUnits(vector->getUnits());
-                _gradient.setSpread(vector->getSpread());
-            }
+            set_gradient(gradient, stop);
         }
 #ifdef WITH_MESH
         else if (is<SPMeshGradient>(server)) {
@@ -632,6 +624,40 @@ void PaintSwitchImpl::update_from_paint(const SPIPaint& paint) {
     }
     else if (auto inherited = get_inherited_paint_mode(paint)) {
         _inherited.set_mode(*inherited);
+    }
+}
+
+void PaintSwitchImpl::update_from_paint_props(const PaintProp& paint) {
+    auto scoped(_update.block());
+
+    set_mode(paint.mode);
+
+    switch (paint.mode) {
+    case PaintMode::None:
+        // no op
+        break;
+    case PaintMode::Solid:
+        // set through set_color
+        set_color(paint.color.value_or(Colors::Color(0x000000ff)));
+        break;
+    case PaintMode::Gradient:
+        set_gradient(paint.gradient, paint.selected_stop);
+        break;
+    case PaintMode::Swatch:
+        _swatch.select_vector(paint.swatch->getVector());
+        break;
+    case PaintMode::Pattern:
+        _pattern.set_selected(paint.pattern);
+        break;
+    case PaintMode::Hatch:
+        _pattern.set_selected(paint.hatch);
+        break;
+    case PaintMode::Derived:
+        _inherited.set_mode(paint.derived_mode);
+        break;
+    default:
+        g_warning("Unknown paint mode in update_from_paint_props: %d", static_cast<int>(paint.mode));
+        break;
     }
 }
 

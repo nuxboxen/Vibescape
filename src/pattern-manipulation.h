@@ -62,12 +62,12 @@ std::string sp_get_pattern_label(SPPaintServer* pattern);
 void sp_hatch_set_pitch(SPHatch* hatch, double pitch);
 void sp_hatch_set_rotation(SPHatch* hatch, double angle);
 
-// apply pattern to item
-void sp_item_apply_pattern(SPItem* item, SPPattern* pattern, FillOrStroke kind, std::optional<Inkscape::Colors::Color> color, const Glib::ustring& label,
+// apply pattern to item; returns the link pattern assigned to the item
+SPPattern* sp_item_apply_pattern(SPItem* item, SPPattern* pattern, FillOrStroke kind, std::optional<Inkscape::Colors::Color> color, const Glib::ustring& label,
     const Geom::Affine& transform, const Geom::Point& offset, bool uniform_scale, const Geom::Scale& gap);
 
-// apply hatch to item
-void sp_item_apply_hatch(SPItem* item, SPHatch* hatch, FillOrStroke kind, std::optional<Inkscape::Colors::Color> color, const Glib::ustring& label,
+// apply hatch to item; returns the link hatch assigned to the item
+SPHatch* sp_item_apply_hatch(SPItem* item, SPHatch* hatch, FillOrStroke kind, std::optional<Inkscape::Colors::Color> color, const Glib::ustring& label,
     const Geom::Affine& transform, const Geom::Point& offset, double pitch, double rotation, double thickness);
 
 void sp_hatch_set_transform(SPHatch* hatch, const Geom::Affine& transform);

@@ -598,7 +598,7 @@ button.link:hover image {
 /* Markers */
 #MarkerComboBox {
     /* Keep it from getting too small due to reduced box padding below */
-    min-height: 26px;
+    min-height: 24px;
 }
 #MarkerComboBox > button {
     /* reduced padding for marker combo box to present larger preview */
@@ -878,6 +878,11 @@ entry.small-entry {
 /* for dialogs with "Apply" button (or equivalent) - larger hit target */
 .wide-apply-button {
     min-width: 150px;
+}
+
+.no-horz-padding {
+    padding-left: 0;
+    padding-right: 0;
 }
 
 button.menu-btn-tight {
@@ -1272,7 +1277,7 @@ popover.popover-menu menuitem:hover {
     background-color: @theme_selected_bg_color;
     color: @theme_selected_fg_color;
 }
-popover.popover-menu menuitem:hover image {    
+popover.popover-menu menuitem:hover image {
     background-color: @theme_selected_bg_color;
     color: @theme_selected_fg_color;
 }
@@ -1422,13 +1427,9 @@ popover.menu > stack > box > modelbutton:first-child > * /* Affect children not 
     min-width: 24px;
     min-height: 24px;
 }
-#ColorPicker:not(.icon) > button {
-    border-width: 0;
-    padding: 0;
-}
-#ColorPicker:not(.icon) > .toggle {
-    border-width: 0;
-    padding: 0;
+#ColorPicker.small {
+    min-width: 10px;
+    min-height: 10px;
 }
 
 /* ColorPreview */
@@ -1438,11 +1439,6 @@ popover.menu > stack > box > modelbutton:first-child > * /* Affect children not 
 }
 #ColorPreview.simple {
     min-height: 12px;
-}
-#ColorPreview:hover:not(.simple) {
-    border-radius: 2px;
-    /* using outline, to keep dimensions intact - no growth */
-    outline: solid @theme_selected_bg_color 1px;
 }
 
 /* GradientImage */
@@ -1748,6 +1744,26 @@ button.reduced-padding {
 
 .active-background {
     background-color: @theme_base_color;
+}
+
+/* Mixed mode state for toggle button */
+.bright .mixed-mode, .mixed-mode {
+    background: repeating-linear-gradient(
+        126deg,
+        transparent,
+        transparent 5px,
+        alpha(@theme_selected_bg_color, 0.35) 5px,
+        alpha(@theme_selected_bg_color, 0.35) 9px
+    ), rgba(255, 255, 255, 0.30);
+}
+.dark .mixed-mode {
+    background: repeating-linear-gradient(
+        126deg,
+        transparent,
+        transparent 5px,
+        @theme_selected_bg_color 5px,
+        @theme_selected_bg_color 9px
+    ), rgba(255, 255, 255, 0.05);
 }
 
 /* Pattern editor in a popup - give it some vertical size to reveal a list of patterns */

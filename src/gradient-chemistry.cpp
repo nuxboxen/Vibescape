@@ -673,7 +673,7 @@ guint sp_number_of_stops_before_stop(SPGradient* gradient, SPStop* target) {
         n++;
     }
     return n;
-} 
+}
 
 
 SPStop* sp_get_nth_stop(SPGradient* gradient, guint index) {
@@ -704,7 +704,7 @@ SPStop *sp_get_stop_i(SPGradient *gradient, guint stop_i)
     {
         stop_i--;
     }
-    
+
     for (guint i = 0; i < stop_i; i++) {
         if (!stop) {
             return nullptr;
@@ -1703,7 +1703,7 @@ static void addStop(Inkscape::XML::Node *parent, Color const &color, double opac
 #endif
     auto doc = parent->document();
     Inkscape::XML::Node *repr = doc->createElement("svg:stop");
-    
+
     Color copy = color;
     copy.addOpacity(opacity);
     SPStop::setColorRepr(repr, copy);
@@ -1889,8 +1889,8 @@ int sp_get_gradient_refcount(SPDocument* document, SPGradient* gradient) {
     return count;
 }
 
-void sp_item_apply_gradient(SPItem* item, SPGradient* vector, SPDesktop* desktop, SPGradientType gradient_type, bool create_swatch, FillOrStroke kind) {
-    if (!item || !item->document || !item->style || gradient_type == SP_GRADIENT_TYPE_MESH) return;
+SPGradient* sp_item_apply_gradient(SPItem* item, SPGradient* vector, SPDesktop* desktop, SPGradientType gradient_type, bool create_swatch, FillOrStroke kind) {
+    if (!item || !item->document || !item->style || gradient_type == SP_GRADIENT_TYPE_MESH) return nullptr;
 
     PaintTarget paint_target = kind == FILL ? FOR_FILL : FOR_STROKE;
 
@@ -1922,22 +1922,22 @@ void sp_item_apply_gradient(SPItem* item, SPGradient* vector, SPDesktop* desktop
             if (gr) {
                 gr->setSwatch(create_swatch);
             }
-            sp_item_set_gradient(item, gr, gradient_type, paint_target);
+            return sp_item_set_gradient(item, gr, gradient_type, paint_target);
         }
         else {
-            sp_item_set_gradient(item, vector, gradient_type, paint_target);
+            return sp_item_set_gradient(item, vector, gradient_type, paint_target);
         }
     }
     else {
         // We have changed from another gradient type, or modified spread/units within
         // this gradient type.
         vector = sp_gradient_ensure_vector_normalized(vector);
-        sp_item_set_gradient(item, vector, gradient_type, paint_target);
+        return sp_item_set_gradient(item, vector, gradient_type, paint_target);
     }
 }
 
-void sp_item_apply_mesh(SPItem* item, SPGradient* mesh, SPDocument* document, FillOrStroke kind) {
-    if (!item || !item->document || !item->style) return;
+SPGradient* sp_item_apply_mesh(SPItem* item, SPGradient* mesh, SPDocument* document, FillOrStroke kind) {
+    if (!item || !item->document || !item->style) return nullptr;
 
     auto style = item->style;
     SPPaintServer* server = kind == FILL ? style->getFillPaintServer() : style->getStrokePaintServer();
@@ -1990,6 +1990,7 @@ void sp_item_apply_mesh(SPItem* item, SPGradient* mesh, SPDocument* document, Fi
     }
 
     sp_style_set_property_url(item, kind == FILL ? "fill" : "stroke", mesh_gradient, is<SPText>(item));
+    return mesh_gradient;
 }
 
 void sp_delete_item_swatch(SPItem* item, FillOrStroke kind, SPGradient* to_delete, SPGradient* replacement) {

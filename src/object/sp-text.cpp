@@ -98,7 +98,11 @@ void SPText::set(SPAttr key, const gchar* value) {
     //std::cout << "SPText::set: " << sp_attribute_name( key ) << ": " << (value?value:"Null") << std::endl;
 
     if (this->attributes.readSingleAttribute(key, value, style, &viewport)) {
-        this->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
+        unsigned flags = SP_OBJECT_MODIFIED_FLAG;
+        if (key == SPAttr::X || key == SPAttr::Y) {
+            flags |= SP_TEXT_LAYOUT_MODIFIED_FLAG;
+        }
+        this->requestDisplayUpdate(flags);
     } else {
         switch (key) {
             case SPAttr::SODIPODI_LINESPACING:

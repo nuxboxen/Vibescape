@@ -182,6 +182,8 @@ DashSelector::~DashSelector() = default;
 // Set dash pattern from outside class.
 void DashSelector::set_dash_pattern(std::vector<double> const &new_dash_pattern, double new_offset)
 {
+    _placeholder.clear();
+
     // See if there is already a dash pattern that matches (within delta).
 
     // Set the criteria for matching (sum of dash lengths / number of dashes):
@@ -236,10 +238,19 @@ std::vector<double> DashSelector::get_custom_dash_pattern() const {
 void DashSelector::update(int position)
 {
     // Update MenuButton DrawingArea.
-    if (position == CUSTOM_POS) {
-        drawing_area->set_draw_func(sigc::mem_fun(*this, &DashSelector::draw_text));
+    if (!_placeholder.empty()) {
+        drawing_area->set_draw_func([this](const Cairo::RefPtr<Cairo::Context>& cr, int width, int height) {
+            draw_text(cr, width, height, _placeholder);
+        });
+    }
+    else if (position == CUSTOM_POS) {
+        drawing_area->set_draw_func([this](const Cairo::RefPtr<Cairo::Context>& cr, int width, int height) {
+            draw_text(cr, width, height, "Custom");
+        });
     } else {
-        drawing_area->set_draw_func(sigc::bind(sigc::mem_fun(*this, &DashSelector::draw_pattern), dash_pattern));
+        drawing_area->set_draw_func([this](const Cairo::RefPtr<Cairo::Context>& cr, int width, int height) {
+            draw_pattern(cr, width, height, dash_pattern);
+        });
     }
 
     // If no dash pattern, reset offset to zero.
@@ -277,7 +288,9 @@ void DashSelector::bind_listitem_cb(Glib::RefPtr<Gtk::ListItem> const &list_item
     auto &drawing_area = dynamic_cast<Gtk::DrawingArea &>(*list_item->get_child());
 
     if (dash_pattern.custom) {
-        drawing_area.set_draw_func(sigc::mem_fun(*this, &DashSelector::draw_text));
+        drawing_area.set_draw_func([this](const Cairo::RefPtr<Cairo::Context>& cr, int width, int height) {
+            draw_text(cr, width, height, "Custom");
+        });
     } else {
         drawing_area.set_draw_func(sigc::bind(sigc::mem_fun(*this, &DashSelector::draw_pattern), dash_pattern.dash_pattern));
     }
@@ -300,8 +313,7 @@ void DashSelector::draw_pattern(Cairo::RefPtr<Cairo::Context> const &cr, int wid
 }
 
 // Draw text in a Gtk::DrawingArea.
-void DashSelector::draw_text(Cairo::RefPtr<Cairo::Context> const &cr, int width, int height)
-{
+void DashSelector::draw_text(Cairo::RefPtr<Cairo::Context> const &cr, int width, int height, const Glib::ustring& text) {
     auto disabled = (get_state_flags() & Gtk::StateFlags::INSENSITIVE) != Gtk::StateFlags::NORMAL;
     cr->select_font_face("Sans", Cairo::ToyFontFace::Slant::NORMAL, Cairo::ToyFontFace::Weight::NORMAL);
     cr->set_font_size(12);
@@ -310,11 +322,16 @@ void DashSelector::draw_text(Cairo::RefPtr<Cairo::Context> const &cr, int width,
     Gdk::Cairo::set_source_rgba(cr, color);
     Gdk::Cairo::set_source_rgba(cr, get_color());
     cr->move_to(16.0, (height + 10) / 2.0);
-    cr->show_text(_("Custom"));
+    cr->show_text(text);
 }
 
 void DashSelector::onDefocus() {
     sp_dialog_defocus(dynamic_cast<Gtk::Window*>(get_root()));
+}
+
+void DashSelector::set_placeholder(const Glib::ustring& placeholder) {
+    _placeholder = placeholder;
+    update(0);
 }
 
 } // namespace Inkscape::UI::Widget

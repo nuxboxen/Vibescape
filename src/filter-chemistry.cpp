@@ -83,8 +83,8 @@ SPFilter *new_filter(SPDocument *document)
 
     // get corresponding object
     auto f = cast<SPFilter>( document->getObjectByRepr(repr) );
-    
-    
+
+
     g_assert(f != nullptr);
 
     return f;
@@ -148,10 +148,10 @@ filter_add_primitive(SPFilter *filter, const Inkscape::Filters::FilterPrimitiveT
     // XML tree being used directly while/where it shouldn't be...
     filter->appendChild(repr);
     Inkscape::GC::release(repr);
-    
+
     // get corresponding object
     auto prim = cast<SPFilterPrimitive>( filter->document->getObjectByRepr(repr) );
- 
+
     g_assert(prim != nullptr);
 
     return prim;
@@ -175,31 +175,31 @@ new_filter_gaussian_blur (SPDocument *document, gdouble radius, double expansion
     //repr->setAttribute("inkscape:collect", "always");
 
 
-    /* Inkscape now supports both sRGB and linear color-interpolation-filters.  
+    /* Inkscape now supports both sRGB and linear color-interpolation-filters.
      * But, for the moment, keep sRGB as default value for new filters.
      * historically set to sRGB and doesn't require conversion between
      * filter cairo surfaces and other types of cairo surfaces. lp:1127103 */
-    SPCSSAttr *css = sp_repr_css_attr_new();                                    
-    sp_repr_css_set_property(css, "color-interpolation-filters", "sRGB");       
-    sp_repr_css_change(repr, css, "style");                                     
+    SPCSSAttr *css = sp_repr_css_attr_new();
+    sp_repr_css_set_property(css, "color-interpolation-filters", "sRGB");
+    sp_repr_css_change(repr, css, "style");
     sp_repr_css_attr_unref(css);
 
     //create feGaussianBlur node
     Inkscape::XML::Node *b_repr;
     b_repr = xml_doc->createElement("svg:feGaussianBlur");
     //b_repr->setAttribute("inkscape:collect", "always");
-    
+
     double stdDeviation = radius;
     if (expansion != 0)
         stdDeviation /= expansion;
 
     //set stdDeviation attribute
     b_repr->setAttributeSvgDouble("stdDeviation", stdDeviation);
-    
+
     //set feGaussianBlur as child of filter node
     repr->appendChild(b_repr);
     Inkscape::GC::release(b_repr);
-    
+
     // Append the new filter node to defs
     defs->appendChild(repr);
     Inkscape::GC::release(repr);
@@ -207,7 +207,7 @@ new_filter_gaussian_blur (SPDocument *document, gdouble radius, double expansion
     // get corresponding object
     auto f = cast<SPFilter>( document->getObjectByRepr(repr) );
     auto b = cast<SPGaussianBlur>( document->getObjectByRepr(b_repr) );
-    
+
     g_assert(f != nullptr);
     g_assert(b != nullptr);
 
@@ -233,19 +233,19 @@ new_filter_blend_gaussian_blur (SPDocument *document, const char *blendmode, gdo
     repr = xml_doc->createElement("svg:filter");
     repr->setAttribute("inkscape:collect", "always");
 
-    /* Inkscape now supports both sRGB and linear color-interpolation-filters.  
-     * But, for the moment, keep sRGB as default value for new filters. 
+    /* Inkscape now supports both sRGB and linear color-interpolation-filters.
+     * But, for the moment, keep sRGB as default value for new filters.
      * historically set to sRGB and doesn't require conversion between
      * filter cairo surfaces and other types of cairo surfaces. lp:1127103 */
-    SPCSSAttr *css = sp_repr_css_attr_new();                                    
-    sp_repr_css_set_property(css, "color-interpolation-filters", "sRGB");       
-    sp_repr_css_change(repr, css, "style");                                     
+    SPCSSAttr *css = sp_repr_css_attr_new();
+    sp_repr_css_set_property(css, "color-interpolation-filters", "sRGB");
+    sp_repr_css_change(repr, css, "style");
     sp_repr_css_attr_unref(css);
 
     // Append the new filter node to defs
     defs->appendChild(repr);
     Inkscape::GC::release(repr);
- 
+
     // get corresponding object
     auto f = cast<SPFilter>( document->getObjectByRepr(repr) );
     // Gaussian blur primitive
@@ -254,14 +254,14 @@ new_filter_blend_gaussian_blur (SPDocument *document, const char *blendmode, gdo
         Inkscape::XML::Node *b_repr;
         b_repr = xml_doc->createElement("svg:feGaussianBlur");
         b_repr->setAttribute("inkscape:collect", "always");
-        
+
         double stdDeviation = radius;
         if (expansion != 0)
             stdDeviation /= expansion;
-        
+
         //set stdDeviation attribute
         b_repr->setAttributeSvgDouble("stdDeviation", stdDeviation);
-     
+
         //set feGaussianBlur as child of filter node
         repr->appendChild(b_repr);
         Inkscape::GC::release(b_repr);
@@ -290,9 +290,9 @@ new_filter_blend_gaussian_blur (SPDocument *document, const char *blendmode, gdo
         auto b = cast<SPFeBlend>(document->getObjectByRepr(b_repr));
         g_assert(b != nullptr);
     }
-    
+
     g_assert(f != nullptr);
- 
+
     return f;
 }
 
@@ -368,10 +368,10 @@ SPFilter *modify_filter_gaussian_blur_from_item(SPDocument *document, SPItem *it
     Inkscape::XML::Node *b_repr;
     b_repr = xml_doc->createElement("svg:feGaussianBlur");
     //b_repr->setAttribute("inkscape:collect", "always");
-    
+
     //set stdDeviation attribute
     b_repr->setAttributeSvgDouble("stdDeviation", stdDeviation);
-    
+
     //set feGaussianBlur as child of filter node
     filter->getRepr()->appendChild(b_repr);
     Inkscape::GC::release(b_repr);
@@ -490,7 +490,7 @@ void remove_filter_legacy_blend(SPObject *item)
 }
 
 /**
- * Get if the filter have a < 1.0 blending filter 
+ * Get if the filter have a < 1.0 blending filter
  * @params: the item to get filtered blend
  */
 SPBlendMode filter_get_legacy_blend(SPObject *item)
@@ -585,7 +585,6 @@ bool set_blend_mode(SPItem* item, SPBlendMode blend_mode) {
 
 bool clear_blend_mode(SPItem* item) {
     return _set_blend_mode(item, SP_CSS_BLEND_NORMAL, true);
-
 }
 
 std::optional<double> object_query_blur_filter(const SPObject* object) {

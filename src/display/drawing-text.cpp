@@ -280,14 +280,6 @@ void DrawingText::decorateStyle(DrawingContext &dc, double vextent, double xphas
         -4, -3,  -2,  -1
         // clang-format on
     };
-    int dots[16]={
-        // clang-format off
-        4,     3,   2,   1,
-        -4,   -3,  -2,  -1,
-        4,     3,   2,   1,
-        -4,   -3,  -2,  -1
-        // clang-format on
-    };
     double   step = vextent/32.0;
     unsigned i  = 15 & (unsigned) round(xphase/step);  // xphase is >= 0.0
 
@@ -314,30 +306,26 @@ void DrawingText::decorateStyle(DrawingContext &dc, double vextent, double xphas
     to figure where in each of their cycles to start.  Only accurate to 1 part in 16.
     Huge positive offset should keep the phase calculation from ever being negative.
     */
-    else if(_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_DOTTED){
-        // FIXME: Per spec, this should produce round dots.
-        Geom::Point pv = ps;
-        while(true){
-            Geom::Point pvlast = pv;
-            if(dots[i]>0){
-                if(pv[Geom::X] > pf[Geom::X]) break;
+    else if (_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_DOTTED) {
+        // Draw round dots per CSS specification.
+        // Dot diameter = thickness, gap between dots = thickness (gap equals diameter).
+        double dot_spacing = thickness * 2.0;
+        double radius = thickness / 2.0;
+        // Global X coordinate of this span's start and end
+        double global_start = xphase + ps[Geom::X];
+        double global_end   = xphase + pf[Geom::X];
+        // Find first dot whose right edge reaches global_start (include partial dots at left edge).
+        // A dot at gcx overlaps the left edge if gcx + radius >= global_start.
+        double first_global = (floor(global_start / dot_spacing) + 0.5) * dot_spacing;
+        if (first_global + radius < global_start) first_global += dot_spacing;
 
-                pv += Geom::Point(step * (double)dots[i], 0.0);
-
-                if(pv[Geom::X]>= pf[Geom::X]){
-                    // Last dot
-                    dc.rectangle( Geom::Rect(pvlast + poff, pf - poff));
-                    break;
-                } else {
-                    dc.rectangle( Geom::Rect(pvlast + poff, pv - poff));
-                }
-
-                pv += Geom::Point(step * 4.0, 0.0);
-
-            } else {
-                pv += Geom::Point(step * -(double)dots[i], 0.0);
-            }
-            i = 0;  // once in phase, it stays in phase
+        double cy = ps[Geom::Y];
+        // Draw dots that start within or overlap the left edge of this span,
+        // but whose CENTER is before global_end (right edge clipping is handled
+        // by the next span drawing the same dot from its left-edge overlap logic).
+        for (double gcx = first_global; gcx < global_end; gcx += dot_spacing) {
+            double cx = gcx - xphase;
+            cairo_arc(dc.raw(), cx, cy, radius, 0, 2 * M_PI);
         }
     }
     else if (_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_DASHED) {
@@ -366,7 +354,7 @@ void DrawingText::decorateStyle(DrawingContext &dc, double vextent, double xphas
         }
     }
     else if (_nrstyle.data.text_decoration_style & NRStyleData::TEXT_DECORATION_STYLE_WAVY) {
-        double   amp  = vextent/10.0;
+        double   amp  = vextent / 20.0; // tweaked amplitude for a nice wavy look
         double   x    = ps[Geom::X];
         double   y    = ps[Geom::Y] + poff[Geom::Y];
         dc.moveTo(Geom::Point(x, y + amp * wave[i]));
@@ -399,8 +387,17 @@ void DrawingText::decorateItem(DrawingContext &dc, double phase_length, bool und
     double tsp_asc_adj                  = _nrstyle.data.ascender                        / _nrstyle.data.font_size;
     double tsp_size_adj                 = (_nrstyle.data.ascender + _nrstyle.data.descender) / _nrstyle.data.font_size;
 
-    double final_underline_thickness    = CLAMP(_nrstyle.data.underline_thickness,    tsp_size_adj/30.0, tsp_size_adj/10.0);
-    double final_line_through_thickness = CLAMP(_nrstyle.data.line_through_thickness, tsp_size_adj/30.0, tsp_size_adj/10.0);
+    double final_underline_thickness;
+    double final_line_through_thickness;
+    if (_nrstyle.data.text_decoration_thickness > 0) {
+        // Explicit CSS text-decoration-thickness (from-font or length/percentage)
+        final_underline_thickness    = _nrstyle.data.text_decoration_thickness / _nrstyle.data.font_size;
+        final_line_through_thickness = final_underline_thickness;
+    } else {
+        // Auto: use font metrics with CLAMP
+        final_underline_thickness    = CLAMP(_nrstyle.data.underline_thickness,    tsp_size_adj/30.0, tsp_size_adj/10.0);
+        final_line_through_thickness = CLAMP(_nrstyle.data.line_through_thickness, tsp_size_adj/30.0, tsp_size_adj/10.0);
+    }
 
     double xphase = phase_length/ _nrstyle.data.font_size; // used to figure out phase of patterns
 
@@ -413,13 +410,21 @@ void DrawingText::decorateItem(DrawingContext &dc, double phase_length, bool und
 
     if( under ) {
 
-        if(_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_UNDERLINE){
+        if (_nrstyle.data.text_decoration_line &
+            (NRStyleData::TEXT_DECORATION_LINE_SPELLING_ERROR | NRStyleData::TEXT_DECORATION_LINE_GRAMMAR_ERROR)) {
+
             p1 = Geom::Point(0.0,          -_nrstyle.data.underline_position);
             p2 = Geom::Point(tsp_width_adj,-_nrstyle.data.underline_position);
             decorateStyle(dc, tsp_size_adj, xphase, p1, p2, thickness);
         }
 
-        if(_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_OVERLINE){
+        if (_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_UNDERLINE) {
+            p1 = Geom::Point(0.0,          -_nrstyle.data.underline_position);
+            p2 = Geom::Point(tsp_width_adj,-_nrstyle.data.underline_position);
+            decorateStyle(dc, tsp_size_adj, xphase, p1, p2, thickness);
+        }
+
+        if (_nrstyle.data.text_decoration_line & NRStyleData::TEXT_DECORATION_LINE_OVERLINE) {
             p1 = Geom::Point(0.0,          tsp_asc_adj -_nrstyle.data.underline_position + 1 * final_underline_thickness);
             p2 = Geom::Point(tsp_width_adj,tsp_asc_adj -_nrstyle.data.underline_position + 1 * final_underline_thickness);
             decorateStyle(dc, tsp_size_adj, xphase,  p1, p2, thickness);

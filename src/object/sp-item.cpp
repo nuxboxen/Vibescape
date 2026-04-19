@@ -1385,50 +1385,48 @@ void SPItem::invoke_hide_except(unsigned key, const std::vector<SPItem const *> 
 
 // Adjusters
 
-void SPItem::adjust_pattern(Geom::Affine const &postmul, bool set, PaintServerTransform pt)
+SPPattern* SPItem::adjust_pattern(Geom::Affine const &postmul, bool set, PaintServerTransform pt)
 {
-    bool fill = (pt == TRANSFORM_FILL || pt == TRANSFORM_BOTH);
-    if (fill && style && (style->fill.isPaintserver())) {
-        SPObject *server = style->getFillPaintServer();
-        auto serverPatt = cast<SPPattern>(server);
-        if ( serverPatt ) {
-            SPPattern *pattern = serverPatt->clone_if_necessary(this, "fill");
-            pattern->transform_multiply(postmul, set);
+    SPPattern* result = nullptr;
+
+    if ((pt == TRANSFORM_FILL || pt == TRANSFORM_BOTH) && style && style->fill.isPaintserver()) {
+        if (auto serverPatt = cast<SPPattern>(style->getFillPaintServer())) {
+            result = serverPatt->clone_if_necessary(this, "fill");
+            result->transform_multiply(postmul, set);
         }
     }
 
-    bool stroke = (pt == TRANSFORM_STROKE || pt == TRANSFORM_BOTH);
-    if (stroke && style && (style->stroke.isPaintserver())) {
-        SPObject *server = style->getStrokePaintServer();
-        auto serverPatt = cast<SPPattern>(server);
-        if ( serverPatt ) {
-            SPPattern *pattern = serverPatt->clone_if_necessary(this, "stroke");
-            pattern->transform_multiply(postmul, set);
+    if ((pt == TRANSFORM_STROKE || pt == TRANSFORM_BOTH) && style && style->stroke.isPaintserver()) {
+        if (auto serverPatt = cast<SPPattern>(style->getStrokePaintServer())) {
+            auto* stroke_link = serverPatt->clone_if_necessary(this, "stroke");
+            stroke_link->transform_multiply(postmul, set);
+            if (pt == TRANSFORM_STROKE) result = stroke_link;
         }
     }
+
+    return result;
 }
 
-void SPItem::adjust_hatch(Geom::Affine const &postmul, bool set, PaintServerTransform pt)
+SPHatch* SPItem::adjust_hatch(Geom::Affine const &postmul, bool set, PaintServerTransform pt)
 {
-    bool fill = (pt == TRANSFORM_FILL || pt == TRANSFORM_BOTH);
-    if (fill && style && (style->fill.isPaintserver())) {
-        SPObject *server = style->getFillPaintServer();
-        auto serverHatch = cast<SPHatch>(server);
-        if (serverHatch) {
-            SPHatch *hatch = serverHatch->clone_if_necessary(this, "fill");
-            hatch->transform_multiply(postmul, set);
+    SPHatch* result = nullptr;
+
+    if ((pt == TRANSFORM_FILL || pt == TRANSFORM_BOTH) && style && style->fill.isPaintserver()) {
+        if (auto serverHatch = cast<SPHatch>(style->getFillPaintServer())) {
+            result = serverHatch->clone_if_necessary(this, "fill");
+            result->transform_multiply(postmul, set);
         }
     }
 
-    bool stroke = (pt == TRANSFORM_STROKE || pt == TRANSFORM_BOTH);
-    if (stroke && style && (style->stroke.isPaintserver())) {
-        SPObject *server = style->getStrokePaintServer();
-        auto serverHatch = cast<SPHatch>(server);
-        if (serverHatch) {
-            SPHatch *hatch = serverHatch->clone_if_necessary(this, "stroke");
-            hatch->transform_multiply(postmul, set);
+    if ((pt == TRANSFORM_STROKE || pt == TRANSFORM_BOTH) && style && style->stroke.isPaintserver()) {
+        if (auto serverHatch = cast<SPHatch>(style->getStrokePaintServer())) {
+            auto* stroke_link = serverHatch->clone_if_necessary(this, "stroke");
+            stroke_link->transform_multiply(postmul, set);
+            if (pt == TRANSFORM_STROKE) result = stroke_link;
         }
     }
+
+    return result;
 }
 
 void SPItem::adjust_gradient( Geom::Affine const &postmul, bool set )

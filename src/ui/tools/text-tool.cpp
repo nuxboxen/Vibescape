@@ -20,6 +20,7 @@
 #include <glibmm/i18n.h>
 #include <glibmm/main.h>
 #include <gtkmm/settings.h>
+#include <iterator>
 
 #include "context-fns.h"
 #include "desktop-style.h"
@@ -1303,7 +1304,7 @@ bool TextTool::pasteInline(Glib::ustring const clip_text)
 
             return true;
         }
-        
+
     } // FIXME: else create and select a new object under cursor!
 
     return false;
@@ -1449,6 +1450,25 @@ int TextTool::_styleQueried(SPStyle *style, int property) {
 
     auto styles_list = get_subselection(true);
     return sp_desktop_query_style_from_list(styles_list, style, property);
+}
+
+int TextTool::has_subselection() {
+    if (!text) {
+        return false;
+    }
+
+    auto layout = te_get_layout(this->text);
+    if (!layout) {
+        return false;
+    }
+
+    _validateCursorIterators();
+
+    if (text_sel_start == text_sel_end) {
+        return false;
+    }
+
+    return true;
 }
 
 std::vector<SPItem*> TextTool::get_subselection(bool include_empty_selection_item) {

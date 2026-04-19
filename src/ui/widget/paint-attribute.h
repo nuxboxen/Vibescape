@@ -14,8 +14,14 @@
 #include <gtkmm/button.h>
 #include <gtkmm/label.h>
 #include <gtkmm/menubutton.h>
+#include <vector>
 #include <sigc++/signal.h>
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+#include <2geom/affine.h>
+#include <2geom/point.h>
+#include <2geom/transforms.h>
 
+#include "colors/color.h"
 #include "color-preview.h"
 #include "combo-enums.h"
 #include "dash-selector.h"
@@ -28,7 +34,16 @@
 #include "style-internal.h"
 #include "unit-menu.h"
 #include "ui/widget/paint-popover-manager.h"
+#include "util/paint-item-ops.h"
+#include "util/style-utils.h"
 #include "widget-group.h"
+
+class SPCSSAttr;
+class SPDocument;
+class SPDesktop;
+class SPGradient;
+class SPHatch;
+class SPPattern;
 
 namespace Inkscape::UI::Widget {
 
@@ -42,6 +57,7 @@ public:
         StrokeAttributes = 0x04,
         Opacity = 0x08,
         BlendMode = 0x10,
+        Markers = 0x20,
         AllParts = 0xff
     };
     PaintAttribute(Parts add_parts, unsigned int tag);
@@ -49,18 +65,18 @@ public:
     void insert_widgets(InkPropertyGrid& grid);
     void set_document(SPDocument* document);
     void set_desktop(SPDesktop* desktop);
-    // update UI from passed object style
-    void update_from_object(SPObject* object);
+    void set_delegate(std::unique_ptr<Inkscape::Util::PaintEditDelegate> delegate);
+    // update UI using a StyleProps instance
+    void update_from_style_props(SPObject* object, const Inkscape::StyleProperties& props);
     // update visibility and lock state
     void update_visibility(SPObject* object);
 
 private:
-    void set_paint(const SPObject* object, bool fill);
-    //
-    void update_markers(SPIString* markers[], SPObject* object);
+    void update_markers(const Inkscape::StyleProperties& props, SPDocument* document);
     // show/hide stroke widgets
     void show_stroke(bool show);
     void update_stroke(SPItem* item);
+    void update_stroke_from_style(const StyleProperties& props);
     // true if attributes can be modified now, or false while the update is pending
     bool can_update() const;
     void update_reset_opacity_button();
@@ -72,11 +88,17 @@ private:
 
         // set icon representing the current fill / stroke type
         void set_preview(const SPIPaint& paint, double paint_opacity, PaintMode mode);
+        void set_preview(SPPaintServer* server, Colors::Color color, double paint_opacity, PaintMode mode);
+        void set_preview(SPPaintServer* server, PaintMode mode);
+        void set_preview(const Colors::Color& color);
+        void set_preview(PaintMode mode); // icon only
         PaintMode update_preview_indicators(const SPObject* object);
-        void set_paint(const SPObject* object);
-        void set_paint(const SPIPaint& paint, double opacity, FillRule fill_rule);
+        PaintMode update_preview_indicators(SPStyle* style);
+        void update_preview_indicators_from_paint(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity);
+        void set_paint_from_props(const mixed_property<PaintProp>& paint, const mixed_property<double>& opacity, const mixed_property<SPWindRule>& fill_rule);
         void set_fill_rule(FillRule rule);
         void set_flat_color(const Colors::Color& color);
+        void apply_style(SPCSSAttr* css);
         // mark an object as modified
         void request_update(bool update_preview);
         void show();
@@ -84,6 +106,7 @@ private:
         bool can_update() const;
         std::vector<sigc::connection> connect_signals();
 
+        SPDocument* _document = nullptr;
         Glib::RefPtr<Gtk::Builder> _builder;
         Gtk::Grid& _main;
         sigc::signal<void (bool)> _toggle_definition;
@@ -91,6 +114,7 @@ private:
         Gtk::MenuButton& _paint_btn;
         PaintSwitch* _switch = nullptr;
         ColorPreview& _color_preview;
+        Gtk::Label& _preview_label;
         Gtk::Image& _paint_icon;
         Gtk::Label& _label;
         InkSpinButton& _alpha;
@@ -101,12 +125,14 @@ private:
         SPDesktop* _desktop = nullptr;
         OperationBlocker* _update = nullptr;
         unsigned int _modified_tag;
+        PaintEditDelegate* _delegate_ptr = nullptr;
         PaintPopoverManager::Registration _connection; // RAII token.
     };
     PaintStrip _fill;
     PaintStrip _stroke;
     Glib::RefPtr<Gtk::Builder> _builder;
     Gtk::Box& _markers;
+    Gtk::Label& _markers_label;
     MarkerComboBox _marker_start = MarkerComboBox("marker-start", SP_MARKER_LOC_START);
     MarkerComboBox _marker_mid =   MarkerComboBox("marker-mid", SP_MARKER_LOC_MID);
     MarkerComboBox _marker_end =   MarkerComboBox("marker-end", SP_MARKER_LOC_END);
@@ -126,10 +152,12 @@ private:
     WidgetGroup _stroke_widgets;
     OperationBlocker _update;
     SPDesktop* _desktop = nullptr;
+    SPDocument* _document = nullptr;
     const Unit* _current_unit = nullptr;
     Parts _added_parts;
     unsigned int _modified_tag;
     Gtk::Button& _visible;
+    std::unique_ptr<PaintEditDelegate> _delegate;
 };
 
 } // namespace

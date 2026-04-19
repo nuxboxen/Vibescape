@@ -59,7 +59,10 @@ void ScaleBar::set_adjustment(Glib::RefPtr<Gtk::Adjustment> adj) {
     _adjustment = adj;
 
     if (_adjustment) {
-        _connection = _adjustment->property_value().signal_changed().connect([this]{ queue_draw(); });
+        _connection = _adjustment->property_value().signal_changed().connect([this]{
+            _mixed_mode = false;
+            queue_draw();
+        });
     }
     else {
         _connection.disconnect();
@@ -122,6 +125,7 @@ void ScaleBar::draw_scale(const Glib::RefPtr<Gtk::Snapshot>& snapshot) {
     if (!_selected.gobj()) {
         css_changed(nullptr);
     }
+    auto selected = _mixed_mode ? mix_colors(_selected, _unselected, 0.5) : _selected;
 
     auto padding = dim.y() > _block_height ? (dim.y() - _block_height) / 2 : 0;
     auto position = (_adjustment->get_value() - _adjustment->get_lower()) / range;
@@ -144,7 +148,7 @@ void ScaleBar::draw_scale(const Glib::RefPtr<Gtk::Snapshot>& snapshot) {
             auto rect = Gdk::Graphene::Rect(x0, y, x1 - x0 - 1, block_height);
             auto pos = (x0 + x1) / 2.0 / dim.x();
             // draw blocks and block placeholders
-            auto& color = position >= pos ? _selected : _unselected;
+            auto& color = position >= pos ? selected : _unselected;
             snapshot->append_color(color, rect);
         }
     }
@@ -155,7 +159,7 @@ void ScaleBar::draw_scale(const Glib::RefPtr<Gtk::Snapshot>& snapshot) {
         if (position > 0) {
             // selected portion
             auto rect = Gdk::Graphene::Rect(x0, y, len, block_height);
-            snapshot->append_color(_selected, rect);
+            snapshot->append_color(selected, rect);
         }
         if (position < 1) {
             // gray bar
@@ -182,6 +186,13 @@ void ScaleBar::set_adjustment_value(double x) {
     }
 
     _adjustment->set_value(value + _adjustment->get_lower());
+}
+
+void ScaleBar::set_mixed_mode(bool mixed) {
+    if (_mixed_mode == mixed) return;
+
+    _mixed_mode = mixed;
+    queue_draw();
 }
 
 } // namespace

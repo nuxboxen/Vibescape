@@ -40,7 +40,7 @@ using Inkscape::Colors::Color;
  */
 SPGradient *sp_gradient_ensure_vector_normalized(SPGradient *gradient);
 
- 
+
 /**
  * Sets item fill or stroke to the gradient of the specified type with given vector, creating
  * new private gradient, if needed.
@@ -71,7 +71,7 @@ SPGradient *sp_gradient_get_forked_vector_if_necessary(SPGradient *gradient, boo
 
 SPStop* sp_last_stop(SPGradient *gradient);
 SPStop* sp_get_stop_i(SPGradient *gradient, unsigned int i);
-// return n-th stop counting from 0; make no assumptions about offsets 
+// return n-th stop counting from 0; make no assumptions about offsets
 SPStop* sp_get_nth_stop(SPGradient* gradient, unsigned int index);
 std::pair<SPStop*, SPStop*> sp_get_before_after_stops(SPStop* stop);
 unsigned int sp_number_of_stops(SPGradient const *gradient);
@@ -125,11 +125,13 @@ Color sp_item_gradient_stop_query_style(SPItem *item, GrPointType point_type, un
 void sp_item_gradient_reverse_vector(SPItem *item, Inkscape::PaintTarget fill_or_stroke);
 void sp_item_gradient_invert_vector_color(SPItem *item, Inkscape::PaintTarget fill_or_stroke);
 
-// Apply gradiant (or swatch) to given item; pass nullptr to create a new gradient and apply it
-void sp_item_apply_gradient(SPItem* item, SPGradient* vector, SPDesktop* desktop, SPGradientType gradient_type, bool create_swatch, FillOrStroke kind);
+// Apply gradient (or swatch) to given item; pass nullptr to create a new gradient and apply it.
+// Returns the working gradient assigned to the item.
+SPGradient* sp_item_apply_gradient(SPItem* item, SPGradient* vector, SPDesktop* desktop, SPGradientType gradient_type, bool create_swatch, FillOrStroke kind);
 
-// Apply mesh to given item; create a new mesh is none is passed
-void sp_item_apply_mesh(SPItem* item, SPGradient* mesh, SPDocument* document, FillOrStroke kind);
+// Apply mesh to given item; create a new mesh if none is passed.
+// Returns the mesh gradient assigned to the item.
+SPGradient* sp_item_apply_mesh(SPItem* item, SPGradient* mesh, SPDocument* document, FillOrStroke kind);
 
 // Mark swatch in given "item" for auto collection, then replace it with "replacement", so it can be deleted
 void sp_delete_item_swatch(SPItem* item, FillOrStroke kind, SPGradient* to_delete, SPGradient* replacement);

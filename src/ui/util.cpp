@@ -24,6 +24,7 @@
 #include <gtkmm/revealer.h>
 #include <gtkmm/spinbutton.h>
 #include <gtkmm/textbuffer.h>
+#include <gtkmm/togglebutton.h>
 #include <gtkmm/tooltip.h>
 #include <2geom/bezier.h>
 
@@ -36,6 +37,7 @@
 #include "ui/dialog-run.h"
 #include "util/numeric/converters.h"
 #include "widget/generic/spin-button.h"
+#include "widget/generic/spin-scale.h"
 
 // NOTE: Include windows stuff last, as it #defines ERROR leading to compilation errors
 #if (defined (_WIN32) || defined (_WIN64))
@@ -643,6 +645,62 @@ Geom::Affine get_event_transform(Glib::RefPtr<Gdk::Surface const> const &event_s
     auto native = Gtk::Native::get_for_surface(event_surface);
     auto &event_widget = dynamic_cast<Gtk::Widget const &>(*native);
     return Geom::Translate{-get_surface_transform(*native)} * compute_transform(event_widget, target);
+}
+
+void set_mixed_mode_class(Gtk::Widget& widget, bool mixed_mode) {
+    static Glib::ustring mixed{"mixed-mode"};
+    if (widget.has_css_class(mixed) == mixed_mode) return;
+
+    if (mixed_mode) {
+        widget.add_css_class(mixed);
+    } else {
+        widget.remove_css_class(mixed);
+    }
+}
+
+void set_toggle_button_state(Gtk::ToggleButton& button, Inkscape::mixed_property<bool> prop, bool default_value) {
+    set_mixed_mode_class(button, prop.is_mixed());
+    // sync button's state with property; only update if state has changed to avoid repainting
+    if (prop.is_single()) {
+        if (button.get_active() != prop.value()) {
+            button.set_active(prop.value());
+        }
+    }
+    else {
+        if (button.get_active() != default_value) {
+            button.set_active(default_value);
+        }
+    }
+}
+
+void set_spin_button_value(Inkscape::UI::Widget::InkSpinButton& button, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value) {
+    static const Glib::ustring mixed_text = "…"; // ellipsis
+    static const Glib::ustring no_value = "–"; // en dash
+
+    // save some cycles by only updating widget if value has changed
+    auto update_value = [&button](double value) {
+        if (button.get_value() != value) {
+            button.set_value(value);
+        }
+    };
+
+    if (prop.is_mixed()) {
+        update_value(prop.value());
+        button.set_placeholder(mixed_text);
+    }
+    else if (prop.is_single()) {
+        update_value(prop.value());
+        button.clear_placeholder();
+    }
+    else {
+        update_value(not_set_value.value_or(prop.value()));
+        button.set_placeholder(no_value);
+    }
+}
+
+void set_spin_scale_value(Inkscape::UI::Widget::SpinScale& scale, Inkscape::mixed_property<double> prop, std::optional<double> not_set_value) {
+    set_spin_button_value(scale.get_spin_button(), prop, not_set_value);
+    scale.set_mixed_mode(prop.is_mixed());
 }
 
 /*

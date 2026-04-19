@@ -18,10 +18,12 @@
 #define SEEN_SP_MARKER_COMBO_BOX_H
 
 #include <giomm/liststore.h>
+#include <glibmm/ustring.h>
 #include <gtkmm/box.h>
 #include <gtkmm/menubutton.h>
 #include <gtkmm/popover.h>
 #include <gtkmm/cellrendererpixbuf.h>
+#include <gtkmm/stack.h>
 
 #include "display/drawing.h"
 #include "document.h"
@@ -67,6 +69,7 @@ public:
     bool in_update() const { return _update.pending(); };
     const char* get_id() const { return _combo_id.c_str(); };
     int get_loc() const { return _loc; };
+    void set_placeholder(const Glib::ustring& text);
 
     sigc::connection connect_changed(sigc::slot<void ()> slot);
     sigc::connection connect_edit   (sigc::slot<void ()> slot);
@@ -119,6 +122,8 @@ private:
     Gtk::ToggleButton& _orient_auto;
     Gtk::ToggleButton& _orient_angle;
     Gtk::Button& _orient_flip_horz;
+    Gtk::Stack _stack;
+    Gtk::Label _placeholder;
     SnapshotWidget _current_img;
     Gtk::Button& _edit_marker;
     bool _scale_linked = true;
@@ -174,6 +179,7 @@ private:
     sigc::scoped_connection _idle;
     bool _is_up_to_date = false;
     Cairo::RefPtr<Cairo::ImageSurface> marker_to_image(Geom::IntPoint size, SPMarker* marker);
+    void clear_placeholder();
 };
 
 } // namespace Inkscape::UI::Widget

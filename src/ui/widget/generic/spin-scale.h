@@ -69,6 +69,20 @@ public:
         return os.str();
     }
 
+    void set_mixed_mode(bool mixed) {
+        if (_scale.get_mixed_mode() == mixed) return;
+
+        _scale.set_mixed_mode(mixed);
+        if (mixed) {
+            _spin.set_placeholder("…");
+        }
+        else {
+            _spin.clear_placeholder();
+        }
+    }
+
+    InkSpinButton& get_spin_button() { return _spin; }
+
 private:
     void construct()
     {
@@ -86,7 +100,7 @@ private:
         _scale.set_margin_end(2);
         _scale.set_margin_start(5);
         _scale.set_hexpand();
-        _scale.set_adjustment(get_adjustment()); 
+        _scale.set_adjustment(get_adjustment());
 
         append(_scale);
         append(_spin);
