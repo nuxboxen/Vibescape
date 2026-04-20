@@ -41,9 +41,8 @@ const std::vector<PaperSize>& PaperSize::getPageSizes()
     
         for (int i = 0; lines && lines[i]; ++i) {
             gchar **line = g_strsplit_set(lines[i], ",", 5);
-            if (!line[0] || !line[1] || !line[2] || !line[3] || line[0][0]=='#') 
-                ; // Ignore the line and continue
-            else {
+
+            if (line[0] && line[1] && line[2] && line[3] && line[0][0]!='#') {
                 //name, width, height, unit
                 double width = g_ascii_strtod(line[1], nullptr);
                 double height = g_ascii_strtod(line[2], nullptr);
