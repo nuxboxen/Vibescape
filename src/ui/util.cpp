@@ -484,7 +484,7 @@ void set_windows_ime_enabled(Glib::RefPtr<Gdk::Surface> const &surface, bool ena
         if (enabled) {
             ImmAssociateContextEx(hwnd, nullptr, IACE_DEFAULT);
         } else {
-            ImmAssociateContextEx(hwnd, nullptr);
+            ImmAssociateContext(hwnd, nullptr);
         }
     }
 #endif
