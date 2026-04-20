@@ -46,6 +46,7 @@
 #include "display/control/canvas-item-rect.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/curve.h"
+#include "inkscape-window.h"
 #include "livarot/Path.h"
 #include "livarot/Shape.h"
 #include "object/sp-flowtext.h"
@@ -56,6 +57,7 @@
 #include "ui/knot/knot-holder.h"
 #include "ui/icon-names.h"
 #include "ui/shape-editor.h"
+#include "ui/util.h"
 #include "ui/widget/canvas.h"
 #include "ui/widget/events/canvas-event.h"
 #include "ui/widget/events/debug.h"
@@ -116,12 +118,10 @@ TextTool::TextTool(SPDesktop *desktop)
 
         // Note: Connecting to property_is_focus().signal_changed() would result in slight regression due to signal emisssion ordering.
         focus_in_conn = canvas->signal_focus_in_event().connect([this] (GdkEventFocus*) {
-            gtk_im_context_focus_in(imc);
             _showCursor();
             return false;
         });
         focus_out_conn = canvas->signal_focus_out_event().connect([this] (GdkEventFocus*) {
-            gtk_im_context_focus_out(imc);
             _hideCursor();
             return false;
         });
@@ -1367,7 +1367,15 @@ void TextTool::_selectionChanged(Selection *selection)
     text = nullptr;
 
     shape_editor->unset_item();
+
     if (is<SPText>(item) || is<SPFlowtext>(item)) {
+        // When the selection changes, enable or disable the IME
+        // depending on whether we are editing or not
+        if (auto win = dynamic_cast<Gtk::Window *>(_desktop->getInkscapeWindow())->get_window()) {
+            set_windows_ime_enabled(win, true);
+            gtk_im_context_focus_in(imc);
+        }
+
         shape_editor->set_item(item);
 
         text = item;
@@ -1375,6 +1383,16 @@ void TextTool::_selectionChanged(Selection *selection)
             text_sel_start = text_sel_end = layout->end();
         }
     } else {
+        // Additionally enable IME when creating text
+        if (auto win = dynamic_cast<Gtk::Window *>(_desktop->getInkscapeWindow())->get_window()) {
+            if (creating) {
+                set_windows_ime_enabled(win, true);
+                gtk_im_context_focus_in(imc);
+            } else {
+                set_windows_ime_enabled(win, false);
+                gtk_im_context_focus_out(imc);
+            }
+        }
         text = nullptr;
     }
 
