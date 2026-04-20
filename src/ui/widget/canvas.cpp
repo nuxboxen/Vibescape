@@ -17,6 +17,7 @@
 #include <thread>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
+#include "ui/util.h"
 #ifdef _WIN32
 #undef DOUBLE_CLICK
 #endif
@@ -45,6 +46,7 @@
 #include "document.h"
 #include "events/canvas-event.h"
 #include "helper/geom.h"
+#include "inkscape-window.h"
 #include "ui/controller.h"
 #include "ui/tools/tool-base.h"      // Default cursor
 
@@ -1124,11 +1126,15 @@ void Canvas::on_leave(Gtk::EventControllerMotion const &controller)
 void Canvas::on_focus_in()
 {
     grab_focus(); // Why? Is this even needed anymore?
+    // disable Windows IME
+    set_windows_ime_enabled(_desktop->getInkscapeWindow()->get_surface(), false);
     _signal_focus_in.emit();
 }
 
 void Canvas::on_focus_out()
 {
+    // re-enable Windows IME
+    set_windows_ime_enabled(_desktop->getInkscapeWindow()->get_surface(), true);
     _signal_focus_out.emit();
 }
 

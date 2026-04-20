@@ -42,6 +42,7 @@
 #undef NOGDI
 #include <gdk/win32/gdkwin32.h>
 #include <dwmapi.h>
+#include <imm.h>
 /* For Windows 10 version 1809, 1903, 1909. */
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE_OLD
 #define DWMWA_USE_IMMERSIVE_DARK_MODE_OLD 19
@@ -470,6 +471,20 @@ void set_dark_titlebar(Glib::RefPtr<Gdk::Surface> const &surface, bool is_dark)
                 attr = DWMWA_USE_IMMERSIVE_DARK_MODE_OLD;
                 DwmSetWindowAttribute(hwnd, attr, &w32_darkmode, sizeof(w32_darkmode));
             }
+        }
+    }
+#endif
+}
+
+void set_windows_ime_enabled(Glib::RefPtr<Gdk::Surface> const &surface, bool enabled)
+{
+#if (defined (_WIN32) || defined (_WIN64))
+    if (surface->gobj()) {
+        HWND hwnd = (HWND)gdk_win32_surface_get_handle((GdkSurface*)surface->gobj());
+        if (enabled) {
+            ImmAssociateContextEx(hwnd, nullptr, IACE_DEFAULT);
+        } else {
+            ImmAssociateContextEx(hwnd, nullptr);
         }
     }
 #endif
