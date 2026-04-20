@@ -92,6 +92,7 @@ if(WIN32)
 
     list(APPEND INKSCAPE_LIBS "-lmscms")
     list(APPEND INKSCAPE_LIBS "-ldwmapi")
+    list(APPEND INKSCAPE_LIBS "-limm32")
 
     list(APPEND INKSCAPE_CXX_FLAGS "-mms-bitfields")
     if(${CMAKE_CXX_COMPILER_ID} STREQUAL "GNU")
