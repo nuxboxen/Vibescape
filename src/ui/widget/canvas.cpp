@@ -1127,14 +1127,18 @@ void Canvas::on_focus_in()
 {
     grab_focus(); // Why? Is this even needed anymore?
     // disable Windows IME
-    set_windows_ime_enabled(_desktop->getInkscapeWindow()->get_surface(), false);
+    if (auto const surface = _desktop->getInkscapeWindow()->get_surface()) {
+        set_windows_ime_enabled(surface, false);
+    }
     _signal_focus_in.emit();
 }
 
 void Canvas::on_focus_out()
 {
     // re-enable Windows IME
-    set_windows_ime_enabled(_desktop->getInkscapeWindow()->get_surface(), true);
+    if (auto const surface = _desktop->getInkscapeWindow()->get_surface()) {
+        set_windows_ime_enabled(surface, false);
+    }
     _signal_focus_out.emit();
 }
 
