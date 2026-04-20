@@ -14,6 +14,7 @@
 
 #include "canvas.h"
 
+#include <iostream>
 #include <thread>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/post.hpp>
@@ -1125,6 +1126,7 @@ void Canvas::on_leave(Gtk::EventControllerMotion const &controller)
 
 void Canvas::on_focus_in()
 {
+    std::cerr << "on_focus_in" << std::endl;
     grab_focus(); // Why? Is this even needed anymore?
     // disable Windows IME
     if (auto const surface = _desktop->getInkscapeWindow()->get_surface()) {
@@ -1135,9 +1137,10 @@ void Canvas::on_focus_in()
 
 void Canvas::on_focus_out()
 {
+    std::cerr << "on_focus_out" << std::endl;
     // re-enable Windows IME
     if (auto const surface = _desktop->getInkscapeWindow()->get_surface()) {
-        set_windows_ime_enabled(surface, false);
+        set_windows_ime_enabled(surface, true);
     }
     _signal_focus_out.emit();
 }
