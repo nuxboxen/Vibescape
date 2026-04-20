@@ -13,6 +13,7 @@
 #include "util.h"
 
 #include <cstdint>
+#include <iostream>
 #include <stdexcept>
 #include <glibmm/i18n.h>
 #include <glibmm/regex.h>
@@ -478,9 +479,13 @@ void set_dark_titlebar(Glib::RefPtr<Gdk::Surface> const &surface, bool is_dark)
 
 void set_windows_ime_enabled(Glib::RefPtr<Gdk::Surface> const &surface, bool enabled)
 {
+    if (surface->gobj())
+    {
+        std::cerr << "Hello" << std::endl;
+    }
 #if (defined (_WIN32) || defined (_WIN64))
     std::cerr << "set_windows_ime_enabled" << std::endl;
-    // if (surface->gobj()) {
+    if (surface->gobj()) {
         std::cerr << "set_windows_ime_enabled if" << std::endl;
         HWND hwnd = (HWND)gdk_win32_surface_get_handle((GdkSurface*)surface->gobj());
         if (enabled) {
@@ -490,7 +495,7 @@ void set_windows_ime_enabled(Glib::RefPtr<Gdk::Surface> const &surface, bool ena
             std::cerr << "set_windows_ime_enabled disabled" << std::endl;
             ImmAssociateContext(hwnd, nullptr);
         }
-    // }
+    }
 #endif
 }
 
