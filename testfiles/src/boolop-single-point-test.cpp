@@ -26,7 +26,7 @@ public:
     {
         constexpr auto docString = R"A(
 <svg viewBox="0 0 210 110" xmlns="http://www.w3.org/2000/svg">
-  <g id="union">
+  <g id="boolop">
     <path
       d="M 10,10"
       id="Single point" />
@@ -46,7 +46,7 @@ TEST_F(BoolopSinglePointTest, Union)
 {
     auto const d_combined = "M 20 10 L 20 20 L 40 20 L 40 10 L 20 10 z ";
 
-    auto const paths = doc->getObjectsBySelector("#union path");
+    auto const paths = doc->getObjectsBySelector("#boolop path");
     ASSERT_EQ(paths.size(), 2);
 
     auto object_set = ObjectSet(doc.get());
@@ -56,8 +56,88 @@ TEST_F(BoolopSinglePointTest, Union)
     auto combined = object_set.single();
     ASSERT_TRUE(combined);
 
-    auto const paths_after = doc->getObjectsBySelector("#union path");
+    auto const paths_after = doc->getObjectsBySelector("#boolop path");
     ASSERT_EQ(paths_after.size(), 1);
 
     ASSERT_STREQ(combined->getAttribute("d"), d_combined);
+}
+
+TEST_F(BoolopSinglePointTest, Intersect)
+{
+    auto const paths = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths.size(), 2);
+
+    auto object_set = ObjectSet(doc.get());
+    object_set.setList(paths);
+    object_set.pathIntersect(true);
+    
+    auto combined = object_set.single();
+    ASSERT_FALSE(combined);
+
+    auto const paths_after = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths_after.size(), 2);
+}
+
+TEST_F(BoolopSinglePointTest, Diff)
+{
+    auto const paths = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths.size(), 2);
+
+    auto object_set = ObjectSet(doc.get());
+    object_set.setList(paths);
+    object_set.pathDiff(true);
+    
+    auto combined = object_set.single();
+    ASSERT_FALSE(combined);
+
+    auto const paths_after = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths_after.size(), 2);
+}
+
+TEST_F(BoolopSinglePointTest, SymDiff)
+{
+    auto const paths = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths.size(), 2);
+
+    auto object_set = ObjectSet(doc.get());
+    object_set.setList(paths);
+    object_set.pathSymDiff(true);
+    
+    auto combined = object_set.single();
+    ASSERT_FALSE(combined);
+
+    auto const paths_after = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths_after.size(), 2);
+}
+
+TEST_F(BoolopSinglePointTest, Cut)
+{
+    auto const paths = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths.size(), 2);
+
+    auto object_set = ObjectSet(doc.get());
+    object_set.setList(paths);
+    object_set.pathCut(true);
+    
+    auto combined = object_set.single();
+    ASSERT_FALSE(combined);
+
+    auto const paths_after = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths_after.size(), 2);
+}
+
+TEST_F(BoolopSinglePointTest, Slice)
+{
+    auto const paths = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths.size(), 2);
+
+    auto object_set = ObjectSet(doc.get());
+    object_set.setList(paths);
+    object_set.pathSlice(true);
+    
+    auto combined = object_set.single();
+    ASSERT_FALSE(combined);
+
+    auto const paths_after = doc->getObjectsBySelector("#boolop path");
+    ASSERT_EQ(paths_after.size(), 2);
 }
