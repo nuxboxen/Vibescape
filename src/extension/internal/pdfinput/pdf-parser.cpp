@@ -2268,15 +2268,11 @@ void PdfParser::opShowSpaceText(Object args[], int /*numArgs*/)
  * This adds a string from a PDF file that is contained in one command ('Tj', ''', '"')
  * or is one string in ShowSpacetext ('TJ').
  */
-#if POPPLER_CHECK_VERSION(0,64,0)
-void PdfParser::doShowText(const GooString *s) {
-#else
-void PdfParser::doShowText(GooString *s) {
-#endif
+void PdfParser::doShowText(const std::string &s) {
     auto font = state->getFont();
     _POPPLER_WMODE wMode = font->getWMode(); // Vertical/Horizontal/Invalid
 
-    builder->beginString(state, get_goostring_length(*s));
+    builder->beginString(state, s.size());
 
     // handle a Type 3 char
     if (font->getType() == fontType3) {
@@ -2286,8 +2282,8 @@ void PdfParser::doShowText(GooString *s) {
     double riseX, riseY;
     state->textTransformDelta(0, state->getRise(), &riseX, &riseY);
 
-    auto p = s->getCString(); // char* or const char*
-    int len = get_goostring_length(*s);
+    auto p = s.c_str(); // char* or const char*
+    int len = s.size();
 
     while (len > 0) {
 
@@ -2342,6 +2338,15 @@ void PdfParser::doShowText(GooString *s) {
     }
 
     builder->endString(state);
+}
+
+#if POPPLER_CHECK_VERSION(0,64,0)
+void PdfParser::doShowText(const GooString *s) {
+#else
+void PdfParser::doShowText(GooString *s) {
+#endif
+    const std::string str = s->toStr();
+    doShowText(str);
 }
 
 
@@ -2951,7 +2956,11 @@ Stream *PdfParser::buildImageStream() {
 
   // build dictionary
 #if defined(POPPLER_NEW_OBJECT_API)
+#if POPPLER_CHECK_VERSION(26, 3, 0)
+  dict = Object(std::make_unique<Dict>(xref));
+#else
   dict = Object(new Dict(xref));
+#endif
 #else
   dict.initDict(xref);
 #endif
