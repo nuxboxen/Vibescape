@@ -147,6 +147,7 @@ if(WIN32)
     if($ENV{MSYSTEM} STREQUAL "CLANGARM64" OR $ENV{MSYSTEM} STREQUAL "CLANG64")
       install(FILES
         ${MINGW_BIN}/libc++.dll
+        ${MINGW_BIN}/libomp.dll
         ${MINGW_BIN}/libunwind.dll
         DESTINATION bin)
     else()

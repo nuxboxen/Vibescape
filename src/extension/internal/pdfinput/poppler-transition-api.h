@@ -15,6 +15,16 @@
 #include <glib/poppler-features.h>
 #include <poppler/UTF.h>
 
+#if POPPLER_CHECK_VERSION(26, 2, 0)
+#define _POPPLER_WMODE GfxFont::WritingMode
+#define _POPPLER_WMODE_HORIZONTAL GfxFont::WritingMode::Horizontal
+#define _POPPLER_WMODE_VERTICAL GfxFont::WritingMode::Vertical
+#else
+#define _POPPLER_WMODE int
+#define _POPPLER_WMODE_HORIZONTAL 0
+#define _POPPLER_WMODE_VERTICAL 1
+#endif
+
 #if POPPLER_CHECK_VERSION(25, 7, 0)
 #define _POPPLER_TEXT_SHIFT_WITH_USER_COORDS(dx, dy) textShiftWithUserCoords(dx, dy)
 #define _POPPLER_FOFI_TRUETYPE_MAKE(font_data, faceIndex) FoFiTrueType::make(std::span(font_data), faceIndex)
