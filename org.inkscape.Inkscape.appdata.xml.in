@@ -56,6 +56,17 @@
     </screenshot>
   </screenshots>
   <releases>
+   <release version="1.4.4" date="2026-05-06">
+      <description>
+        <p>Inkscape 1.4.4</p>
+        <ul>
+          <li>Many crash fixes</li>
+          <li>New format for multipage documents</li>
+          <li>Translation updates</li>
+        </ul>
+      </description>
+      <url>https://inkscape.org/doc/release_notes/1.4.4/Inkscape_1.4.4.html</url>
+    </release>
    <release version="1.4.3" date="2025-12-25">
       <description>
         <p>Inkscape 1.4.3</p>
