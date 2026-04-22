@@ -18,9 +18,9 @@ Inkscape - ett redigeringsprogram för SVG (Scalable Vector Graphics).
 
 =head1 SYNOPSIS
 
-C<inkscape [alternativ] [filnamn_1 filnamn_2 ...]>
+C<inkscape [flaggor] [filnamn_1 filnamn_2 ...]>
 
-alternativ:
+flaggor:
 
     -?, --help
         --help-all
@@ -103,7 +103,7 @@ B<Inkscape> använder SVG som sitt ursprungliga dokumentformat och har som mål 
 
 
 
-=head1 ALTERNATIV
+=head1 FLAGGOR
 
 =over 8
 
@@ -113,15 +113,15 @@ Visar ett hjälpmeddelande.
 
 =item B<--help-all>
 
-Visar alla hjälpalternativ.
+Visar alla hjälpflaggor.
 
 =item B<--help-gapplication>
 
-Visar GApplication-alternativen.
+Visar GApplication-flaggorna.
 
 =item B<--help-gtk>
 
-Visar GTK+-alternativen.
+Visar GTK+-flaggorna.
 
 =item B<-V>, B<--version>
 
@@ -163,7 +163,7 @@ Välj metod som används för att skala om äldre filer (före 0.92) som återge
 
 =item B<--no-convert-text-baseline-spacing>
 
-Fixa inte automatiskt textens baslinjer i äldre (pre-0.92) filer vid öppning.  Inkscape 0.92 antar CSS-standarddefinitionen för egenskapen "line-height", som skiljer sig från tidigare versioner.  Som standard kommer radhöjdsvärdena i filer som skapats före Inkscape 0.92 att justeras vid laddning för att bevara den avsedda textlayouten.  Detta kommandoradsalternativ kommer att hoppa över den justeringen.
+Fixa inte automatiskt textens baslinjer i äldre (pre-0.92) filer vid öppning.  Inkscape 0.92 antar CSS-standarddefinitionen för egenskapen "line-height", som skiljer sig från tidigare versioner.  Som standard kommer radhöjdsvärdena i filer som skapats före Inkscape 0.92 att justeras vid laddning för att bevara den avsedda textlayouten.  Denna kommandoradsflagga kommer att hoppa över den justeringen.
 
 =item B<-o>, B<--export-filename>=I<FILNAMN>
 
@@ -185,15 +185,15 @@ Observera att PDF-formatet bevarar transparensen i den ursprungliga SVG-filen.
 
 =item B<--export-extension>=I<UTÖKNINGS-ID>
 
-Gör det möjligt att ange en filändelse som ska användas vid export, vilket är särskilt relevant om det finns mer än ett exportalternativ för en viss filtyp. Om detta anges kan filtillägget i --export-filename och --export-type utelämnas. Om det anges får dessutom endast en filtyp anges i --export-type.
+Gör det möjligt att ange en filändelse som ska användas vid export, vilket är särskilt relevant om det finns mer än en exportflagga för en viss filtyp. Om detta anges kan filtillägget i --export-filename och --export-type utelämnas. Om det anges får dessutom endast en filtyp anges i --export-type.
 
 =item B<-C>, B<--export-area-page>
 
-I SVG, PNG, PDF, PS är det exporterade området sidan. Detta är standardinställningen för SVG, PNG, PDF och PS, så du behöver inte ange detta om du inte använder L<--export-id> för att exportera ett specifikt objekt. För EPS stöds inte detta alternativ för närvarande.
+I SVG, PNG, PDF, PS är det exporterade området sidan. Detta är standardinställningen för SVG, PNG, PDF och PS, så du behöver inte ange detta om du inte använder L<--export-id> för att exportera ett specifikt objekt. För EPS stöds inte denna flagga för närvarande.
 
 =item B<-D>, B<--export-area-drawing>
 
-Vid SVG-, PNG-, PDF-, PS- och EPS-export är det exporterade området ritningen (inte sidan), dvs. begränsningsrutan för alla objekt i dokumentet (eller för det exporterade objektet om L<--export-id> används).  Med detta alternativ kommer den exporterade bilden att visa alla synliga objekt i dokumentet utan marginaler eller beskärning. Detta är standardområdet för export av EPS. För PNG kan det användas i kombination med L<--export-use-hints>.
+Vid SVG-, PNG-, PDF-, PS- och EPS-export är det exporterade området ritningen (inte sidan), dvs. begränsningsrutan för alla objekt i dokumentet (eller för det exporterade objektet om L<--export-id> används).  Med denna flagga kommer den exporterade bilden att visa alla synliga objekt i dokumentet utan marginaler eller beskärning. Detta är standardområdet för export av EPS. För PNG kan det användas i kombination med L<--export-use-hints>.
 
 =item B<-a> I<x0:y0:x1:y1>, B<--export-area>=I<x0:y0:x1:y1>
 
@@ -217,7 +217,7 @@ Höjden på den genererade bitmappen i bildpunkter.  Detta värde åsidosätter 
 
 =item B<--export-margin>=I<MARGINAL>
 
-Lägger till en marginal runt det exporterade området. Marginalens storlek anges i enheter av sidstorlek (för SVG) eller millimeter (för PS/PDF). Alternativet har för närvarande ingen effekt för andra exportformat.
+Lägger till en marginal runt det exporterade området. Marginalens storlek anges i enheter av sidstorlek (för SVG) eller millimeter (för PS/PDF). Flaggan har för närvarande ingen effekt för andra exportformat.
 
 =item B<-i> I<ID>, B<--export-page>=I<all|n[,a-b]*>
 
@@ -233,11 +233,11 @@ Om du anger många värden med en semikolonseparerad lista över objekt kommer v
 
 =item B<-j>, B<--export-id-only>
 
-För PNG-, PS-, EPS-, PDF- och vanlig SVG-export exporteras endast det objekt vars id anges i L<--export-id>. Alla andra objekt är dolda och visas inte i exporten även om de överlagrar det exporterade objektet.  Utan L<--export-id> ignoreras detta alternativ.
+För PNG-, PS-, EPS-, PDF- och vanlig SVG-export exporteras endast det objekt vars id anges i L<--export-id>. Alla andra objekt är dolda och visas inte i exporten även om de överlagrar det exporterade objektet.  Utan L<--export-id> ignoreras denna flagga.
 
 =item B<-l>, B<--export-plain-svg>
 
-Exportera dokument till vanligt SVG-format, utan namnrymderna sodipodi: eller inkscape: och utan RDF-metadata. Använd alternativet L<--export-filename> för att ange filnamnet.
+Exportera dokument till vanligt SVG-format, utan namnrymderna sodipodi: eller inkscape: och utan RDF-metadata. Använd flaggan L<--export-filename> för att ange filnamnet.
 
 =item B<--export-png-color-mode>=I<FÄRGLÄGE>
 
@@ -261,7 +261,7 @@ Ange språkversion för PS- och EPS-export. PostScript nivå 2 eller 3 stöds. S
 
 =item B<--export-pdf-version>=I<VERSION>
 
-Välj PDF-version för den exporterade PDF-filen. Detta alternativ exponerar i princip PDF-versionväljaren som finns i PDF-exportdialogen i det grafiska gränssnittet. Du måste ange en av versionerna från den kombinationsrutan, t.ex. "1.4". Standardversionen för pdf-export är "1.4".
+Välj PDF-version för den exporterade PDF-filen. Denna flagga exponerar i princip PDF-versionväljaren som finns i PDF-exportdialogen i det grafiska gränssnittet. Du måste ange en av versionerna från den kombinationsrutan, t.ex. "1.4". Standardversionen för pdf-export är "1.4".
 
 =item B<-T>, B<--export-text-to-path>
 
@@ -269,7 +269,7 @@ Konvertera textobjekt till banor vid export, där så är tillämpligt (för PS-
 
 =item B<--export-latex>
 
-(för PS-, EPS- och PDF-export) Används för att skapa bilder för LaTeX-dokument, där bildens text sätts av LaTeX.  Vid export till PDF/PS/EPS-format delar detta alternativ upp utdata i en PDF/PS/EPS-fil (t.ex. enligt specifikationen --export-type) och en LaTeX-fil. Texten skrivs inte ut i PDF/PS/EPS-filen, utan visas i stället i LaTeX-filen. Denna LaTeX-fil innehåller PDF/PS/EPS. Om du matar in (\input{image.tex}) LaTeX-filen i ditt LaTeX-dokument visas bilden och all text sätts av LaTeX. Se den resulterande LaTeX-filen för mer information.  Se även GNUPlots `epslatex' terminalutdata.
+(för PS-, EPS- och PDF-export) Används för att skapa bilder för LaTeX-dokument, där bildens text sätts av LaTeX.  Vid export till PDF/PS/EPS-format delar denna flagga upp utdata i en PDF/PS/EPS-fil (t.ex. enligt specifikationen --export-type) och en LaTeX-fil. Texten skrivs inte ut i PDF/PS/EPS-filen, utan visas i stället i LaTeX-filen. Denna LaTeX-fil innehåller PDF/PS/EPS. Om du matar in (\input{image.tex}) LaTeX-filen i ditt LaTeX-dokument visas bilden och all text sätts av LaTeX. Se den resulterande LaTeX-filen för mer information.  Se även GNUPlots `epslatex' terminalutdata.
 
 =item B<--export-ignore-filters>
 
@@ -281,7 +281,7 @@ När du exporterar till PNG kan du använda tips om exportfilnamn och DPI som fi
 
     inkscape -i path231 -t dokument.svg
 
-Om du använder L<--export-dpi>, L<--export-width> eller L<--export-height> med det här alternativet ignoreras DPI-hintet och värdet från kommandoraden används.  Om du använder L<--export-filename> med det här alternativet ignoreras filnamnstipset och filnamnet från kommandoraden används.
+Om du använder L<--export-dpi>, L<--export-width> eller L<--export-height> med den här flaggan ignoreras DPI-hintet och värdet från kommandoraden används.  Om du använder L<--export-filename> med den här flaggan ignoreras filnamnstipset och filnamnet från kommandoraden används.
 
 =item B<-b> I<FÄRG>, B<--export-background>=I<FÄRG>
 
@@ -291,11 +291,11 @@ Bakgrundsfärg för den exporterade PNG-filen.  Detta kan vara en färgsträng s
 
 =item B<-y> I<VÄRDE>, B<--export-background-opacity>=I<VÄRDE>
 
-Opacitet för bakgrunden i den exporterade PNG-filen.  Detta kan vara ett värde antingen mellan 0,0 och 1,0 (0,0 betyder full transparens, 1,0 full opacitet) eller större än 1 upp till 255 (255 betyder full opacitet).  Om värdet inte anges och alternativet -b inte används, används den sidopacitet som ställts in i Inkscape i dialogen Dokumentegenskaper (lagrad i attributet inkscape:pageopacity= i sodipodi:namedview).  Om den inte är inställd men alternativet -b används, kommer värdet 255 (full opacitet) att användas.
+Opacitet för bakgrunden i den exporterade PNG-filen.  Detta kan vara ett värde antingen mellan 0,0 och 1,0 (0,0 betyder full transparens, 1,0 full opacitet) eller större än 1 upp till 255 (255 betyder full opacitet).  Om värdet inte anges och flaggan -b inte används, används den sidopacitet som ställts in i Inkscape i dialogen Dokumentegenskaper (lagrad i attributet inkscape:pageopacity= i sodipodi:namedview).  Om den inte är inställd men flaggan -b används, kommer värdet 255 (full opacitet) att användas.
 
 =item B<-I>, B<--query-id>=I<OBJEKT-ID[,OBJEKT-ID]*>
 
-Ange ID för det eller de objekt vars dimensioner efterfrågas i en kommaseparerad lista. Om den inte anges kommer frågealternativen att returnera dimensionerna för ritningen (dvs. alla dokumentobjekt), inte för sidan eller vyrutan.
+Ange ID för det eller de objekt vars dimensioner efterfrågas i en kommaseparerad lista. Om den inte anges kommer frågeflaggor att returnera dimensionerna för ritningen (dvs. alla dokumentobjekt), inte för sidan eller vyrutan.
 
 Om du anger många värden med en kommaseparerad lista över objekt, kommer en geometrisk fråga (t.ex. L<--query-x>) att returnera en kommaseparerad lista över värden som motsvarar listan över objekt i I<--query-id>.
 
@@ -321,7 +321,7 @@ Fråga efter höjden på ritningen eller, om det anges, på objektet med L<--que
 
 =item B<--vacuum-defs>
 
-Ta bort alla oanvända objekt från avsnittet C&lt;E<lt>defsE<gt>&gt; i SVG-filen.  Om detta alternativ används tillsammans med L<--export-plain-svg> påverkas endast den exporterade filen.  Om det används ensamt kommer den angivna filen att modifieras i stället.
+Ta bort alla oanvända objekt från avsnittet C&lt;E<lt>defsE<gt>&gt; i SVG-filen.  Om denna flagga används tillsammans med L<--export-plain-svg> påverkas endast den exporterade filen.  Om det används ensamt kommer den angivna filen att modifieras i stället.
 
 =item B<--select>=I<OBJEKT-ID[,OBJEKT-ID]*>
 
@@ -329,7 +329,7 @@ Kommandot L<--select> gör att objekt som har det angivna ID:t väljs.  Du kan v
 
 =item B<--actions>=I<ÅTGÄRD(:ARG)[;ÅTGÄRD(:ARG)]*>
 
-Åtgärder är en ny metod för att anropa funktioner med en valfri enskild parameter.  För att få en lista över tillgängliga åtgärds-ID:n använder du kommandoradsalternativet L<--action-list>.  Så småningom kommer alla verb att ersättas av åtgärder.  Tillfälligt kan vilket verb som helst användas som en åtgärd (utan en parameter).  Observera att de flesta verb kräver ett grafiskt gränssnitt (även om de inte använder det). Om du vill stänga det grafiska gränssnittet automatiskt i slutet av bearbetningen använder du L<--batch-process>. Dessutom har alla exportalternativ matchande åtgärder (ta bort "--" framför alternativet och ersätt "=" med ":").
+Åtgärder är en ny metod för att anropa funktioner med en valfri enskild parameter.  För att få en lista över tillgängliga åtgärds-ID:n använder du kommandoradsflaggan L<--action-list>.  Så småningom kommer alla verb att ersättas av åtgärder.  Tillfälligt kan vilket verb som helst användas som en åtgärd (utan en parameter).  Observera att de flesta verb kräver ett grafiskt gränssnitt (även om de inte använder det). Om du vill stänga det grafiska gränssnittet automatiskt i slutet av bearbetningen använder du L<--batch-process>. Dessutom har alla exportflaggor matchande åtgärder (ta bort "--" framför flaggan och ersätt "=" med ":").
 
 Om endast åtgärder används måste L<--batch-process> användas.
 
@@ -341,7 +341,7 @@ Skriver ut en lista över alla tillgängliga åtgärder.
 
 =item B<--actions-file>=I<FILNAMN>
 
-Utför alla åtgärder som anges i filen. Filens innehåll måste formateras enligt syntaxen i L<--actions>. Detta alternativ åsidosätter argumentet L<--actions> om båda anges.
+Utför alla åtgärder som anges i filen. Filens innehåll måste formateras enligt syntaxen i L<--actions>. Denna flagga åsidosätter argumentet L<--actions> om båda anges.
 
 =item B<-g>, B<--with-gui>
 
@@ -369,7 +369,7 @@ Med denna parameter kommer Inkscape att gå in i ett interaktivt kommandoradsska
 
 I skal-läge förväntar sig Inkscape en sekvens av åtgärder (eller verb) som indata.  De kommer att behandlas rad för rad, det vill säga typiskt när du trycker på enter.  Det är möjligt (men inte nödvändigt) att lägga alla åtgärder på en enda rad.
 
-Detta alternativ kan kombineras med parametern L<--active-window> för att utföra skalkommandon i ett redan öppnat Inkscape-dokument.
+Denna flagga kan kombineras med parametern L<--active-window> för att utföra skalkommandon i ett redan öppnat Inkscape-dokument.
 
 Följande exempel öppnar en fil och exporterar den till två olika format, öppnar sedan en annan fil och exporterar ett enda objekt:
 
