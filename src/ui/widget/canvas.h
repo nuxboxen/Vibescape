@@ -147,6 +147,7 @@ private:
     bool on_enter_notify_event  (GdkEventCrossing*) override;
     bool on_leave_notify_event  (GdkEventCrossing*) override;
     bool on_focus_in_event      (GdkEventFocus*   ) override;
+    bool on_focus_out_event     (GdkEventFocus*   ) override;
     bool on_key_press_event     (GdkEventKey*     ) override;
     bool on_key_release_event   (GdkEventKey*     ) override;
     bool on_motion_notify_event (GdkEventMotion*  ) override;

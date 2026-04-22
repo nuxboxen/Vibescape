@@ -51,6 +51,7 @@
 #include "events/canvas-event.h"
 #include "helper/geom.h"
 #include "preferences.h"
+#include "inkscape-window.h"
 #include "ui/controller.h"
 #include "ui/tools/tool-base.h"      // Default cursor
 #include "ui/util.h"
@@ -1034,9 +1035,21 @@ bool Canvas::on_leave_notify_event(GdkEventCrossing *gdkevent)
 bool Canvas::on_focus_in_event(GdkEventFocus *)
 {
     grab_focus();
+    // disable Windows IME
+    if (auto win = dynamic_cast<Gtk::Window *>(_desktop->getInkscapeWindow())->get_window()) {
+        set_windows_ime_enabled(win, false);
+    }
     return false;
 }
 
+bool Canvas::on_focus_out_event(GdkEventFocus *)
+{
+    // re-enable Windows IME
+    if (auto win = dynamic_cast<Gtk::Window *>(_desktop->getInkscapeWindow())->get_window()) {
+        set_windows_ime_enabled(win, true);
+    }
+    return false;
+}
 bool Canvas::on_key_press_event(GdkEventKey *gdkevent)
 {
     _state = gdkevent->state;

@@ -208,6 +208,10 @@ auto const_wrap(T const *p, bool take_copy = false)
     return std::shared_ptr<wrapped_T const>(std::move(unconst_wrapped));
 }
 
+// Set whether the IME is enabled in Windows.
+// Remember to check whether surface is valid before sending in as parameter.
+void set_windows_ime_enabled(Glib::RefPtr<Gdk::Window> const &win, bool enabled);
+
 // Parse string that can contain floating point numbers and round them to given precision;
 // Used on path data ("d" attribute).
 Glib::ustring round_numbers(const Glib::ustring& text, int precision);

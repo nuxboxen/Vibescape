@@ -35,6 +35,7 @@
 #if (defined (_WIN32) || defined (_WIN64))
 #include <gdk/gdkwin32.h>
 #include <dwmapi.h>
+#include <imm.h> // ImmAssociateContext, ImmAssociateContextEx
 /* For Windows 10 version 1809, 1903, 1909. */
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE_OLD
 #define DWMWA_USE_IMMERSIVE_DARK_MODE_OLD 19
@@ -396,6 +397,20 @@ void set_dark_titlebar(Glib::RefPtr<Gdk::Window> const &win, bool is_dark)
                 attr = DWMWA_USE_IMMERSIVE_DARK_MODE_OLD;
                 DwmSetWindowAttribute(hwnd, attr, &w32_darkmode, sizeof(w32_darkmode));
             }
+        }
+    }
+#endif
+}
+
+void set_windows_ime_enabled(Glib::RefPtr<Gdk::Window> const &win, bool enabled)
+{
+#if (defined (_WIN32) || defined (_WIN64))
+    if (win) {
+        HWND hwnd = (HWND)gdk_win32_window_get_handle((GdkWindow*)win->gobj());
+        if (enabled) {
+            ImmAssociateContextEx(hwnd, nullptr, IACE_DEFAULT);
+        } else {
+            ImmAssociateContext(hwnd, nullptr);
         }
     }
 #endif
