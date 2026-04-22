@@ -33,15 +33,15 @@ S<options :>
         --user-data-directory
 
     -p, --pipe
-    -n, --pdf-pages=PAGE[,PAGE]
+        -n, --pdf-page=PAGE
         --pdf-poppler
         --convert-dpi-method=MÉTHODE
         --no-convert-text-baseline-spacing
 
-    -o, --export-filename=FICHIER
+    -o, --export-filename=FILENAME
         --export-overwrite
         --export-type=TYPE[,TYPE]*
-        --export-extension=ID-EXTENSION
+        --export-extension=EXTENSION-ID
 
     -C, --export-area-page
     -D, --export-area-drawing
@@ -77,10 +77,10 @@ S<options :>
     -H, --query-height
 
         --vacuum-defs
-        --select=ID-OBJET[,ID-OBJET]*
+        --select=OBJECT-ID[,OBJECT-ID]*
         --actions=ACTION(:ARG)[;ACTION(:ARG)]*
         --action-list
-        --actions-file=FICHIER
+        --actions-file=FILENAME
 
     -g, --with-gui
     -q, --active-window
@@ -233,11 +233,11 @@ Si vous spécifiez plusieurs formats avec une liste d'objets séparés par des p
 
 =item B<-j>, B<--export-id-only>
 
-Pour les formats PNG, PS, EPS, et SVG simple, n'exporte que l'objet dont l'identifiant est spécifié avec l'option L<--export-id>. Tous les autres objets seront cachés et n'apparaîtront pas dans l'export même s'ils chevauchent l'objet exporté. Si L<--export-id> n'est pas spécifié, cette option est ignorée.
+Pour les formats PNG, PS, EPS, PDF et SVG simple, n'exporte que l'objet dont l'identifiant est spécifié avec l'option L<--export-id>. Tous les autres objets seront cachés et n'apparaîtront pas dans l'export même s'ils chevauchent l'objet exporté. Si L<--export-id> n'est pas spécifié, cette option est ignorée.
 
 =item B<-l>, B<--export-plain-svg>
 
-Exporte le(s) document(s) au format SVG simple, sans espace de noms sodipodi ou inkscape et sans métadonnées RDF. Utilisez l'option L<--export-filename> pour spécifier le nom du fichier.
+Exporte le(s) document(s) au format SVG simple, sans espace de noms sodipodi: ou inkscape: et sans métadonnées RDF. Utilisez l'option L<--export-filename> pour spécifier le nom du fichier.
 
 =item B<--export-png-color-mode>=I<COLORMODE>
 
@@ -386,7 +386,7 @@ B<$HOME>/.config/inkscape/extensions/ - extensions.
 
 B<$HOME>/.config/inkscape/fonts/ - polices.
 
-B<$HOME>/.config/inkscape/icons/ - ensembles d'icônes.
+B<$HOME>/.config/inkscape/icons/ - icon sets.
 
 B<$HOME>/.config/inkscape/keys/ - configuration des raccourcis clavier.
 
@@ -520,7 +520,7 @@ I<Document Object Model (DOM): Level 2 Core> I<W3C Recommendation 13 November 20
 
 Pour vous familiariser avec l'utilisation de l'interface graphique d'Inkscape, consultez le manuel dans Aide > Manuel d'Inkscape et les didacticiels dans Aide > Didacticiels.
 
-En plus du SVG, Inkscape peut importer (Fichier > Importer) la plupart des formats d'images matricielles (PNG, BMP, JPG, XPM, GIF, etc.), du texte brut (nécessite Perl) et les formats PS, EPS (nécessite Ghostscript), PDF et AI (version 9.0 ou ultérieur).
+En plus du SVG, Inkscape peut importer (Fichier > Importer) la plupart des formats d'images matricielles (PNG, BMP, JPG, XPM, GIF, etc.), du texte brut (nécessite Perl), les formats PS et EPS (nécessite Ghostscript) et les formats PDF et AI (AI version 9.0 ou ultérieur).
 
 Inkscape peut exporter (Fichier > Exporter une image PNG) des images PNG 32 bits, mais aussi aux formats AI, PS, EPS, PDF, DXF et plusieurs autres formats via Fichier > Enregistrer sous.
 
