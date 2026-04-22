@@ -101,6 +101,10 @@ TextTool::TextTool(SPDesktop *desktop)
 
     _resetBlinkTimer();
 
+    // When the constructor is run, it means that the Text tool is switched to.
+    // Activate the cursor blinking in response.
+    _showCursor();
+
     imc = gtk_im_multicontext_new();
     if (imc) {
         auto canvas = _desktop->getCanvas();
