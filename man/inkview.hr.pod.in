@@ -51,7 +51,7 @@ Ispiši Inkview verziju i datum gradnje (obično se podudara s Inkscape verzijom
 
 =item B<-f>, B<--fullscreen>
 
-Pokreni Inkview u prikazu preko cijelog ekrana.
+Pokreni Inkview u modusu cjeloekranskog prikaza.
 
 =item B<-r>, B<--recursive>
 
@@ -89,7 +89,7 @@ Unaprijed učitava sve SVG datoteke. Inkview i dalje mora iscrtati slike priliko
 
 =item * Return: prikaži prozor s kontrolama
 
-=item * F11: uključi/isključi prikaz preko cijelog ekrana
+=item * F11: uključi/isključi modus cjeloekranskog prikaza
 
 =item * Escape ili Q: zatvori program
 
@@ -105,7 +105,7 @@ Otvori sve SVG datoteke u mapi primjera, isporučene s Inkscapeom:
 
     inkview B<${CMAKE_INSTALL_PREFIX}/${SHARE_INSTALL}>/inkscape/examples
 
-Pokreni prezentaciju preko cijelog ekrana, koja automatski mijenja slike svakih 5 sekundi:
+Pokreni prezentaciju u cjeloekranskom prikazu, koja automatski mijenja slike svakih 5 sekundi:
 
     inkview --fullscreen --timer=5 [datoteke/mape …]
 

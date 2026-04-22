@@ -18,9 +18,9 @@ Inkview - ett SVG-visnings- och bildspelsprogram.
 
 =head1 SYNOPSIS
 
-C<inkview [alternativ] [filnamn ...]>
+C<inkview [flaggor] [filnamn ...]>
 
-alternativ:
+flaggor:
 
     -h, --help
     -V, --version
@@ -37,13 +37,13 @@ B<Inkview> är en B<Scalable Vector Graphics-visare (SVG)> som även kan använd
 
 Du kan också starta Inkview utan några kommandoradsargument, vilket ger en filväljare som gör det möjligt att välja filer och mappar via ett grafiskt användargränssnitt.
 
-=head1 ALTERNATIV
+=head1 FLAGGOR
 
 =over 8
 
 =item B<-?>, B<--help>
 
-Visa hjälpalternativ
+Visa hjälpflaggor
 
 =item B<-V>, B<--version>
 
@@ -67,7 +67,7 @@ Visa bilden skalad med en faktor NUMMER i stället för att använda filens ursp
 
 =item B<-p>, B<--preload>
 
-Förinläser alla SVG-filer. Inkview måste fortfarande rendera bilder när de visas, men det här alternativet säkerställer att alla SVG-filer redan har analyserats och laddats in i minnet. Detta alternativ kan också användas för att verifiera om alla filer kan öppnas korrekt, utan att behöva gå igenom alla filer manuellt.
+Förinläser alla SVG-filer. Inkview måste fortfarande rendera bilder när de visas, men den här flaggan säkerställer att alla SVG-filer redan har analyserats och laddats in i minnet. Denna flagga kan också användas för att verifiera om alla filer kan öppnas korrekt, utan att behöva gå igenom alla filer manuellt.
 
 =back
 
