@@ -257,6 +257,8 @@ std::vector<GskColorStop> create_cubic_gradient(
 void set_dark_titlebar(Glib::RefPtr<Gdk::Surface> const &surface, bool is_dark);
 unsigned int get_color_value(const Glib::ustring color);
 
+void set_windows_ime_enabled(Glib::RefPtr<Gdk::Surface> const &surface, bool enabled);
+
 // Parse string that can contain floating point numbers and round them to given precision;
 // Used on path data ("d" attribute).
 Glib::ustring round_numbers(const Glib::ustring& text, int precision);
