@@ -553,7 +553,7 @@ static void trim_zeros(std::string& ret) {
     }
 }
 
-std::string InkSpinButton::format(double value, bool with_prefix_suffix, bool with_markup, bool trim_zeros, bool limit_size) const {
+std::string InkSpinButton::format_number(double value, int precision, bool trim_zeros, bool limit_size) {
     std::stringstream ss;
     ss.imbue(std::locale("C"));
     std::string number;
@@ -563,7 +563,7 @@ std::string InkSpinButton::format(double value, bool with_prefix_suffix, bool wi
         number = ss.str();
     }
     else {
-        ss << std::fixed << std::setprecision(_digits.get_value()) << value;
+        ss << std::fixed << std::setprecision(precision) << value;
         number = ss.str();
         if (trim_zeros) {
             UI::Widget::trim_zeros(number);
@@ -577,7 +577,11 @@ std::string InkSpinButton::format(double value, bool with_prefix_suffix, bool wi
             }
         }
     }
+    return number;
+}
 
+std::string InkSpinButton::format(double value, bool with_prefix_suffix, bool with_markup, bool trim_zeros, bool limit_size) const {
+    auto number = format_number(value, _digits.get_value(), trim_zeros, limit_size);
     auto suffix = _suffix.get_value();
     auto prefix = _prefix.get_value();
     if (with_prefix_suffix && (!suffix.empty() || !prefix.empty())) {
@@ -923,6 +927,7 @@ bool InkSpinButton::on_key_pressed(guint keyval, Gdk::ModifierType state) {
     // signal "activate" uses this key, so we may not see it
     case GDK_KEY_Return:
     case GDK_KEY_KP_Enter:
+    case GDK_KEY_ISO_Enter:
 #ifdef __APPLE__
         // ctrl+return is a macOS context menu shortcut
         if (Controller::has_flag(state, Gdk::ModifierType::CONTROL_MASK)) {

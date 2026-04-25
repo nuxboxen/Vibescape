@@ -37,6 +37,7 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"select-remove-from", Type::SELECT_REMOVE_FROM},
         {"select-force-drag", Type::SELECT_FORCE_DRAG},
         {"select-cycle", Type::SELECT_CYCLE},
+        {"select-duplicate", Type::SELECT_DUPLICATE},
         {"move-confine", Type::MOVE_CONFINE},
         {"move-increment", Type::MOVE_INCREMENT},
         {"move-snapping", Type::MOVE_SNAPPING},
@@ -97,6 +98,8 @@ Modifier::Container &Modifier::_modifiers()
         make_modifier("select-remove-from", _("Remove from selection"), _("Remove items from existing selection"), SHIFT | CTRL, SELECT, DRAG),
         make_modifier("select-force-drag", _("Forced Drag"), _("Drag objects even if the mouse isn't over them"), ALT, SELECT, DRAG),
         make_modifier("select-cycle", _("Cycle through objects"), _("Scroll through objects under the cursor"), ALT, SELECT, SCROLL),
+        make_modifier("select-duplicate", _("Duplicate selection on drag"),
+                      _("Duplicate selection when starting a drag"), NEVER, SELECT, DRAG),
 
     // Transform handle modifiers (applies to multiple tools)
         make_modifier("move-confine", _("Move one axis only"), _("When dragging items, confine to either x or y axis"), CTRL, MOVE, DRAG),

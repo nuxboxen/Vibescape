@@ -207,6 +207,8 @@ public:
     bool hasGradientDrag() const;
     GrDrag *get_drag() { return _grdrag; }
 
+    bool has_focus() const;
+
 protected:
     bool sp_event_context_knot_mouseover() const;
     void set_high_motion_precision(bool high_precision = true);

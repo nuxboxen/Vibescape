@@ -46,7 +46,7 @@
 
 static void lpeobject_ref_modified(SPObject *href, guint flags, SPLPEItem *lpeitem);
 static void sp_lpe_item_create_original_path_recursive(SPLPEItem *lpeitem);
-static SPLPEItem * sp_lpe_item_cleanup_original_path_recursive(SPLPEItem *lpeitem, bool keep_paths, bool force = false, bool is_clip_mask = false);
+static SPLPEItem * sp_lpe_item_cleanup_original_path_recursive(SPLPEItem *lpeitem, bool keep_paths, bool force = false, bool is_clip_mask = false, bool is_flatten = false);
 
 typedef std::list<std::string> HRefList;
 static std::string patheffectlist_svg_string(PathEffectList const & list);
@@ -471,7 +471,7 @@ sp_lpe_item_create_original_path_recursive(SPLPEItem *lpeitem)
 }
 
 static SPLPEItem *
-sp_lpe_item_cleanup_original_path_recursive(SPLPEItem *lpeitem, bool keep_paths, bool force, bool is_clip_mask)
+sp_lpe_item_cleanup_original_path_recursive(SPLPEItem *lpeitem, bool keep_paths, bool force, bool is_clip_mask, bool is_flatten)
 {
     if (!lpeitem) {
         return nullptr;
@@ -512,7 +512,7 @@ sp_lpe_item_cleanup_original_path_recursive(SPLPEItem *lpeitem, bool keep_paths,
                         shape->setCurve(sp_svg_read_pathv(value));
                     }
                 }
-                sp_lpe_item_cleanup_original_path_recursive(subitem, keep_paths);
+                sp_lpe_item_cleanup_original_path_recursive(subitem, keep_paths, false, false, is_flatten);
             }
         }
     } else if (path) {
@@ -532,7 +532,8 @@ sp_lpe_item_cleanup_original_path_recursive(SPLPEItem *lpeitem, bool keep_paths,
             }
         } else {
             if (!keep_paths) {
-                sp_lpe_item_update_patheffect(lpeitem, true, true);
+                // we dont want to update the whole tree when we flatten
+                sp_lpe_item_update_patheffect(lpeitem, !is_flatten, true);
             }
         }
     } else if (shape) {
@@ -618,7 +619,8 @@ sp_lpe_item_cleanup_original_path_recursive(SPLPEItem *lpeitem, bool keep_paths,
             }
         } else {
             if (!keep_paths) {
-                sp_lpe_item_update_patheffect(lpeitem, true, true);
+                // we dont want to update the whole tree when we flatten
+                sp_lpe_item_update_patheffect(lpeitem, !is_flatten, true);
             }
         }
     }
@@ -844,7 +846,7 @@ SPLPEItem *SPLPEItem::flattenCurrentPathEffect()
     }
     this->setAttributeOrRemoveIfEmpty("inkscape:path-effect", hreflist_svg_string(hreflist));
 
-    sp_lpe_item_cleanup_original_path_recursive(this, false);
+    sp_lpe_item_cleanup_original_path_recursive(this, false, false, false, true);
     sp_lpe_item_update_patheffect(this, true, true);
 
     auto lpeitem = removeAllPathEffects(true);

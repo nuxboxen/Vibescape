@@ -150,11 +150,12 @@ public:
         return includesAncestor(_objectForXMLNode(repr));
     }
 
-    /** Returns the number of layers in which there are selected objects. */
-    size_t numberOfLayers();
-
-    /** Returns the number of parents to which the selected objects belong. */
-    size_t numberOfParents();
+    /**
+     * Returns {layer_count, parent_count} for the current selection,
+     * where each count represents the number of distinct layers and
+     * distinct parent objects containing the selected items.
+     */
+    std::pair<size_t, size_t> selectionDistinctLayerAndParentCounts();
 
     /**
      * Compute the list of points in the selection that are to be considered for snapping from.

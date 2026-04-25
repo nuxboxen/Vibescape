@@ -48,6 +48,7 @@ class ToolBase;
 class TextTool;
 } // namespace Tools
 namespace Widget {
+class NumberComboBox;
 class UnitMenu;
 class ComboBoxEntryToolItem;
 class ComboToolItem;
@@ -85,7 +86,7 @@ private:
     Gtk::Button &_reset_button;
 
     UI::Widget::ComboBoxEntryToolItem *_font_family_item;
-    UI::Widget::ComboBoxEntryToolItem *_font_size_item;
+    UI::Widget::NumberComboBox*_font_size_item;
     UI::Widget::UnitMenu*_font_size_units_item;
     UI::Widget::ComboBoxEntryToolItem *_font_style_item;
     UI::Widget::UnitMenu*_line_height_units_item;
@@ -110,6 +111,7 @@ private:
     int _cursor_numbers = 0;
     SPStyle _query_cursor;
     double selection_fontsize;
+    int _previous_unit;
 
     sigc::scoped_connection fc_changed_selection;
     sigc::scoped_connection fc_update;
@@ -125,7 +127,7 @@ private:
                                 ModeChangedMemFun mode_changed_mem_fun);
     void text_outer_set_style(SPCSSAttr *css);
     void fontfamily_value_changed();
-    void fontsize_value_changed();
+    void fontsize_value_changed(double size);
     void subselection_wrap_toggle(bool start);
     void fontstyle_value_changed();
     void script_changed(int mode);

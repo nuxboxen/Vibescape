@@ -3,6 +3,7 @@
 #include "font-list.h"
 
 #include <iomanip>
+#include <ranges>
 #include <utility>
 #include <giomm/menu.h>
 #include <giomm/simpleactiongroup.h>
@@ -23,7 +24,6 @@
 #include <gtkmm/treelistmodel.h>
 
 #include "preferences.h"
-#include "svg/css-ostringstream.h"
 #include "ui/builder-utils.h"
 #include "ui/icon-loader.h"
 #include "ui/text_filter.h"
@@ -363,7 +363,7 @@ std::unique_ptr<FontSelectorInterface> FontList::create_font_list(Glib::ustring 
 static std::array g_font_sizes = {
     4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36,
     44, 56, 64, 72, 80, 96, 112, 128, 144, 160, 192, 224, 256,
-    300, 350, 400, 450, 500, 550, 600, 700, 800
+    300, 350, 400, 450, 500, 550, 600, 700, 800, 1000
 };
 
 static int index_to_font_size(int index) {
@@ -414,7 +414,7 @@ FontList::FontList(Glib::ustring preferences_path) :
     _tag_list(get_widget<Gtk::ListBox>(_builder, "categories")),
     _font_list(get_widget<Gtk::ListView>(_builder, "font-list")),
     _font_grid(get_widget<Gtk::GridView>(_builder, "font-grid")),
-    _font_size(get_widget<Gtk::ComboBoxText>(_builder, "font-size")),
+    _font_size(get_derived_widget<NumberComboBox>(_builder, "font-size")),
     _font_size_scale(get_widget<Gtk::Scale>(_builder, "font-size-scale")),
     _preview_size_scale(get_widget<Gtk::Scale>(_builder, "preview-font-size")),
     _grid_size_scale(get_widget<Gtk::Scale>(_builder, "grid-font-size")),
@@ -811,9 +811,24 @@ FontList::FontList(Glib::ustring preferences_path) :
         }
     };
 
+    // fonts to exclude from UI:
+    auto hidden_font = [](const FontInfo& font) {
+#if __APPLE__
+        // on macOS hide fonts with names starting with a dot; those are internal system fonts
+        return font.ff->get_name().raw()[0] == '.';
+#else
+        // other systems; no restrictions so far
+        return false;
+#endif
+    };
+
     _font_stream = FontDiscovery::get().connect_to_fonts([=, this](const FontDiscovery::MessageType& msg){
         if (auto r = Async::Msg::get_result(msg)) {
-            _font_families = **r;
+            _font_families.clear();
+            auto view = **r | std::views::filter([=](const std::vector<FontInfo>& ff) {
+                return !ff.empty() && !hidden_font(ff.front());
+            });
+            std::ranges::copy(view, std::back_inserter(_font_families));
             _fonts.clear();
             for (auto&& family : _font_families) {
                 _fonts.insert(_fonts.end(), family.begin(), family.end());
@@ -829,8 +844,8 @@ FontList::FontList(Glib::ustring preferences_path) :
             progress.set_fraction(std::get<double>(*p));
             progress.set_text(std::get<Glib::ustring>(*p));
             auto&& family = std::get<std::vector<FontInfo>>(*p);
-            _fonts.insert(_fonts.end(), family.begin(), family.end());
-            if (!family.empty()) {
+            if (!family.empty() && !hidden_font(family.front())) {
+                _fonts.insert(_fonts.end(), family.begin(), family.end());
                 _font_families.push_back(std::move(family));
             }
             auto delta = _fonts.size() - _initializing;
@@ -854,25 +869,30 @@ FontList::FontList(Glib::ustring preferences_path) :
 
         auto scoped = _update.block();
         auto size = index_to_font_size(_font_size_scale.get_value());
-        _font_size.get_entry()->set_text(std::to_string(size));
+        _font_size.get_entry().set_value(size);
         _signal_changed.emit();
     });
 
-    _font_size.signal_changed().connect([this] {
+    auto& entry = _font_size.get_entry();
+    entry.set_digits(3);
+    int max_size = prefs->getInt("/dialogs/textandfont/maxFontSize", 10000);
+    entry.set_range(0.001, max_size);
+    for (auto size : g_font_sizes) {
+        if (size > 144) break; // add only some useful values to the combobox
+        _font_size.append(size);
+    }
+    _font_size.set_selected_item(font_size_to_index(10));
+    entry.set_min_size("999"); // limit natural size
+
+    _font_size.signal_value_changed().connect([this](auto size) {
         if (_update.pending()) return;
 
         auto scoped = _update.block();
-        auto text = _font_size.get_active_text();
-        if (!text.empty()) {
-            auto size = ::atof(text.c_str());
-            if (size > 0) {
-                _font_size_scale.set_value(font_size_to_index(size));
-                _signal_changed.emit();
-            }
+        if (size > 0) {
+            _font_size_scale.set_value(font_size_to_index(size));
+            _signal_changed.emit();
         }
     });
-    _font_size.set_active_text("10");
-    _font_size.get_entry()->set_max_width_chars(6);
 
     // restore sorting
     _order = static_cast<FontOrder>(prefs->getIntLimited(_prefs + "/font-order", static_cast<int>(_order), static_cast<int>(FontOrder::_First), static_cast<int>(FontOrder::_Last)));
@@ -1143,12 +1163,8 @@ void FontList::update_font_count() {
 }
 
 double FontList::get_fontsize() const {
-    auto text = _font_size.get_entry()->get_text();
-    if (!text.empty()) {
-        auto size = ::atof(text.c_str());
-        if (size > 0) return size;
-    }
-    return _current_fsize;
+    auto size = _font_size.get_entry().get_value();
+    return size > 0 ? size : _current_fsize;
 }
 
 Glib::RefPtr<Glib::ObjectBase> FontList::get_nth_font(int index) const {
@@ -1219,11 +1235,8 @@ void FontList::set_current_size(double size) {
     if (_update.pending()) return;
 
     auto scoped = _update.block();
-    CSSOStringStream os;
-    os.precision(3);
-    os << size;
     _font_size_scale.set_value(font_size_to_index(size));
-    _font_size.get_entry()->set_text(os.str());
+    _font_size.get_entry().set_value(size);
 }
 
 void FontList::add_font(const Glib::ustring& fontspec, bool select) {
@@ -1437,6 +1450,8 @@ void FontList::set_font_size_layout(bool top) {
         layout2->set_row(11);
         separator.set_visible();
     }
+    // pop up menu where there is space
+    _font_size.set_popup_position(top ? Gtk::PositionType::BOTTOM : Gtk::PositionType::TOP);
 }
 
 void FontList::on_map() {

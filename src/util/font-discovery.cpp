@@ -28,6 +28,7 @@
 #include <pango/pango-fontmap.h>
 #include <pangomm/fontdescription.h>
 #include <pangomm/fontmap.h>
+#include <set>
 #include <sigc++/connection.h>
 #include <unordered_map>
 #include <vector>

@@ -167,4 +167,5 @@ For older versions before 1.5.0, or if you do not want the automatic installatio
 Some background information on why the build flags were chosen.
 
 - `-DBUILD_SHARED_LIBS=OFF` avoids trying to build with [too many debug symbols](https://stackoverflow.com/questions/47135973/error-export-ordinal-too-large-104116).
+- `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` results in `build/compile_commands.json`. IntelliSense in VSCode uses this to avoid reporting false errors in the code.
 - The other build flags are the recommended default also for [Linux](../linux.md).

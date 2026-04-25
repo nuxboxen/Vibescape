@@ -815,7 +815,7 @@ void SPItem::update(SPCtx *ctx, unsigned flags)
 
         if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
             for (auto &v : views) {
-                v.drawingitem->setOpacity(SP_SCALE24_TO_FLOAT(style->opacity.value));
+                v.drawingitem->setOpacity(style->opacity.as_double());
                 v.drawingitem->setAntialiasing(style->shape_rendering.computed == SP_CSS_SHAPE_RENDERING_CRISPEDGES ? Inkscape::Antialiasing::None : Inkscape::Antialiasing::Good);
                 v.drawingitem->setIsolation(style->isolation.value);
                 v.drawingitem->setBlendMode(style->mix_blend_mode.value);
@@ -1167,7 +1167,7 @@ void SPItem::invoke_print(SPPrintContext *ctx)
 {
     if (!isHidden()) {
         if (!transform.isIdentity() || style->opacity.value != SP_SCALE24_MAX) {
-            ctx->bind(transform, SP_SCALE24_TO_FLOAT(style->opacity.value));
+            ctx->bind(transform, style->opacity.as_double());
             print(ctx);
             ctx->release();
         } else {
@@ -1286,7 +1286,7 @@ Inkscape::DrawingItem *SPItem::invoke_show(Inkscape::Drawing &drawing, unsigned 
     ai->setItem(this);
     ai->setItemBounds(bbox);
     ai->setTransform(transform);
-    ai->setOpacity(SP_SCALE24_TO_FLOAT(style->opacity.value));
+    ai->setOpacity(style->opacity.as_double());
     ai->setIsolation(style->isolation.value);
     ai->setBlendMode(style->mix_blend_mode.value);
     ai->setVisible(!isHidden());
@@ -1669,13 +1669,13 @@ bool SPItem::unoptimized() {
 
 void SPItem::doWriteTransform(Geom::Affine const &transform, Geom::Affine const *adv, bool compensate)
 {
+    // Transform delta between the transform currently in the repr and the new transform.
+    // This must be used for compensation (stroke, patterns, etc.), otherwise passing an
+    // absolute transform via `adv` can cause repeated compensation on pure translations.
+    Geom::Affine const relative_transform = sp_item_transform_repr(this).inverse() * transform;
+
     // calculate the relative transform, if not given by the adv attribute
-    Geom::Affine advertized_transform;
-    if (adv != nullptr) {
-        advertized_transform = *adv;
-    } else {
-        advertized_transform = sp_item_transform_repr (this).inverse() * transform;
-    }
+    auto advertized_transform = adv != nullptr ? *adv : relative_transform;
 
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     if (compensate) {
@@ -1684,7 +1684,7 @@ void SPItem::doWriteTransform(Geom::Affine const &transform, Geom::Affine const 
         // to the strokewidth in such a case instead, and unblock these after the transformation
         // (as reported in https://bugs.launchpad.net/inkscape/+bug/825840/comments/4)
         if (!prefs->getBool("/options/transform/stroke", true)) {
-            double const expansion = 1. / advertized_transform.descrim();
+            double const expansion = 1. / relative_transform.descrim();
             if (expansion < 1e-9 || expansion > 1e9) {
                 freeze_stroke_width_recursive(true);
                 // This will only work if the item has a set_transform method (in this method adjust_stroke() will be called)
@@ -1700,21 +1700,21 @@ void SPItem::doWriteTransform(Geom::Affine const &transform, Geom::Affine const 
 
         // recursively compensate rx/ry of a rect if requested
         if (!prefs->getBool("/options/transform/rectcorners", true)) {
-            sp_item_adjust_rects_recursive(this, advertized_transform);
+            sp_item_adjust_rects_recursive(this, relative_transform);
         }
 
         // recursively compensate pattern fill if it's not to be transformed
         if (!prefs->getBool("/options/transform/pattern", true)) {
-            adjust_paint_recursive(advertized_transform.inverse(), Geom::identity(), PATTERN);
+            adjust_paint_recursive(relative_transform.inverse(), Geom::identity(), PATTERN);
         }
         if (!prefs->getBool("/options/transform/hatch", true)) {
-            adjust_paint_recursive(advertized_transform.inverse(), Geom::identity(), HATCH);
+            adjust_paint_recursive(relative_transform.inverse(), Geom::identity(), HATCH);
         }
 
         /// \todo FIXME: add the same else branch as for gradients below, to convert patterns to userSpaceOnUse as well
         /// recursively compensate gradient fill if it's not to be transformed
         if (!prefs->getBool("/options/transform/gradient", true)) {
-            adjust_paint_recursive(advertized_transform.inverse(), Geom::identity(), GRADIENT);
+            adjust_paint_recursive(relative_transform.inverse(), Geom::identity(), GRADIENT);
         } else {
             // this converts the gradient/pattern fill/stroke, if any, to userSpaceOnUse; we need to do
             // it here _before_ the new transform is set, so as to use the pre-transform bbox
@@ -1752,7 +1752,7 @@ void SPItem::doWriteTransform(Geom::Affine const &transform, Geom::Affine const 
             if (!prefs->getBool("/options/transform/stroke", true)) {
                 // Recursively compensate for stroke scaling, depending on user preference
                 // (As to why we need to do this, see the comment a few lines above near the freeze_stroke_width_recursive(true) call)
-                double const expansion = 1. / advertized_transform.descrim();
+                double const expansion = 1. / relative_transform.descrim();
                 adjust_stroke_width_recursive(expansion);
             }
         }

@@ -50,7 +50,6 @@
 #include <giomm/file.h>
 #include <glibmm/i18n.h>  // Internationalization
 #include <gtkmm/application.h>
-#include <gtkmm/recentmanager.h>
 
 #include "inkscape-version-info.h"
 #include "inkscape-window.h"
@@ -93,6 +92,7 @@
 #include "inkgc/gc-core.h"          // Garbage Collecting init
 #include "io/file.h"                // File open (command line).
 #include "io/fix-broken-links.h"    // Fix up references.
+#include "io/recent-files.h"
 #include "io/resource.h"            // TEMPLATE
 #include "object/sp-root.h"         // Inkscape version.
 #include "ui/desktop/document-check.h"    // Check for data loss on closing document window.
@@ -172,29 +172,16 @@ std::pair<SPDocument *, bool> InkscapeApplication::document_open(Glib::RefPtr<Gi
 
     // Add/promote recent file; when we call add_item and file is on a recent list already,
     // then apparently only "modified" time changes.
-    if (auto recentmanager = Gtk::RecentManager::get_default()) {
-        auto uri = file->get_uri();
-        auto path = file->get_path();
-        // Opening crash files, we can link them back using the recent files manager
-        // to get the original context for the file.
-        bool is_crash = false;
-        try {
-            auto orig = recentmanager->lookup_item(uri);
-            is_crash = orig->has_group("Crash");
-            if (is_crash) {
-                document->setModifiedSinceSave(true);
-                // Crash files store the original name in the display name field.
-                auto old_path = Inkscape::IO::find_original_file(path, Glib::filename_from_utf8(orig->get_display_name()));
-                document->setDocumentFilename(old_path.empty() ? nullptr : old_path.c_str());
-                // We don't want other programs to gain access to this crash file
-                recentmanager->remove_item(uri);
-            }
-        } catch (Glib::Error const &) {
-            // Nothing to do since lookup failed.
-        }
-        if (!is_crash) {
-            recentmanager->add_item(uri);
-        }
+    auto path = file->get_path();
+    // Opening crash files or auto-save files, we can link them back using the
+    // recent files manager to get the original context for the file.
+    if (auto original = Inkscape::IO::openAsInkscapeRecentOriginalFile(path)) {
+        document->setModifiedSinceSave(true);
+        document->setModifiedSinceAutoSaveFalse(); // don't re-auto-save an unmodified auto-save
+        document->setDocumentFilename(original->empty() ? nullptr : original->c_str());
+    } else {
+        auto name = document->getDocumentName();
+        Inkscape::IO::addInkscapeRecentSvg(path, name ? name : "");
     }
 
     return {document_add(std::move(document)), false};
@@ -800,8 +787,8 @@ void InkscapeApplication::create_window(Glib::RefPtr<Gio::File> const &file)
         std::tie(document, cancelled) = document_open(file);
         if (document) {
             // Remember document so much that we'll add it to recent documents
-            auto recentmanager = Gtk::RecentManager::get_default();
-            recentmanager->add_item(file->get_uri());
+            auto docname = document->getDocumentName();
+            Inkscape::IO::addInkscapeRecentSvg(file->get_path(), docname ? docname : "");
 
             auto old_document = _active_document;
             bool replace = old_document && old_document->getVirgin();

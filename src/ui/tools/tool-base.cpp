@@ -19,6 +19,7 @@
 
 #include <gdkmm/seat.h>
 #include <gtkmm/eventcontrollerkey.h>
+#include <gtkmm/version.h>
 
 #include "actions/actions-tools.h"
 #include "desktop-events.h"
@@ -50,6 +51,7 @@
 #include "ui/tools/dropper-tool.h"
 #include "ui/tools/node-tool.h"
 #include "ui/tools/select-tool.h"
+#include "ui/util.h"
 #include "ui/widget/canvas-grid.h"
 #include "ui/widget/canvas.h"
 #include "ui/widget/desktop-widget.h"
@@ -1375,6 +1377,9 @@ void init_latin_keys_group()
     auto const keyboard = Gdk::Display::get_default()->get_default_seat()->get_keyboard();
     g_assert(keyboard);
     keyboard->signal_changed().connect(&update_latin_keys_group);
+#if GTKMM_CHECK_VERSION(4, 18, 0)
+    keyboard->property_layout_names().signal_changed().connect(&update_latin_keys_group);
+#endif
     update_latin_keys_group();
 }
 
@@ -1700,6 +1705,10 @@ void ToolBase::set_last_active_tool(Glib::ustring last_tool) {
 
 const Glib::ustring& ToolBase::get_last_active_tool() const {
     return _last_active_tool;
+}
+
+bool ToolBase::has_focus() const {
+    return UI::contains_focus(*_desktop->getCanvas());
 }
 
 } // namespace Tools

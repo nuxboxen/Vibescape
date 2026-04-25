@@ -25,7 +25,6 @@
         <child>
           <object class="gtkmm__CustomObject_InkSpinButton" id="start-offset-sb">
             <property name="focusable">1</property>
-            <property name="text" translatable="1">0</property>
             <property name="adjustment">start-offset-adj</property>
             <property name="digits">3</property>
             <property name="tooltip-text" translatable="yes">Adjust the startOffset attribute of the textPath</property>

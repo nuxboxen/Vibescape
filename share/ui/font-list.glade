@@ -410,6 +410,7 @@
     </child>
     <child>
       <object class="GtkBox" id="size-box">
+        <property name="margin-top">2</property>
         <property name="margin-start">5</property>
         <property name="margin-end">1</property>
         <property name="spacing">4</property>
@@ -420,29 +421,10 @@
           </object>
         </child>
         <child>
-          <object class="GtkComboBoxText" id="font-size">
-            <property name="focusable">True</property>
-            <property name="hexpand">False</property>
-            <property name="valign">center</property>
-            <property name="margin-top">4</property>
+          <object class="GtkWidget" id="font-size">
+            <property name="margin-top">2</property>
             <property name="margin-bottom">2</property>
-            <property name="has-entry">True</property>
-            <items>
-              <item>6</item>
-              <item>7</item>
-              <item>8</item>
-              <item>9</item>
-              <item>10</item>
-              <item>12</item>
-              <item>14</item>
-              <item>16</item>
-              <item>20</item>
-              <item>24</item>
-              <item>32</item>
-              <item>48</item>
-              <item>72</item>
-              <item>144</item>
-            </items>
+            <property name="valign">center</property>
           </object>
         </child>
         <child>

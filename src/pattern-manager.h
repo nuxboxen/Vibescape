@@ -8,6 +8,7 @@
 #include "helper/stock-items.h"
 #include "ui/widget/pattern-store.h"
 #include "util/statics.h"
+#include "style.h"
 
 namespace Cairo {
 class Surface;

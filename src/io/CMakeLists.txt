@@ -7,6 +7,7 @@ target_sources(inkscape_base PRIVATE
   recent-files.cpp
   resource.cpp
   sandbox.cpp
+  split-path.cpp
   fix-broken-links.cpp
   query-file-info.cpp
   stream/bufferstream.cpp
@@ -25,6 +26,7 @@ target_sources(inkscape_base PRIVATE
   recent-files.h
   resource.h
   sandbox.h
+  split-path.h
   fix-broken-links.h
   query-file-info.h
   stream/bufferstream.h

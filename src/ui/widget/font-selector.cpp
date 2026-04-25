@@ -208,19 +208,10 @@ FontSelector::set_sizes ()
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
 
-    int sizes[] = {
-        4, 6, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28,
-        32, 36, 40, 48, 56, 64, 72, 144
-    };
+    auto& sizes = sp_style_get_default_font_size_list(unit);
 
-    // Array must be same length as SPCSSUnit in style-internal.h
-    //                    PX  PT  PC  MM  CM   IN  EM  EX     %
-    double ratios[] = {1,  1,  1, 10,  4, 40, 100, 16,  8, 0.16};
-
-    for (int i : sizes)
-    {
-        double size = i/ratios[unit];
-        size_combobox.append( Inkscape::ustring::format_classic(size) );
+    for (int size : sizes) {
+        size_combobox.append(Inkscape::ustring::format_classic(size));
     }
 }
 

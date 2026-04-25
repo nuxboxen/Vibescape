@@ -21,8 +21,8 @@
 
 #include "document-undo.h"
 #include "object/sp-shape.h"
-#include "preferences.h"
 #include "spinbutton.h"
+#include "util/numeric/precision.h"
 #include "ui/builder-utils.h"
 #include "ui/icon-names.h"
 
@@ -51,7 +51,7 @@ TextpathPopover::TextpathPopover(SPText *text, SPTextPath *textpath, SPDesktop *
         }
 
         // Update the `startOffset` attribute of the textpath.
-        gint const precision = Preferences::get()->getInt("/options/svgoutput/numericprecision");
+        gint const precision = Util::get_default_numeric_precision();
         std::stringstream offset_stream;
         offset_stream << std::fixed << std::setprecision(precision) << start_adj->get_value() << '%';
         auto const offset_str = offset_stream.str();

@@ -102,7 +102,6 @@ private:
     std::optional<Gtk::TreeRow> getRow(SPItem *item) const;
 
     bool isDummy(Gtk::TreeModel::ConstRow const &row) const { return !getRepr(row); }
-    bool hasDummyChildren(Gtk::TreeModel::ConstRow const &row) const;
     bool removeDummyChildren(Gtk::TreeModel::Row row);
     bool cleanDummyChildren (Gtk::TreeModel::Row row);
 

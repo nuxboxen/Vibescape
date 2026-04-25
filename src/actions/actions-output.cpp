@@ -12,6 +12,7 @@
 
 #include <giomm.h>  // Not <gtkmm.h>! To eventually allow a headless version!
 #include <glibmm/i18n.h>
+#include <glibmm/variant.h>
 
 #include "actions-helper.h"
 #include "document.h"
@@ -36,6 +37,13 @@ export_filename(const Glib::VariantBase& value, InkscapeApplication *app)
     Glib::Variant<std::string> s = Glib::VariantBase::cast_dynamic<Glib::Variant<std::string> >(value);
     app->file_export()->export_filename = s.get();
     // std::cout << "export-filename: " << s.get() << std::endl;
+}
+
+void
+export_page(const Glib::VariantBase& value, InkscapeApplication *app)
+{
+    Glib::Variant<Glib::ustring> s = Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::ustring>>(value);
+    app->file_export()->export_page = s.get();
 }
 
 void
@@ -270,6 +278,7 @@ std::vector<std::vector<Glib::ustring>> raw_data_output =
     {"app.export-text-to-path",       N_("Export Text to Path"),       SECTION, N_("Convert texts to paths in the exported file")        },
     {"app.export-ps-level",           N_("Export PS Level"),           SECTION, N_("Set PostScript level")                               },
     {"app.export-pdf-version",        N_("Export PDF Version"),        SECTION, N_("Set PDF version")                                    },
+    {"app.export-page",               N_("Export Page"),               SECTION, N_("Select page(s) to export")                           },
     {"app.export-latex",              N_("Export LaTeX"),              SECTION, N_("Export LaTeX")                                       },
     {"app.export-use-hints",          N_("Export Use Hints"),          SECTION, N_("Export using saved hints")                           },
     {"app.export-background",         N_("Export Background"),         SECTION, N_("Include background color in exported file")          },
@@ -307,6 +316,7 @@ std::vector<std::vector<Glib::ustring>> hint_data_output =
     {"app.export-text-to-path",       N_("Enter 1/0 for Yes/No to convert text to path on export")       },
     {"app.export-ps-level",           N_("Enter integer number 2 or 3 for PS Level")                     },
     {"app.export-pdf-version",        N_("Enter string for PDF Version, e.g. 1.4 or 1.5")                },
+    {"app.export-page",               N_("Enter string for page numbers e.g. '1', '1-3' or '2,4'")       },
     {"app.export-latex",              N_("Enter 1/0 for Yes/No to export to PDF and LaTeX")              },
     {"app.export-use-hints",          N_("Enter 1/0 for Yes/No to use export hints from document")       },
     {"app.export-background",         N_("Enter string for background color, e.g. #ff007f or rgb(255, 0, 128)")                 },
@@ -336,6 +346,7 @@ add_actions_output(InkscapeApplication* app)
     // clang-format off
     gapp->add_action_with_parameter( "export-type",              String, sigc::bind(sigc::ptr_fun(&export_type),         app));
     gapp->add_action_with_parameter( "export-filename",          String, sigc::bind(sigc::ptr_fun(&export_filename),     app)); // MAY NOT WORK DUE TO std::string
+    gapp->add_action_with_parameter( "export-page",              String, sigc::bind(sigc::ptr_fun(&export_page), app));
     gapp->add_action_with_parameter( "export-overwrite",         Bool,   sigc::bind(sigc::ptr_fun(&export_overwrite),    app));
 
     gapp->add_action_with_parameter( "export-area",              String, sigc::bind(sigc::ptr_fun(&export_area),         app));

@@ -36,12 +36,12 @@
 #include <harfbuzz/hb-ot.h>
 #include <harfbuzz/hb.h>
 #include <pango/pangoft2.h>
+#include <pango/pango-types.h>
+#include <pangomm/fontdescription.h>
 #include <2geom/path-sink.h>
 #include <2geom/pathvector.h>
 
-#include "display/cairo-utils.h" // Inkscape::Pixbuf
-#include "libnrtype/font-glyph.h"
-#include "libnrtype/font-instance.h"
+#include "font-instance.h"
 
 /*
  * Outline extraction
@@ -147,6 +147,7 @@ void FontInstance::acquire(PangoFont *p_font_, PangoFontDescription *descr_)
 {
     p_font = p_font_;
     descr = descr_;
+    descr_hash = pango_font_description_hash(descr);
     hb_font_copy = nullptr;
     face = nullptr;
     hb_face = nullptr;
@@ -617,21 +618,17 @@ Geom::PathVector const *FontInstance::PathVector(unsigned int glyph_id)
     return &g->pathvector;
 }
 
-Inkscape::Pixbuf const *FontInstance::PixBuf(unsigned int glyph_id)
+Glib::ustring FontInstance::SvgDocument(unsigned int glyph_id)
 {
     auto glyph_iter = data->openTypeSVGGlyphs.find(glyph_id);
     if (glyph_iter == data->openTypeSVGGlyphs.end()) {
-        return nullptr; // out of range
+        return Glib::ustring(); // out of range
     }
 
     // Glyphs are layed out in the +x, -y quadrant (assuming viewBox origin is 0,0).
     // We need to shift the viewBox by the height inorder to generate pixbuf!
     // To do: glyphs must draw overflow so we actually need larger pixbuf!
     // To do: Error handling.
-
-    if (glyph_iter->second.pixbuf) {
-        return glyph_iter->second.pixbuf.get(); // already loaded
-    }
 
     Glib::ustring svg = data->openTypeSVGData[glyph_iter->second.entry_index];
 
@@ -722,22 +719,7 @@ Inkscape::Pixbuf const *FontInstance::PixBuf(unsigned int glyph_id)
     // Make glyph visible.
     auto pattern = Glib::ustring::compose("(id=\"\\s*glyph%1\\s*\")\\s*visibility=\"hidden\"", glyph_id);
     auto regex2 = Glib::Regex::create(pattern, Glib::Regex::CompileFlags::OPTIMIZE);
-    svg = regex2->replace(svg, 0, "\\1", static_cast<Glib::Regex::MatchFlags>(0));
-
-    // Finally create pixbuf!
-    auto pixbuf = Inkscape::Pixbuf::create_from_buffer(svg.raw());
-    if (!pixbuf) {
-        std::cerr << "Bad svg data for glyph " << glyph_id << "\n";
-        pixbuf = new Pixbuf(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1));
-    }
-
-    // Ensure exists in cairo format before locking it down. (Rendering code requires cairo format.)
-    pixbuf->ensurePixelFormat(Inkscape::Pixbuf::PF_CAIRO);
-
-    // And cache it.
-    glyph_iter->second.pixbuf.reset(pixbuf);
-
-    return pixbuf;
+    return regex2->replace(svg, 0, "\\1", static_cast<Glib::Regex::MatchFlags>(0));
 }
 
 std::string FontInstance::GlyphSvg(unsigned int glyph_id)

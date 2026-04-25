@@ -307,10 +307,7 @@ public:
         , _dst{src->parent} {
         _src->set_cursor("grabbing");
     }
-    ~TabWidgetDrag() {
-        Glib::RefPtr<Gdk::Cursor> null;
-        _src->set_cursor(null);
-    }
+    ~TabWidgetDrag() = default;
 
     /// Called by dst whenever the pointer moves, whether over it or not. This sometimes requires polling.
     /// Updates the tab's position within dst or detaches it.
@@ -385,6 +382,12 @@ public:
     {
         // Cancel the tick callback if one is being used for motion polling.
         cancelTick();
+
+        // Reset cursor BEFORE moving the shared_ptr to ensure _src is still valid
+        if (_src->get_parent()) {
+            Glib::RefPtr<Gdk::Cursor> null;
+            _src->set_cursor(null);
+        }
 
         // Detach from source and destination, keeping self alive until end of function.
         auto const self_ref = std::move(_src->parent->_drag_src);

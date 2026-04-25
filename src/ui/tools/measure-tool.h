@@ -15,10 +15,12 @@
 
 #include "display/control/canvas-item-enums.h"
 #include "display/control/canvas-item-ptr.h"
+#include "display/control/canvas-item-bpath.h"
 #include "ui/tools/tool-base.h"
 #include <glibmm/i18n.h>
 
 class SPKnot;
+class SPShape;
 namespace Inkscape { class CanvasItemCurve; }
 
 namespace Inkscape::UI::Tools {
@@ -115,8 +117,55 @@ public:
     void unsetShapeMeasures();
 };
 
-
 } // namespace MT
+
+
+class PathMeasure
+{
+public:
+    enum class Mode {
+        NONE,
+        SEGMENT,
+        CORNER
+    };
+
+    Mode mode = Mode::NONE;
+    int subpath_index = -1;
+    int segment_index = -1;
+    int corner_index = -1;
+
+    PathMeasure() = default;
+    PathMeasure(SPShape *const shape, Geom::Point const &near_point, double tolerance);
+
+    operator bool() const { return _shape; }
+    bool operator== (PathMeasure const &other) const
+    {
+        return other.mode == mode
+            && other.subpath_index == subpath_index
+            && other.segment_index == segment_index
+            && other.corner_index == corner_index
+            && other._shape == _shape;
+    }
+
+    Geom::Path subpath() const;
+    Geom::Path segmentPath() const;
+    Geom::Path curvePath(double tolerance) const;
+    Geom::PathVector getAnglePath(double arm_size, double arc_size, Geom::Affine affine, bool inside_arc = true);
+    std::optional<Geom::Angle> getCornerAngle() const;
+    std::optional<std::array<Geom::Point, 3>> getCornerAnglePoints() const;
+
+private:
+
+    SPShape *_shape = nullptr;
+    Geom::PathVector _curve;
+    mutable std::optional<std::array<Geom::Point, 3>> _corner_points;
+
+    static std::optional<std::array<Geom::Point, 3>> getAnglePoints(Geom::Curve const &c1, Geom::Curve const &c2);
+    static Geom::Angle getAngle(Geom::Curve const &c1, Geom::Curve const &c2);
+    static Geom::Angle getAngle(std::array<Geom::Point, 3> p);
+    static Geom::Point getCurvePoint(Geom::Curve const &c, bool end);
+};
+
 
 class MeasureTool : public ToolBase
 {
@@ -138,7 +187,7 @@ public:
     void writeMeasurePoint(Geom::Point point, bool is_start) const;
 
     void showInfoBox(Geom::Point cursor, bool into_groups);
-    void showItemInfoText(Geom::Point pos, Glib::ustring const &measure_str, double fontsize);
+    void addCanvasItemText(std::vector<CanvasItemPtr<CanvasItem>> &items, Geom::Point pos, Glib::ustring const &measure_str, double fontsize, Geom::Point anchor = {});
     void setGuide(Geom::Point origin, double angle, const char *label);
     void setPoint(Geom::Point origin, Inkscape::XML::Node *measure_repr);
     void setLine(Geom::Point start_point,Geom::Point end_point, bool markers, guint32 color,
@@ -169,6 +218,7 @@ public:
     MT::ClipboardMeaClass clipBMeas;
 
 private:
+
     std::optional<Geom::Point> explicit_base;
     std::optional<Geom::Point> last_end;
     SPKnot *knot_start = nullptr;
@@ -181,13 +231,21 @@ private:
     std::vector<CanvasItemPtr<CanvasItem>> measure_tmp_items;
     std::vector<CanvasItemPtr<CanvasItem>> measure_phantom_items;
     std::vector<CanvasItemPtr<CanvasItem>> measure_item;
+    std::vector<CanvasItemPtr<CanvasItem>> measure_path_items;
+    std::vector<CanvasItemPtr<CanvasItem>> measure_clicked_path_items;
 
     double item_width;
     double item_height;
     double item_x;
     double item_y;
     double item_length;
+    double path_length;
+    double curve_length;
+    double segment_length;
+    double corner_angle;
+    double _tooltip_border_size = 3.0;
     SPItem *over;
+    std::unique_ptr<PathMeasure> pathmeasure;
     sigc::scoped_connection _knot_start_moved_connection;
     sigc::scoped_connection _knot_start_ungrabbed_connection;
     sigc::scoped_connection _knot_start_click_connection;

@@ -325,8 +325,8 @@ StartScreen::enlist_recent_files()
     first_row[cols.col_dt] = std::numeric_limits<gint64>::max();
     recentfiles->get_selection()->select(store->get_path(first_row.get_iter()));
 
-    auto recent_files = Inkscape::getInkscapeRecentFiles();
-    auto shortened_path_map = Inkscape::getShortenedPathMap(recent_files);
+    auto recent_files = Inkscape::IO::getInkscapeRecentFiles();
+    auto shortened_path_map = Inkscape::IO::getShortenedPathMap(recent_files);
 
     for (auto const &recent_file : recent_files) {
         // This uri is a GVFS uri, so parse it with that or it will fail.

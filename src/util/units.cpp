@@ -25,8 +25,6 @@
 #include <2geom/coord.h>
 #include <boost/mpl/assert.hpp>
 
-#include "io/resource.h"
-#include "path-prefix.h"
 #include "streq.h"
 #include "util-string/ustring-format.h"
 
@@ -241,8 +239,7 @@ Unit UnitTable::_empty_unit;
 
 UnitTable::UnitTable()
 {
-    using namespace Inkscape::IO::Resource;
-    load(get_filename(UIS, "units.xml", false, true));
+    load(getUnitsFilename());
 }
 UnitTable::UnitTable(std::string const &filename)
 {

@@ -132,7 +132,6 @@ SPDesktop::SPDesktop(SPNamedView *namedview_)
 
     schedule_zoom_from_document();
 
-    apply_preferences_canvas_mode(this);
     apply_preferences_canvas_transform(this);
 }
 

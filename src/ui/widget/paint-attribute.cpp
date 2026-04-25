@@ -74,17 +74,6 @@ PaintAttribute::PaintAttribute(Parts add_parts, unsigned int tag) :
     _fill._update = &_update;
     _stroke._update = &_update;
 
-    // refresh the paint popup before opening it; it is not kept up to date
-    _fill._popover.signal_show().connect([this] {
-        set_paint(_current_object, true);
-        Utils::smart_position(_fill._popover, _fill._paint_btn);
-    }, false);
-
-    _stroke._popover.signal_show().connect([this] {
-        set_paint(_current_object, false);
-        Utils::smart_position(_stroke._popover, _stroke._paint_btn);
-    }, false);
-
     // when stroke fill is toggled (any paint vs. none), change a set of visible widgets
     _stroke._toggle_definition.connect([this](bool defined){
         show_stroke(defined);
@@ -257,7 +246,6 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
     _modified_tag(tag),
     _main(get_widget<Gtk::Grid>(builder, "paint-strip")),
     _paint_btn(get_widget<Gtk::MenuButton>(builder, "paint-btn")),
-    _popover(get_widget<Gtk::Popover>(builder, "popup")),
     _color_preview(get_derived_widget<ColorPreview>(builder, "paint-color-preview")),
     _paint_icon(get_widget<Gtk::Image>(builder, "paint-icon-preview")),
     _label(get_widget<Gtk::Label>(builder, "paint-label")),
@@ -265,12 +253,13 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
     _define(get_widget<Gtk::Button>(builder, "paint-add")),
     _clear(get_widget<Gtk::Button>(builder, "paint-clear")),
     _box(get_widget<Gtk::Box>(builder, "paint-buttons")),
-    _switch(PaintSwitch::create(false, fill))
+    _connection(PaintPopoverManager::get().register_button(_paint_btn, fill,
+        [this]() { set_paint(_current_item); },
+        [this]() { return connect_signals(); }
+    ))
 {
-    _popover.set_child(*_switch);
-    Utils::wrap_in_scrolled_window(_popover, 250);
     _label.set_text(title);
-
+    _switch = PaintPopoverManager::get().get_switch(fill);
     _paint_btn.set_tooltip_text(fill ?_("Fill paint") : _("Stroke paint"));
 
     _color_preview.setStyle(ColorPreview::Simple);
@@ -311,52 +300,6 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
         _toggle_definition.emit(false);
     });
 
-    auto set_fill_rule = [this](FillRule rule) {
-        if (!can_update()) return;
-
-        set_item_style_str(_current_item, "fill-rule", rule == FillRule::EvenOdd ? "evenodd" : "nonzero");
-        request_update(true);
-        _switch->set_fill_rule(rule);
-
-        DocumentUndo::maybeDone(_current_item->document, "change-fill-rule", RC_("Undo", "Change fill rule"), "dialog-fill-and-stroke");
-    };
-
-    auto set_flat_color = [this, fill, tag](const Color& color) {
-        if (!can_update()) return;
-
-        auto c = color;
-        if (Colors::out_of_gamut(color, color.getSpace())) {
-            c = Colors::to_gamut_css(color, color.getSpace());
-        }
-
-        //TODO: paint selection should be remembered
-        // sp_desktop_set_color(_desktop, color, false, fill);
-
-        c.enableOpacity(false);
-        if (fill) {
-            _current_item->style->fill.clear();
-            _current_item->style->fill.setColor(c);
-            _current_item->style->fill_opacity.set_double(color.getOpacity());
-        }
-        else {
-            _current_item->style->stroke.clear();
-            _current_item->style->stroke.setColor(c);
-            _current_item->style->stroke_opacity.set_double(color.getOpacity());
-        }
-        request_update(true);
-
-        //todo: this is alternative approach to changing style:
-        /*
-        auto css = new_css_attr();
-        auto c = color.toString(false);
-        sp_repr_css_set_property_string(css.get(), fill ? "fill" : "stroke", c);//color.toString(false));
-        sp_repr_css_set_property_double(css.get(), fill ? "fill-opacity" : "stroke-opacity", color.getOpacity());
-        set_item_style(_current_item, css.get());
-        */
-        DocumentUndo::maybeDone(_current_item->document, fill ? "change-fill" : "change-stroke",
-            fill ? RC_("Undo", "Set fill color") : RC_("Undo", "Set stroke color"), "dialog-fill-and-stroke", tag);
-    };
-
     _define.signal_clicked().connect([=,this]() {
         if (!can_update()) return;
 
@@ -366,7 +309,82 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
         _toggle_definition.emit(true);
     });
 
-    _switch->get_pattern_changed().connect([this, fill, tag](auto pattern, auto color, auto label, auto transform, auto offset, auto uniform, auto gap) {
+    _alpha.signal_value_changed().connect([this, fill, tag](auto alpha) {
+        if (!can_update()) return;
+
+        if (fill) {
+            _current_item->style->fill_opacity.set_double(alpha);
+        }
+        else {
+            _current_item->style->stroke_opacity.set_double(alpha);
+        }
+        request_update(true);
+        //todo: alternative approach to updating fill/stroke opacity:
+        /*
+        auto css = new_css_attr();
+        sp_repr_css_set_property_double(css.get(), fill ? "fill-opacity" : "stroke-opacity", alpha);
+        set_item_style(_current_item, css.get());
+        */
+        DocumentUndo::maybeDone(_current_item->document, fill ? "undo_fill_alpha" : "undo_stroke_alpha",
+            fill ? RC_("Undo", "Set fill opacity") : RC_("Undo", "Set stroke opacity"), "dialog-fill-and-stroke", tag);
+    });
+}
+
+void PaintAttribute::PaintStrip::set_fill_rule(FillRule rule) {
+    if (!can_update()) return;
+
+    set_item_style_str(_current_item, "fill-rule", rule == FillRule::EvenOdd ? "evenodd" : "nonzero");
+    request_update(true);
+    _switch->set_fill_rule(rule);
+
+    DocumentUndo::maybeDone(_current_item->document, "change-fill-rule", RC_("Undo", "Change fill rule"), "dialog-fill-and-stroke");
+};
+
+void PaintAttribute::PaintStrip::set_flat_color(const Color& color) {
+    if (!can_update()) return;
+
+    auto c = color;
+    if (Colors::out_of_gamut(color, color.getSpace())) {
+        c = Colors::to_gamut_css(color, color.getSpace());
+    }
+
+    //TODO: paint selection should be remembered
+    // sp_desktop_set_color(_desktop, color, false, fill);
+
+    c.enableOpacity(false);
+    if (_is_fill) {
+        _current_item->style->fill.clear();
+        _current_item->style->fill.setColor(c);
+        _current_item->style->fill_opacity.set_double(color.getOpacity());
+    }
+    else {
+        _current_item->style->stroke.clear();
+        _current_item->style->stroke.setColor(c);
+        _current_item->style->stroke_opacity.set_double(color.getOpacity());
+    }
+    request_update(true);
+
+    //todo: this is alternative approach to changing style:
+    /*
+    auto css = new_css_attr();
+    auto c = color.toString(false);
+    sp_repr_css_set_property_string(css.get(), fill ? "fill" : "stroke", c);//color.toString(false));
+    sp_repr_css_set_property_double(css.get(), fill ? "fill-opacity" : "stroke-opacity", color.getOpacity());
+    set_item_style(_current_item, css.get());
+    */
+    DocumentUndo::maybeDone(_current_item->document, _is_fill ? "change-fill" : "change-stroke",
+        _is_fill ? RC_("Undo", "Set fill color") : RC_("Undo", "Set stroke color"), "dialog-fill-and-stroke", _modified_tag);
+};
+
+std::vector<sigc::connection> PaintAttribute::PaintStrip::connect_signals() {
+    std::vector<sigc::connection> conns;
+    bool fill = _is_fill;
+    unsigned int tag = _modified_tag;
+
+    if (!_switch) return conns;
+
+
+    conns.push_back(_switch->get_pattern_changed().connect([this, fill, tag](auto pattern, auto color, auto label, auto transform, auto offset, auto uniform, auto gap) {
         if (!can_update()) return;
 
         if (auto item = cast<SPItem>(_current_item)) {
@@ -376,9 +394,9 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
-    });
+    }));
 
-    _switch->get_hatch_changed().connect([this, fill, tag](auto hatch, auto color, auto label, auto transform, auto offset, auto pitch, auto rotation, auto stroke) {
+    conns.push_back(_switch->get_hatch_changed().connect([this, fill, tag](auto hatch, auto color, auto label, auto transform, auto offset, auto pitch, auto rotation, auto stroke) {
         if (!can_update()) return;
 
         if (auto item = cast<SPItem>(_current_item)) {
@@ -388,9 +406,9 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
-    });
+    }));
 
-    _switch->get_gradient_changed().connect([this, fill, tag](auto vector, auto gradient_type) {
+    conns.push_back(_switch->get_gradient_changed().connect([this, fill, tag](auto vector, auto gradient_type) {
         if (!can_update()) return;
 
         if (auto item = cast<SPItem>(_current_item)) {
@@ -400,9 +418,9 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
-    });
+    }));
 
-    _switch->get_mesh_changed().connect([this, fill, tag](auto mesh) {
+    conns.push_back(_switch->get_mesh_changed().connect([this, fill, tag](auto mesh) {
         if (!can_update()) return;
 
         if (auto item = cast<SPItem>(_current_item)) {
@@ -412,9 +430,9 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
-    });
+    }));
 
-    _switch->get_swatch_changed().connect([this, fill, tag](auto vector, auto operation, auto replacement, std::optional<Color> color, auto label) {
+    conns.push_back(_switch->get_swatch_changed().connect([this, fill, tag](auto vector, auto operation, auto replacement, std::optional<Color> color, auto label) {
         if (!can_update()) return;
 
         if (auto item = cast<SPItem>(_current_item)) {
@@ -422,17 +440,17 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
             update_preview_indicators(_current_item);
             set_paint(_current_item);
         }
-    });
+    }));
 
-    _switch->get_flat_color_changed().connect([=,this](auto& color) {
+    conns.push_back(_switch->get_flat_color_changed().connect([=,this](auto& color) {
         set_flat_color(color);
-    });
+    }));
 
-    _switch->get_fill_rule_changed().connect([=,this](auto fill_rule) {
+    conns.push_back(_switch->get_fill_rule_changed().connect([=,this](auto fill_rule) {
         set_fill_rule(fill_rule);
-    });
+    }));
 
-    _switch->get_inherit_mode_changed().connect([=,this](auto mode) {
+    conns.push_back(_switch->get_inherit_mode_changed().connect([=,this](auto mode) {
         if (!can_update()) return;
 
         auto css = new_css_attr();
@@ -460,9 +478,9 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
         set_item_style(cast<SPItem>(_current_item), css.get());
         DocumentUndo::done(_current_item->document,  fill ? RC_("Undo", "Inherit fill") : RC_("Undo", "Inherit stroke"), "dialog-fill-and-stroke", tag);
         update_preview_indicators(_current_item);
-    });
+    }));
 
-    _switch->get_signal_mode_changed().connect([this, fill, tag](auto mode) {
+    conns.push_back(_switch->get_signal_mode_changed().connect([this, fill, tag](auto mode) {
         if (!can_update()) return;
 
         if (mode == PaintMode::Derived) {
@@ -475,27 +493,8 @@ PaintAttribute::PaintStrip::PaintStrip(Glib::RefPtr<Gtk::Builder> builder, const
             }
             update_preview_indicators(_current_item);
         }
-    });
-
-    _alpha.signal_value_changed().connect([this, fill, tag](auto alpha) {
-        if (!can_update()) return;
-
-        if (fill) {
-            _current_item->style->fill_opacity.set_double(alpha);
-        }
-        else {
-            _current_item->style->stroke_opacity.set_double(alpha);
-        }
-        request_update(true);
-        //todo: alternative approach to updating fill/stroke opacity:
-        /*
-        auto css = new_css_attr();
-        sp_repr_css_set_property_double(css.get(), fill ? "fill-opacity" : "stroke-opacity", alpha);
-        set_item_style(_current_item, css.get());
-        */
-        DocumentUndo::maybeDone(_current_item->document, fill ? "undo_fill_alpha" : "undo_stroke_alpha",
-            fill ? RC_("Undo", "Set fill opacity") : RC_("Undo", "Set stroke opacity"), "dialog-fill-and-stroke", tag);
-    });
+    }));
+    return conns;
 }
 
 void PaintAttribute::PaintStrip::request_update(bool update_preview) {
@@ -586,7 +585,7 @@ PaintMode PaintAttribute::PaintStrip::update_preview_indicators(const SPObject* 
     auto& style = object->style;
     auto& paint = *style->getFillOrStroke(_is_fill);
     auto mode = get_mode_from_paint(paint);
-    auto opacity = _is_fill ? style->fill_opacity : style->stroke_opacity;
+    auto opacity = _is_fill ? style->fill_opacity.as_double() : style->stroke_opacity.as_double();
     set_preview(paint, opacity, mode);
     return mode;
 }
@@ -597,12 +596,12 @@ void PaintAttribute::PaintStrip::set_paint(const SPObject* object) {
     if (_is_fill) {
         if (auto fill = object->style->getFillOrStroke(true)) {
             auto fill_rule = object->style->fill_rule.computed == SP_WIND_RULE_NONZERO ? FillRule::NonZero : FillRule::EvenOdd;
-            set_paint(*fill, object->style->fill_opacity, fill_rule);
+            set_paint(*fill, object->style->fill_opacity.as_double(), fill_rule);
         }
     }
     else {
         if (auto stroke = object->style->getFillOrStroke(false)) {
-            set_paint(*stroke, object->style->stroke_opacity, FillRule::NonZero);
+            set_paint(*stroke, object->style->stroke_opacity.as_double(), FillRule::NonZero);
         }
     }
 }
@@ -782,7 +781,7 @@ void PaintAttribute::insert_widgets(InkPropertyGrid& grid) {
         auto scoped(_update.block());
         if (clear) {
             item->style->opacity.clear();
-            _opacity.set_value(item->style->opacity);
+            _opacity.set_value(item->style->opacity.as_double());
         }
         else {
             item->style->opacity.set_double(opacity);
@@ -823,8 +822,8 @@ void PaintAttribute::set_document(SPDocument* document) {
     for (auto combo : {&_marker_start, &_marker_mid, &_marker_end}) {
         combo->setDocument(document);
     }
-    _fill._switch->set_document(document);
-    _stroke._switch->set_document(document);
+    if (_fill._switch) _fill._switch->set_document(document);
+    if (_stroke._switch) _stroke._switch->set_document(document);
 }
 
 void PaintAttribute::set_desktop(SPDesktop* desktop) {
@@ -837,8 +836,8 @@ void PaintAttribute::set_desktop(SPDesktop* desktop) {
         _current_unit = unit;
     }
     _desktop = desktop;
-    _fill._switch->set_desktop(desktop);
-    _stroke._switch->set_desktop(desktop);
+    if (_fill._switch) _fill._switch->set_desktop(desktop);
+    if (_stroke._switch) _stroke._switch->set_desktop(desktop);
 }
 
 void PaintAttribute::set_paint(const SPObject* object, bool fill) {
@@ -993,12 +992,12 @@ void PaintAttribute::update_from_object(SPObject* object) {
     else {
         auto& style = object->style;
         _fill.update_preview_indicators(object);
-        if (_fill._popover.is_visible()) {
+        if (auto pop = _fill._paint_btn.get_popover(); pop && pop->is_visible()) {
             set_paint(_current_object, true);
         }
 
         auto stroke_mode = _stroke.update_preview_indicators(object);
-        if (_stroke._popover.is_visible()) {
+        if (auto pop = _stroke._paint_btn.get_popover(); pop && pop->is_visible()) {
             set_paint(_current_object, false);
         }
         update_stroke(_current_item);
@@ -1011,7 +1010,7 @@ void PaintAttribute::update_from_object(SPObject* object) {
             show_stroke(false);
         }
 
-        double opacity = style->opacity;
+        double opacity = style->opacity.as_double();
         _opacity.set_value(opacity);
         update_reset_opacity_button();
 

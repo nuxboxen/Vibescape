@@ -52,30 +52,55 @@ public:
     SelTrans(SPDesktop *desktop);
     ~SelTrans();
 
+    enum State {
+        STATE_SCALE, //scale or stretch
+        STATE_ROTATE, //rotate or skew
+        STATE_ALIGN  //on canvas align
+    };
+
     void increaseState();
-    void resetState();
+    void resetState(State state = STATE_SCALE);
     void setCenter(Geom::Point const &p);
     void grab(Geom::Point const &p, double x, double y, bool show_handles, bool translating);
     void transform(Geom::Affine const &rel_affine, Geom::Point const &norm);
     void ungrab();
     void stamp(bool clone = false);
-    void moveTo(Geom::Point const &xy, unsigned int state);
-    void stretch(SPSelTransHandle const &handle, Geom::Point &pt, unsigned int state);
-    void scale(Geom::Point &pt, unsigned int state);
-    void skew(SPSelTransHandle const &handle, Geom::Point &pt, unsigned int state);
-    void rotate(Geom::Point &pt, unsigned int state);
+    bool moveTo(Geom::Point const &xy, unsigned int state);
+    void commitAbsoluteAffine();
+    void commitRelativeAffine();
     void align(guint state, SPSelTransHandle const &handle);
     int request(SPSelTransHandle const &handle, Geom::Point &pt, unsigned int state);
     int scaleRequest(Geom::Point &pt, unsigned int state);
-    int stretchRequest(SPSelTransHandle const &handle, Geom::Point &pt, unsigned int state);
-    int skewRequest(SPSelTransHandle const &handle, Geom::Point &pt, unsigned int state);
+    int stretchRequest(Geom::Point &pt, unsigned int state, bool is_horz);
+    int skewRequest(Geom::Point &pt, unsigned int state, bool is_horz);
     int rotateRequest(Geom::Point &pt, unsigned int state);
     int centerRequest(Geom::Point &pt, unsigned int state);
+    int originRequest(Geom::Point &pt, unsigned int state);
+
+    // StKey transforms functionality
+    enum class StickyTransform
+    {
+        None,
+        Grab,
+        Scale,
+        Rotate
+    };
+private:
+    StickyTransform _stkey = StickyTransform::None;
+    bool _stkey_transformed = false;
+    bool _stkey_paused = false;
+
+public:
+    void grab_stkey(Geom::Point const &p, StickyTransform type);
+    void pause_stkey() { _stkey_paused = true; }
+    bool is_stkey() const { return _stkey != StickyTransform::None; }
+    bool request_stkey(Geom::Point const &p, int state);
+    bool ungrab_stkey(bool cancel = false);
 
     int handleRequest(SPKnot *knot, Geom::Point *position, unsigned int state, SPSelTransHandle const &handle);
     void handleGrab(SPKnot *knot, unsigned int state, SPSelTransHandle const &handle);
     void handleClick(SPKnot *knot, unsigned int state, SPSelTransHandle const &handle);
-    void handleNewEvent(SPKnot *knot, Geom::Point *position, unsigned int state, SPSelTransHandle const &handle);
+    void handleNewEvent(Geom::Point *position, unsigned int state, SPSelTransHandle const &handle);
 
     enum Show
     {
@@ -124,12 +149,6 @@ private:
     Geom::Point _calcAbsAffineDefault(Geom::Scale const default_scale);
     Geom::Point _calcAbsAffineGeom(Geom::Scale const geom_scale);
     void _keepClosestPointOnly(Geom::Point const &p);
-
-    enum State {
-        STATE_SCALE, //scale or stretch
-        STATE_ROTATE, //rotate or skew
-        STATE_ALIGN //on canvas align
-    };
 
     SPDesktop *_desktop;
 

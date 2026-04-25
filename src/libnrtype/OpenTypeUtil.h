@@ -79,12 +79,9 @@ inline FT_Fixed FTDoubleToFixed (double value) {
     return static_cast<FT_Fixed>(value * 65536);
 }
 
-namespace Inkscape { class Pixbuf; }
-
 struct SVGGlyphEntry
 {
     unsigned entry_index;
-    std::unique_ptr<Inkscape::Pixbuf const> pixbuf;
     ~SVGGlyphEntry();
 };
 

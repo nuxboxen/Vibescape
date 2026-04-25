@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 # custom "check" target with proper dependencies (builds inkscape and tests)
 file(TO_NATIVE_PATH "/" _separator)
 add_definitions(-DINKSCAPE_TESTS_DIR="${CMAKE_SOURCE_DIR}/testfiles")
+add_definitions(-DINKSCAPE_SHARE_DIR="${CMAKE_SOURCE_DIR}/share")
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
                         DEPENDS tests unit_tests
                         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -76,11 +77,11 @@ set(TEST_SOURCES
     uri-test
     uri-references-test
     util-test
-    util-units-test
     util-expression-evaluator-test
     util-uri-test
     drag-and-drop-svgz
     drawing-pattern-test
+    split-path-test
     attributes-test
     dir-util-test
     sp-item-test
@@ -101,8 +102,7 @@ set(TEST_SOURCES
     style-test
     svg-affine-test
     svg-box-test
-    svg-length-test
-    svg-stringstream-test
+    svg-path-parser-test
     sp-gradient-test
     svg-path-geom-test
     visual-bounds-test
@@ -173,6 +173,29 @@ add_unit_test(assertions-in-tests TEST_SOURCE "assertions-in-tests.cpp")
 add_unit_test(version-test TEST_SOURCE "version-test.cpp"
                                SOURCES "version.cpp")
 
+# These all depend on each other as a single unit
+add_unit_tests(TEST_SOURCES "svg-length-test.cpp"
+                            "svg-stringstream-test.cpp"
+                            "util-units-test.cpp"
+                    SOURCES "svg/css-ostringstream.cpp"
+                            "svg/svg-length.cpp"
+                            "svg/stringstream.cpp"
+                            "svg/strip-trailing-zeros.cpp"
+                            "util/units.cpp"
+                            # MOCK object files to unitise these tests
+                            "mocks/util-units-filename.cpp"
+                            "mocks/util-numeric-precision.cpp"
+                    EXTRA_LIBS GLibmm::GLibmm 2Geom::2geom)
+
+include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
+get_libnrtype_unit_lib()
+
+add_unit_tests(TEST_SOURCES "libnrtype/font-factory-test.cpp"
+                            "libnrtype/font-instance-test.cpp"
+                ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
+                            "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
+                 EXTRA_LIBS libnrtype_unit_lib)
+
 include("${CMAKE_SOURCE_DIR}/src/colors/CMakeUnit.txt")
 get_color_unit_lib()
 
@@ -182,6 +205,7 @@ add_unit_tests(TEST_SOURCES "colors/cms-profile-test.cpp"
                             "colors/manager-test.cpp"
                             "colors/parser-test.cpp"
                             "colors/printer-test.cpp"
+                            "colors/gradient-averager-test.cpp"
                             "colors/spaces-cms-test.cpp"
                             "colors/spaces-cmyk-test.cpp"
                             "colors/spaces-gray-test.cpp"

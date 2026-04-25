@@ -551,12 +551,13 @@ bool pathvs_have_nonempty_overlap(Geom::PathVector const &a, Geom::PathVector co
 bool pathv_fully_contains(Geom::PathVector const &a, Geom::PathVector const &b, FillRule fill_rule, double precision)
 {
     // Fast-path the case where a is a rectangle.
+    auto const b_bounds = b.boundsExact();
     if (auto const a_rect = check_simple_rect(a, precision)) {
-        return a_rect->contains(b.boundsExact());
+        return a_rect->contains(b_bounds);
     }
 
     // At minimum, bbox of a must contain bbox of b
-    if (!a.boundsExact()->contains(b.boundsExact())) {
+    if (!a.boundsExact().contains(b_bounds)) {
         return false;
     }
 

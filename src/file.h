@@ -17,7 +17,9 @@
  */
 
 #include <glibmm/ustring.h>
+#include <optional>
 #include <string>
+#include <2geom/point.h>
 #include "extension/system.h"
 
 class SPDesktop;
@@ -125,7 +127,8 @@ void file_import_pages(SPDocument *this_doc, SPDocument *that_doc);
  * Imports a resource
  */
 SPObject* file_import(SPDocument *in_doc, const std::string &path,
-                 Inkscape::Extension::Extension *key);
+                 Inkscape::Extension::Extension *key,
+                 std::optional<Geom::Point> drop_pos = std::nullopt);
 
 #endif // SEEN_SP_FILE_H
 

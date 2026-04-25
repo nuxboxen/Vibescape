@@ -30,25 +30,25 @@
 #include <vector>
 #include <2geom/transforms.h>
 
-#include <poppler/Annot.h>
-#include <poppler/Array.h>
-#include <poppler/CharTypes.h>
-#include <poppler/Dict.h>
-#include <poppler/Error.h>
-#include <poppler/Gfx.h>
-#include <poppler/GfxFont.h>
-#include <poppler/GfxState.h>
-#include <poppler/GlobalParams.h>
-#include <poppler/Lexer.h>
-#include <poppler/Object.h>
-#include <poppler/OutputDev.h>
-#include <poppler/PDFDoc.h>
-#include <poppler/Page.h>
-#include <poppler/Parser.h>
-#include <poppler/Stream.h>
-#include <poppler/glib/poppler-features.h>
-#include <poppler/goo/GooString.h>
-#include <poppler/goo/gmem.h>
+#include <Annot.h>
+#include <Array.h>
+#include <CharTypes.h>
+#include <Dict.h>
+#include <Error.h>
+#include <Gfx.h>
+#include <GfxFont.h>
+#include <GfxState.h>
+#include <GlobalParams.h>
+#include <Lexer.h>
+#include <Object.h>
+#include <OutputDev.h>
+#include <PDFDoc.h>
+#include <Page.h>
+#include <Parser.h>
+#include <Stream.h>
+#include <glib/poppler-features.h>
+#include <goo/GooString.h>
+#include <goo/gmem.h>
 #include "pdf-utils.h"
 #include "poppler-cairo-font-engine.h"
 #include "poppler-transition-api.h"
@@ -657,7 +657,11 @@ void PdfParser::opSetFlat(Object args[], int /*numArgs*/)
 void PdfParser::opSetLineJoin(Object args[], int /*numArgs*/)
 {
   builder->beforeStateChange(state);
+#if POPPLER_CHECK_VERSION(26,2,0)
+  state->setLineJoin((GfxState::LineJoinStyle) args[0].getInt());
+#else
   state->setLineJoin(args[0].getInt());
+#endif
   builder->updateStyle(state);
 }
 
@@ -665,7 +669,11 @@ void PdfParser::opSetLineJoin(Object args[], int /*numArgs*/)
 void PdfParser::opSetLineCap(Object args[], int /*numArgs*/)
 {
   builder->beforeStateChange(state);
+#if POPPLER_CHECK_VERSION(26,2,0)
+  state->setLineCap((GfxState::LineCapStyle) args[0].getInt());
+#else
   state->setLineCap(args[0].getInt());
+#endif
   builder->updateStyle(state);
 }
 
@@ -1537,7 +1545,13 @@ void PdfParser::doShadingPatternFillFallback(GfxShadingPattern *sPat,
 
   // restore graphics state
   restoreState();
+#if POPPLER_CHECK_VERSION(26, 2, 0)
+  state->clearPath();
+  GfxPath *currPath = const_cast<GfxPath*>(state->getPath());
+  currPath->append(savedPath);
+#else
   state->setPath(savedPath);
+#endif
 }
 
 // TODO not good that numArgs is ignored but args[] is used:
@@ -1600,7 +1614,13 @@ void PdfParser::opShFill(Object args[], int /*numArgs*/)
   // restore graphics state
   if (savedState) {
     restoreState();
+#if POPPLER_CHECK_VERSION(26, 2, 0)
+    state->clearPath();
+    GfxPath *currPath = const_cast<GfxPath*>(state->getPath());
+    currPath->append(savedPath);
+#else
     state->setPath(savedPath);
+#endif
   }
 }
 
@@ -2232,7 +2252,7 @@ void PdfParser::opShowSpaceText(Object args[], int /*numArgs*/)
 {
   Array *a = nullptr;
   Object obj;
-  int wMode = 0; // Writing mode (horizontal/vertical).
+  _POPPLER_WMODE wMode = _POPPLER_WMODE_HORIZONTAL; // Writing mode (horizontal/vertical).
 
   if (!state->getFont()) {
     error(errSyntaxError, getPos(), "No font in show/space");
@@ -2246,7 +2266,7 @@ void PdfParser::opShowSpaceText(Object args[], int /*numArgs*/)
     if (obj.isNum()) {
       // this uses the absolute value of the font size to match
       // Acrobat's behavior
-      if (wMode) {
+      if (wMode != _POPPLER_WMODE_HORIZONTAL) {
 	state->textShift(0, -obj.getNum() * 0.001 *
 			    fabs(state->getFontSize()));
       } else {
@@ -2267,15 +2287,11 @@ void PdfParser::opShowSpaceText(Object args[], int /*numArgs*/)
  * This adds a string from a PDF file that is contained in one command ('Tj', ''', '"')
  * or is one string in ShowSpacetext ('TJ').
  */
-#if POPPLER_CHECK_VERSION(0,64,0)
-void PdfParser::doShowText(const GooString *s) {
-#else
-void PdfParser::doShowText(GooString *s) {
-#endif
+void PdfParser::doShowText(const std::string &s) {
     auto font = state->getFont();
-    int wMode = font->getWMode(); // Vertical/Horizontal/Invalid
+    _POPPLER_WMODE wMode = font->getWMode(); // Vertical/Horizontal/Invalid
 
-    builder->beginString(state, get_goostring_length(*s));
+    builder->beginString(state, s.size());
 
     // handle a Type 3 char
     if (font->getType() == fontType3) {
@@ -2285,8 +2301,8 @@ void PdfParser::doShowText(GooString *s) {
     double riseX, riseY;
     state->textTransformDelta(0, state->getRise(), &riseX, &riseY);
 
-    auto p = s->getCString(); // char* or const char*
-    int len = get_goostring_length(*s);
+    auto p = s.c_str(); // char* or const char*
+    int len = s.size();
 
     while (len > 0) {
 
@@ -2308,7 +2324,7 @@ void PdfParser::doShowText(GooString *s) {
         auto ax = dx;
         auto ay = dy;
 
-        if (wMode != 0) {
+        if (wMode != _POPPLER_WMODE_HORIZONTAL) {
             // Vertical text (or invalid value).
             dy += state->getCharSpace();
             if (n == 1 && *p == ' ') {
@@ -2341,6 +2357,15 @@ void PdfParser::doShowText(GooString *s) {
     }
 
     builder->endString(state);
+}
+
+#if POPPLER_CHECK_VERSION(0,64,0)
+void PdfParser::doShowText(const GooString *s) {
+#else
+void PdfParser::doShowText(GooString *s) {
+#endif
+    const std::string str = s->toStr();
+    doShowText(str);
 }
 
 
@@ -2942,7 +2967,11 @@ Stream *PdfParser::buildImageStream() {
 
   // build dictionary
 #if defined(POPPLER_NEW_OBJECT_API)
+#if POPPLER_CHECK_VERSION(26, 3, 0)
+  dict = Object(std::make_unique<Dict>(xref));
+#else
   dict = Object(new Dict(xref));
+#endif
 #else
   dict.initDict(xref);
 #endif
@@ -2975,7 +3004,11 @@ Stream *PdfParser::buildImageStream() {
   // make stream
 #if defined(POPPLER_NEW_OBJECT_API)
   str = new EmbedStream(parser->getStream(), dict.copy(), gFalse, 0);
+#if POPPLER_CHECK_VERSION(26, 2, 0)
+  str = str->addFilters(std::unique_ptr<Stream>(str), dict.getDict()).release();
+#else
   str = str->addFilters(dict.getDict());
+#endif
 #else
   str = new EmbedStream(parser->getStream(), &dict, gFalse, 0);
   str = str->addFilters(&dict);
@@ -3158,10 +3191,17 @@ void PdfParser::loadOptionalContentLayers(Dict *resources)
                 auto visible = true;
                 // Normally we'd use poppler optContentIsVisible, but these dict
                 // objects don't retain their references so can't be used directly.
+#if POPPLER_CHECK_VERSION(26, 2, 0)
+                for (auto &[ref, ocg] : ocgs->getOCGs()) {
+                    if (ocg->getName()->toStr() == label)
+                        visible = ocg->getState() == OptionalContentGroup::On;
+                }
+#else
                 for (auto &[ref, ocg] : ocgs->getOCGs()) {
                     if (ocg->getName()->cmp(label) == 0)
                         visible = ocg->getState() == OptionalContentGroup::On;
                 }
+#endif
                 builder->addOptionalGroup(dict->getKey(j), label, visible);
             }
         }

@@ -15,6 +15,7 @@
 #include "actions-helper.h"
 #include "document-undo.h"
 #include "inkscape-application.h"
+#include "object/sp-star.h"
 #include "preferences.h"
 #include "selection.h"
 
@@ -25,6 +26,7 @@
 #include "trace/potrace/inkscape-potrace.h"
 #include "trace/trace.h"
 #include "ui/icon-names.h"
+#include "util/cast.h"
 
 namespace {
 
@@ -40,7 +42,7 @@ double stod_finite(std::string const &str)
 void object_trace(Glib::VariantBase const &value, InkscapeApplication *app)
 {
     auto selection = app->get_active_selection();
-    if (selection->isEmpty()) {
+    if (!selection || selection->isEmpty()) {
         show_output("action:object_trace: selection empty!", true);
         return;
     }
@@ -143,7 +145,7 @@ void
 object_remove_attribute(Glib::VariantBase const &value, InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
-    if (selection->isEmpty()) {
+    if (!selection || selection->isEmpty()) {
         show_output("action:object_remove_attribute: selection empty!");
         return;
     }
@@ -160,7 +162,7 @@ void
 object_remove_property(Glib::VariantBase const &value, InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
-    if (selection->isEmpty()) {
+    if (!selection || selection->isEmpty()) {
         show_output("action:object_remove_property: selection empty!");
         return;
     }
@@ -190,7 +192,7 @@ object_set_attribute(const Glib::VariantBase& value, InkscapeApplication *app)
     auto const new_value = argument.substr(comma_position + 1);
 
     auto selection = app->get_active_selection();
-    if (selection->isEmpty()) {
+    if (!selection || selection->isEmpty()) {
         show_output("action:object_set_attribute: selection empty!");
         return;
     }
@@ -219,7 +221,7 @@ object_set_property(const Glib::VariantBase& value, InkscapeApplication *app)
     }
 
     auto selection = app->get_active_selection();
-    if (selection->isEmpty()) {
+    if (!selection || selection->isEmpty()) {
         show_output("action:object_set_property: selection empty!");
         return;
     }
@@ -242,10 +244,9 @@ void
 object_unlink_clones(InkscapeApplication *app)
 {
     auto selection = app->get_active_selection();
-
-    // We should not have to do this!
-    auto document  = app->get_active_document();
-    selection->setDocument(document);
+    if (!selection) {
+        return;
+    }
 
     selection->unlink();
 }
@@ -260,6 +261,9 @@ void
 object_clip_set(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Clip Set
     selection->setMask(true, false, should_remove_original());
@@ -270,6 +274,9 @@ void
 object_clip_set_inverse(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Clip Set Inverse
     selection->setMask(true, false, should_remove_original());
@@ -281,6 +288,9 @@ void
 object_clip_release(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Clip Release
     Inkscape::LivePathEffect::sp_remove_powerclip(app->get_active_selection());
@@ -292,6 +302,10 @@ void
 object_clip_set_group(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
+
     selection->setClipGroup();
     // Undo added in setClipGroup().
 }
@@ -300,6 +314,9 @@ void
 object_mask_set(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Mask Set
     selection->setMask(false, false, should_remove_original());
@@ -310,6 +327,9 @@ void
 object_mask_set_inverse(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Mask Set Inverse
     selection->setMask(false, false, should_remove_original());
@@ -321,6 +341,9 @@ void
 object_mask_release(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Mask Release
     Inkscape::LivePathEffect::sp_remove_powermask(app->get_active_selection());
@@ -332,26 +355,35 @@ void
 object_rotate_90_cw(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Rotate 90
-    auto desktop = selection->desktop();
-    selection->rotateAnchored((!desktop || desktop->yaxisdown()) ? 90 : -90);
+    auto doc = selection->document();
+    selection->rotateAnchored((!doc || doc->yaxisdown()) ? 90 : -90);
 }
 
 void
 object_rotate_90_ccw(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // Object Rotate 90 CCW
-    auto desktop = selection->desktop();
-    selection->rotateAnchored((!desktop || desktop->yaxisdown()) ? -90 : 90);
+    auto doc = selection->document();
+    selection->rotateAnchored((!doc || doc->yaxisdown()) ? -90 : 90);
 }
 
 void
 object_flip_horizontal(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     Geom::OptRect bbox = selection->visualBounds();
     if (!bbox) {
@@ -375,6 +407,9 @@ void
 object_flip_vertical(InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     Geom::OptRect bbox = selection->visualBounds();
     if (!bbox) {
@@ -394,25 +429,55 @@ object_flip_vertical(InkscapeApplication *app)
     Inkscape::DocumentUndo::done(app->get_active_document(), RC_("Undo", "Flip vertically"), INKSCAPE_ICON("object-flip-vertical"));
 }
 
+void
+object_star_turn_upright(InkscapeApplication *app)
+{
+    auto selection = app->get_active_selection();
+    if (!selection || selection->isEmpty()) {
+        show_output("action:object_star_turn_upright: selection empty!");
+        return;
+    }
+
+    bool has_stars = false;
+    for (auto obj : selection->objects()) {
+        if (auto star = cast<SPStar>(obj)) {
+            has_stars = true;
+            star->turn_upright();
+        }
+    }
+
+    if (!has_stars) {
+        show_output("action:objects_star_turn_upright: no SPStar in selection!");
+        return;
+    }
+
+    Inkscape::DocumentUndo::done(app->get_active_document(), RC_("Undo", "Turn stars upright"), INKSCAPE_ICON("object-level"));
+}
 
 void
 object_to_path(InkscapeApplication *app)
 {
     auto selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
-    // We should not have to do this!
-    auto document  = app->get_active_document();
-    selection->setDocument(document);
     selection->toCurves(false, Inkscape::Preferences::get()->getBool("/options/clonestocurvesjustunlink/value", true));
 }
 
 void
 object_add_corners_lpe(InkscapeApplication *app) {
     auto selection = app->get_active_selection();
+    if (!selection) {
+        return;
+    }
 
     // We should not have to do this!
     auto document  = app->get_active_document();
-    selection->setDocument(document);
+    if (!document) {
+        return;
+    }
+
     auto items = selection->items_vector();
     selection->clear();
     for (auto i : items) {
@@ -436,10 +501,9 @@ void
 object_stroke_to_path(InkscapeApplication *app)
 {
     auto selection = app->get_active_selection();
-
-    // We should not have to do this!
-    auto document  = app->get_active_document();
-    selection->setDocument(document);
+    if (!selection) {
+        return;
+    }
 
     selection->strokesToPaths();
 }
@@ -472,7 +536,8 @@ std::vector<std::vector<Glib::ustring>> raw_data_object =
     {"app.object-rotate-90-cw",       N_("Object Rotate 90"),        SECTION, N_("Rotate selection 90° clockwise")},
     {"app.object-rotate-90-ccw",      N_("Object Rotate 90 CCW"),    SECTION, N_("Rotate selection 90° counter-clockwise")},
     {"app.object-flip-horizontal",    N_("Object Flip Horizontal"),  SECTION, N_("Flip selected objects horizontally")},
-    {"app.object-flip-vertical",      N_("Object Flip Vertical"),    SECTION, N_("Flip selected objects vertically")}
+    {"app.object-flip-vertical",      N_("Object Flip Vertical"),    SECTION, N_("Flip selected objects vertically")},
+    {"app.object-star-turn-upright",  N_("Turn Stars/Polygons Upright"), SECTION, N_("Turn stars and polygons upright")}
     // clang-format on
 };
 
@@ -523,6 +588,7 @@ add_actions_object(InkscapeApplication* app)
     gapp->add_action(                "object-rotate-90-ccw",            sigc::bind(sigc::ptr_fun(&object_rotate_90_ccw),          app));
     gapp->add_action(                "object-flip-horizontal",          sigc::bind(sigc::ptr_fun(&object_flip_horizontal),        app));
     gapp->add_action(                "object-flip-vertical",            sigc::bind(sigc::ptr_fun(&object_flip_vertical),          app));
+    gapp->add_action(                "object-star-turn-upright",        sigc::bind(sigc::ptr_fun(&object_star_turn_upright),      app));
     // clang-format on
 
     app->get_action_extra_data().add_data(raw_data_object);

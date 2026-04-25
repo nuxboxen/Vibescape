@@ -13,7 +13,7 @@
                     "args": ["-lc"]
                 },
                 "env": {
-                    "MSYSTEM": "MINGW64",
+                    "MSYSTEM": "UCRT64",
                     "CHERE_INVOKING": "1"
                 }
             },
@@ -33,7 +33,7 @@
                     "args": ["-lc"]
                 },
                 "env": {
-                    "MSYSTEM": "MINGW64",
+                    "MSYSTEM": "UCRT64",
                     "CHERE_INVOKING": "1"
                 }
             },

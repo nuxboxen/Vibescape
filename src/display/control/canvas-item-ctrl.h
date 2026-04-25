@@ -99,8 +99,6 @@ private:
 
     // get effective stroke width
     float get_stroke_width() const;
-    // get size of the pixmap needed to render this control item
-    int get_pixmap_width(int device_scale) const;
     // for debugging only - save handles to "handle.png"
     void _dump();
 };

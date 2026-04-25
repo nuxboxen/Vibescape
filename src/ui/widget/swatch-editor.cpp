@@ -24,6 +24,7 @@
 #include "object/sp-defs.h"
 #include "object/sp-stop.h"
 #include "ui/builder-utils.h"
+#include "ui/monitor.h"
 #include "ui/util.h"
 #include "ui/dialog/choose-file.h"
 #include "ui/dialog/global-palettes.h"
@@ -103,9 +104,9 @@ Glib::RefPtr<ListItem> to_list_item(SPGradient* swatch) {
     return ListItem::create(swatch->getId(), swatch->defaultLabel(), color);
 }
 
-// max height of the swatch list; if popover gets too high, gtk will forcibly close it
+// max height of the swatch list
 int get_max_gridview_height() {
-    static int max_height = 300; // std::max(100, get_monitor_geometry_primary().get_height() - 750);
+    static int max_height = std::max(100, get_monitor_geometry_primary().get_height() - 600);
     return max_height;
 }
 

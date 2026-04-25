@@ -24,12 +24,12 @@
 #include <locale>
 #include <codecvt>
 
-#include <poppler/Function.h>
-#include <poppler/GfxFont.h>
-#include <poppler/GfxState.h>
-#include <poppler/Page.h>
-#include <poppler/Stream.h>
-#include <poppler/goo/gmem.h>
+#include <Function.h>
+#include <GfxFont.h>
+#include <GfxState.h>
+#include <Page.h>
+#include <Stream.h>
+#include <goo/gmem.h>
 
 #ifdef _WIN32
 #undef near
@@ -1434,7 +1434,7 @@ void SvgBuilder::updateFont(GfxState *state, std::shared_ptr<CairoFont> cairo_fo
     sp_repr_css_set_property(_css_font, "font-variant", "normal");
 
     // Writing mode
-    if ( font->getWMode() == 0 ) {
+    if ( font->getWMode() == _POPPLER_WMODE_HORIZONTAL ) {
         sp_repr_css_set_property(_css_font, "writing-mode", "lr");
     } else {
         sp_repr_css_set_property(_css_font, "writing-mode", "tb");
@@ -1446,7 +1446,7 @@ void SvgBuilder::updateFont(GfxState *state, std::shared_ptr<CairoFont> cairo_fo
  */
 void SvgBuilder::updateTextShift(GfxState *state, double shift) {
     double shift_value = -shift * 0.001 * fabs(state->getFontSize());
-    if (state->getFont()->getWMode()) {
+    if (state->getFont()->getWMode() != _POPPLER_WMODE_HORIZONTAL) {
         _text_position[1] += shift_value;
     } else {
         _text_position[0] += shift_value;
@@ -1500,7 +1500,7 @@ Inkscape::XML::Node* SvgBuilder::_flushTextText(GfxState *state, double text_sca
 
     // Text direction is a property of the <text> element.
     auto font = state->getFont();
-    if (font->getWMode() == 1) {
+    if (font->getWMode() == _POPPLER_WMODE_VERTICAL) {
         // Only set if vertical.
         auto css_text = sp_repr_css_attr_new();
         sp_repr_css_set_property(css_text, "writing-mode", "tb");
@@ -1594,8 +1594,8 @@ Inkscape::XML::Node* SvgBuilder::_flushTextText(GfxState *state, double text_sca
         bool output_tspan =
             next_it == _glyphs.end() ||
             next_it->style_changed   ||
-            (writing_mode == 0 && std::abs(glyph.text_position[1] - next_it->text_position[1]) > 0.1) ||
-            (writing_mode == 1 && std::abs(glyph.text_position[0] - next_it->text_position[0]) > 0.1);
+            (writing_mode == _POPPLER_WMODE_HORIZONTAL && std::abs(glyph.text_position[1] - next_it->text_position[1]) > 0.1) ||
+            (writing_mode == _POPPLER_WMODE_VERTICAL   && std::abs(glyph.text_position[0] - next_it->text_position[0]) > 0.1);
 
         if (output_tspan) {
 
@@ -2147,7 +2147,17 @@ Inkscape::XML::Node *SvgBuilder::_createImage(Stream *str, int width, int height
             image_stream = new ImageStream(str, width, 1, 1);
         }
 #if POPPLER_CHECK_VERSION(26, 0, 0)
-        image_stream->rewind();
+        if(!image_stream->rewind())
+        {
+            g_warning("ImageStream: Failed to rewind image stream");
+            png_destroy_write_struct(&png_ptr, &info_ptr);
+            if (!_embed_images) {
+                fclose(fp);
+                g_free(file_name);
+            }
+            delete image_stream;
+            return nullptr;
+        }
 #else
         image_stream->reset();
 #endif
@@ -2177,7 +2187,17 @@ Inkscape::XML::Node *SvgBuilder::_createImage(Stream *str, int width, int height
                                        color_map->getNumPixelComps(),
                                        color_map->getBits());
 #if POPPLER_CHECK_VERSION(26, 0, 0)
-        image_stream->rewind();
+        if(!image_stream->rewind())
+        {
+            g_warning("ImageStream: Failed to rewind image stream");
+            png_destroy_write_struct(&png_ptr, &info_ptr);
+            if (!_embed_images) {
+                fclose(fp);
+                g_free(file_name);
+            }
+            delete image_stream;
+            return nullptr;
+        }
 #else
         image_stream->reset();
 #endif

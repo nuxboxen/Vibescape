@@ -7,6 +7,7 @@
 
 #include "canvas-item-group.h"
 #include "ctrl-handle-manager.h"
+#include "ui/widget/canvas.h"
 
 namespace Inkscape {
 
@@ -22,10 +23,13 @@ CanvasItemContext::CanvasItemContext(UI::Widget::Canvas *canvas)
             _root->_invalidate_ctrl_handles();
         });
     });
+    _device_scale_conn = canvas->property_scale_factor().signal_changed().connect(
+        [this] { defer([this] { _root->_invalidate_ctrl_handles(); }); });
 }
 
 CanvasItemContext::~CanvasItemContext()
 {
+    _device_scale_conn.disconnect(); // not using scoped connection to ensure disconnect happens before delete
     delete _root;
 }
 

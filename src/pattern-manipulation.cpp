@@ -12,6 +12,7 @@
 #include "object/sp-hatch.h"
 #include "object/sp-pattern.h"
 #include "xml/repr.h"
+#include "style.h"
 
 std::vector<SPDocument *> sp_get_stock_patterns() {
     auto patterns = StockPaintDocuments::get().get_paint_documents([](SPDocument* doc){

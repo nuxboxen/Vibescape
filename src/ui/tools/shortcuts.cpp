@@ -22,6 +22,10 @@ std::vector<std::vector<Glib::ustring>> raw_data_tools_shortcuts = {
     , {"tool.all.quick-pan",        N_("Quick Pan Canvas"),       "Tools", N_("Pan the canvas with the mouse while the key is pressed.")          }
     , {"tool.all.focus-first-widget", N_("Focus First Widget"),   "Tools", N_("Focus the first input widget in the active tool's toolbar.")       }
 
+    , {"tool.sel.stkey-grab",       N_("Grab/Move Objects"),      "Tools", N_("Move the objects even if the mouse is not over the selected object.")}
+    , {"tool.sel.stkey-scale",      N_("Scale Objects"),          "Tools", N_("Resize or scale selected objects without using the scaling handles.")}
+    , {"tool.sel.stkey-rotate",     N_("Rotate Objects"),         "Tools", N_("Rotate the selected objects without using the rotate handles.")}
+
     , {"tool.pen.to-line",          N_("Pen Segment To Line"),    "Tools", N_("Convert the last pen segment to a straight line.")                 }
     , {"tool.pen.to-curve",         N_("Pen Segment To Curve"),   "Tools", N_("Convert the last pen segment to a curved line.")                   }
     , {"tool.pen.to-guides",        N_("Pen Segments To Guides"), "Tools", N_("Convert the pen shape into guides.")                               }

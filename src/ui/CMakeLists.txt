@@ -19,6 +19,7 @@ target_sources(inkscape_base PRIVATE
 	shape-editor-knotholders.cpp
 	simple-pref-pusher.cpp
 	shortcuts.cpp
+	snapshot-utils.cpp
 	svg-renderer.cpp
 	syntax.cpp
 	themes.cpp
@@ -220,7 +221,6 @@ target_sources(inkscape_base PRIVATE
 	widget/export-lists.cpp
 	widget/export-preview.cpp
 	widget/filter-effect-chooser.cpp
-	widget/fill-style.cpp
 	widget/font-button.cpp
 	widget/font-collection-selector.cpp
 	widget/font-list.cpp
@@ -231,6 +231,7 @@ target_sources(inkscape_base PRIVATE
 	widget/generic/bin.cpp
 	widget/generic/css-name-class-init.cpp
 	widget/generic/dual-spin-scale.cpp
+	widget/generic/number-combo-box.cpp
 	widget/generic/popover-bin.cpp
 	widget/generic/popover-menu.cpp
 	widget/generic/reorderable-stack.cpp
@@ -239,6 +240,7 @@ target_sources(inkscape_base PRIVATE
 	widget/generic/snapshot-widget.cpp
 	widget/generic/spin-button.cpp
 	widget/generic/tab-strip.cpp
+	widget/generic/text-combo-box.cpp
 	widget/gradient-image.cpp
 	widget/gradient-editor.cpp
 	widget/gradient-selector.cpp
@@ -268,6 +270,7 @@ target_sources(inkscape_base PRIVATE
 	widget/paint-attribute.cpp
 	widget/paint-enums.cpp
 	widget/paint-inherited.cpp
+	widget/paint-popover-manager.cpp
 	widget/paint-selector.cpp
 	widget/paint-switch.cpp
 	widget/pattern-editor.cpp
@@ -336,6 +339,7 @@ target_sources(inkscape_base PRIVATE
 	shape-editor-knotholders.h
 	simple-pref-pusher.h
 	shortcuts.h
+	snapshot-utils.h
 	svg-renderer.h
 	syntax.h
 	themes.h
@@ -551,7 +555,6 @@ target_sources(inkscape_base PRIVATE
 	widget/events/enums.h
 	widget/export-lists.h
 	widget/export-preview.h
-	widget/fill-style.h
 	widget/filter-effect-chooser.h
 	widget/font-button.h
 	widget/font-collection-selector.h
@@ -563,6 +566,7 @@ target_sources(inkscape_base PRIVATE
 	widget/generic/bin.h
 	widget/generic/css-name-class-init.h
 	widget/generic/dual-spin-scale.h
+	widget/generic/number-combo-box.h
 	widget/generic/popover-bin.h
 	widget/generic/popover-menu.h
 	widget/generic/reorderable-stack.h
@@ -571,6 +575,7 @@ target_sources(inkscape_base PRIVATE
 	widget/generic/snapshot-widget.h
 	widget/generic/spin-button.h
 	widget/generic/tab-strip.h
+	widget/generic/text-combo-box.h
 	widget/gradient-image.h
 	widget/gradient-editor.h
 	widget/gradient-selector.h
@@ -598,6 +603,7 @@ target_sources(inkscape_base PRIVATE
 	widget/paint-attribute.h
 	widget/paint-inherited.h
 	widget/paint-enums.h
+	widget/paint-popover-manager.h
 	widget/paint-selector.h
 	widget/paint-switch.h
 	widget/palette_t.h

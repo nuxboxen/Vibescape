@@ -54,6 +54,9 @@ static bool is_cycling = false;
 
 SelectTool::SelectTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/select", "select.svg")
+    , _acc_st_grab{"tool.sel.stkey-grab"}
+    , _acc_st_scale{"tool.sel.stkey-scale"}
+    , _acc_st_rotate{"tool.sel.stkey-rotate"}
 {
     auto select_click = Modifier::get(Modifiers::Type::SELECT_ADD_TO)->get_label();
     auto select_scroll = Modifier::get(Modifiers::Type::SELECT_CYCLE)->get_label();
@@ -137,19 +140,20 @@ bool SelectTool::sp_select_context_abort() {
             }
             item = nullptr;
 
-            _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Move canceled."));
-            return true;
-        }
-    } else {
-        if (Inkscape::Rubberband::get(_desktop)->isStarted()) {
+                    _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Move canceled."));
+                    return true;
+                }
+            } else {
+                if (Inkscape::Rubberband::get(_desktop)->isStarted()) {
             Inkscape::Rubberband::get(_desktop)->stop();
             rb_escaped = 1;
             defaultMessageContext()->clear();
             _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Selection canceled."));
             return true;
+            }
         }
-    }
-    return false;
+        _duplicate_drag_reset();
+        return false;
 }
 
 static bool
@@ -208,7 +212,9 @@ bool SelectTool::item_handler(SPItem *local_item, CanvasEvent const &event)
 
     inspect_event(event,
         [&] (ButtonPressEvent const &event) {
-            if (event.num_press == 1 && event.button == 1) {
+            if (_seltrans->is_stkey()) {
+                ret = true;
+            } else if (event.num_press == 1 && event.button == 1) {
                 /* Left mousebutton */
 
                 saveDragOrigin(event.pos);
@@ -347,7 +353,7 @@ void SelectTool::sp_select_context_cycle_through_items(Selection *selection, Scr
             next = std::find( cycling_items.begin(), cycling_items.end(), cycling_cur_item );
             g_assert (next != cycling_items.end());
             if (next == cycling_items.begin()){
-                if ( cycling_wrap ) { 
+                if ( cycling_wrap ) {
                     next = cycling_items.end();
                     --next;
                 }
@@ -386,7 +392,7 @@ void SelectTool::sp_select_context_reset_opacities() {
     for (auto item : cycling_items_cmp) {
         if (item) {
             Inkscape::DrawingItem *arenaitem = item->get_arenaitem(_desktop->dkey);
-            arenaitem->setOpacity(SP_SCALE24_TO_FLOAT(item->style->opacity.value));
+            arenaitem->setOpacity(item->style->opacity.as_double());
         } else {
             g_assert_not_reached();
         }
@@ -412,7 +418,10 @@ bool SelectTool::root_handler(CanvasEvent const &event)
 
     inspect_event(event,
         [&] (ButtonPressEvent const &event) {
-            if (event.num_press == 2 && event.button == 1) {
+            if (_seltrans->is_stkey()) {
+                _seltrans->pause_stkey();
+                ret = true;
+            } else if (event.num_press == 2 && event.button == 1) {
                 if (!selection->isEmpty()) {
                     SPItem *clicked_item = selection->items().front();
 
@@ -436,8 +445,13 @@ bool SelectTool::root_handler(CanvasEvent const &event)
 
                 saveDragOrigin(event.pos);
 
+                bool has_selection = !selection->isEmpty();
+                _duplicate_drag_on_press = has_selection && _duplicate_drag_state(event.modifiers);
+                auto item_down = has_selection ? _desktop->getItemAtPoint(event.pos, false) : nullptr;
+                _duplicate_down_on_selected = item_down && selection->includes(item_down, true);
+                bool suppress_touch_path = _duplicate_drag_on_press && _duplicate_down_on_selected;
                 auto rubberband = Inkscape::Rubberband::get(_desktop);
-                if (Modifier::get(Modifiers::Type::SELECT_TOUCH_PATH)->active(event.modifiers)) {
+                if (!suppress_touch_path && Modifier::get(Modifiers::Type::SELECT_TOUCH_PATH)->active(event.modifiers)) {
                     rubberband->setMode(Rubberband::Mode::TOUCHPATH);
                     rubberband->setHandle(CanvasItemCtrlType::RUBBERBAND_TOUCHPATH_SELECT);
                 } else {
@@ -475,12 +489,21 @@ bool SelectTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (MotionEvent const &event) {
+            _live_point = event.pos;
+
             if (grabbed && event.modifiers & (GDK_SHIFT_MASK | GDK_ALT_MASK)) {
                 _desktop->getSnapIndicator()->remove_snaptarget();
             }
 
+            if (_seltrans->is_stkey() && !_seltrans->isEmpty()) {
+                ret = _seltrans->request_stkey(_desktop->w2d(event.pos), event.modifiers);
+                gobble_motion_events(GDK_BUTTON1_MASK);
+                return;
+            }
+
             tolerance = prefs->getIntLimited("/options/dragtolerance/value", 0, 0, 100);
 
+            bool duplicate_drag = _duplicate_drag_on_press;
             bool force_drag = Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG)->active(button_press_state);
             bool always_box = Modifier::get(Modifiers::Type::SELECT_ALWAYS_BOX)->active(button_press_state);
 
@@ -496,6 +519,11 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                     // but not with shift) we want to drag rather than rubberband
                     dragging = true;
                     set_cursor("select-dragging.svg");
+                }
+
+                if (!dragging && duplicate_drag && (force_drag || _duplicate_down_on_selected) && !selection->isEmpty()) {
+                    // allow duplicate-drag to initiate a drag even when force-drag is off
+                    dragging = true;
                 }
 
                 if (dragging) {
@@ -545,7 +573,14 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                                 }
                             } // otherwise, do not change selection so that dragging selected-within-group items, as well as alt-dragging, is possible
 
-                            _seltrans->grab(p, -1, -1, false, true);
+                            bool down_on_selected = item_at_point && selection->includes(item_at_point, true);
+                            bool allow_duplicate = duplicate_drag && (_duplicate_down_on_selected || down_on_selected);
+
+                            if (allow_duplicate) {
+                                _duplicate_drag(p);
+                            } else {
+                                _seltrans->grab(p, -1, -1, false, true);
+                            }
                             moved = true;
                         }
 
@@ -596,7 +631,10 @@ bool SelectTool::root_handler(CanvasEvent const &event)
         [&] (ButtonReleaseEvent const &event) {
             xyp = {};
 
-            if ((event.button == 1) && (grabbed)) {
+            if (_seltrans->is_stkey()) {
+                _seltrans->ungrab_stkey(event.button != 1);
+                ret = true;
+            } else if ((event.button == 1) && (grabbed)) {
                 if (dragging) {
                     if (moved) {
                         // item has been moved
@@ -646,6 +684,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                     }
 
                     item = nullptr;
+                    _duplicate_drag_reset();
                 } else {
                     Inkscape::Rubberband *r = Inkscape::Rubberband::get(_desktop);
 
@@ -806,6 +845,27 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                 _alt_on = true; // Turn off in KeyReleaseEvent
             }
 
+            if (!selection->isEmpty() && !_seltrans->is_stkey()) {
+                if (_acc_st_grab.isTriggeredBy(event)) {
+                    _seltrans->grab_stkey(_desktop->w2d(_live_point), SelTrans::StickyTransform::Grab);
+                    ret = true;
+                } else if (_acc_st_scale.isTriggeredBy(event)) {
+                    _seltrans->grab_stkey(_desktop->w2d(_live_point), SelTrans::StickyTransform::Scale);
+                    ret = true;
+                } else if (_acc_st_rotate.isTriggeredBy(event)) {
+                    _seltrans->grab_stkey(_desktop->w2d(_live_point), SelTrans::StickyTransform::Rotate);
+                    ret = true;
+                }
+            }
+            if (_seltrans->is_stkey()) {
+                if (keyval == GDK_KEY_Escape) {
+                    // Canceled stKey transformation
+                    _seltrans->ungrab_stkey(true);
+                    ret = true;
+                }
+                return;
+            }
+
             if (!key_is_a_modifier (keyval)) {
                 defaultMessageContext()->clear();
             } else if (grabbed || _seltrans->isGrabbed()) {
@@ -867,7 +927,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_Up: // move selection up
                 case GDK_KEY_KP_Up:
                     if (!mod_ctrl(event)) { // not ctrl
@@ -875,7 +935,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_Right: // move selection right
                 case GDK_KEY_KP_Right:
                     if (!mod_ctrl(event)) { // not ctrl
@@ -883,7 +943,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_Down: // move selection down
                 case GDK_KEY_KP_Down:
                     if (!mod_ctrl(event)) { // not ctrl
@@ -891,12 +951,12 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_Escape:
                     if (!sp_select_context_abort()) {
                         selection->clear();
                     }
-                    
+
                     ret = true;
                     break;
 
@@ -907,7 +967,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_space:
                 case GDK_KEY_c:
                 case GDK_KEY_C:
@@ -917,7 +977,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_Return:
                     if (mod_ctrl_only(event)) {
                         if (selection->singleItem()) {
@@ -930,29 +990,29 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                                 _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Selected object is not a group. Cannot enter."));
                             }
                         }
-                        
+
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_BackSpace:
                     if (mod_ctrl_only(event)) {
                         sp_select_context_up_one_layer(_desktop);
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_s:
                 case GDK_KEY_S:
                     if (mod_shift_only(event)) {
                         if (!selection->isEmpty()) {
                             _seltrans->increaseState();
                         }
-                        
+
                         ret = true;
                     }
                     break;
-                    
+
                 case GDK_KEY_g:
                 case GDK_KEY_G:
                     if (mod_shift_only(event)) {
@@ -960,7 +1020,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         ret = true;
                     }
                     break;
-                    
+
                 default:
                     break;
             }
@@ -971,7 +1031,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
             if (key_is_a_modifier (keyval)) {
                 defaultMessageContext()->clear();
             }
-            
+
             // Workaround for non-working modifier detection
             bool alt = keyval == GDK_KEY_Alt_L  ||
                        keyval == GDK_KEY_Alt_R  ||
@@ -1014,6 +1074,42 @@ bool SelectTool::root_handler(CanvasEvent const &event)
     );
 
     return ret || ToolBase::root_handler(event);
+}
+
+void SelectTool::_duplicate_drag(Geom::Point const &p)
+{
+    auto selection = _desktop->getSelection();
+    if (selection->isEmpty()) {
+        return;
+    }
+
+    selection->duplicate(true);
+
+    // Text layout/bbox can lag behind immediately after duplication; update before starting drag.
+    _desktop->getDocument()->ensureUpToDate();
+    _seltrans->grab(p, -1, -1, false, true);
+}
+
+bool SelectTool::_duplicate_drag_state(unsigned int state) const
+{
+    auto mod = Modifier::get(Modifiers::Type::SELECT_DUPLICATE);
+    if (!mod) {
+        return false;
+    }
+
+    // Ignore the modifier when it's effectively unset (no required keys).
+    auto mask = mod->get_and_mask();
+    if (mask == Modifiers::ALWAYS || mask == Modifiers::NEVER) {
+        return false;
+    }
+
+    return mod->active(state);
+}
+
+void SelectTool::_duplicate_drag_reset()
+{
+    _duplicate_drag_on_press = false;
+    _duplicate_down_on_selected = false;
 }
 
 /**

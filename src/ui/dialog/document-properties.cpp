@@ -1781,10 +1781,10 @@ GridWidget::GridWidget(SPGrid *grid)
                 _("O_rigin Y:"), _("Y coordinate of grid origin"), "originy",
                 *_units, _wr, repr, doc, RSU_y);
     _spacing_x = Gtk::make_managed<RegisteredScalarUnit>(
-                "-", _("Distance between horizontal grid lines"), "spacingx",
+                "-", _("Distance between vertical grid lines"), "spacingx",
                 *_units, _wr, repr, doc, RSU_x);
     _spacing_y = Gtk::make_managed<RegisteredScalarUnit>(
-                "-", _("Distance between vertical grid lines"), "spacingy",
+                "-", _("Distance between horizontal grid lines"), "spacingy",
                 *_units, _wr, repr, doc, RSU_y);
 
     _gap_x = Gtk::make_managed<RegisteredScalarUnit>(
@@ -1801,9 +1801,9 @@ GridWidget::GridWidget(SPGrid *grid)
                 *_units, _wr, repr, doc, RSU_y);
 
     _angle_x = Gtk::make_managed<RegisteredScalar>(
-                _("An_gle X:"), _("Angle of x-axis"), "gridanglex", _wr, repr, doc);
+        _("An_gle of X:"), _("Angle of x-axis relative to horizontal direction"), "gridanglex", _wr, repr, doc);
     _angle_z = Gtk::make_managed<RegisteredScalar>(
-                _("Ang_le Z:"), _("Angle of z-axis"), "gridanglez", _wr, repr, doc);
+        _("Ang_le of Z:"), _("Angle of z-axis relative to horizontal direction"), "gridanglez", _wr, repr, doc);
     _grid_color = Gtk::make_managed<RegisteredColorPicker>(
                 "", _("Grid color"),
                 _("Color of the grid lines"),
@@ -2012,7 +2012,24 @@ void GridWidget::update()
     _spacing_x->setValueKeepUnit(spacing[Geom::X], "px");
     _spacing_y->setValueKeepUnit(spacing[Geom::Y], "px");
     _spacing_x->getLabel()->set_markup_with_mnemonic(modular ? _("Block _width:") : _("Spacing _X:"));
-    _spacing_y->getLabel()->set_markup_with_mnemonic(modular ? _("Block _height:") : _("Spacing _Y:"));
+    _spacing_x->set_tooltip_text(modular ? _("Width of grid modules") : _("Distance between vertical grid lines"));
+    char const *spacing_y_label = _("Spacing _Y:");
+    char const *spacing_y_tooltip = _("Distance between horizontal grid lines");
+    switch (_grid->getType()) {
+        case GridType::AXONOMETRIC:
+            spacing_y_label = _("_Height:");
+            spacing_y_tooltip = _("Height of grid cell, vertical distance between grid intersections");
+            break;
+        case GridType::MODULAR:
+            spacing_y_label = _("Block _height:");
+            spacing_y_tooltip = _("Height of grid modules");
+            break;
+        case GridType::RECTANGULAR:
+        default:
+            break;
+    }
+    _spacing_y->getLabel()->set_markup_with_mnemonic(spacing_y_label);
+    _spacing_y->set_tooltip_text(spacing_y_tooltip);
 
     auto show = [](Gtk::Widget* w, bool do_show){
         w->set_visible(do_show);

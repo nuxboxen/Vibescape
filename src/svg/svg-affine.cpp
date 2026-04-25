@@ -19,6 +19,7 @@
 #include <glib.h>
 #include <2geom/transforms.h>
 #include "svg.h"
+#include "util/numeric/precision.h"
 #include "preferences.h"
 
 std::string
@@ -28,7 +29,7 @@ sp_svg_transform_write(Geom::Affine const &transform)
 
     // this must be a bit grater than EPSILON
     double e = 1e-5 * transform.descrim();
-    int prec = prefs->getInt("/options/svgoutput/numericprecision", 8);
+    int prec = Inkscape::Util::get_default_numeric_precision();
     int min_exp = prefs->getInt("/options/svgoutput/minimumexponent", -8);
 
     // Special case: when all fields of the affine are zero,

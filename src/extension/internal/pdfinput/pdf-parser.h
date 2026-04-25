@@ -29,11 +29,11 @@
 #include <map>
 #include <memory>
 #include <gdkmm/enums.h>
-#include <poppler/Object.h>
+#include <Object.h>
 #include <string>
 
 #define Operator Operator_Gfx
-#include <poppler/Gfx.h>
+#include <Gfx.h>
 #undef Operator
 #undef DOUBLE_CLICK
 
@@ -290,10 +290,11 @@ private:
     void opMoveShowText(Object args[], int numArgs);
     void opMoveSetShowText(Object args[], int numArgs);
     void opShowSpaceText(Object args[], int numArgs);
+    void doShowText(const std::string &s);
 #if POPPLER_CHECK_VERSION(0,64,0)
-  void doShowText(const GooString *s);
+    void doShowText(const GooString *s);
 #else
-  void doShowText(GooString *s);
+    void doShowText(GooString *s);
 #endif
   
 

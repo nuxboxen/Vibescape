@@ -194,9 +194,9 @@ Inkscape::SelTrans::_clear_stamp() {
     }
 }
 
-void Inkscape::SelTrans::resetState()
+void Inkscape::SelTrans::resetState(Inkscape::SelTrans::State state)
 {
-    _state = STATE_SCALE;
+    _state = state;
 }
 
 void Inkscape::SelTrans::increaseState()
@@ -672,14 +672,14 @@ void Inkscape::SelTrans::_updateHandles()
     for (auto & knot : knots)
         knot->hide();
 
+    if (!_center_is_set && !_empty) {
+        _center = _desktop->getSelection()->center();
+        _center_is_set = true;
+    }
+
     if ( !_show_handles || _empty ) {
         _desktop->getSelection()->setAnchor(0.0, 0.0, false);
         return;
-    }
-
-    if (!_center_is_set) {
-        _center = _desktop->getSelection()->center();
-        _center_is_set = true;
     }
 
     if ( _state == STATE_SCALE ) {
@@ -843,9 +843,13 @@ static void sp_sel_trans_handle_new_event(SPKnot *knot, Geom::Point const& posit
 {
     Geom::Point pos = position;
 
+    if (!knot->is_grabbed()) {
+        return;
+    }
+
     SP_SELECT_CONTEXT(knot->desktop->getTool())->_seltrans->handleNewEvent(
-        knot, &pos, state, *(SPSelTransHandle const *) data
-        );
+        &pos, state, *(SPSelTransHandle const *) data
+    );
 }
 
 static gboolean sp_sel_trans_handle_request(SPKnot *knot, Geom::Point *position, guint state, SPSelTransHandle const *data)
@@ -920,12 +924,8 @@ void Inkscape::SelTrans::handleGrab(SPKnot *knot, guint /*state*/, SPSelTransHan
 }
 
 
-void Inkscape::SelTrans::handleNewEvent(SPKnot *knot, Geom::Point *position, guint state, SPSelTransHandle const &handle)
+void Inkscape::SelTrans::handleNewEvent(Geom::Point *position, guint state, SPSelTransHandle const &handle)
 {
-    if (!knot->is_grabbed()) {
-        return;
-    }
-
     // in case items have been unhooked from the document, don't
     // try to continue processing events for them.
     for (auto & _item : _items) {
@@ -935,16 +935,12 @@ void Inkscape::SelTrans::handleNewEvent(SPKnot *knot, Geom::Point *position, gui
     }
     switch (handle.type) {
         case HANDLE_SCALE:
-            scale(*position, state);
-            break;
         case HANDLE_STRETCH:
-            stretch(handle, *position, state);
+            commitAbsoluteAffine();
             break;
         case HANDLE_SKEW:
-            skew(handle, *position, state);
-            break;
         case HANDLE_ROTATE:
-            rotate(*position, state);
+            commitRelativeAffine();
             break;
         case HANDLE_CENTER:
             setCenter(*position);
@@ -956,18 +952,13 @@ void Inkscape::SelTrans::handleNewEvent(SPKnot *knot, Geom::Point *position, gui
     }
 }
 
-
-gboolean Inkscape::SelTrans::handleRequest(SPKnot *knot, Geom::Point *position, guint state, SPSelTransHandle const &handle)
+int Inkscape::SelTrans::originRequest(Geom::Point &/*pt*/, unsigned int state)
 {
-    if (!knot->is_grabbed()) {
-        return TRUE;
-    }
-
     // When holding shift while rotating or skewing, the transformation will be
     // relative to the point opposite of the handle; otherwise it will be relative
     // to the center as set for the selection
     auto off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER)->active(state);
-    if ((!off_center == !(_state == STATE_ROTATE)) && (handle.type != HANDLE_CENTER)) {
+    if (!is_stkey() && off_center == (_state == STATE_ROTATE)) {
         _origin = _opposite;
         _origin_for_bboxpoints = _opposite_for_bboxpoints;
         _origin_for_specpoints = _opposite_for_specpoints;
@@ -975,8 +966,13 @@ gboolean Inkscape::SelTrans::handleRequest(SPKnot *knot, Geom::Point *position, 
         _origin = *_center;
         _origin_for_bboxpoints = *_center;
         _origin_for_specpoints = *_center;
-    } else {
-        // FIXME
+    }
+    return true;
+}
+
+gboolean Inkscape::SelTrans::handleRequest(SPKnot *knot, Geom::Point *position, guint state, SPSelTransHandle const &handle)
+{
+    if (!knot->is_grabbed()) {
         return TRUE;
     }
     if (request(handle, *position, state)) {
@@ -995,6 +991,9 @@ gboolean Inkscape::SelTrans::handleRequest(SPKnot *knot, Geom::Point *position, 
 
 void Inkscape::SelTrans::_selChanged(Inkscape::Selection *selection)
 {
+    if (is_stkey()) {
+        ungrab_stkey();
+    }
     if (!_grabbed) {
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
         // reread in case it changed on the fly:
@@ -1005,16 +1004,6 @@ void Inkscape::SelTrans::_selChanged(Inkscape::Selection *selection)
         _updateVolatileState();
         _current_relative_affine.setIdentity();
         _center_is_set = false; // center(s) may have changed
-        auto items= selection->items();
-        for (auto item : items) {
-            SPItem *it = static_cast<SPItem*>(sp_object_ref(item, nullptr));
-            auto lpeitem = cast<SPLPEItem>(it);
-            // only update if never do a LPE cycle (document load, revert...) and selection is not a layer
-            if (lpeitem && !lpeitem->lpe_initialized && (!is<SPGroup>(lpeitem) || !lpeitem->getAttribute("inkscape:groupmode"))) {
-                sp_lpe_item_update_patheffect(lpeitem, true, true);
-            }
-            sp_object_unref(item);
-        }
         _updateHandles();
     }
 }
@@ -1057,6 +1046,7 @@ static double sign(double const x)
 
 gboolean Inkscape::SelTrans::scaleRequest(Geom::Point &pt, guint state)
 {
+    originRequest(pt, state);
 
     // Calculate the scale factors, which can be either visual or geometric
     // depending on which type of bbox is currently being used (see preferences -> selector tool)
@@ -1149,24 +1139,12 @@ gboolean Inkscape::SelTrans::scaleRequest(Geom::Point &pt, guint state)
     return TRUE;
 }
 
-gboolean Inkscape::SelTrans::stretchRequest(SPSelTransHandle const &handle, Geom::Point &pt, guint state)
+gboolean Inkscape::SelTrans::stretchRequest(Geom::Point &pt, guint state, bool is_horz)
 {
-    Geom::Dim2 axis, perp;
-    switch (handle.anchor) {
-        case SP_ANCHOR_S:
-        case SP_ANCHOR_N:
-            axis = Geom::Y;
-            perp = Geom::X;
-            break;
-        case SP_ANCHOR_W:
-        case SP_ANCHOR_E:
-            axis = Geom::X;
-            perp = Geom::Y;
-            break;
-        default:
-            g_assert_not_reached();
-            return TRUE;
-    };
+    Geom::Dim2 axis = is_horz ? Geom::X : Geom::Y;
+    Geom::Dim2 perp = is_horz ? Geom::Y : Geom::X;
+
+    originRequest(pt, state);
 
     // Calculate the scale factors, which can be either visual or geometric
     // depending on which type of bbox is currently being used (see preferences -> selector tool)
@@ -1259,9 +1237,9 @@ gboolean Inkscape::SelTrans::request(SPSelTransHandle const &handle, Geom::Point
         case HANDLE_SCALE:
             return scaleRequest(pt, state);
         case HANDLE_STRETCH:
-            return stretchRequest(handle, pt, state);
+            return stretchRequest(pt, state, handle.anchor == SP_ANCHOR_W || handle.anchor == SP_ANCHOR_E);
         case HANDLE_SKEW:
-            return skewRequest(handle, pt, state);
+            return skewRequest(pt, state, handle.anchor == SP_ANCHOR_W || handle.anchor == SP_ANCHOR_E);
         case HANDLE_ROTATE:
             return rotateRequest(pt, state);
         case HANDLE_CENTER:
@@ -1274,7 +1252,7 @@ gboolean Inkscape::SelTrans::request(SPSelTransHandle const &handle, Geom::Point
     return FALSE;
 }
 
-gboolean Inkscape::SelTrans::skewRequest(SPSelTransHandle const &handle, Geom::Point &pt, guint state)
+gboolean Inkscape::SelTrans::skewRequest(Geom::Point &pt, guint state, bool is_horz)
 {
     /* When skewing (or rotating):
      * 1) the stroke width will not change. This makes life much easier because we don't have to
@@ -1284,25 +1262,10 @@ gboolean Inkscape::SelTrans::skewRequest(SPSelTransHandle const &handle, Geom::P
      *    the handle; otherwise it will be relative to the center as set for the selection
      */
 
-    Geom::Dim2 dim_a;
-    Geom::Dim2 dim_b;
+    Geom::Dim2 dim_a = is_horz ? Geom::X : Geom::Y;
+    Geom::Dim2 dim_b = is_horz ? Geom::Y : Geom::X;
 
-    switch (handle.anchor) {
-        case SP_ANCHOR_S:
-        case SP_ANCHOR_N:
-            dim_a = Geom::Y;
-            dim_b = Geom::X;
-            break;
-        case SP_ANCHOR_W:
-        case SP_ANCHOR_E:
-            dim_a = Geom::X;
-            dim_b = Geom::Y;
-            break;
-        default:
-            g_assert_not_reached();
-            std::terminate();
-            break;
-    }
+    originRequest(pt, state);
 
     // _point and _origin are noisy, ranging from 1 to 1e-9 or even smaller; this is due to the
     // limited SVG output precision, which can be arbitrarily set in the preferences
@@ -1407,6 +1370,8 @@ gboolean Inkscape::SelTrans::rotateRequest(Geom::Point &pt, guint state)
 
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     double snaps = prefs->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
+
+    originRequest(pt, state);
 
     // rotate affine in rotate
     Geom::Point const d1 = _point - _origin;
@@ -1523,34 +1488,17 @@ void Inkscape::SelTrans::align(guint state, SPSelTransHandle const &handle)
     app->activate_action("object-align", variant);
 }
 
-/*
- * handlers for handle movement
- *
- */
-
-
-
-void Inkscape::SelTrans::stretch(SPSelTransHandle const &/*handle*/, Geom::Point &/*pt*/, guint /*state*/)
+void Inkscape::SelTrans::commitAbsoluteAffine()
 {
-    transform(_absolute_affine, Geom::Point(0, 0)); // we have already accounted for origin, so pass 0,0
+    transform(_absolute_affine, Geom::Point(0, 0));
 }
 
-void Inkscape::SelTrans::scale(Geom::Point &/*pt*/, guint /*state*/)
-{
-    transform(_absolute_affine, Geom::Point(0, 0)); // we have already accounted for origin, so pass 0,0
-}
-
-void Inkscape::SelTrans::skew(SPSelTransHandle const &/*handle*/, Geom::Point &/*pt*/, guint /*state*/)
+void Inkscape::SelTrans::commitRelativeAffine()
 {
     transform(_relative_affine, _origin);
 }
 
-void Inkscape::SelTrans::rotate(Geom::Point &/*pt*/, guint /*state*/)
-{
-    transform(_relative_affine, _origin);
-}
-
-void Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
+bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
 {
     SnapManager &m = _desktop->getNamedView()->snap_manager;
 
@@ -1560,6 +1508,9 @@ void Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
     auto increments = Modifiers::Modifier::get(Modifiers::Type::MOVE_INCREMENT)->active(state);
     auto no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(state);
     auto confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(state);
+    auto force_drag = Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG);
+    auto dup_drag = Modifiers::Modifier::get(Modifiers::Type::SELECT_DUPLICATE);
+    increments = increments && !(force_drag && force_drag->active(state)) && !(dup_drag && dup_drag->active(state));
 
     if (confine) {
         if (fabs(dxy[Geom::X]) > fabs(dxy[Geom::Y])) {
@@ -1669,6 +1620,8 @@ void Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
     _message_context.setF(Inkscape::NORMAL_MESSAGE,
             _("<b>Move</b> by %s, %s; with <b>%s</b> to restrict to horizontal/vertical; with <b>%s</b> to disable snapping"),
             xs.c_str(), ys.c_str(), confine_mod.c_str(), no_snap_mod.c_str());
+
+    return move != Geom::identity();
 }
 
 // Given a location of a handle at the visual bounding box, find the corresponding location at the
@@ -1848,6 +1801,57 @@ void Inkscape::SelTrans::getNextClosestPoint(bool reverse)
             m.unSetup();
         }
     }
+}
+
+void Inkscape::SelTrans::grab_stkey(Geom::Point const &p, StickyTransform type)
+{
+    _stkey = type;
+    _stkey_transformed = false;
+    _stkey_paused = false;
+    grab(p, 0, 0, false, false);
+    resetState(_stkey == StickyTransform::Rotate ? STATE_ROTATE : STATE_SCALE);
+}
+
+bool Inkscape::SelTrans::ungrab_stkey(bool cancel)
+{
+    ungrab();
+    _stkey = StickyTransform::None;
+    if (cancel && _stkey_transformed) {
+        DocumentUndo::undo(_desktop->getDocument());
+    }
+    return _stkey_transformed;
+}
+
+bool Inkscape::SelTrans::request_stkey(Geom::Point const &p, int state)
+{
+    if (_stkey_paused) {
+        // These happen between mouse press and mouse release, improve accuracy
+        // by pausing these evets for this short window.
+        return false;
+    }
+    Geom::Point mutable_p = p;
+    switch (_stkey) {
+        case StickyTransform::Grab:
+            if (moveTo(p, state)) {
+                _stkey_transformed = true;
+            }
+            break;
+        case StickyTransform::Scale:
+            if (scaleRequest(mutable_p, state)) {
+                commitAbsoluteAffine();
+                _stkey_transformed = true;
+            }
+            break;
+        case StickyTransform::Rotate:
+            if (rotateRequest(mutable_p, state)) {
+                commitRelativeAffine();
+                _stkey_transformed = true;
+            }
+            break;
+        default:
+            break;
+    }
+    return true;
 }
 
 /*

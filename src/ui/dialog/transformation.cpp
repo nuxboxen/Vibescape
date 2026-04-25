@@ -23,13 +23,11 @@
 #include "document-undo.h"
 #include "preferences.h"
 #include "selection.h"
-
-#include "object/algorithms/bboxsort.h"
-#include "object/sp-item-transform.h"
 #include "object/sp-namedview.h"
 #include "ui/icon-names.h"
 #include "ui/pack.h"
 #include "ui/widget/spinbutton.h"
+#include "util/transform-objects.h"
 
 namespace Inkscape::UI::Dialog {
 
@@ -46,19 +44,19 @@ Transformation::Transformation()
       _page_skew              (4, 2),
       _page_transform         (3, 3),
 
-      _scalar_move_horizontal (_("_Horizontal:"), _("Horizontal displacement (relative) or position (absolute)"), UNIT_TYPE_LINEAR,
+      _scalar_move_horizontal (_("_Horizontal"), _("Horizontal displacement (relative) or position (absolute)"), UNIT_TYPE_LINEAR,
                                "transform-move-horizontal", &_units_move),
-      _scalar_move_vertical   (_("_Vertical:"),  _("Vertical displacement (relative) or position (absolute)"), UNIT_TYPE_LINEAR,
+      _scalar_move_vertical   (_("_Vertical"),  _("Vertical displacement (relative) or position (absolute)"), UNIT_TYPE_LINEAR,
                                "transform-move-vertical", &_units_move),
-      _scalar_scale_horizontal(_("_Width:"), _("Horizontal size (absolute or percentage of current)"), UNIT_TYPE_DIMENSIONLESS,
+      _scalar_scale_horizontal(_("_Width"), _("Horizontal size (absolute or percentage of current)"), UNIT_TYPE_DIMENSIONLESS,
                                "transform-scale-horizontal", &_units_scale),
-      _scalar_scale_vertical  (_("_Height:"),  _("Vertical size (absolute or percentage of current)"), UNIT_TYPE_DIMENSIONLESS,
+      _scalar_scale_vertical  (_("_Height"),  _("Vertical size (absolute or percentage of current)"), UNIT_TYPE_DIMENSIONLESS,
                                "transform-scale-vertical", &_units_scale),
-      _scalar_rotate          (_("A_ngle:"), _("Rotation angle (positive = counterclockwise)"), UNIT_TYPE_RADIAL,
+      _scalar_rotate          (_("A_ngle"), _("Rotation angle (positive = counterclockwise)"), UNIT_TYPE_RADIAL,
                                "transform-rotate", &_units_rotate),
-      _scalar_skew_horizontal (_("_Horizontal:"), _("Horizontal skew angle (positive = counterclockwise), or absolute displacement, or percentage displacement"), UNIT_TYPE_LINEAR,
+      _scalar_skew_horizontal (_("_Horizontal"), _("Horizontal skew angle (positive = counterclockwise), or absolute displacement, or percentage displacement"), UNIT_TYPE_LINEAR,
                                "transform-skew-horizontal", &_units_skew),
-      _scalar_skew_vertical   (_("_Vertical:"),  _("Vertical skew angle (positive = clockwise), or absolute displacement, or percentage displacement"),  UNIT_TYPE_LINEAR,
+      _scalar_skew_vertical   (_("_Vertical"),  _("Vertical skew angle (positive = clockwise), or absolute displacement, or percentage displacement"),  UNIT_TYPE_LINEAR,
                                "transform-skew-vertical", &_units_skew),
 
       _scalar_transform_a     ({}, _("Transformation matrix element A")),
@@ -238,12 +236,9 @@ void Transformation::layoutPageMove()
     _scalar_move_vertical.set_hexpand();
     _scalar_move_vertical.setWidthChars(7);
 
-    //_scalar_move_vertical.set_label_image( INKSCAPE_STOCK_ARROWS_HOR );
-
     _page_move.table().attach(_scalar_move_horizontal, 0, 0, 2, 1);
     _page_move.table().attach(_units_move,             2, 0, 1, 1);
 
-    //_scalar_move_vertical.set_label_image( INKSCAPE_STOCK_ARROWS_VER );
     _page_move.table().attach(_scalar_move_vertical, 0, 1, 2, 1);
 
     // Relative moves
@@ -370,90 +365,34 @@ void Transformation::layoutPageTransform()
         label->hide_label();
         label->set_margin_start(2);
         label->set_margin_end(2);
+        label->getWidget()->set_size_request(65, -1);
+        label->setRange(-1e10, 1e10);
+        label->setDigits(3);
+        label->setIncrements(0.1, 1.0);
+        label->setValue(1.0);
+        label->setWidthChars(6);
+        label->set_hexpand();
     }
     _page_transform.table().set_column_spacing(0);
     _page_transform.table().set_row_spacing(1);
     _page_transform.table().set_column_homogeneous(true);
 
-    _scalar_transform_a.getWidget()->set_size_request(65, -1);
-    _scalar_transform_a.setRange(-1e10, 1e10);
-    _scalar_transform_a.setDigits(3);
-    _scalar_transform_a.setIncrements(0.1, 1.0);
-    _scalar_transform_a.setValue(1.0);
-    _scalar_transform_a.setWidthChars(6);
-    _scalar_transform_a.set_hexpand();
-
-    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("A:"), 0, 0, 1, 1);
+    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("A"), 0, 0, 1, 1);
     _page_transform.table().attach(_scalar_transform_a, 0, 1, 1, 1);
 
-    _scalar_transform_a.signal_value_changed()
-        .connect(sigc::mem_fun(*this, &Transformation::onTransformValueChanged));
-
-    _scalar_transform_b.getWidget()->set_size_request(65, -1);
-    _scalar_transform_b.setRange(-1e10, 1e10);
-    _scalar_transform_b.setDigits(3);
-    _scalar_transform_b.setIncrements(0.1, 1.0);
-    _scalar_transform_b.setValue(0.0);
-    _scalar_transform_b.setWidthChars(6);
-    _scalar_transform_b.set_hexpand();
-
-    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("B:"), 0, 2, 1, 1);
+    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("B"), 0, 2, 1, 1);
     _page_transform.table().attach(_scalar_transform_b, 0, 3, 1, 1);
 
-    _scalar_transform_b.signal_value_changed()
-        .connect(sigc::mem_fun(*this, &Transformation::onTransformValueChanged));
-
-    _scalar_transform_c.getWidget()->set_size_request(65, -1);
-    _scalar_transform_c.setRange(-1e10, 1e10);
-    _scalar_transform_c.setDigits(3);
-    _scalar_transform_c.setIncrements(0.1, 1.0);
-    _scalar_transform_c.setValue(0.0);
-    _scalar_transform_c.setWidthChars(6);
-    _scalar_transform_c.set_hexpand();
-
-    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("C:"), 1, 0, 1, 1);
+    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("C"), 1, 0, 1, 1);
     _page_transform.table().attach(_scalar_transform_c, 1, 1, 1, 1);
 
-    _scalar_transform_c.signal_value_changed()
-        .connect(sigc::mem_fun(*this, &Transformation::onTransformValueChanged));
-
-    _scalar_transform_d.getWidget()->set_size_request(65, -1);
-    _scalar_transform_d.setRange(-1e10, 1e10);
-    _scalar_transform_d.setDigits(3);
-    _scalar_transform_d.setIncrements(0.1, 1.0);
-    _scalar_transform_d.setValue(1.0);
-    _scalar_transform_d.setWidthChars(6);
-    _scalar_transform_d.set_hexpand();
-
-    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("D:"), 1, 2, 1, 1);
+    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("D"), 1, 2, 1, 1);
     _page_transform.table().attach(_scalar_transform_d, 1, 3, 1, 1);
 
-    _scalar_transform_d.signal_value_changed()
-        .connect(sigc::mem_fun(*this, &Transformation::onTransformValueChanged));
-
-    _scalar_transform_e.getWidget()->set_size_request(65, -1);
-    _scalar_transform_e.setRange(-1e10, 1e10);
-    _scalar_transform_e.setDigits(3);
-    _scalar_transform_e.setIncrements(0.1, 1.0);
-    _scalar_transform_e.setValue(0.0);
-    _scalar_transform_e.setWidthChars(6);
-    _scalar_transform_e.set_hexpand();
-
-    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("E:"), 2, 0, 1, 1);
+    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("E"), 2, 0, 1, 1);
     _page_transform.table().attach(_scalar_transform_e, 2, 1, 1, 1);
 
-    _scalar_transform_e.signal_value_changed()
-        .connect(sigc::mem_fun(*this, &Transformation::onTransformValueChanged));
-
-    _scalar_transform_f.getWidget()->set_size_request(65, -1);
-    _scalar_transform_f.setRange(-1e10, 1e10);
-    _scalar_transform_f.setDigits(3);
-    _scalar_transform_f.setIncrements(0.1, 1.0);
-    _scalar_transform_f.setValue(0.0);
-    _scalar_transform_f.setWidthChars(6);
-    _scalar_transform_f.set_hexpand();
-
-    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("F:"), 2, 2, 1, 1);
+    _page_transform.table().attach(*Gtk::make_managed<Gtk::Label>("F"), 2, 2, 1, 1);
     _page_transform.table().attach(_scalar_transform_f, 2, 3, 1, 1);
 
     auto const img = Gtk::make_managed<Gtk::Image>();
@@ -477,9 +416,6 @@ void Transformation::layoutPageTransform()
     _page_transform.table().attach(*descr, 1, 5, 2, 1);
 
     _page_transform.table().attach(_units_transform, 2, 4, 1, 1);
-
-    _scalar_transform_f.signal_value_changed()
-        .connect(sigc::mem_fun(*this, &Transformation::onTransformValueChanged));
 
     // Edit existing matrix
     _page_transform.table().attach(_check_replace_matrix, 0, 4, 2, 1);
@@ -667,10 +603,6 @@ void Transformation::_apply(bool duplicate_first)
             applyPageSkew(selection);
             break;
         }
-        case PAGE_TRANSFORM: {
-            applyPageTransform(selection);
-            break;
-        }
     }
 }
 
@@ -678,81 +610,11 @@ void Transformation::applyPageMove(Inkscape::Selection *selection)
 {
     double x = _scalar_move_horizontal.getValue("px");
     double y = _scalar_move_vertical.getValue("px");
-    if (_check_move_relative.get_active()) {
-        y *= getDesktop()->yaxisdir();
-    }
-
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    if (!prefs->getBool("/dialogs/transformation/applyseparately")) {
-        // move selection as a whole
-        if (_check_move_relative.get_active()) {
-            selection->moveRelative(x, y);
-        } else {
-            Geom::OptRect bbox = selection->preferredBounds();
-            if (bbox) {
-                selection->moveRelative(x - bbox->min()[Geom::X], y - bbox->min()[Geom::Y]);
-            }
-        }
-    } else {
-
-        if (_check_move_relative.get_active()) {
-            // shift each object relatively to the previous one
-            auto selected = selection->items_vector();
-            if (selected.empty()) return;
-
-            if (fabs(x) > 1e-6) {
-                std::vector< BBoxSort  > sorted;
-                for (auto item : selected)
-                {
-                	Geom::OptRect bbox = item->desktopPreferredBounds();
-                    if (bbox) {
-                        sorted.emplace_back(item, *bbox, Geom::X, x > 0? 1. : 0., x > 0? 0. : 1.);
-                    }
-                }
-                //sort bbox by anchors
-                std::stable_sort(sorted.begin(), sorted.end());
-
-                double move = x;
-                for ( std::vector<BBoxSort> ::iterator it (sorted.begin());
-                      it < sorted.end();
-                      ++it )
-                {
-                    it->item->move_rel(Geom::Translate(move, 0));
-                    // move each next object by x relative to previous
-                    move += x;
-                }
-            }
-            if (fabs(y) > 1e-6) {
-                std::vector< BBoxSort  > sorted;
-                for (auto item : selected)
-                {
-                		Geom::OptRect bbox = item->desktopPreferredBounds();
-                    if (bbox) {
-                        sorted.emplace_back(item, *bbox, Geom::Y, y > 0? 1. : 0., y > 0? 0. : 1.);
-                    }
-                }
-                //sort bbox by anchors
-                std::stable_sort(sorted.begin(), sorted.end());
-
-                double move = y;
-                for ( std::vector<BBoxSort> ::iterator it (sorted.begin());
-                      it < sorted.end();
-                      ++it )
-                {
-                    it->item->move_rel(Geom::Translate(0, move));
-                    // move each next object by x relative to previous
-                    move += y;
-                }
-            }
-        } else {
-            Geom::OptRect bbox = selection->preferredBounds();
-            if (bbox) {
-                selection->moveRelative(x - bbox->min()[Geom::X], y - bbox->min()[Geom::Y]);
-            }
-        }
-    }
-
-    DocumentUndo::done( selection->desktop()->getDocument(), RC_("Undo", "Move"), INKSCAPE_ICON("dialog-transform"));
+    auto *prefs = Inkscape::Preferences::get();
+    bool relative = _check_move_relative.get_active();
+    bool apply_separately = prefs->getBool("/dialogs/transformation/applyseparately");
+    transform_move(selection, x, y, relative, apply_separately, getDesktop()->yaxisdir());
+    DocumentUndo::done(selection->desktop()->getDocument(), RC_("Undo", "Move"), INKSCAPE_ICON("dialog-transform"));
 }
 
 void Transformation::applyPageScale(Inkscape::Selection *selection)
@@ -760,177 +622,50 @@ void Transformation::applyPageScale(Inkscape::Selection *selection)
     double scaleX = _scalar_scale_horizontal.getValue("px");
     double scaleY = _scalar_scale_vertical.getValue("px");
 
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    auto *prefs = Inkscape::Preferences::get();
     bool transform_stroke = prefs->getBool("/options/transform/stroke", true);
     bool preserve = prefs->getBool("/options/preservetransform/value", false);
-    if (prefs->getBool("/dialogs/transformation/applyseparately")) {
-    	auto tmp= selection->items();
-    	for(auto item : tmp){
-            Geom::OptRect bbox_pref = item->desktopPreferredBounds();
-            Geom::OptRect bbox_geom = item->desktopGeometricBounds();
-            if (bbox_pref && bbox_geom) {
-                double new_width = scaleX;
-                double new_height = scaleY;
-                // the values are increments!
-                if (!_units_scale.isAbsolute()) { // Relative scaling, i.e in percent
-                    new_width = scaleX/100 * bbox_pref->width();
-                    new_height = scaleY/100  * bbox_pref->height();
-                }
-                if (fabs(new_width) < 1e-6) new_width = 1e-6; // not 0, as this would result in a nasty no-bbox object
-                if (fabs(new_height) < 1e-6) new_height = 1e-6;
+    bool apply_separately = prefs->getBool("/dialogs/transformation/applyseparately");
+    bool is_percent = !_units_scale.isAbsolute();
 
-                double x0 = bbox_pref->midpoint()[Geom::X] - new_width/2;
-                double y0 = bbox_pref->midpoint()[Geom::Y] - new_height/2;
-                double x1 = bbox_pref->midpoint()[Geom::X] + new_width/2;
-                double y1 = bbox_pref->midpoint()[Geom::Y] + new_height/2;
-
-                Geom::Affine scaler = get_scale_transform_for_variable_stroke (*bbox_pref, *bbox_geom, transform_stroke, preserve, x0, y0, x1, y1);
-                item->set_i2d_affine(item->i2dt_affine() * scaler);
-                item->doWriteTransform(item->transform);
-            }
-        }
-    } else {
-        Geom::OptRect bbox_pref = selection->preferredBounds();
-        Geom::OptRect bbox_geom = selection->geometricBounds();
-        if (bbox_pref && bbox_geom) {
-            // the values are increments!
-            double new_width = scaleX;
-            double new_height = scaleY;
-            if (!_units_scale.isAbsolute()) { // Relative scaling, i.e in percent
-                new_width = scaleX/100 * bbox_pref->width();
-                new_height = scaleY/100 * bbox_pref->height();
-            }
-            if (fabs(new_width) < 1e-6) new_width = 1e-6;
-            if (fabs(new_height) < 1e-6) new_height = 1e-6;
-
-            double x0 = bbox_pref->midpoint()[Geom::X] - new_width/2;
-            double y0 = bbox_pref->midpoint()[Geom::Y] - new_height/2;
-            double x1 = bbox_pref->midpoint()[Geom::X] + new_width/2;
-            double y1 = bbox_pref->midpoint()[Geom::Y] + new_height/2;
-            Geom::Affine scaler = get_scale_transform_for_variable_stroke (*bbox_pref, *bbox_geom, transform_stroke, preserve, x0, y0, x1, y1);
-
-            selection->applyAffine(scaler);
-        }
-    }
-
+    transform_scale(selection, scaleX, scaleY, is_percent, apply_separately, transform_stroke, preserve);
     DocumentUndo::done(selection->desktop()->getDocument(), RC_("Undo", "Scale"), INKSCAPE_ICON("dialog-transform"));
 }
 
 void Transformation::applyPageRotate(Inkscape::Selection *selection)
 {
     double angle = _scalar_rotate.getValue(DEG);
-
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    if (!prefs->getBool("/dialogs/transformation/rotateCounterClockwise", TRUE)) {
+    auto *prefs = Inkscape::Preferences::get();
+    if (!prefs->getBool("/dialogs/transformation/rotateCounterClockwise", true)) {
         angle *= -1;
     }
-
-    if (prefs->getBool("/dialogs/transformation/applyseparately")) {
-    	auto tmp= selection->items();
-    	for(auto item : tmp){
-            item->rotate_rel(Geom::Rotate (angle*M_PI/180.0));
-        }
-    } else {
-        std::optional<Geom::Point> center = selection->center();
-        if (center) {
-            selection->rotateRelative(*center, angle);
-        }
-    }
-
+    bool apply_separately = prefs->getBool("/dialogs/transformation/applyseparately");
+    transform_rotate(selection, angle, apply_separately);
     DocumentUndo::done(selection->desktop()->getDocument(), RC_("Undo", "Rotate"), INKSCAPE_ICON("dialog-transform"));
 }
 
 void Transformation::applyPageSkew(Inkscape::Selection *selection)
 {
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    if (prefs->getBool("/dialogs/transformation/applyseparately")) {
-    	auto items = selection->items();
-    	for(auto item : items){
-            if (!_units_skew.isAbsolute()) { // percentage
-                double skewX = _scalar_skew_horizontal.getValue("%");
-                double skewY = _scalar_skew_vertical.getValue("%");
-                skewY *= getDesktop()->yaxisdir();
-                if (fabs(0.01*skewX*0.01*skewY - 1.0) < Geom::EPSILON) {
-                    getDesktop()->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Transform matrix is singular, <b>not used</b>."));
-                    return;
-                }
-                item->skew_rel(0.01*skewX, 0.01*skewY);
-            } else if (_units_skew.isRadial()) { //deg or rad
-                double angleX = _scalar_skew_horizontal.getValue("rad");
-                double angleY = _scalar_skew_vertical.getValue("rad");
-                if ((fabs(angleX - angleY + M_PI/2) < Geom::EPSILON)
-                ||  (fabs(angleX - angleY - M_PI/2) < Geom::EPSILON)
-                ||  (fabs((angleX - angleY)/3 + M_PI/2) < Geom::EPSILON)
-                ||  (fabs((angleX - angleY)/3 - M_PI/2) < Geom::EPSILON)) {
-                    getDesktop()->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Transform matrix is singular, <b>not used</b>."));
-                    return;
-                }
-                double skewX = tan(angleX);
-                double skewY = tan(angleY);
-                skewX *= getDesktop()->yaxisdir();
-                skewY *= getDesktop()->yaxisdir();
-                item->skew_rel(skewX, skewY);
-            } else { // absolute displacement
-                double skewX = _scalar_skew_horizontal.getValue("px");
-                double skewY = _scalar_skew_vertical.getValue("px");
-                skewY *= getDesktop()->yaxisdir();
-                Geom::OptRect bbox = item->desktopPreferredBounds();
-                if (bbox) {
-                    double width = bbox->dimensions()[Geom::X];
-                    double height = bbox->dimensions()[Geom::Y];
-                    if (fabs(skewX*skewY - width*height) < Geom::EPSILON) {
-                        getDesktop()->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Transform matrix is singular, <b>not used</b>."));
-                        return;
-                    }
-                    item->skew_rel(skewX/height, skewY/width);
-                }
-            }
-        }
-    } else { // transform whole selection
-        Geom::OptRect bbox = selection->preferredBounds();
-        std::optional<Geom::Point> center = selection->center();
+    auto *prefs = Inkscape::Preferences::get();
+    bool apply_separately = prefs->getBool("/dialogs/transformation/applyseparately");
 
-        if ( bbox && center ) {
-            double width  = bbox->dimensions()[Geom::X];
-            double height = bbox->dimensions()[Geom::Y];
-
-            if (!_units_skew.isAbsolute()) { // percentage
-                double skewX = _scalar_skew_horizontal.getValue("%");
-                double skewY = _scalar_skew_vertical.getValue("%");
-                skewY *= getDesktop()->yaxisdir();
-                if (fabs(0.01*skewX*0.01*skewY - 1.0) < Geom::EPSILON) {
-                    getDesktop()->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Transform matrix is singular, <b>not used</b>."));
-                    return;
-                }
-                selection->skewRelative(*center, 0.01 * skewX, 0.01 * skewY);
-            } else if (_units_skew.isRadial()) { //deg or rad
-                double angleX = _scalar_skew_horizontal.getValue("rad");
-                double angleY = _scalar_skew_vertical.getValue("rad");
-                if ((fabs(angleX - angleY + M_PI/2) < Geom::EPSILON)
-                ||  (fabs(angleX - angleY - M_PI/2) < Geom::EPSILON)
-                ||  (fabs((angleX - angleY)/3 + M_PI/2) < Geom::EPSILON)
-                ||  (fabs((angleX - angleY)/3 - M_PI/2) < Geom::EPSILON)) {
-                    getDesktop()->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Transform matrix is singular, <b>not used</b>."));
-                    return;
-                }
-                double skewX = tan(angleX);
-                double skewY = tan(angleY);
-                skewX *= getDesktop()->yaxisdir();
-                skewY *= getDesktop()->yaxisdir();
-                selection->skewRelative(*center, skewX, skewY);
-            } else { // absolute displacement
-                double skewX = _scalar_skew_horizontal.getValue("px");
-                double skewY = _scalar_skew_vertical.getValue("px");
-                skewY *= getDesktop()->yaxisdir();
-                if (fabs(skewX*skewY - width*height) < Geom::EPSILON) {
-                    getDesktop()->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Transform matrix is singular, <b>not used</b>."));
-                    return;
-                }
-                selection->skewRelative(*center, skewX / height, skewY / width);
-            }
-        }
+    SkewUnits units = SkewUnits::Absolute;
+    double hx = 0.0, hy = 0.0;
+    if (!_units_skew.isAbsolute()) {
+        units = SkewUnits::Percent;
+        hx = _scalar_skew_horizontal.getValue("%");
+        hy = _scalar_skew_vertical.getValue("%");
+    } else if (_units_skew.isRadial()) {
+        units = SkewUnits::AngleRadians;
+        hx = _scalar_skew_horizontal.getValue("rad");
+        hy = _scalar_skew_vertical.getValue("rad");
+    } else {
+        units = SkewUnits::Absolute;
+        hx = _scalar_skew_horizontal.getValue("px");
+        hy = _scalar_skew_vertical.getValue("px");
     }
 
+    transform_skew(selection, hx, hy, units, apply_separately, getDesktop()->yaxisdir());
     DocumentUndo::done(selection->desktop()->getDocument(), RC_("Undo", "Skew"), INKSCAPE_ICON("dialog-transform"));
 }
 
@@ -946,15 +681,8 @@ void Transformation::applyPageTransform(Inkscape::Selection *selection, bool dup
         selection->duplicate();
     }
 
-    if (_check_replace_matrix.get_active()) {
-    	auto tmp = selection->items();
-    	for(auto item : tmp){
-            item->set_item_transform(displayed);
-            item->updateRepr();
-        }
-    } else {
-        selection->applyAffine(displayed); // post-multiply each object's transform
-    }
+    bool replace = _check_replace_matrix.get_active();
+    transform_apply_matrix(selection, displayed, replace);
 
     DocumentUndo::done(selection->desktop()->getDocument(), RC_("Undo", "Edit transformation matrix"), INKSCAPE_ICON("dialog-transform"));
 }
@@ -1039,42 +767,19 @@ void Transformation::onRotateClockwiseClicked()
     prefs->setBool("/dialogs/transformation/rotateCounterClockwise", getDesktop()->yaxisdown());
 }
 
-void Transformation::onTransformValueChanged()
-{
-
-    /*
-    double a = _scalar_transform_a.getValue();
-    double b = _scalar_transform_b.getValue();
-    double c = _scalar_transform_c.getValue();
-    double d = _scalar_transform_d.getValue();
-    double e = _scalar_transform_e.getValue();
-    double f = _scalar_transform_f.getValue();
-
-    //g_message("onTransformValueChanged: (%f, %f, %f, %f, %f, %f)\n",
-    //          a, b, c, d, e ,f);
-    */
-}
-
 void Transformation::onReplaceMatrixToggled()
 {
     auto selection = getSelection();
     if (!selection || selection->isEmpty())
         return;
 
-    double a = _scalar_transform_a.getValue();
-    double b = _scalar_transform_b.getValue();
-    double c = _scalar_transform_c.getValue();
-    double d = _scalar_transform_d.getValue();
-    double e = _scalar_transform_e.getValue("px");
-    double f = _scalar_transform_f.getValue("px");
-
-    Geom::Affine displayed (a, b, c, d, e, f);
     Geom::Affine current = selection->items().front()->transform; // take from the first item in selection
 
     Geom::Affine new_displayed;
     if (_check_replace_matrix.get_active()) {
         new_displayed = current;
     } else {
+        auto displayed = getCurrentMatrix();
         new_displayed = current.inverse() * displayed;
     }
 

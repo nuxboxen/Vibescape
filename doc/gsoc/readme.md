@@ -208,22 +208,6 @@ With this groundwork done we would be better positioned to handle CSS classes.
 Today CSS styles get merged into inline style. F&S should understand that attributes can
 be coming from CSS classes and not override them unless users expressly edit them.
 
-<!--- MK: this dialog should be retired:
-
-### Improvements to Paint Server Dialog 
-
--   Estimation of difficulty: Easy to Medium (175h)
--   Potential mentors: Tavmjong
--   Programming skills: C++
--   Prerequisites: Some knowledge of GTK and CSS.
-
-**Detailed Description:** The *Paint Server Dialog*
-allows a user to visually select a pattern or hatch to use in painting
-the *fill* or *stroke* of an object. This project would be to expand the
-dialog to cover gradients, meshes, and solid colors as well as make
-other improvements to the dialog. Interaction with the Inkscape\'s *UX*
-team will be required.
---->
 
 ###  Improving UI of Live path effects
 
@@ -243,6 +227,7 @@ designs**](https://gitlab.com/inkscape/ux/-/issues/?sort=popularity&state=opened
 | -------- | ------- |
 | ![](images/corners_lpe.png)  | ![](images/rotate_copies_lpe.png)     |
 
+<!-- This dialog has been implemented.
 
 ###  Recolor Artwork 
 
@@ -266,12 +251,55 @@ Here**](https://gitlab.com/inkscape/inbox/-/issues/6095)
 -   easier way to make colors harmonize in a project
 -   Faster iteration and visioning of designs
 
-### On-canvas spell checking
+-->
+
+###  OpenType font generation
+
+-   Estimation of difficulty: Medium
+-   Potential mentors:
+-   Programming skills: C++
+
+Inkscape supports creating and editing SVG fonts. Since SVG fonts have been deprecated, it would increase relevance of this feature if users could generate OpenType font from SVG font.
+Using dedicated library (like `otfcc`) one could feed all glyphs and metadata to create OpenType CFF font with cubic bezier glyphs.
+
+In addition to regular OTF fonts, we could also create color fonts. Users design fonts in Inkscape working with SVG, and one flavor of OpenType color fonts supports subset of SVG. It would make for a very convenient tool if we could export color fonts directly from Inkscape.
+
+###  Settings dialog redesign
+
+-   Estimation of difficulty: Medium to hard
+-   Potential mentors:
+-   Programming skills: C++
+
+Inkscape has several proposals for improved settings dialog (check Henrique's designs: https://gitlab.com/inkscape/ux/-/issues/276). We need help in translating designs into a code. Here's one such attempt: https://gitlab.com/inkscape/inkscape/-/merge_requests/6980
+
+Design files for settings dialog: https://www.figma.com/design/aOK3tJin11sUgPk9UqFyj2/Inkscape---UI-specs?node-id=3007-22846&p=f
+
+
+
+### Text object properties
+
+-   Estimation of difficulty: Medium to hard
+-   Potential mentors:
+-   Programming skills: C++
+
+Object properties dialog supports several element types, but lacks support for text. Unlike other elements, text support requires UI to listen to "subselection" changes (that is cursor position) to update text properties.
+
+Possible design (WIP):
+
+![](images/text-properties.png)
+
+This project requires some refactoring to share logic with a text toolbar.
+
+### ~~On-canvas spell checking~~
+
+Note: This project has been started. https://gitlab.com/inkscape/inkscape/-/merge_requests/7297
+
+Note: This task is stalled due to https://gitlab.com/inkscape/inbox/-/issues/8524
 
 -   Estimation of difficulty: Variable - Short or Medium (90h or 175h)
 -   Potential mentors: Tavmjong, ?
 -   Programming skills: C++
--   Prerequisites: Some knowledge of GTK. Ability to work with UI designors.
+-   Prerequisites: Some knowledge of GTK. Ability to work with UI designers.
  
 **Detailed Description:** Currently one can spell-check text via either using
 a dedicated `Check Spelling` dialog or using the `Text` tab of the `Text and Font`

@@ -696,6 +696,34 @@ static double vectorStretch(Geom::Point const &n, Geom::Affine const &trans)
     return (n * trans.withoutTranslation()).length();
 }
 
+void SPGenericEllipse::setVisibleCx(double cx_)
+{
+    cx = cx_ / vectorStretch({1, 0}, i2doc_affine());
+    updateRepr();
+}
+
+void SPGenericEllipse::setVisibleCy(double cy_)
+{
+    cy = cy_ / vectorStretch({0, 1}, i2doc_affine());
+    updateRepr();
+}
+
+double SPGenericEllipse::getVisibleCx() const
+{
+    if (!cx._set) {
+        return 0;
+    }
+    return cx.computed * vectorStretch({1, 0}, i2doc_affine());
+}
+
+double SPGenericEllipse::getVisibleCy() const
+{
+    if (!cy._set) {
+        return 0;
+    }
+    return cy.computed * vectorStretch({0, 1}, i2doc_affine());
+}
+
 void SPGenericEllipse::setVisibleRx(double rx_)
 {
     if (rx_ == 0) {

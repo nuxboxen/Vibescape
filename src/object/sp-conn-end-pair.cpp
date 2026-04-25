@@ -227,7 +227,7 @@ void SPConnEndPair::getEndpoints(Geom::Point endPts[]) const
     for (unsigned h = 0; h < 2; ++h) {
         if (h2attItem[h]) {
             endPts[h] = h2attItem[h]->getAvoidRef().getConnectionPointPos();
-        } else if (!curve->empty()) {
+        } else if (curve && !curve->empty()) {
             if (h == 0) {
                 endPts[h] = curve->initialPoint() * i2d;
             } else {

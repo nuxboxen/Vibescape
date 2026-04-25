@@ -17,3 +17,6 @@
 [submodule "src/3rdparty/libdepixelize"]
 	path = src/3rdparty/libdepixelize
 	url = https://gitlab.com/inkscape/devel/libdepixelize.git
+[submodule "src/3rdparty/libuemf"]
+	path = src/3rdparty/libuemf
+	url = https://gitlab.com/inkscape/devel/libuemf.git

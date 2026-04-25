@@ -46,6 +46,7 @@
 #include "util/recently-used-fonts.h"
 #include "util/document-fonts.h"
 #include "xml/repr.h"
+#include "style-text.h"
 
 //#define DEBUG_FONT
 
@@ -113,6 +114,10 @@ void FontLister::init_font_families(int group_offset, int group_size)
     // Traverse through the family names and set up the list store
     for (auto const &key_val : pango_family_map) {
         if (!key_val.first.empty()) {
+#if __APPLE__
+            // on macOS hide fonts with names starting with a dot; those are internal system fonts
+            if (key_val.first[0] == '.') continue;
+#endif
             auto row = *font_list_store->append();
             row[font_list.family] = key_val.first;
             // we don't set this now (too slow) but the style will be cached if the user

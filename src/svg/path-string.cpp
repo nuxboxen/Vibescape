@@ -14,6 +14,7 @@
 #include "svg/path-string.h"
 #include "svg/stringstream.h"
 #include "svg/svg.h"
+#include "util/numeric/precision.h"
 #include "preferences.h"
 
 // 1<=numericprecision<=16, doubles are only accurate upto (slightly less than) 16 digits (and less than one digit doesn't make sense)
@@ -33,7 +34,7 @@ PathString::PathString()
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     _format = (PATHSTRING_FORMAT)prefs->getIntLimited("/options/svgoutput/pathstring_format", 1, 0, PATHSTRING_FORMAT_SIZE - 1 );
     _force_repeat_commands = !prefs->getBool("/options/svgoutput/disable_optimizations" ) && prefs->getBool("/options/svgoutput/forcerepeatcommands");
-    int precision = std::max<int>(minprec,std::min<int>(maxprec, prefs->getInt("/options/svgoutput/numericprecision", 8)));
+    int precision = std::max<int>(minprec,std::min<int>(maxprec, Util::get_default_numeric_precision()));
     int minexp = prefs->getInt("/options/svgoutput/minimumexponent", -8);
     _abs_state = State(precision, minexp);
     _rel_state = State(precision, minexp);

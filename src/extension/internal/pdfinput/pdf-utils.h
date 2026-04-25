@@ -11,9 +11,9 @@
 #ifndef PDF_UTILS_H
 #define PDF_UTILS_H
 
-#include <poppler/Gfx.h>
-#include <poppler/GfxState.h>
-#include <poppler/Page.h>
+#include <Gfx.h>
+#include <GfxState.h>
+#include <Page.h>
 #include <2geom/affine.h>
 #include <2geom/pathvector.h>
 #include <2geom/rect.h>

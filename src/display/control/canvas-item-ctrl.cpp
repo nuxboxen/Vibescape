@@ -258,10 +258,6 @@ float CanvasItemCtrl::get_total_width() const {
     return width;
 }
 
-int CanvasItemCtrl::get_pixmap_width(int device_scale) const {
-    return std::round(get_total_width() * device_scale);
-}
-
 void CanvasItemCtrl::set_size_default()
 {
     int size = get_size_default();
@@ -476,10 +472,10 @@ void CanvasItemCtrl::_update(bool)
     }
 
     // The location we want to place our anchor/ctrl point
-    _pos = Geom::Point(-w_half, -w_half) + Geom::Point(dx, dy) + _position * affine();
+    _pos = Geom::Point(dx, dy) + _position * affine();
 
     // The bounding box we want to invalidate in cairo, rounded out to catch any stray pixels
-    _bounds = Geom::Rect::from_xywh(_pos, {width, width}).roundOutwards();
+    _bounds = Geom::Rect::from_xywh(_pos - Geom::Point(w_half, w_half), {width, width}).roundOutwards();
 
     // Queue redraw of new area
     request_redraw();
@@ -490,16 +486,19 @@ void CanvasItemCtrl::_update(bool)
  */
 void CanvasItemCtrl::_render(CanvasItemBuffer &buf) const
 {
-    _built.init([&, this] {
-        build_cache(buf.device_scale);
-    });
+    _built.init([&, this] { build_cache(buf.device_scale); });
 
     if (!_cache) {
         return;
     }
 
     // Round to the device pixel at the very last minute so we get less bluring
-    auto const [x, y] = Geom::Point{(_pos * buf.device_scale).round()} / buf.device_scale - buf.rect.min();
+
+    auto cache_size = Geom::Point(_cache->get_width(), _cache->get_height());
+    auto center_offset = (cache_size * 0.5 / _cache->get_device_scale());
+
+    auto const [x, y] =
+        CanvasItem::align_to_pixels05(_pos, _cache->get_width(), buf.device_scale) - center_offset - buf.rect.min();
     cairo_set_source_surface(buf.cr->cobj(), const_cast<cairo_surface_t *>(_cache->cobj()), x, y); // C API is const-incorrect.
     buf.cr->paint();
 }
@@ -546,7 +545,7 @@ void CanvasItemCtrl::build_cache(int device_scale) const
         .outline = style.getOutline(),
         .stroke_width = stroke_width,
         .outline_width = outline_width,
-        .width = get_pixmap_width(device_scale),
+        .width = (int)std::lround((2 * outline_width + stroke_width + size) * device_scale),
         .size = size,
         .angle = _angle,
         .device_scale = device_scale

@@ -338,6 +338,9 @@ protected:
     UI::Widget::PrefSpinButton  _rendering_cache_size;
     UI::Widget::PrefSpinButton  _rendering_xray_radius;
     UI::Widget::PrefSpinButton  _rendering_outline_overlay_opacity;
+    UI::Widget::PrefColorPicker _rendering_object_outline_color;
+    UI::Widget::PrefColorPicker _rendering_clip_outline_color;
+    UI::Widget::PrefColorPicker _rendering_mask_outline_color;
     UI::Widget::PrefCombo       _canvas_update_strategy;
     UI::Widget::PrefCheckButton _canvas_request_opengl;
     UI::Widget::PrefRadioButton _blur_quality_best;
@@ -407,6 +410,7 @@ protected:
     UI::Widget::PrefSpinButton  _importexport_import_res;
     UI::Widget::PrefCheckButton _importexport_import_res_override;
     UI::Widget::PrefCheckButton _rendering_image_outline;
+    UI::Widget::PrefColorPicker _rendering_image_outline_color;
     UI::Widget::PrefSlider      _snap_delay;
     UI::Widget::PrefSlider      _snap_weight;
     UI::Widget::PrefSlider      _snap_persistence;
@@ -492,6 +496,7 @@ protected:
     UI::Widget::PrefCombo       _kb_filelist;
 
     UI::Widget::PrefCheckButton _save_use_current_dir;
+    UI::Widget::PrefEntryButtonHBox _save_default_filename;
     UI::Widget::PrefCheckButton _save_autosave_enable;
     UI::Widget::PrefSpinButton  _save_autosave_interval;
     UI::Widget::PrefEditFolder  _save_autosave_path_dir;
@@ -645,7 +650,6 @@ protected:
     void show_not_found();
     void show_nothing_on_page();
     void show_try_search();
-    void on_reset_open_recent_clicked();
     void on_reset_prefs_clicked();
     void on_search_changed();
     void highlight_results(Glib::ustring const &key, Gtk::TreeModel::iterator &iter);

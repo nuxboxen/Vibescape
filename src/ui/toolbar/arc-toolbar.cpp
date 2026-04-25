@@ -57,6 +57,8 @@ ArcToolbar::ArcToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     : Toolbar{get_widget<Gtk::Box>(builder, "arc-toolbar")}
     , _tracker{std::make_unique<UnitTracker>(Util::UNIT_TYPE_LINEAR)}
     , _mode_item{get_widget<Gtk::Label>(builder, "_mode_item")}
+    , _cx_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_cx_item")}
+    , _cy_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_cy_item")}
     , _rx_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_rx_item")}
     , _ry_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_ry_item")}
     , _start_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_start_item")}
@@ -71,6 +73,8 @@ ArcToolbar::ArcToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     auto unit_menu = _tracker->create_unit_dropdown();
     get_widget<Gtk::Box>(builder, "unit_menu_box").append(*unit_menu);
 
+    _setupDerivedSpinButton(_cx_item, "cx");
+    _setupDerivedSpinButton(_cy_item, "cy");
     _setupDerivedSpinButton(_rx_item, "rx");
     _setupDerivedSpinButton(_ry_item, "ry");
     _setupStartendButton(_start_item, "start", _end_item);
@@ -204,7 +208,7 @@ void ArcToolbar::_valueChanged(Glib::RefPtr<Gtk::Adjustment> const &adj, Glib::u
     // Per SVG spec "a [radius] value of zero disables rendering of the element".
     // However our implementation does not allow a setting of zero in the UI (not even in the XML editor)
     // and ugly things happen if it's forced here, so better leave the properties untouched.
-    if (!adj->get_value()) {
+    if (!adj->get_value() && value_name[0] == 'r') {
         return;
     }
 
@@ -218,8 +222,12 @@ void ArcToolbar::_valueChanged(Glib::RefPtr<Gtk::Adjustment> const &adj, Glib::u
 
             if (value_name == "rx") {
                 ge->setVisibleRx(Quantity::convert(adj->get_value(), unit, "px"));
-            } else {
+            } else if (value_name == "ry") {
                 ge->setVisibleRy(Quantity::convert(adj->get_value(), unit, "px"));
+            } else if (value_name == "cx") {
+                ge->setVisibleCx(Quantity::convert(adj->get_value(), unit, "px"));
+            } else if (value_name == "cy") {
+                ge->setVisibleCy(Quantity::convert(adj->get_value(), unit, "px"));
             }
 
             ge->normalize();
@@ -363,6 +371,8 @@ void ArcToolbar::_selectionChanged(Selection *selection)
     }
 
     _mode_item.set_markup(n_selected == 0 ? _("<b>New:</b>") : _("<b>Change:</b>"));
+    _cx_item.set_sensitive(n_selected > 0);
+    _cy_item.set_sensitive(n_selected > 0);
     _rx_item.set_sensitive(n_selected > 0);
     _ry_item.set_sensitive(n_selected > 0);
 
@@ -415,6 +425,8 @@ void ArcToolbar::_update()
     // prevent UI callbacks from responding
     auto guard = _blocker.block();
 
+    _cx_item.get_adjustment()->set_value(Quantity::convert(_ellipse->getVisibleCx(), "px", _tracker->getActiveUnit()));
+    _cy_item.get_adjustment()->set_value(Quantity::convert(_ellipse->getVisibleCy(), "px", _tracker->getActiveUnit()));
     _rx_item.get_adjustment()->set_value(Quantity::convert(_ellipse->getVisibleRx(), "px", _tracker->getActiveUnit()));
     _ry_item.get_adjustment()->set_value(Quantity::convert(_ellipse->getVisibleRy(), "px", _tracker->getActiveUnit()));
     _start_item.get_adjustment()->set_value(Geom::deg_from_rad(Geom::Angle{_ellipse->start}.radians0()));

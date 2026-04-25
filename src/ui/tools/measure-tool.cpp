@@ -17,11 +17,14 @@
 #include <iomanip>
 
 #include <2geom/path-intersection.h>
+#include <2geom/elliptical-arc.h>
+#include <2geom/sbasis-to-bezier.h>
 
 #include "desktop-style.h"
 #include "desktop.h"
 #include "document-undo.h"
 #include "layer-manager.h"
+#include "message-context.h"
 #include "page-manager.h"
 #include "selection.h"
 #include "text-editing.h"
@@ -47,6 +50,7 @@
 #include "ui/widget/canvas.h" // Canvas area
 #include "ui/widget/events/canvas-event.h"
 
+#include "util/numeric/converters.h"
 #include "util/units.h"
 #include "util-string/ustring-format.h"
 
@@ -210,6 +214,211 @@ Geom::Point calcDeltaLabelTextPos(std::vector<LabelPlacement> placements, SPDesk
 
 } // namespace
 
+
+PathMeasure::PathMeasure(SPShape *const shape, Geom::Point const &cursor, double tolerance)
+    : mode(Mode::NONE)
+    , _shape(shape)
+{
+    if (shape) {
+        auto near_point = cursor * shape->dt2i_affine();
+        // Copy the curve as some shapes are constructing the pathvector and then destroy it
+        _curve = *shape->curve();
+        double line_distance;
+        auto nearest_time = _curve.nearestTime(near_point, &line_distance);
+        auto path_time = nearest_time->asPathTime();
+        double corner_time = path_time.t - std::round(path_time.t);
+
+        subpath_index = nearest_time->path_index;
+        segment_index = path_time.curve_index;
+
+        if (line_distance < tolerance) {
+            mode = Mode::SEGMENT;
+        }
+
+        auto path = _curve[subpath_index];
+        corner_index = (segment_index + (corner_time < 0)) % path.size();
+
+        auto corner_pos = path[corner_index].initialPoint();
+        if (Geom::distance(corner_pos, near_point) < tolerance) {
+            if (path.closed() || (corner_index > 0 && corner_index < (int)path.size())) {
+                mode = Mode::CORNER;
+            }
+        }
+    }
+}
+
+Geom::Path PathMeasure::subpath() const
+{
+    return _curve[subpath_index];
+}
+
+/**
+ * Find the path of the single segment being measured
+ */
+Geom::Path PathMeasure::segmentPath() const
+{
+    Geom::Path const &path = subpath();
+    return Geom::Path(path.begin() + segment_index, path.begin() + segment_index + 1);
+}
+
+/**
+ * Find all connected segments which have 180 degree angles (smooth)
+ * so they form a contigious path. Return this new contigious path.
+ *
+ * @arg tolerance - The deviation from 180.0 considered "smooth enough"
+ */
+Geom::Path PathMeasure::curvePath(double tolerance) const
+{
+    Geom::Path const &path = subpath();
+    auto origin = path.begin() + segment_index;
+
+    auto start = origin;
+    for (auto next = start - 1; next != origin; next--) {
+        if (next == path.begin() - 1) {
+            next = path.end() - 1;
+            // Break out for non-contigious paths to avoid stitching together two ends
+            if (start->initialPoint() != next->finalPoint() || next == origin) {
+                break;
+            }
+        }
+        auto a = std::abs(getAngle(*next, *start).degrees());
+        if (a < 180.0 - tolerance || a > 180.0 + tolerance) {
+            break;
+        }
+        start = next;
+    }
+
+    auto end = origin;
+    for (auto next = end + 1; next != start; next++) {
+        if (next == path.end()) {
+            next = path.begin();
+            // Break out for non-contigious paths
+            if (next->initialPoint() != end->finalPoint() || next == start) {
+                break;
+            }
+        }
+        auto ang = std::abs(getAngle(*end, *next).degrees());
+        if (ang < 180.0 - tolerance || ang > 180.0 + tolerance) {
+            break;
+        }
+        end = next;
+    }
+
+    if (start == end + 1 || (start == path.begin() && end == path.end() - 1)) {
+        return path;
+    } else if (end < start) { // Stitch together the two sides of the divide
+        auto ret = Geom::Path(start, path.end());
+        ret.insert(ret.end(), path.begin(), end + 1);
+        return ret;
+    }
+    return Geom::Path(start, end + 1);
+}
+
+Geom::PathVector PathMeasure::getAnglePath(double arm_size, double arc_size, Geom::Affine affine, bool inside_arc)
+{
+    auto angle = std::abs(getCornerAngle()->degrees());
+    auto p = *getCornerAnglePoints();
+    auto l0 = Geom::Line(p[1], p[0]) * affine;
+    auto l2 = Geom::Line(p[1], p[2]) * affine;
+
+    // Draw two arms where the angle is being measured
+    auto arm_p0 = l0.pointAt(arm_size / (l0.finalPoint() - l0.initialPoint()).length());
+    auto arm_p2 = l2.pointAt(arm_size / (l2.finalPoint() - l2.initialPoint()).length());
+    auto arm_orth = Geom::make_orthogonal_line(arm_p0, Geom::Line(l0.initialPoint(), arm_p0));
+    Geom::Path arm(arm_p0);
+    arm.appendNew<Geom::LineSegment>(l0.initialPoint());
+    arm.appendNew<Geom::LineSegment>(arm_p2);
+
+    auto arc_p0 = l0.pointAt(arc_size / (l0.finalPoint() - l0.initialPoint()).length());
+    auto arc_p2 = l2.pointAt(arc_size / (l2.finalPoint() - l2.initialPoint()).length());
+    Geom::Path arc(arc_p0);
+
+    if (inside_arc && angle >= 90.0 - 0.1 && angle <= 90.0 + 0.1) {
+        // ⊾ Shape for 90°
+        auto arc_orth = Geom::make_orthogonal_line(arc_p0, Geom::Line(l0.initialPoint(), arc_p0));
+        arc.appendNew<Geom::LineSegment>(arc_orth.finalPoint());
+        arc.appendNew<Geom::LineSegment>(arc_p2);
+    } else if (angle > 0.0) {
+        arc.appendNew<Geom::EllipticalArc>(arc_size, arc_size, 0, false, inside_arc, arc_p2);
+    }
+    Geom::PathVector ret;
+    // First path is the position for the label
+    ret.insert(ret.end(), Geom::Path(arm_orth.finalPoint()));
+    ret.insert(ret.end(), arm);
+    ret.insert(ret.end(), arc);
+    return ret;
+}
+
+std::optional<Geom::Angle> PathMeasure::getCornerAngle() const
+{
+    if (auto points = getCornerAnglePoints()) {
+        return getAngle(*points);
+    }
+    return {};
+}
+std::optional<std::array<Geom::Point, 3>> PathMeasure::getCornerAnglePoints() const
+{
+    if (mode == Mode::CORNER) {
+        Geom::Path const &path = subpath();
+        auto corner_to = path.begin() + corner_index;
+        auto corner_from = corner_to == path.begin() ? path.end() - 1 : corner_to - 1;
+        if (corner_to != corner_from) {
+            return getAnglePoints(*corner_from, *corner_to);
+        }
+    }
+    return {};
+}
+
+Geom::Point PathMeasure::getCurvePoint(Geom::Curve const &c, bool end) {
+    if (!c.isLineSegment()) {
+        if (auto b = dynamic_cast<Geom::BezierCurve const *>(&c); b && b->order() == 3) {
+            auto pt = b->controlPoint(end ? 2 : 1);
+            if (pt == b->controlPoint(end ? 3 : 0)) {
+                // Control handle for bezier sits on top of line end so we need to know
+                // where the line would extend out to and this is always towards the far
+                // control handle (or oposite end point in the case of a line)
+                pt = b->controlPoint(end ? 1 : 2);
+            }
+            return pt;
+        } else {
+            Geom::Path path = Geom::cubicbezierpath_from_sbasis(c.toSBasis(), 0.1);
+            return getCurvePoint(path[end ? path.size() - 1 : 0], end);
+        }
+    }
+    return end ? c.initialPoint() : c.finalPoint();
+};
+
+std::optional<std::array<Geom::Point, 3>> PathMeasure::getAnglePoints(Geom::Curve const &c1, Geom::Curve const &c2)
+{
+    if (c1.finalPoint() != c2.initialPoint()) {
+        std::cerr << "Curves aren't contigious!" << c1.initialPoint() << "->" << c1.finalPoint() << " :: " << c2.initialPoint() << "->" << c2.finalPoint() << "\n";
+        return {};
+    }
+
+    auto ret2 = std::array<Geom::Point, 3>{
+        getCurvePoint(c2, false),
+        c1.finalPoint(),
+        getCurvePoint(c1, true),
+    };
+    return ret2;
+}
+
+/**
+ * Angle of the curve, if bezier the angle is between the control points.
+ */
+Geom::Angle PathMeasure::getAngle(Geom::Curve const &c1, Geom::Curve const &c2)
+{
+    auto pts = getAnglePoints(c1, c2);
+    if (pts) {
+        return getAngle(*pts);
+    }
+    return Geom::Angle(M_PI);
+}
+Geom::Angle PathMeasure::getAngle(std::array<Geom::Point, 3> p)
+{
+    return Geom::Angle(p[2] - p[1], p[0] - p[1]);
+}
+
 /**
  * Given an angle, the arc center and edge point, draw an arc segment centered around that edge point.
  *
@@ -346,6 +555,7 @@ MeasureTool::MeasureTool(SPDesktop *desktop)
     this->_knot_end_moved_connection = this->knot_end->moved_signal.connect(sigc::mem_fun(*this, &MeasureTool::knotEndMovedHandler));
     this->_knot_end_click_connection = this->knot_end->click_signal.connect(sigc::mem_fun(*this, &MeasureTool::knotClickHandler));
     this->_knot_end_ungrabbed_connection = this->knot_end->ungrabbed_signal.connect(sigc::mem_fun(*this, &MeasureTool::knotUngrabbedHandler));
+
 }
 
 MeasureTool::~MeasureTool()
@@ -536,6 +746,11 @@ bool MeasureTool::root_handler(CanvasEvent const &event)
             last_pos = event.pos;
             showInfoBox(last_pos, event.modifiers & GDK_CONTROL_MASK);
         } else {
+            if (pathmeasure) {
+                measure_path_items.clear();
+                pathmeasure.reset();
+            }
+
             if (!checkDragMoved(event.pos)) {
                 return;
             }
@@ -568,6 +783,34 @@ bool MeasureTool::root_handler(CanvasEvent const &event)
         if (event.button != 1) {
             return;
         }
+
+        // Clicking on a curve or angle that is highlighted with the pathmeasure feature
+        bool shift = event.modifiers & GDK_SHIFT_MASK;
+        auto affine = over ? over->i2dt_affine() : Geom::Affine();
+        bool move_measure_path = false;
+        if (pathmeasure && pathmeasure->mode == PathMeasure::Mode::CORNER) {
+            if (auto pts = pathmeasure->getCornerAnglePoints()) {
+                last_end = {};
+                start_p = (*pts)[1] * affine;
+                end_p = (*pts)[shift ? 2 : 0] * affine;
+                move_measure_path = true;
+            }
+        } else if (pathmeasure && pathmeasure->mode == PathMeasure::Mode::SEGMENT) {
+            last_end = {};
+            auto path = shift ? pathmeasure->curvePath(0.1) : pathmeasure->segmentPath();
+            start_p = path.initialPoint() * affine;
+            end_p = path.finalPoint() * affine;
+            move_measure_path = true;
+        }
+        if (move_measure_path && measure_path_items.size()) {
+            measure_clicked_path_items.clear();
+            while (measure_path_items.size() > 0) {
+                auto const it = measure_path_items.begin();
+                measure_clicked_path_items.push_back(std::move(*it));
+                measure_path_items.erase(it);
+            }
+        }
+
         knot_start->moveto(start_p);
         knot_start->show();
         if (last_end) {
@@ -961,6 +1204,7 @@ void MeasureTool::setMeasureCanvasText(bool is_angle, double precision, double a
     if (!label.empty()) { measure = label + ": " + measure; }
     auto canvas_tooltip = new Inkscape::CanvasItemText(_desktop->getCanvasTemp(), position, measure);
     canvas_tooltip->set_fontsize(fontsize);
+    canvas_tooltip->set_border(_tooltip_border_size);
     canvas_tooltip->set_fill(0xffffffff);
     canvas_tooltip->set_background(background);
     if (to_left) {
@@ -1024,16 +1268,17 @@ void MeasureTool::setMeasureCanvasControlLine(Geom::Point start, Geom::Point end
 }
 
 // This is the text that follows the cursor around.
-void MeasureTool::showItemInfoText(Geom::Point pos, Glib::ustring const &measure_str, double fontsize)
+void MeasureTool::addCanvasItemText(std::vector<CanvasItemPtr<CanvasItem>> &items, Geom::Point pos, Glib::ustring const &measure_str, double fontsize, Geom::Point anchor)
 {
     auto canvas_tooltip = make_canvasitem<CanvasItemText>(_desktop->getCanvasTemp(), pos, measure_str);
     canvas_tooltip->set_fontsize(fontsize);
+    canvas_tooltip->set_border(_tooltip_border_size);
     canvas_tooltip->set_fill(0xffffffff);
     canvas_tooltip->set_background(0x00000099);
     canvas_tooltip->set_anchor(Geom::Point());
-    canvas_tooltip->set_fixed_line(true);
     canvas_tooltip->set_visible(true);
-    measure_item.emplace_back(std::move(canvas_tooltip));
+    canvas_tooltip->set_anchor(anchor);
+    items.emplace_back(std::move(canvas_tooltip));
 }
 
 void MeasureTool::showInfoBox(Geom::Point cursor, bool into_groups)
@@ -1046,7 +1291,10 @@ void MeasureTool::showInfoBox(Geom::Point cursor, bool into_groups)
     if (!newover) {
         // Clear over when the cursor isn't over anything.
         over = nullptr;
+        measure_path_items.clear();
+        pathmeasure.reset();
         clipBMeas.unsetShapeMeasures(); // shape measurements are not set and will not be copied to the clipboard
+        defaultMessageContext()->clear();
         return;
     }
     auto unit = _desktop->getNamedView()->getDisplayUnit();
@@ -1058,13 +1306,20 @@ void MeasureTool::showInfoBox(Geom::Point cursor, bool into_groups)
     auto box_type = prefs->getBool("/tools/bounding_box", false) ? SPItem::GEOMETRIC_BBOX : SPItem::VISUAL_BBOX;
     double fontsize = prefs->getDouble("/tools/measure/fontsize", 10.0);
     double scale    = prefs->getDouble("/tools/measure/scale", 100.0) / 100.0;
-    Glib::ustring unit_name = prefs->getString("/tools/measure/unit", unit->abbr);
+    std::string unit_name = prefs->getString("/tools/measure/unit", unit->abbr);
 
     auto const zoom = Geom::Scale(Quantity::convert(_desktop->current_zoom(), "px", unit->abbr)).inverse();
+    auto d2w_scale = (Geom::Point(1, 1) * _desktop->d2w())[Geom::X];
 
-    if (newover != over) {
+    auto new_pathmeasure = std::make_unique<PathMeasure>(cast<SPShape>(newover), _desktop->w2d(cursor), 5 / d2w_scale);
+
+    if (newover != over || (!pathmeasure || *pathmeasure != *new_pathmeasure)) {
+        measure_path_items.clear();
+        defaultMessageContext()->clear();
+
         // Get information for the item, and cache it to save time.
         over = newover;
+        pathmeasure = std::move(new_pathmeasure);
         auto affine = over->i2dt_affine() * Geom::Scale(scale);
         // Correct for the current page's position.
         if (_desktop->getDocument()->get_origin_follows_page()) {
@@ -1077,67 +1332,117 @@ void MeasureTool::showInfoBox(Geom::Point cursor, bool into_groups)
             item_y      = Quantity::convert(bbox->top(), "px", unit_name);
 
             if (auto shape = cast<SPShape>(over)) {
-                auto pw = paths_to_pw(*shape->curve());
-                item_length = Quantity::convert(Geom::length(pw * affine), "px", unit_name);
+                // Length of the whole multi-path shape
+                item_length = Quantity::convert(Geom::length(paths_to_pw(*shape->curve()) * affine), "px", unit_name);
+                // Default values will hide these labels
+                path_length = item_length;
+                curve_length = item_length;
+                segment_length = item_length;
+                corner_angle = 0;
+
+                // Length of the subpath we are hovering over
+                if (pathmeasure) {
+                    path_length = Quantity::convert(Geom::length(paths_to_pw(pathmeasure->subpath()) * affine), "px", unit_name);
+                    auto angle = pathmeasure->getCornerAngle();
+
+                    if (pathmeasure->mode == PathMeasure::Mode::CORNER && angle) {
+                        corner_angle = angle->degrees();
+
+                        auto bpath = pathmeasure->getAnglePath(25.0 / d2w_scale, 12.0 / d2w_scale, shape->i2dt_affine(), corner_angle < 0.0);
+
+                        auto angle_bpath = make_canvasitem<CanvasItemBpath>(_desktop->getCanvasTemp());
+                        angle_bpath->set_bpath(bpath);
+                        angle_bpath->set_fill(0x0, SP_WIND_RULE_NONZERO);
+                        angle_bpath->set_stroke(0x1133ddee);
+                        angle_bpath->set_stroke_width(2);
+                        measure_path_items.emplace_back(std::move(angle_bpath));
+
+                        addCanvasItemText(measure_path_items, bpath[0].initialPoint(), Util::format_number(std::abs(corner_angle), 3) + "°", fontsize, {0.5, 0.5});
+
+                        defaultMessageContext()->setF(NORMAL_MESSAGE, _("<b>Select Angle</b> to measure against the baseline."));
+                    } else if (pathmeasure->mode == PathMeasure::Mode::SEGMENT) {
+                        // Length of the segment we are hovering over
+                        auto segment_path = pathmeasure->segmentPath();
+                        segment_length = Quantity::convert(Geom::length(paths_to_pw(segment_path) * affine), "px", unit_name);
+
+                        auto curve_path = pathmeasure->curvePath(0.1);
+                        curve_length = Quantity::convert(Geom::length(paths_to_pw(curve_path) * affine), "px", unit_name);
+
+
+                        // Highlight the segment and the contiguous curve on the canvas
+                        auto curve_bpath = make_canvasitem<CanvasItemBpath>(_desktop->getCanvasTemp());
+                        curve_bpath->set_fill(0x0, SP_WIND_RULE_NONZERO);
+                        curve_bpath->set_stroke(0x33dd11cc);
+                        curve_bpath->set_stroke_width(4);
+                        curve_bpath->set_bpath(curve_path * over->i2dt_affine(), true);
+                        curve_bpath->set_visible(true);
+                        measure_path_items.emplace_back(std::move(curve_bpath));
+
+                        auto mid_pos = curve_path.midTime();
+                        auto label_pos = curve_path.pointAt(mid_pos);
+                        if (segment_length != curve_length) {
+                            if (curve_path.curveAt(mid_pos).initialPoint() == segment_path.initialPoint()) {
+                                // Labels will clash so move the label position
+                                label_pos = curve_path.pointAt(mid_pos.curve_index > 0 ? mid_pos.asFlatTime() - 1 : mid_pos.asFlatTime() + 1);
+                            }
+                            auto segment_bpath = make_canvasitem<CanvasItemBpath>(_desktop->getCanvasTemp());
+                            segment_bpath->set_fill(0x0, SP_WIND_RULE_NONZERO);
+                            segment_bpath->set_stroke(0xdd3311ee);
+                            segment_bpath->set_stroke_width(2);
+                            segment_bpath->set_visible(true);
+                            segment_bpath->set_bpath(segment_path * over->i2dt_affine(), true);
+                            measure_path_items.emplace_back(std::move(segment_bpath));
+                            addCanvasItemText(measure_path_items, segment_path.pointAt(0.5) * over->i2dt_affine(), Util::format_number(segment_length, precision) + " " + unit_name, fontsize, {0.5, 0.5});
+                            defaultMessageContext()->setF(NORMAL_MESSAGE, _("<b>Select Curve</b> by clicking or SHIFT+click to select just the one segment."));
+                        } else {
+                            defaultMessageContext()->setF(NORMAL_MESSAGE, _("<b>Select Segment</b> by clicking to measure against the baseline."));
+
+                        }
+                        addCanvasItemText(measure_path_items, label_pos * over->i2dt_affine(), Util::format_number(curve_length, precision) + " " + unit_name, fontsize, {0.5, 0.5});
+                    }
+                }
             }
         }
     }
 
-    gchar *measure_str = nullptr;
-    std::stringstream precision_str;
-    precision_str.imbue(std::locale::classic());
-    double origin = Quantity::convert(14, "px", unit->abbr);
-    double yaxis_shift = Quantity::convert(fontsize, "px", unit->abbr);
-    Geom::Point rel_position = Geom::Point(origin, origin + yaxis_shift);
-    /* Keeps infobox just above the cursor */
-    Geom::Point pos = _desktop->w2d(cursor);
-    double gap = Quantity::convert(7 + fontsize, "px", unit->abbr);
-    double yaxisdir = _desktop->yaxisdir();
+    if (measure_path_items.empty()) {
+        double origin = Quantity::convert(14, "px", unit->abbr);
+        double yaxis_shift = Quantity::convert(fontsize, "px", unit->abbr);
+        Geom::Point rel_position = Geom::Point(origin, origin + yaxis_shift);
+        /* Keeps infobox just above the cursor */
+        Geom::Point pos = _desktop->w2d(cursor);
 
-    if (selected) {
-        showItemInfoText(pos - (yaxisdir * Geom::Point(0, rel_position[Geom::Y]) * zoom), _desktop->getSelection()->includes(over) ? _("Selected") : _("Not selected"), fontsize);
-        rel_position = Geom::Point(rel_position[Geom::X], rel_position[Geom::Y] + gap);
+        // To have a sufficient gap the formula is 2 * tooltip border size + font size in px.
+        // Add 1 for good measure.
+        double gap = Quantity::convert(2 * _tooltip_border_size + 1 + fontsize, "px", unit->abbr);
+
+        auto measurement = [precision, unit_name](std::string const &label, double num) {
+            return ustring::format_classic(label, ": ", Util::format_number(num, precision), unit_name);
+        };
+        auto add_label = [this, &rel_position, pos, zoom, fontsize, gap](std::string const &label) {
+            addCanvasItemText(measure_item, pos - (_desktop->yaxisdir() * Geom::Point(0, rel_position[Geom::Y]) * zoom), label, fontsize);
+            rel_position = Geom::Point(rel_position[Geom::X], rel_position[Geom::Y] + gap);
+        };
+
+        if (selected) {
+            add_label(_desktop->getSelection()->includes(over) ? _("Selected") : _("Not selected"));
+        }
+
+        if (is<SPShape>(over)) {
+            if (path_length != item_length && pathmeasure) {
+                int pth = pathmeasure->subpath_index + 1;
+                add_label(measurement(std::vformat(_("Sub Path {}"), std::make_format_args(pth)), path_length));
+            }
+            add_label(measurement(_("Length"), item_length));
+        } else if (is<SPGroup>(over)) {
+            add_label(_("Press 'CTRL' to measure into group"));
+        }
+
+        add_label(measurement("Y", item_y));
+        add_label(measurement("X", item_x));
+        add_label(measurement("Height", item_height));
+        add_label(measurement("Width", item_width));
     }
-
-    if (is<SPShape>(over)) {
-
-        precision_str << _("Length") <<  ": %." << precision << "f %s";
-        measure_str = g_strdup_printf(precision_str.str().c_str(), item_length, unit_name.c_str());
-        precision_str.str("");
-        showItemInfoText(pos - (yaxisdir * Geom::Point(0, rel_position[Geom::Y]) * zoom), measure_str, fontsize);
-        rel_position = Geom::Point(rel_position[Geom::X], rel_position[Geom::Y] + gap);
-
-    } else if (is<SPGroup>(over)) {
-
-        measure_str = _("Press 'CTRL' to measure into group");
-        showItemInfoText(pos - (yaxisdir * Geom::Point(0, rel_position[Geom::Y]) * zoom), measure_str, fontsize);
-        rel_position = Geom::Point(rel_position[Geom::X], rel_position[Geom::Y] + gap);
-
-    }
-
-    precision_str <<  "Y: %." << precision << "f %s";
-    measure_str = g_strdup_printf(precision_str.str().c_str(), item_y, unit_name.c_str());
-    precision_str.str("");
-    showItemInfoText(pos - (yaxisdir * Geom::Point(0, rel_position[Geom::Y]) * zoom), measure_str, fontsize);
-    rel_position = Geom::Point(rel_position[Geom::X], rel_position[Geom::Y] + gap);
-
-    precision_str <<  "X: %." << precision << "f %s";
-    measure_str = g_strdup_printf(precision_str.str().c_str(), item_x, unit_name.c_str());
-    precision_str.str("");
-    showItemInfoText(pos - (yaxisdir * Geom::Point(0, rel_position[Geom::Y]) * zoom), measure_str, fontsize);
-    rel_position = Geom::Point(rel_position[Geom::X], rel_position[Geom::Y] + gap);
-
-    precision_str << _("Height") << ": %." << precision << "f %s";
-    measure_str = g_strdup_printf(precision_str.str().c_str(), item_height, unit_name.c_str());
-    precision_str.str("");
-    showItemInfoText(pos - (yaxisdir * Geom::Point(0, rel_position[Geom::Y]) * zoom), measure_str, fontsize);
-    rel_position = Geom::Point(rel_position[Geom::X], rel_position[Geom::Y] + gap);
-
-    precision_str << _("Width") << ": %." << precision << "f %s";
-    measure_str = g_strdup_printf(precision_str.str().c_str(), item_width, unit_name.c_str());
-    precision_str.str("");
-    showItemInfoText(pos - (yaxisdir * Geom::Point(0, rel_position[Geom::Y]) * zoom), measure_str, fontsize);
-    g_free(measure_str);
 
     clipBMeas.lengths[MT::LengthIDs::SHAPE_LENGTH] = item_length; // will be copied to the clipboard 
     clipBMeas.lengths[MT::LengthIDs::SHAPE_WIDTH] = item_width;

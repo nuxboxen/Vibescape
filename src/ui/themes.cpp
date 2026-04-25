@@ -475,6 +475,7 @@ void ThemeContext::add_gtk_css(bool only_providers, bool cached)
         // increased priority to be able to override Inkscape style.css
         Gtk::StyleProvider::add_provider_for_display(display, _userprovider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 20);
     }
+
 }
 
 /**
@@ -643,6 +644,37 @@ void ThemeContext::select_default_syntax_style(bool dark_theme)
 void ThemeContext::saveMonospacedFont(Pango::FontDescription desc)
 {
     Preferences::get()->setString(get_monospaced_font_pref_path(), desc.to_string());
+}
+
+void ThemeContext::applyMonospacedFont(Pango::FontDescription desc) {
+    auto display = Gdk::Display::get_default();
+    // add monospace font selector
+    if (_monofont_styleprovider) {
+        Gtk::StyleProvider::remove_provider_for_display(display, _monofont_styleprovider);
+    }
+    else {
+        _monofont_styleprovider = Gtk::CssProvider::create();
+    }
+    CSSOStringStream os;
+    os.precision(3);
+    os << ".mono-font {";
+    os << "font-family: '" << desc.get_family() << "';";
+    switch (desc.get_style()) {
+    case Pango::Style::ITALIC:
+        os << "font-style: italic;";
+        break;
+    case Pango::Style::OBLIQUE:
+        os << "font-style: oblique;";
+        break;
+    }
+    os << "font-weight: " << static_cast<int>(desc.get_weight()) << ";";
+    double size = desc.get_size();
+    // font size in root em units, so it reacts to the global font scaling
+    os << "font-size: " << (desc.get_size_is_absolute() ? size : size / Pango::SCALE) / 13.0 << "rem;";
+    os << "}";
+    _monofont_styleprovider->load_from_data(os.str());
+
+    Gtk::StyleProvider::add_provider_for_display(display, _monofont_styleprovider, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }
 
 Pango::FontDescription ThemeContext::getMonospacedFont() const

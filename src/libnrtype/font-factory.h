@@ -21,20 +21,14 @@
 #include <map>
 
 #include <pango/pango.h>
-#include "style.h"
-#include "util/statics.h"
-
 #include <pango/pangoft2.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "util/statics.h"
 #include "util/cached_map.h"
 
 class FontInstance;
-
-// Constructs a PangoFontDescription from SPStyle. Font size is not included.
-// User must free return value.
-PangoFontDescription *ink_font_description_from_style(SPStyle const *style);
 
 // Wraps calls to pango_font_description_get_family with some name substitution
 char const *sp_font_description_get_family(PangoFontDescription const *fontDescr);
@@ -89,11 +83,8 @@ public:
 
     std::vector<Glib::RefPtr<Pango::FontFamily>> get_font_families();
 
-    /// Retrieve a FontInstance from a style object, first trying to use the font-specification, the CSS information
-    std::shared_ptr<FontInstance> FaceFromStyle(SPStyle const *style);
     // Various functions to get a FontInstance from different descriptions.
     std::shared_ptr<FontInstance> FaceFromDescr(char const *family, char const *style);
-    std::shared_ptr<FontInstance> FaceFromUIStrings(char const *uiFamily, char const *uiStyle);
     std::shared_ptr<FontInstance> FaceFromPangoString(char const *pangoString);
     std::shared_ptr<FontInstance> FaceFromFontSpecification(char const *fontSpecification);
     std::shared_ptr<FontInstance> Face(PangoFontDescription *descr, bool canFail = true);

@@ -175,6 +175,9 @@ public:
     UnitTable(UnitTable const &t) = delete;
     UnitTable operator = (UnitTable const &t) = delete;
 
+    // This is split into units-internal.cpp for unit test building
+    static std::string getUnitsFilename();
+
     typedef std::unordered_map<Glib::ustring, UnitMetric> MetricMap;
     typedef std::unordered_map<unsigned, Unit const *> UnitCodeMap;
 

@@ -67,6 +67,10 @@ INSTANTIATE_TEST_SUITE_P(expressionEvaluation, evaluateString, testing::Values(
     , _P(in, "50.79mm",   2.0,    "in")
     , _P(in, "4cm + 2in", 90.79 )
     , _P(in, "(2cm * 2) + (1in * 5)", 167 )
+    , _P(in, "1:50",      0.02 )
+    , _P(in, "2:100",     0.02 )
+    , _P(in, "50:1",      50 )
+    , _P(in, "50:2",      25 )
 ));
 
 

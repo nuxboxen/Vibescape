@@ -18,21 +18,21 @@
 
 #include "pdf-input.h"
 
-#include <poppler/Catalog.h>
-#include <poppler/ErrorCodes.h>
-#include <poppler/FontInfo.h>
-#include <poppler/GfxFont.h>
-#include <poppler/GlobalParams.h>
-#include <poppler/OptionalContent.h>
-#include <poppler/PDFDoc.h>
-#include <poppler/Page.h>
-#include <poppler/goo/GooString.h>
+#include <Catalog.h>
+#include <ErrorCodes.h>
+#include <FontInfo.h>
+#include <GfxFont.h>
+#include <GlobalParams.h>
+#include <OptionalContent.h>
+#include <PDFDoc.h>
+#include <Page.h>
+#include <goo/GooString.h>
 
 #ifdef HAVE_POPPLER_CAIRO
-#include <poppler/glib/poppler.h>
-#include <poppler/glib/poppler-document.h>
-#include <poppler/glib/poppler-page.h>
-#include <poppler/goo/gmem.h>
+#include <glib/poppler.h>
+#include <glib/poppler-document.h>
+#include <glib/poppler-page.h>
+#include <goo/gmem.h>
 #endif
 
 #include <gdkmm/general.h>

@@ -65,6 +65,7 @@ enum class Type {
     SELECT_REMOVE_FROM,   // Remove from selection {CTRL+DRAG}
     SELECT_FORCE_DRAG,    // Drag objects even if the mouse isn't over them {ALT+DRAG+Selected}
     SELECT_CYCLE,         // Cycle through objects under cursor {ALT+SCROLL}
+    SELECT_DUPLICATE,     // Duplicate selection when starting a drag {ALT+DRAG+Selected} unassigned by default
 
     // Transform handles (applies to multiple tools)
     MOVE_CONFINE,         // Limit dragging to X OR Y only {DRAG+CTRL}

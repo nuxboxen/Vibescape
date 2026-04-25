@@ -15,6 +15,8 @@
  */
 
 #include <2geom/line.h>
+#include <pangomm/fontdescription.h>
+#include <pangomm/layout.h>
 
 #include "canvas-item-guideline.h"
 #include "canvas-item-ctrl.h"
@@ -130,17 +132,8 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
     Geom::Point const normal = _normal * affine().withoutTranslation(); // Direction only
     Geom::Point const origin = _origin * affine();
 
-    /* Need to use floor()+0.5 such that Cairo will draw us lines with a width of a single pixel,
-     * without any aliasing. For this we need to position the lines at exactly half pixels, see
-     * https://www.cairographics.org/FAQ/#sharp_lines
-     * Must be consistent with the pixel alignment of the grid lines, see CanvasXYGrid::Render(),
-     * and the drawing of the rulers.
-     * Lastly, the origin control is also pixel-aligned and we want to visually cut through its
-     * exact center.
-     */
-    // this rendering operates in logical pixels, so only align lines to pixel grid if device scale is odd
-    const auto linefit = buf.device_scale & 1 ? Geom::Point(0.5, 0.5) : Geom::Point(0, 0);
-    Geom::Point const aligned_origin = origin.floor() + linefit;
+    int const line_width = 1;
+    Geom::Point const aligned_origin = align_to_pixels05(origin, line_width * buf.device_scale, buf.device_scale);
 
     // Set up the Cairo rendering context
     auto ctx = buf.cr;
@@ -148,7 +141,7 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
     ctx->translate(-buf.rect.left(), -buf.rect.top()); // Canvas to screen
     ctx->set_source_rgba(SP_RGBA32_R_F(_stroke), SP_RGBA32_G_F(_stroke),
                          SP_RGBA32_B_F(_stroke), SP_RGBA32_A_F(_stroke));
-    ctx->set_line_width(1);
+    ctx->set_line_width(line_width);
 
     if (_inverted) {
         // operator not available in cairo C++ bindings
@@ -160,9 +153,15 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
         ctx->translate(aligned_origin.x(), aligned_origin.y());
 
         ctx->rotate(atan2(normal.cw()) + M_PI * (_context->yaxisdown() ? 1 : 0));
-        ctx->translate(0, -(_origin_ctrl->radius() + LABEL_SEP)); // Offset by dot radius + 2
+        ctx->translate(LABEL_SEP, -(_origin_ctrl->radius() + 2 * FONT_SIZE)); // Offset
         ctx->move_to(0, 0);
-        ctx->show_text(_label);
+
+        // Call Pango to render text with fallback fonts
+        auto layout = Pango::Layout::create(ctx);
+        layout->set_font_description(Pango::FontDescription(Glib::ustring::compose("Sans %1", FONT_SIZE)));
+        layout->set_text(_label);
+        layout->show_in_cairo_context(ctx);
+
         ctx->restore();
     }
 
@@ -173,39 +172,22 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
     if (Geom::are_near(normal.y(), 0.0)) {
         // Vertical
         double const position = aligned_origin.x();
-        ctx->move_to(position, buf.rect.top()    + 0.5);
-        ctx->line_to(position, buf.rect.bottom() - 0.5);
+        ctx->move_to(position, buf.rect.top());
+        ctx->line_to(position, buf.rect.bottom());
     } else if (Geom::are_near(normal.x(), 0.0)) {
         // Horizontal
         double position = aligned_origin.y();
-        ctx->move_to(buf.rect.left()  + 0.5, position);
-        ctx->line_to(buf.rect.right() - 0.5, position);
+        ctx->move_to(buf.rect.left(), position);
+        ctx->line_to(buf.rect.right(), position);
     } else {
         // Angled
         Geom::Line line = Geom::Line::from_origin_and_vector(aligned_origin, Geom::rot90(normal));
 
-        // Find intersections of the line with buf rectangle. There should be zero or two.
-        std::vector<Geom::Point> intersections;
-        for (unsigned i = 0; i < 4; ++i) {
-            Geom::LineSegment side(buf.rect.corner(i), buf.rect.corner((i+1)%4));
-            try {
-                Geom::OptCrossing oc = Geom::intersection(line, side);
-                if (oc) {
-                    intersections.push_back(line.pointAt(oc->ta));
-                }
-            } catch (Geom::InfiniteSolutions const &) {
-                // Shouldn't happen as we have already taken care of horizontal/vertical guides.
-                std::cerr << "CanvasItemGuideLine::render: Error: Infinite intersections." << std::endl;
-            }
-        }
-
-        if (intersections.size() == 2) {
-            double const x0 = intersections[0].x();
-            double const x1 = intersections[1].x();
-            double const y0 = intersections[0].y();
-            double const y1 = intersections[1].y();
-            ctx->move_to(x0, y0);
-            ctx->line_to(x1, y1);
+        if (auto segment = line.clip(buf.rect)) {
+            auto p1 = segment->initialPoint();
+            auto p2 = segment->finalPoint();
+            ctx->move_to(p1.x(), p1.y());
+            ctx->line_to(p2.x(), p2.y());
         }
     }
     ctx->stroke();

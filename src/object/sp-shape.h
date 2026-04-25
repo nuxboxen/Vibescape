@@ -84,7 +84,7 @@ public:
 
 	Geom::OptRect bbox(Geom::Affine const &transform, SPItem::BBoxType bboxtype) const override;
     Geom::OptRect either_bbox(Geom::Affine const &transform, SPItem::BBoxType bboxtype, bool cache_is_valid,
-                              Geom::OptRect bbox_cache, Geom::Affine const &transform_cache) const;
+                              Geom::OptRect const &bbox_cache, Geom::Affine const &transform_cache) const;
     void print(SPPrintContext* ctx) override;
     std::optional<Geom::PathVector> documentExactBounds() const override;
 

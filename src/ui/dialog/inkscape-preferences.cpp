@@ -34,7 +34,6 @@
 #include <gtkmm/fontchooserdialog.h>
 #include <gtkmm/icontheme.h>
 #include <gtkmm/picture.h>
-#include <gtkmm/recentmanager.h>
 #include <gtkmm/revealer.h>
 #include <gtkmm/scale.h>
 #include <gtkmm/settings.h>
@@ -59,6 +58,7 @@
 #include "display/nr-filter-gaussian.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
+#include "io/recent-files.h"
 #include "path-prefix.h"
 #include "selcue.h"
 #include "selection-chemistry.h"
@@ -1654,7 +1654,7 @@ void InkscapePreferences::initPageUI()
     _misc_recent.init("/options/maxrecentdocuments/value", 0.0, 1000.0, 1.0, 1.0, 1.0, true, false);
 
     auto const reset_recent = Gtk::make_managed<Gtk::Button>(_("Clear list"));
-    reset_recent->signal_clicked().connect(sigc::mem_fun(*this, &InkscapePreferences::on_reset_open_recent_clicked));
+    reset_recent->signal_clicked().connect(sigc::ptr_fun(Inkscape::IO::resetRecentInkscapeList));
 
     _page_ui.add_line( false, _("Maximum documents\n in Open _Recent:"), _misc_recent, "",
                               _("Set the maximum length of the Open Recent list in the File menu, or clear the list"), false, reset_recent);
@@ -1949,7 +1949,7 @@ void InkscapePreferences::initPageUI()
                 if (response == Gtk::ResponseType::OK) {
                     auto desc = d->get_font_desc();
                     theme->saveMonospacedFont(desc);
-                    theme->adjustGlobalFontScale(theme->getFontScale() / 100);
+                    theme->applyMonospacedFont(desc);
                     font_box->set_text(desc.to_string());
                 }
             });
@@ -2229,11 +2229,14 @@ void InkscapePreferences::initPageUI()
         _grids_axonom.add_line( false, _("Grid units:"), _grids_axonom_units, "", "", false);
         _grids_axonom.add_line( false, _("Origin X:"), _grids_axonom_origin_x, "", _("X coordinate of grid origin"), false);
         _grids_axonom.add_line( false, _("Origin Y:"), _grids_axonom_origin_y, "", _("Y coordinate of grid origin"), false);
-        _grids_axonom.add_line( false, _("Spacing Y:"), _grids_axonom_spacing_y, "", _("Base length of z-axis"), false);
+        _grids_axonom.add_line(false, _("Height:"), _grids_axonom_spacing_y, "",
+                               _("Height of grid cell, vertical distance between grid intersections"), false);
         _grids_axonom_angle_x.init("/options/grids/axonom/angle_x", -360.0, 360.0, 1.0, 10.0, 30.0, false, false);
         _grids_axonom_angle_z.init("/options/grids/axonom/angle_z", -360.0, 360.0, 1.0, 10.0, 30.0, false, false);
-        _grids_axonom.add_line( false, _("Angle X:"), _grids_axonom_angle_x, "", _("Angle of x-axis"), false);
-        _grids_axonom.add_line( false, _("Angle Z:"), _grids_axonom_angle_z, "", _("Angle of z-axis"), false);
+        _grids_axonom.add_line(false, _("Angle of X:"), _grids_axonom_angle_x, "",
+                               _("Angle of x-axis relative to horizontal direction"), false);
+        _grids_axonom.add_line(false, _("Angle of Z:"), _grids_axonom_angle_z, "",
+                               _("Angle of z-axis relative to horizontal direction"), false);
         _grids_axonom_empcolor.init(_("Grid color:"), "/options/grids/axonom/empcolor", GRID_DEFAULT_MAJOR_COLOR);
         _grids_axonom.add_line( false, _("Grid color:"), _grids_axonom_empcolor, "", _("Color used for grid lines"), false);
         _grids_axonom_empspacing.init("/options/grids/axonom/empspacing", 1.0, 1000.0, 1.0, 5.0, 5.0, true, false);
@@ -2358,6 +2361,10 @@ void InkscapePreferences::initPageIO()
     _export_all_extensions.init( _("Show all outputs in Export Dialog"), "/dialogs/export/show_all_extensions", false);
     _page_io.add_line( false, "", _export_all_extensions, "",
                            _("Will list all possible output extensions in the Export Dialog selection."), true);
+
+    _save_default_filename.init("/options/defaultfilename/value", true, _( "drawing"));
+    _page_io.add_line( false, _("Default filename:"), _save_default_filename, "",
+                           _("The default base name used for new documents when saving for the first time (without extension)"), true);
 
     // Input devices options
     _mouse_sens.init ( "/options/cursortolerance/value", 0.0, 30.0, 1.0, 1.0, 8.0, true, false);
@@ -2948,6 +2955,15 @@ void InkscapePreferences::initPageRendering()
     _rendering_xray_radius.init("/options/rendering/xray-radius", 1.0, 1500.0, 1.0, 100.0, 100.0, true, false);
     _page_rendering.add_line( false, _("X-ray radius:"), _rendering_xray_radius, "", _("Radius of the circular area around the mouse cursor in X-ray mode"), false);
 
+    // outline display mode
+    _page_rendering.add_group_header(_("Outline display mode"));
+    _rendering_object_outline_color.init(_("Objects color:"), "/options/wireframecolors/default", "#000000ff");
+    _page_rendering.add_line(true, _("Objects color:"), _rendering_object_outline_color, "", _("Selects the color of the objects in Outline display mode"), false);
+    _rendering_clip_outline_color.init(_("Clips color:"), "/options/wireframecolors/clips", "#00ff00ff");
+    _page_rendering.add_line(true, _("Clips color:"), _rendering_clip_outline_color, "", _("Selects the color of the clips in Outline display mode"), false);
+    _rendering_mask_outline_color.init(_("Masks color:"), "/options/wireframecolors/masks", "#0000ffff");
+    _page_rendering.add_line(true, _("Masks color:"), _rendering_mask_outline_color, "", _("Selects the color of the masks in Outline display mode"), false);
+
     // rendering outline overlay opacity
     _rendering_outline_overlay_opacity.init("/options/rendering/outline-overlay-opacity", 0.0, 100.0, 1.0, 5.0, 50.0, true, false);
     _page_rendering.add_line( false, _("Outline overlay opacity:"), _rendering_outline_overlay_opacity, _("%"), _("Opacity of the overlay in outline overlay view mode"), false);
@@ -3190,7 +3206,9 @@ void InkscapePreferences::initPageBitmaps()
     _page_bitmaps.add_group_header( _("Render"));
     // rendering outlines for pixmap image tags
     _rendering_image_outline.init( _("Images in Outline Mode"), "/options/rendering/imageinoutlinemode", false);
-    _page_bitmaps.add_line(false, "", _rendering_image_outline, "", _("When active will render images while in outline mode instead of a red box with an x. This is useful for manual tracing."));
+    _page_bitmaps.add_line(true, "", _rendering_image_outline, "", _("When active will render images while in outline mode instead of a red box with an x. This is useful for manual tracing."));
+    _rendering_image_outline_color.init(_("Outline mode wireframe color:"), "/options/wireframecolors/images", "#ff0000ff");
+    _page_bitmaps.add_line(true, _("Outline mode wireframe color:"), _rendering_image_outline_color, "", _("Selects the color of the image wireframe in Outline display mode"), false);
 
     this->AddPage(_page_bitmaps, _("Imported Images"), PREFS_PAGE_BITMAPS);
 }
@@ -3937,25 +3955,6 @@ bool InkscapePreferences::matchPage(Gtk::TreeModel::const_iterator const &iter)
         return true;
     }
     return false;
-}
-
-void InkscapePreferences::on_reset_open_recent_clicked()
-{
-    Glib::RefPtr<Gtk::RecentManager> manager = Gtk::RecentManager::get_default();
-    std::vector< Glib::RefPtr< Gtk::RecentInfo > > recent_list = manager->get_items();
-
-    // Remove only elements that were added by Inkscape
-    // TODO: This should likely preserve items that were also accessed by other apps.
-    //       However there does not seem to be straightforward way to delete only an application from an item.
-    for (auto e : recent_list) {
-        if (e->has_application(g_get_prgname())
-            || e->has_application("org.inkscape.Inkscape")
-            || e->has_application("inkscape")
-            || e->has_application("inkscape.exe")
-           ) {
-            manager->remove_item(e->get_uri());
-        }
-    }
 }
 
 void InkscapePreferences::on_reset_prefs_clicked()

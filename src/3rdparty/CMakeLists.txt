@@ -5,8 +5,20 @@ if(WITH_INTERNAL_2GEOM)
     FetchContent_MakeAvailable(2Geom)
 endif()
 
-add_subdirectory(libuemf)
+if(WITH_INTERNAL_UEMF)
+    add_subdirectory(libuemf)
+endif()
+
 add_subdirectory(libcroco)
-add_subdirectory(libdepixelize)
-add_subdirectory(adaptagrams)
-add_subdirectory(autotrace)
+
+if(WITH_INTERNAL_DEPIXELIZE)
+    add_subdirectory(libdepixelize)
+endif()
+
+if(WITH_INTERNAL_ADAPTAGRAMS)
+    add_subdirectory(adaptagrams)
+endif()
+
+if(WITH_INTERNAL_AUTOTRACE)
+    add_subdirectory(autotrace)
+endif()

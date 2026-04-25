@@ -283,12 +283,14 @@ sp_file_save_dialog(Gtk::Window &parentWindow, SPDocument *doc, Inkscape::Extens
     int i = 1;
     if ( !doc->getDocumentFilename() ) {
         // We are saving for the first time; create a unique default filename
-        save_loc = save_loc + _("drawing") + filename_extension;
+        Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+        Glib::ustring default_filename = prefs->getString("/options/defaultfilename/value", _("drawing"));
+        save_loc = save_loc + default_filename + filename_extension;
 
         while (Inkscape::IO::file_test(save_loc.c_str(), G_FILE_TEST_EXISTS)) {
             save_loc = save_path;
             save_loc.append(G_DIR_SEPARATOR_S);
-            save_loc = save_loc + Glib::ustring::compose(_("drawing-%1"), i++) + filename_extension;
+            save_loc = save_loc + default_filename + Glib::ustring::compose("-%1", i++) + filename_extension;
         }
     } else {
         save_loc.append(Glib::path_get_basename(doc->getDocumentFilename()));
@@ -615,14 +617,15 @@ void sp_import_document(SPDesktop *desktop, SPDocument *clipdoc, bool in_place, 
  *  Import a resource.  Called by document_import() and Drag and Drop.
  *  The only place 'key' is used non-null is in drag-and-drop of a GDK_TYPE_TEXTURE.
  */
-SPObject *file_import(SPDocument *in_doc, std::string const &path, Inkscape::Extension::Extension *key)
+SPObject *file_import(SPDocument *in_doc, std::string const &path, Inkscape::Extension::Extension *key,
+                      std::optional<Geom::Point> drop_pos)
 {
     SPDesktop *desktop = SP_ACTIVE_DESKTOP;
     bool cancelled = false;
     auto prefs = Inkscape::Preferences::get();
 
     // Store mouse pointer location before opening any dialogs, so we can drop the item where initially intended.
-    auto pointer_location = desktop->point();
+    auto pointer_location = drop_pos.value_or(desktop->point());
 
     // We need access to the module locally for our import logic
     if (!key) {

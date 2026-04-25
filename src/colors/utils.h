@@ -10,9 +10,9 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 /* Useful composition macros */
 
@@ -96,6 +96,33 @@ double lightness(Color color);
 double perceptual_lightness(double l);
 double get_perceptual_lightness(Color const &color);
 std::pair<double, double> get_contrasting_color(double l);
+
+/// Premultiply a vector of colour channels, assuming alpha is last.
+constexpr void premultiply(std::span<double> vec) {
+    auto const alpha = vec.back();
+    for (int i = 0; i < vec.size() - 1; i++) {
+        vec[i] *= alpha;
+    }
+}
+constexpr std::vector<double> premultiplied(std::vector<double> vec) {
+    premultiply(vec);
+    return std::move(vec);
+}
+
+/// Unpremultiply a vector of colour channels, assuming alpha is last.
+constexpr void unpremultiply(std::span<double> vec) {
+    auto const alpha = vec.back();
+    if (alpha == 0) {
+        return;
+    }
+    for (int i = 0; i < vec.size() - 1; i++) {
+        vec[i] /= alpha;
+    }
+}
+constexpr std::vector<double> unpremultiplied(std::vector<double> vec) {
+    unpremultiply(vec);
+    return std::move(vec);
+}
 
 } // namespace Inkscape::Colors
 

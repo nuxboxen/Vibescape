@@ -30,6 +30,7 @@ Build-Depends-Arch:
  libpoppler-private-dev,
  libpotrace-dev,
  libreadline-dev,
+ librsvg2-common,
  libsigc++-3.0-dev,
  libspelling-1-dev,
  libtool,
@@ -103,7 +104,7 @@ Description: vector-based drawing program - extensions
 Package: inkscape-extension-manager
 Architecture: any
 Depends: ${misc:Depends}, ${python3:Depends}, inkscape-extensions,
- python3-platformdirs
+ python3-platformdirs,
  python3-cachecontrol,
  python3-certifi,
  python3-charset-normalizer,

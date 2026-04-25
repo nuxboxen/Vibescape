@@ -8,8 +8,11 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 #include "svg/css-ostringstream.h"
+
+#include <glib.h>
+
 #include "svg/strip-trailing-zeros.h"
-#include "preferences.h"
+#include "util/numeric/precision.h"
 
 Inkscape::CSSOStringStream::CSSOStringStream()
 {
@@ -21,8 +24,7 @@ Inkscape::CSSOStringStream::CSSOStringStream()
     /* This one is (currently) needed though, as we currently use ostr.precision as a sort of
        variable for storing the desired precision: see our two precision methods and our operator<<
        methods for float and double. */
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    ostr.precision(prefs->getInt("/options/svgoutput/numericprecision", 8));
+    ostr.precision(Util::get_default_numeric_precision());
 }
 
 Inkscape::CSSOStringStream &Inkscape::CSSOStringStream::operator<<(double d)

@@ -58,7 +58,7 @@
             <property name="active">True</property>
             <property name="group">flat_button_group</property>
             <child>
-              <object class="GtkImage" id="image3">
+              <object class="GtkImage">
                 <property name="icon-name">draw-polygon</property>
               </object>
             </child>
@@ -73,7 +73,7 @@
             <property name="has-frame">False</property>
             <property name="group">flat_button_group</property>
             <child>
-              <object class="GtkImage" id="image4">
+              <object class="GtkImage">
                 <property name="icon-name">draw-star</property>
               </object>
             </child>
@@ -180,6 +180,24 @@
       </object>
     </child>
     <child>
+      <object class="GtkButton" id="turn_upright_btn">
+        <property name="valign">center</property>
+        <property name="focusable">True</property>
+        <property name="focus-on-click">False</property>
+        <property name="receives-default">True</property>
+        <property name="tooltip-text" translatable="yes">Turn star or polygon upright</property>
+        <property name="has-frame">False</property>
+        <style>
+            <class name="priority1"/>
+        </style>
+        <child>
+          <object class="GtkImage">
+            <property name="icon-name">object-level</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
       <object class="GtkButton" id="reset_btn">
         <property name="valign">center</property>
         <property name="focusable">True</property>
@@ -191,7 +209,7 @@
             <class name="priority1"/>
         </style>
         <child>
-          <object class="GtkImage" id="image2">
+          <object class="GtkImage">
             <property name="icon-name">edit-clear</property>
           </object>
         </child>

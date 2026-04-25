@@ -9,6 +9,8 @@
 #include "color-set.h"
 
 #include <algorithm>
+#include <ranges>
+#include <unordered_map>
 
 #include "colors/color.h"
 #include "colors/spaces/base.h"
@@ -45,6 +47,7 @@ void ColorSet::clear()
 {
     if (!_colors.empty()) {
         _colors.clear();
+        _colors_index.clear();
         colors_cleared();
     }
 }
@@ -182,8 +185,10 @@ bool ColorSet::set(std::string id, Color const &other)
 bool ColorSet::set(Color const &other)
 {
     // Always clear the colors if it's being used differently
-    if (_colors.size() != 1 || _colors[0].first != "single")
+    if (_colors.size() != 1 || _colors[0].first != "single") {
         _colors.clear();
+        _colors_index.clear();
+    }
     return set("single", other);
 }
 
@@ -200,15 +205,17 @@ std::optional<Color> ColorSet::get() const
 /*
  * Internal function for setting a color by id without calling the changed signal.
  */
-bool ColorSet::_set(std::string id, Color const &other)
+bool ColorSet::_set(std::string const &id, Color const &other)
 {
-    for (auto &[cid, color] : _colors) {
-        if (cid == id) {
-            auto was = color;
-            color.set(other, true);
-            return was != color;
-        }
+    auto it = _colors_index.find(id);
+    if (it != _colors_index.end()) {
+        auto &color = _colors[it->second].second;
+
+        auto was = color;
+        color.set(other, true);
+        return was != color;
     }
+
     // Add a new entry for this id
     Color copy = other;
 
@@ -220,7 +227,10 @@ bool ColorSet::_set(std::string id, Color const &other)
         copy.enableOpacity(*_alpha_constraint);
     }
 
-    _colors.emplace_back(std::move(id), copy);
+    size_t pos = _colors.size();
+    _colors.emplace_back(id, copy);
+    _colors_index.emplace(_colors.back().first, pos);
+
     return true;
 }
 
@@ -235,9 +245,10 @@ bool ColorSet::_set(std::string id, Color const &other)
  */
 std::optional<Color> ColorSet::get(std::string const &id) const
 {
-    for (auto &[cid, color] : _colors) {
-        if (cid == id)
-            return color.normalized();
+    auto it = _colors_index.find(id);
+    if (it != _colors_index.end()) {
+        auto &color = _colors[it->second].second;
+        return color.normalized();
     }
     return {};
 }
@@ -338,13 +349,18 @@ std::shared_ptr<Space::AnySpace> ColorSet::getBestSpace() const
 
     unsigned biggest = 0;
     std::shared_ptr<Space::AnySpace> ret;
-    std::map<std::shared_ptr<Space::AnySpace>, unsigned> counts;
-    for (auto const &[id, color] : _colors) {
-        if (++counts[color.getSpace()] > biggest) {
-            biggest = counts[color.getSpace()];
+    std::unordered_map<Space::AnySpace*, unsigned> counts;
+
+    for (auto const &color : _colors | std::views::values) {
+        auto space = color.getSpace().get();
+        auto& count = counts[space];
+
+        if (++count > biggest) {
+            biggest = count;
             ret = color.getSpace();
         }
     }
+
     return ret;
 }
 

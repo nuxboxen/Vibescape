@@ -17,6 +17,8 @@
 #include "display/drawing-group.h"
 #include "display/nr-style.h"
 
+#include "util/cached_map.h"
+
 class SPStyle;
 class FontInstance;
 
@@ -40,6 +42,8 @@ protected:
 
     unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) override;
     DrawingItem *_pickItem(Geom::Point const &p, double delta, unsigned flags) override;
+
+    std::shared_ptr<Pixbuf> _get_svg_glyph(std::shared_ptr<FontInstance> const &font, unsigned int glyph_id) const;
 
     std::shared_ptr<void const> _font_data; // keeps alive pathvec, pathvec_ref, and pixbuf
     unsigned int   _glyph;

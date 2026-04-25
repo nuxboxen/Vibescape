@@ -7,51 +7,32 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include <set>
-#include <algorithm>
-
-#include <gtkmm/recentmanager.h>
-#include <glibmm/i18n.h>
-#include <glibmm/miscutils.h>
-#include <glibmm/fileutils.h>
-#include <glibmm/uriutils.h>
-#include <glibmm/convert.h>
-
 #include "fix-broken-links.h"
 
-#include "document.h"
+#include <algorithm>
+#include <set>
+#include <glibmm/convert.h>
+#include <glibmm/fileutils.h>
+#include <glibmm/i18n.h>
+#include <glibmm/miscutils.h>
+#include <glibmm/uriutils.h>
+#include <gtkmm/recentmanager.h>
+
 #include "document-undo.h"
-
+#include "document.h"
+#include "io/split-path.h"
 #include "object/sp-object.h"
-
 #include "ui/icon-names.h"
-
-#include "xml/node.h"
 #include "xml/href-attribute-helper.h"
+#include "xml/node.h"
 
 namespace Inkscape {
 
-std::vector<std::string> splitPath( std::string const &path )
-{
-    std::vector<std::string> parts;
-
-    std::string prior;
-    std::string tmp = path;
-    while ( !tmp.empty() && (tmp != prior) ) {
-        prior = tmp;
-
-        parts.push_back( Glib::path_get_basename(tmp) );
-        tmp = Glib::path_get_dirname(tmp);
-    }
-    if ( !parts.empty() ) {
-        std::reverse(parts.begin(), parts.end());
-        if ( (parts[0] == ".") && (path[0] != '.') ) {
-            parts.erase(parts.begin());
-        }
-    }
-
-    return parts;
-}
+#ifdef _WIN32
+constexpr bool platform_windows = true;
+#else
+constexpr bool platform_windows = false;
+#endif
 
 /**
  * Convert an absolute path into a relative one if possible to do in the given number of parent steps.
@@ -71,8 +52,8 @@ std::string optimizePath(std::string const &path, std::string const &base, unsig
     if (!path.empty() && Glib::path_is_absolute(path)) {
 
         // Whack the parts into pieces
-        std::vector<std::string> parts = splitPath(path);
-        std::vector<std::string> baseParts = splitPath(base);
+        std::vector<std::string> parts = Inkscape::IO::split_path(path).allocate_strings();
+        std::vector<std::string> baseParts = Inkscape::IO::split_path(base).allocate_strings();
 
         if ( !parts.empty() && !baseParts.empty() && (parts[0] == baseParts[0]) ) {
             // Both paths have the same root. We can proceed.
@@ -365,15 +346,15 @@ static bool searchUpwards( std::string const &base, std::string const &subpath, 
     bool exists = false;
     // TODO debug g_message("............");
 
-    std::vector<std::string> parts = splitPath(subpath);
-    std::vector<std::string> baseParts = splitPath(base);
+    std::vector<std::string> parts = Inkscape::IO::split_path(subpath).allocate_strings();
+    std::vector<std::string> baseParts = Inkscape::IO::split_path(base).allocate_strings();
 
     while ( !exists && !baseParts.empty() ) {
         std::vector<std::string> current;
         current.insert(current.begin(), parts.begin(), parts.end());
         // TODO debug g_message("         ---{%s}", Glib::build_filename( baseParts ).c_str());
         while ( !exists && !current.empty() ) {
-            std::vector<std::string> combined;
+            auto combined = platform_windows ? std::vector<std::string>{} : std::vector<std::string>{"/"};
             combined.insert( combined.end(), baseParts.begin(), baseParts.end() );
             combined.insert( combined.end(), current.begin(), current.end() );
             std::string filepath = Glib::build_filename( combined );

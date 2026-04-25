@@ -42,10 +42,6 @@ canvas_set_display_mode(Inkscape::RenderMode value, InkscapeWindow *win, Glib::R
     g_assert(value != Inkscape::RenderMode::size);
     saction->change_state((int)value);
 
-    // Save value as a preference
-    auto pref = Inkscape::Preferences::get();
-    pref->setInt("/options/displaymode", (int)value);
-
     win->get_desktop()->setRenderMode(Inkscape::RenderMode(value));
 }
 
@@ -283,20 +279,13 @@ std::vector<std::vector<Glib::ustring>> raw_data_canvas_mode =
 void
 add_actions_canvas_mode(InkscapeWindow* win)
 {
-    // Sync action with desktop variables. TODO: Remove!
-    auto prefs = Inkscape::Preferences::get();
-
-    // Initial States of Actions
-    int  display_mode       = prefs->getIntLimited("/options/displaymode", 0, 0, static_cast<int>(Inkscape::RenderMode::size) - 1);  // Default, minimum, maximum
-    bool color_manage       = prefs->getBool("/options/displayprofile/enable");
-
     // clang-format off
-    win->add_action_radio_integer ("canvas-display-mode",                 sigc::bind(sigc::ptr_fun(&canvas_display_mode),                win), display_mode);
+    win->add_action_radio_integer ("canvas-display-mode",                 sigc::bind(sigc::ptr_fun(&canvas_display_mode),                win), (int)Inkscape::RenderMode::NORMAL);
     win->add_action(               "canvas-display-mode-cycle",           sigc::bind(sigc::ptr_fun(&canvas_display_mode_cycle),          win));
     win->add_action(               "canvas-display-mode-toggle",          sigc::bind(sigc::ptr_fun(&canvas_display_mode_toggle),         win));
     win->add_action_radio_integer ("canvas-split-mode",                   sigc::bind(sigc::ptr_fun(&canvas_split_mode),                  win), (int)Inkscape::SplitMode::NORMAL);
     win->add_action_bool(          "canvas-color-mode",                   sigc::bind(sigc::ptr_fun(&canvas_color_mode_toggle),           win));
-    win->add_action_bool(          "canvas-color-manage",                 sigc::bind(sigc::ptr_fun(&canvas_color_manage_toggle),         win), color_manage);
+    win->add_action_bool(          "canvas-color-manage",                 sigc::bind(sigc::ptr_fun(&canvas_color_manage_toggle),         win), false);
     // clang-format on
 
     auto app = InkscapeApplication::instance();
@@ -305,20 +294,6 @@ add_actions_canvas_mode(InkscapeWindow* win)
         return;
     }
     app->get_action_extra_data().add_data(raw_data_canvas_mode);
-}
-
-void apply_preferences_canvas_mode(SPDesktop *dt)
-{
-    // Sync action with desktop variables. TODO: Remove!
-    auto prefs = Inkscape::Preferences::get();
-
-    // Initial States of Actions
-    int display_mode = prefs->getIntLimited(
-        "/options/displaymode", 0, 0, static_cast<int>(Inkscape::RenderMode::size) - 1); // Default, minimum, maximum
-    bool color_manage = prefs->getBool("/options/displayprofile/enable");
-
-    dt->setRenderMode(Inkscape::RenderMode(display_mode));
-    dt->getCanvas()->set_cms_active(color_manage);
 }
 
 /*

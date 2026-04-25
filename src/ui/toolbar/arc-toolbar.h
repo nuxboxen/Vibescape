@@ -72,6 +72,8 @@ private:
 
     std::unique_ptr<UI::Widget::UnitTracker> _tracker;
 
+    UI::Widget::SpinButton &_cx_item;
+    UI::Widget::SpinButton &_cy_item;
     UI::Widget::SpinButton &_rx_item;
     UI::Widget::SpinButton &_ry_item;
     UI::Widget::SpinButton &_start_item;

@@ -9,8 +9,9 @@
  */
 #include "svg/stringstream.h"
 #include "svg/strip-trailing-zeros.h"
-#include "preferences.h"
 #include <2geom/point.h>
+
+#include "util/numeric/precision.h"
 
 Inkscape::SVGOStringStream::SVGOStringStream()
 {
@@ -22,8 +23,7 @@ Inkscape::SVGOStringStream::SVGOStringStream()
     /* This one is (currently) needed though, as we currently use ostr.precision as a sort of
        variable for storing the desired precision: see our two precision methods and our operator<<
        methods for float and double. */
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    ostr.precision(prefs->getInt("/options/svgoutput/numericprecision", 8));
+    ostr.precision(Util::get_default_numeric_precision());
 }
 
 Inkscape::SVGOStringStream &
@@ -65,8 +65,7 @@ Inkscape::SVGIStringStream::SVGIStringStream():std::istringstream()
     /* This one is (currently) needed though, as we currently use ostr.precision as a sort of
        variable for storing the desired precision: see our two precision methods and our operator<<
        methods for float and double. */
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    this->precision(prefs->getInt("/options/svgoutput/numericprecision", 8));
+    this->precision(Util::get_default_numeric_precision());
 }
 
 Inkscape::SVGIStringStream::SVGIStringStream(const std::string& str):std::istringstream(str)
@@ -77,8 +76,7 @@ Inkscape::SVGIStringStream::SVGIStringStream(const std::string& str):std::istrin
     /* This one is (currently) needed though, as we currently use ostr.precision as a sort of
        variable for storing the desired precision: see our two precision methods and our operator<<
        methods for float and double. */
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    this->precision(prefs->getInt("/options/svgoutput/numericprecision", 8));
+    this->precision(Util::get_default_numeric_precision());
 }
 
 

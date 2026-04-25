@@ -521,22 +521,23 @@ Geom::OptRect SPShape::bbox(Geom::Affine const &transform, SPItem::BBoxType bbox
 }
 
 Geom::OptRect SPShape::either_bbox(Geom::Affine const &transform, SPItem::BBoxType bboxtype, bool cache_is_valid,
-                                   Geom::OptRect bbox_cache, Geom::Affine const &transform_cache) const
+                                   Geom::OptRect const &bbox_cache, Geom::Affine const &transform_cache) const
 {
+    // Return the cache if possible.
+    if (cache_is_valid && bbox_cache) {
+        auto delta = transform_cache.inverse() * transform;
+
+        if (delta.isTranslation()) {
+            // Don't re-adjust the cache if we haven't moved
+            if (!delta.isNonzeroTranslation()) {
+                return bbox_cache;
+            }
+            // delta is pure translation so it's safe to use it as is
+            return *bbox_cache * delta;
+        }
+    }
 
     Geom::OptRect bbox;
-
-    // Return the cache if possible.
-    auto delta = transform_cache.inverse() * transform;
-    if (cache_is_valid && bbox_cache && delta.isTranslation()) {
-
-        // Don't re-adjust the cache if we haven't moved
-        if (!delta.isNonzeroTranslation()) {
-            return bbox_cache;
-        }
-        // delta is pure translation so it's safe to use it as is
-        return *bbox_cache * delta;
-    }
 
     if (!_curve || _curve->empty()) {
     	return bbox;

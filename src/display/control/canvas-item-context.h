@@ -59,6 +59,7 @@ private:
     // Control handle styling
     std::shared_ptr<Handles::Css const> _handles_css;
     sigc::scoped_connection _css_updated_conn;
+    sigc::connection _device_scale_conn;
 
     // Snapshotting
     char _cacheline_separator[127];

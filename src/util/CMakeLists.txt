@@ -19,14 +19,18 @@ target_sources(inkscape_base PRIVATE
     preview.cpp
     source_date_epoch.cpp
     statics.cpp
+    svg-path-parser.cpp
     theme-utils.cpp
+    transform-objects.cpp
     recently-used-fonts.cpp
     pool.cpp
     treeify.cpp
 	unicode.cpp
     units.cpp
+    units-internal.cpp
     uri.cpp
     ziptool.cpp
+    numeric/precision.cpp
 
 	# -------
 	# Headers
@@ -66,7 +70,9 @@ target_sources(inkscape_base PRIVATE
     source_date_epoch.h
     statics.h
     static-doc.h
+    svg-path-parser.h
     theme-utils.h
+    transform-objects.h
     treeify.h
     trim.h
     smart_ptr_keys.h
@@ -77,4 +83,5 @@ target_sources(inkscape_base PRIVATE
     value-utils.h
     ziptool.h
     numeric/converters.h
+    numeric/precision.h
 )

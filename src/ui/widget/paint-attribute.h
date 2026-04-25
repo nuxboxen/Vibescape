@@ -27,6 +27,7 @@
 #include "stroke-options.h"
 #include "style-internal.h"
 #include "unit-menu.h"
+#include "ui/widget/paint-popover-manager.h"
 #include "widget-group.h"
 
 namespace Inkscape::UI::Widget {
@@ -74,19 +75,21 @@ private:
         PaintMode update_preview_indicators(const SPObject* object);
         void set_paint(const SPObject* object);
         void set_paint(const SPIPaint& paint, double opacity, FillRule fill_rule);
+        void set_fill_rule(FillRule rule);
+        void set_flat_color(const Colors::Color& color);
         // mark an object as modified
         void request_update(bool update_preview);
         void show();
         void hide();
         bool can_update() const;
+        std::vector<sigc::connection> connect_signals();
 
         Glib::RefPtr<Gtk::Builder> _builder;
         Gtk::Grid& _main;
         sigc::signal<void (bool)> _toggle_definition;
         bool _is_fill;
         Gtk::MenuButton& _paint_btn;
-        Gtk::Popover& _popover;
-        std::unique_ptr<PaintSwitch> _switch;
+        PaintSwitch* _switch = nullptr;
         ColorPreview& _color_preview;
         Gtk::Image& _paint_icon;
         Gtk::Label& _label;
@@ -98,6 +101,7 @@ private:
         SPDesktop* _desktop = nullptr;
         OperationBlocker* _update = nullptr;
         unsigned int _modified_tag;
+        PaintPopoverManager::Registration _connection; // RAII token.
     };
     PaintStrip _fill;
     PaintStrip _stroke;

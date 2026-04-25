@@ -20,20 +20,18 @@
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/image.h>
 #include <gtkmm/messagedialog.h>
+#include <gtkmm/popover.h>
 #include <gtkmm/revealer.h>
 #include <gtkmm/spinbutton.h>
 #include <gtkmm/textbuffer.h>
 #include <gtkmm/tooltip.h>
 #include <2geom/bezier.h>
 
+#include "defocus-target.h"
 #include "desktop.h"
 #include "inkscape.h"
 #include "inkscape-window.h"
 #include "ui/dialog-run.h"
-// #include "desktop.h"
-// #include "inkscape-window.h"
-// #include "inkscape.h"
-// #include "colors/color.h"
 #include "colors/utils.h" // color to hex string
 #include "ui/dialog-run.h"
 #include "util/numeric/converters.h"
@@ -258,6 +256,27 @@ void ellipsize(Gtk::Label &label, int const max_width_chars, Pango::EllipsizeMod
     }, true);
 }
 
+void set_defocus_target(Gtk::Widget* panel, DefocusTarget* target) {
+    if (!panel) return;
+
+    for_each_descendant(*panel, [target](auto& widget) {
+        if (auto sb = dynamic_cast<Widget::InkSpinButton*>(&widget)) {
+            sb->setDefocusTarget(target);
+        }
+        return ForEachResult::_continue;
+    });
+}
+
+void close_parent_popover(Gtk::Widget &widget)
+{
+    for (auto &parent : parent_chain(widget) | std::views::drop(1)) {
+        if (auto popover = dynamic_cast<Gtk::Popover *>(&widget)) {
+            popover->popdown();
+            break;
+        }
+    }
+}
+
 } // namespace Inkscape::UI
 
 /**
@@ -291,6 +310,13 @@ double get_luminance(Gdk::RGBA const &rgba)
     return 0.299 * rgba.get_red  ()
          + 0.587 * rgba.get_green()
          + 0.114 * rgba.get_blue ();
+}
+
+GdkRGBA get_color(Gtk::Widget const &widget)
+{
+    GdkRGBA result;
+    gtk_widget_get_color(const_cast<GtkWidget *>(widget.gobj()), &result);
+    return result;
 }
 
 Gdk::RGBA get_color_with_class(Gtk::Widget &widget,

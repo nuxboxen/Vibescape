@@ -71,6 +71,8 @@ public:
     /// User-selected monospaced font used by XML dialog and attribute editor
     Pango::FontDescription getMonospacedFont() const;
     void saveMonospacedFont(Pango::FontDescription desc);
+    // create or update .mono-font CSS selector
+    void applyMonospacedFont(Pango::FontDescription desc);
     static Glib::ustring get_monospaced_font_pref_path() { return "/ui/mono-font/desc"; }
 
     // True if current theme (applied one) is dark
@@ -94,6 +96,7 @@ private:
 #if __APPLE__
     Glib::RefPtr<Gtk::CssProvider> _macstyleprovider;
 #endif
+    Glib::RefPtr<Gtk::CssProvider> _monofont_styleprovider;
     std::unique_ptr<Preferences::Observer> _spinbutton_observer;
 };
 

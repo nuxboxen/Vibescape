@@ -163,7 +163,6 @@ protected:
     void onScaleYValueChanged();
     void onRotateCounterclockwiseClicked();
     void onRotateClockwiseClicked();
-    void onTransformValueChanged();
     void onReplaceMatrixToggled();
     void onScaleProportionalToggled();
 

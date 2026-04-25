@@ -597,8 +597,11 @@ bool TextTool::root_handler(CanvasEvent const &event)
                 bool preedit_activation = mod_ctrl(event) && mod_shift(event) && !mod_alt(event)
                                           && (group0_keyval == GDK_KEY_U || group0_keyval == GDK_KEY_u);
 
-                auto surface = _desktop->getInkscapeWindow()->get_surface()->gobj();
-                if (unimode || !imc || preedit_activation || !gtk_im_context_filter_key(imc, true, surface, const_cast<GdkDevice*>(event.device->gobj()), event.time, event.keycode, (GdkModifierType)event.modifiers, event.group)) {
+                // C API is const-incorrect
+                auto original_event = event.original ? const_cast<GdkEvent *>(event.original->gobj()) : nullptr;
+
+                if (unimode || !imc || preedit_activation ||
+                    (original_event && !gtk_im_context_filter_keypress(imc, original_event))) {
                     // IM did not consume the key, or we're in unimode
 
                     if (!mod_ctrl_only(event) && unimode) {
@@ -1209,8 +1212,8 @@ bool TextTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (KeyReleaseEvent const &event) {
-            auto surface = _desktop->getInkscapeWindow()->get_surface()->gobj();
-            if (!unimode && imc && gtk_im_context_filter_key(imc, false, surface, const_cast<GdkDevice*>(event.device->gobj()), event.time, event.keycode, (GdkModifierType)event.modifiers, event.group)) {
+            if (!unimode && imc && event.original &&
+                gtk_im_context_filter_keypress(imc, const_cast<GdkEvent *>(event.original->gobj()))) {
                 ret = true;
             }
         },
@@ -1741,7 +1744,7 @@ void TextTool::_blinkCursor()
         cursor->set_stroke(0xffffffff);
     }
 
-    cursor->set_visible(true);
+    cursor->set_visible(has_focus());
 }
 
 void TextTool::_forgetText()

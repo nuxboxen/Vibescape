@@ -19,9 +19,7 @@
 #include "trace/trace.h"
 using at_fitting_opts_type = struct _at_fitting_opts_type;
 
-namespace Inkscape {
-namespace Trace {
-namespace Autotrace {
+namespace Inkscape::Trace::Autotrace {
 
 class AutotraceTracingEngine final
     : public TracingEngine
@@ -43,9 +41,7 @@ private:
     at_fitting_opts_type *opts;
 };
 
-} // namespace Autotrace
-} // namespace Trace
-} // namespace Inkscape
+} // namespace Inkscape::Trace::Autotrace
 
 #endif // INKSCAPE_TRACE_AUTOTRACE_H
 

@@ -15,18 +15,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <2geom/pathvector.h>
-#include <cairo/cairo.h>    // cairo_font_face_t
-#include <pango/pango-types.h>
+#include <2geom/forward.h>
 #include <pango/pango-font.h>
 
 #include "font-glyph.h"
 #include "OpenTypeUtil.h"
 #include "style-enums.h"
-
-namespace Inkscape {
-class Pixbuf;
-} // namespace Inkscape
 
 /**
  * FontInstance provides metrics, OpenType data, and glyph curves/pixbufs for a font.
@@ -79,9 +73,8 @@ public:
     // Return the font's OpenType tables, possibly loading them on-demand.
     std::map<Glib::ustring, OTSubstitution> const &get_opentype_tables();
 
-    // Return pixbuf of SVG glyph or nullptr if no SVG glyph exists. As with glyphs, pixbufs
-    // are lazy-loaded but immutable once loaded. They are guaranteed to be in Cairo pixel format.
-    Inkscape::Pixbuf const *PixBuf(unsigned int glyph_id);
+    // Return svg document as a string of a SVG glyph or empty string if no SVG glyph exists.
+    Glib::ustring SvgDocument(unsigned int glyph_id);
 
     std::string GlyphSvg(unsigned int glyph_id);
 
@@ -112,6 +105,7 @@ public:
     bool has_vertical() const { return FT_HAS_VERTICAL(face); }
 
     auto get_descr() const { return descr; }
+    auto get_hash() const { return descr_hash; }
     auto get_font() const { return p_font; }
 
     bool is_fixed_width() const { return _fixed_width; }
@@ -139,6 +133,7 @@ private:
     // The font's fingerprint; this particular PangoFontDescription gives the key at which this font instance
     // resides in the font cache. It may differ from the PangoFontDescription belonging to p_font.
     PangoFontDescription *descr;
+    unsigned int descr_hash;
 
     // The real source of the font
     PangoFont *p_font;

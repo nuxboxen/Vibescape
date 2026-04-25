@@ -53,6 +53,7 @@ IGNORE_FILE_ENDINGS = [
     ".po",
     ".ps",
     ".rc",
+    ".suppression",
     ".svg",
     ".ttf",
     ".ttc",

@@ -182,6 +182,33 @@ void CanvasItem::_mark_net_invisible()
     _bounds = {};
 }
 
+double CanvasItem::align_to_pixels05(double p, int line_width, int scale_factor)
+{
+    /* Need to use floor()+0.5 such that Cairo will draw us axis algined lines with a width of a single pixel,
+     * without any aliasing. For this we need to position the lines at exactly half pixels, see
+     * https://www.cairographics.org/FAQ/#sharp_lines
+     * Exact choice of floor/ceil/round or floor with some other bias is partially stylistic choice, but it
+     * must be consistent with the pixel alignment of guidelines, the grid lines, see CanvasXYGrid::Render(),
+     * and the drawing of the rulers.
+     * Lastly, the origin control is also pixel-aligned and we want to visually cut through its
+     * exact center.
+     */
+    double const THRESHOLD = 0.5;
+
+    // not using round to avoid directionality based on position relative to 0
+    if (line_width & 1) {
+        return (std::floor(p * scale_factor + THRESHOLD) + 0.5) / scale_factor;
+    } else {
+        return (std::floor(p * scale_factor + THRESHOLD)) / scale_factor;
+    }
+}
+
+Geom::Point CanvasItem::align_to_pixels05(Geom::Point p, int line_width, int scale_factor)
+{
+    return Geom::Point(align_to_pixels05(p.x(), line_width, scale_factor),
+                       align_to_pixels05(p.y(), line_width, scale_factor));
+}
+
 // Grab all events!
 void CanvasItem::grab(EventMask event_mask, Glib::RefPtr<Gdk::Cursor> const &cursor)
 {

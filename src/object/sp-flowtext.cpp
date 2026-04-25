@@ -21,6 +21,7 @@
 #include "snap-candidate.h"
 #include "snap-preferences.h"
 #include "style.h"
+#include "style-text.h"
 #include "text-editing.h"
 #include "text-tag-attributes.h"
 
@@ -349,7 +350,7 @@ void SPFlowtext::_buildLayoutInput(SPObject *root, std::unique_ptr<Shape> exclus
 
         layout.strut.reset();
         if (style) {
-            auto font = FontFactory::get().FaceFromStyle(style);
+            auto font = ink_font_from_style(style);
             if (font) {
                 font->FontMetrics(layout.strut.ascent, layout.strut.descent, layout.strut.xheight);
             }

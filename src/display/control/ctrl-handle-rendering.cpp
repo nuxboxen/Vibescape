@@ -336,7 +336,7 @@ void draw_diamond(Cairo::Context &cr, double size)
     cr.rectangle(0, 0, size2, size2);
 }
 
-void draw_cross(Cairo::Context &cr, double size, bool grid_fit)
+void draw_cross(Cairo::Context &cr, double size)
 {
     cr.move_to(0, 0);
     cr.line_to(size, size);
@@ -345,10 +345,8 @@ void draw_cross(Cairo::Context &cr, double size, bool grid_fit)
     cr.line_to(size, 0);
 }
 
-void draw_plus(Cairo::Context &cr, double size, bool grid_fit)
+void draw_plus(Cairo::Context &cr, double size)
 {
-    // draw shape and align fill to pixel grid, stroke will be grid-fitted later
-    if (grid_fit) cr.translate(0.5, 0.5);
     double const half = size / 2;
 
     cr.move_to(half, 0);
@@ -356,7 +354,6 @@ void draw_plus(Cairo::Context &cr, double size, bool grid_fit)
 
     cr.move_to(0, half);
     cr.line_to(size, half);
-    if (grid_fit) cr.translate(-0.5, -0.5);
 }
 
 void draw_cairo_path(CanvasItemCtrlShape shape, Cairo::Context &cr, double size, bool grid_fit)
@@ -408,11 +405,11 @@ void draw_cairo_path(CanvasItemCtrlShape shape, Cairo::Context &cr, double size,
             break;
 
         case CANVAS_ITEM_CTRL_SHAPE_CROSS:
-            draw_cross(cr, size, grid_fit);
+            draw_cross(cr, size);
             break;
 
         case CANVAS_ITEM_CTRL_SHAPE_PLUS:
-            draw_plus(cr, size, grid_fit);
+            draw_plus(cr, size);
             break;
 
         default:

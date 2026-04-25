@@ -35,6 +35,46 @@ DrawingGlyphs::DrawingGlyphs(Drawing &drawing)
 {
 }
 
+struct SvgGlyphHash
+{
+    size_t operator()(const std::pair<unsigned int, unsigned int>&v) const
+    {
+        return ((long)v.first << sizeof(unsigned int)) + v.second;
+    }
+};
+
+std::shared_ptr<Pixbuf> DrawingGlyphs::_get_svg_glyph(std::shared_ptr<FontInstance> const &font, unsigned int glyph_id) const
+{
+    // Inline so it can have more than 32 entries, we want to cache 1024 glyphs instead
+    static Util::cached_map<std::pair<unsigned int, unsigned int>, Inkscape::Pixbuf, SvgGlyphHash> _svg_glyph_cache(1024);
+
+    std::pair<unsigned int, unsigned int> key(font->get_hash(), glyph_id);
+
+    if (auto res = _svg_glyph_cache.lookup(key)) {
+        return res;
+    }
+
+    Inkscape::Pixbuf* pixbuf = nullptr;
+    auto svg = font->SvgDocument(glyph_id);
+    if (!svg.empty()) {
+        pixbuf = Pixbuf::create_from_buffer(svg.raw());
+        if (!pixbuf) {
+            std::cerr << "Bad svg data for glyph " << glyph_id << "\n";
+        }
+    }
+    if (!pixbuf) {
+        // Either no glyph for Unicode point or glyph had bad SVG data.
+        pixbuf = new Pixbuf(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1));
+    }
+
+    // Ensure exists in cairo format before locking it down. (Rendering code requires cairo format.)
+    pixbuf->ensurePixelFormat(Pixbuf::PF_CAIRO);
+
+    _svg_glyph_cache.add(key, std::unique_ptr<Pixbuf>(pixbuf));
+
+    return _svg_glyph_cache.lookup(key);
+}
+
 void DrawingGlyphs::setGlyph(std::shared_ptr<FontInstance> font, unsigned int glyph, Geom::Affine const &trans)
 {
     defer([=, this, font = std::move(font)] {
@@ -58,7 +98,8 @@ void DrawingGlyphs::setGlyph(std::shared_ptr<FontInstance> font, unsigned int gl
             bbox_pick    = font->BBoxPick( _glyph);
             bbox_draw    = font->BBoxDraw( _glyph);
             if (font->FontHasSVG()) {
-                pixbuf = font->PixBuf(_glyph);
+                // CACHE the pixbuf here
+                pixbuf = _get_svg_glyph(font, _glyph).get();
             }
             font_descr   = pango_font_description_to_string(font->get_descr());
             // std::cout << "DrawingGlyphs::setGlyph: " << std::setw(6) << glyph

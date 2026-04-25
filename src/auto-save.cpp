@@ -25,6 +25,7 @@
 #include "auto-save.h"
 #include "document.h"
 #include "inkscape-application.h"
+#include "io/recent-files.h"
 #include "preferences.h"
 #include "extension/output.h"
 #include <sigc++/scoped_connection.h>
@@ -114,8 +115,9 @@ AutoSave::save()
 
         if (document->isModifiedSinceAutoSave()) {
             // Base name: document filename + user ID
+            auto document_filename = document->getDocumentFilename();
             Glib::ustring doc_name =
-                (document->getDocumentFilename() ? Glib::path_get_basename(document->getDocumentFilename())
+                (document_filename ? Glib::path_get_basename(document->getDocumentFilename())
                                                  : "untitled");
             Util::trim(doc_name, ".svg");
             std::string base_name = doc_name + "-" + std::to_string(uid);
@@ -142,6 +144,8 @@ AutoSave::save()
                         if (unlink(path.c_str()) == -1) {
                             std::cerr << "InkscapeApplication::document_autosave: Failed to unlink file: "
                                       << path << ": " << strerror(errno) << std::endl;
+                        } else {
+                            Inkscape::IO::removeInkscapeRecent(path);
                         }
                     }
                 }
@@ -161,6 +165,7 @@ AutoSave::save()
                 try {
                     Inkscape::XML::Node *repr = document->getReprRoot();
                     sp_repr_save_stream(repr->document(), file, SP_SVG_NS_URI);
+                    Inkscape::IO::addInkscapeRecentSvg(path, document->getDocumentName() ? document->getDocumentName() : "unnamed", {"Auto"}, document_filename ? document_filename : "");
                 } catch (Inkscape::Extension::Output::no_extension_found &e) {
                     errortext = g_strdup(_("Autosave failed! Could not find inkscape extension to save document."));
                 } catch (Inkscape::Extension::Output::save_failed &e) {

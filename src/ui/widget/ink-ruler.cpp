@@ -11,6 +11,8 @@
  *
  */
 
+#include "ink-ruler.h"
+
 #include <giomm/menu.h>
 #include <gtkmm/binlayout.h>
 #include <gtkmm/eventcontrollermotion.h>
@@ -18,7 +20,7 @@
 #include <gtkmm/popovermenu.h>
 #include <gtkmm/snapshot.h>
 
-#include "ink-ruler.h"
+#include "display/control/canvas-item.h"
 #include "inkscape.h"
 #include "ui/containerize.h"
 #include "ui/controller.h"
@@ -56,6 +58,8 @@ Ruler::Ruler(Gtk::Orientation orientation)
     on_prefs_changed();
 
     INKSCAPE.themecontext->getChangeThemeSignal().connect(sigc::track_object([this] { css_changed(nullptr); }, *this));
+
+    this->property_scale_factor().signal_changed().connect(sigc::mem_fun(*this, &Ruler::redraw_ruler));
 }
 
 Ruler::~Ruler() = default;
@@ -180,7 +184,7 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
         } else {
             rect = {0, interval->min(), aperp, interval->max()};
         }
-        snapshot->append_color(_page_fill, geom_to_gtk(rect));
+        gtk_snapshot_append_color(snapshot->gobj(), &_page_fill, pass_in(rect));
     }
 
     // Draw a selection bar
@@ -211,8 +215,8 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
                 bgnd = Geom::Rect(0, sy0 + dxy, aperp - line_width, sy1 - dxy);
                 rect = Geom::Rect(x, sy0 + dxy, x + line_width, sy1 - dxy);
             }
-            snapshot->append_color(_select_bgnd, geom_to_gtk(bgnd).gobj());
-            snapshot->append_color(_select_stroke, geom_to_gtk(rect).gobj());
+            gtk_snapshot_append_color(snapshot->gobj(), &_select_bgnd, pass_in(bgnd));
+            gtk_snapshot_append_color(snapshot->gobj(), &_select_stroke, pass_in(rect));
         }
     }
 
@@ -253,6 +257,7 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
     double const units_per_major = ruler_metric->ruler_scale[scale_index];
     double const pixels_per_major = pixels_per_unit * units_per_major;
     double const pixels_per_tick = pixels_per_major / subdivisions;
+    int const pixel_scale_factor = get_scale_factor();
 
     // Figure out which cached render nodes to invalidate.
     if (!_params) {
@@ -261,7 +266,8 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
             .aperp = aperp,
             .divide_index = divide_index,
             .pixels_per_tick = pixels_per_tick,
-            .pixels_per_major = pixels_per_major
+            .pixels_per_major = pixels_per_major,
+            .scale_factor = pixel_scale_factor
         };
     } else {
         auto update = [] (auto src, auto &dst, auto&... to_reset) {
@@ -281,6 +287,7 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
         update(divide_index, _params->divide_index, _scale_tile_node);
         update_approx(pixels_per_tick, _params->pixels_per_tick, _scale_tile_node);
         update_approx(pixels_per_major, _params->pixels_per_major, _scale_node);
+        update(pixel_scale_factor, _params->scale_factor, _scale_tile_node);
     }
     if (!_scale_tile_node) {
         _scale_node.reset(); // _scale_node contains _scale_tile_node
@@ -302,9 +309,9 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
         auto shadow_snapshot = gtk_snapshot_new();
         gtk_snapshot_append_linear_gradient(
             shadow_snapshot,
-            geom_to_gtk(shadow_rect).gobj(),
-            geom_to_gtk(Geom::IntPoint{}).gobj(),
-            geom_to_gtk(end_point).gobj(),
+            pass_in(shadow_rect),
+            pass_in(Geom::IntPoint{}),
+            pass_in(end_point),
             stops.data(),
             stops.size()
         );
@@ -319,7 +326,10 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
 
         for (int i = 0; i < subdivisions; i++) {
             // Position of tick
-            double position = std::round(i * pixels_per_tick);
+            double position = CanvasItem::align_to_pixels05(i * pixels_per_tick, 0, pixel_scale_factor);
+            // center line based on physical pixels
+            int const centering_shift = pixel_scale_factor / 2;
+            position += -centering_shift / double(pixel_scale_factor);
 
             // Height of tick
             int size = aperp - 8;
@@ -341,7 +351,7 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
             } else {
                 rect = Geom::Rect(aperp - size, position, aperp, position + 1);
             }
-            gtk_snapshot_append_color(scale_tile, major ? _major.gobj() : _minor.gobj(), geom_to_gtk(rect).gobj());
+            gtk_snapshot_append_color(scale_tile, major ? &_major : &_minor, pass_in(rect));
         }
 
         _scale_tile_node = RenderNodePtr{gtk_snapshot_free_to_node(scale_tile)};
@@ -351,19 +361,19 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
     // Note: We can't use a repeat node for this, because then the ticks will either be blurry or inaccurate.
     if (!_scale_node) {
         auto scale_tiles = gtk_snapshot_new();
-
+        double last_pos = 0;
         for (int i = 0; ; i++) {
             if (i > 0) {
-                int const pos = std::round(i * pixels_per_major);
+                double const pos = CanvasItem::align_to_pixels05(i * pixels_per_major, 0, pixel_scale_factor);
                 if (pos >= aparallel + pixels_per_major) {
                     break;
                 }
-                int const lastpos = std::round((i - 1) * pixels_per_major);
-                int const shift = pos - lastpos;
-                auto const translate = _orientation == Gtk::Orientation::HORIZONTAL
-                    ? Geom::IntPoint(shift, 0)
-                    : Geom::IntPoint(0, shift);
-                gtk_snapshot_translate(scale_tiles, geom_to_gtk(translate).gobj());
+
+                double const shift = pos - last_pos;
+                last_pos = pos;
+                auto const translate =
+                    _orientation == Gtk::Orientation::HORIZONTAL ? Geom::Point(shift, 0) : Geom::Point(0, shift);
+                gtk_snapshot_translate(scale_tiles, pass_in(translate));
             }
             gtk_snapshot_append_node(scale_tiles, _scale_tile_node.get());
         }
@@ -372,12 +382,14 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
     }
 
     // Render the scale with a shift.
-    int const shift = -std::round(safe_frac(_lower * sign / units_per_major) * pixels_per_major);
+    double const shift =
+        -std::round(safe_frac(_lower * sign / units_per_major) * pixels_per_major * pixel_scale_factor) /
+        pixel_scale_factor;
     auto const translate = _orientation == Gtk::Orientation::HORIZONTAL
         ? Geom::Point(shift, 0)
         : Geom::Point(0, shift);
     snapshot->save();
-    snapshot->translate(geom_to_gtk(translate));
+    gtk_snapshot_translate(snapshot->gobj(), pass_in(translate));
     gtk_snapshot_append_node(snapshot->gobj(), _scale_node.get());
 
     // Find first and last major ticks
@@ -409,7 +421,7 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
         auto &label_node = _label_nodes[label_value];
         if (!label_node) {
             auto label = gtk_snapshot_new();
-            gtk_snapshot_append_layout(label, layout->gobj(), _foreground.gobj());
+            gtk_snapshot_append_layout(label, layout->gobj(), &_foreground);
             label_node = RenderNodePtr{gtk_snapshot_free_to_node(label)};
         }
 
@@ -442,18 +454,18 @@ void Ruler::draw_marker(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
         ? Geom::Point(_position, get_height())
         : Geom::Point(get_width(), _position);
     snapshot->save();
-    snapshot->translate(geom_to_gtk(pos));
+    gtk_snapshot_translate(snapshot->gobj(), pass_in(pos));
     if (_orientation != Gtk::Orientation::HORIZONTAL) {
         snapshot->rotate(-90);
     }
-    gtk_snapshot_append_fill(snapshot->gobj(), path, GSK_FILL_RULE_WINDING, _foreground.gobj());
+    gtk_snapshot_append_fill(snapshot->gobj(), path, GSK_FILL_RULE_WINDING, &_foreground);
     snapshot->restore();
 }
 
 void Ruler::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
 {
     auto const dims = Geom::IntPoint{get_width(), get_height()};
-    snapshot->push_clip(geom_to_gtk(Geom::IntRect{{}, dims}));
+    gtk_snapshot_push_clip(snapshot->gobj(), pass_in(Geom::IntRect{{}, dims}));
     if (!_ruler_node) {
         auto ruler = gtk_snapshot_new();
         draw_ruler(Glib::wrap_gtk_snapshot(ruler, true));
@@ -468,17 +480,17 @@ void Ruler::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
 void Ruler::css_changed(GtkCssStyleChange *change)
 {
     // Cache all our colors to speed up rendering.
-    _foreground = get_color();
+    _foreground = ::get_color(*this);
     _font_size = get_font_size(*this);
-    _major = get_color_with_class(*this, "ticks");
+    _major = *get_color_with_class(*this, "ticks").gobj();
     _minor = _major;
-    _minor.set_alpha(_major.get_alpha() * 0.6f);
+    _minor.alpha *= 0.6f;
 
-    _page_fill = get_color_with_class(*this, "page");
+    _page_fill = *get_color_with_class(*this, "page").gobj();
 
     add_css_class("selection");
-    _select_fill = get_color_with_class(*this, "background");
-    _select_stroke = get_color_with_class(*this, "border");
+    _select_fill = *get_color_with_class(*this, "background").gobj();
+    _select_stroke = *get_color_with_class(*this, "border").gobj();
     _select_bgnd = _select_fill;
     remove_css_class("selection");
 

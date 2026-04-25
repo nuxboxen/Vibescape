@@ -24,6 +24,7 @@
 #include "util/font-discovery.h"
 #include "util/font-tags.h"
 #include "font-selector-interface.h"
+#include "generic/number-combo-box.h"
 #include "generic/popover-menu.h"
 #include "ui/text_filter.h"
 
@@ -109,7 +110,7 @@ private:
     bool _list_visible = true;
     FontOrder _order = FontOrder::ByFamily;
     Glib::ustring _filter;
-    Gtk::ComboBoxText& _font_size;
+    NumberComboBox& _font_size;
     Gtk::Scale& _font_size_scale;
     Glib::ustring _current_fspec;
     double _current_fsize = 0.0;

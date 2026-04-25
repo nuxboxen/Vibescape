@@ -236,10 +236,6 @@ void Selection::rotateAnchored(double angle_degrees, double zoom)
             center = _previous_rotate_anchor;
         }
 
-        if (auto d = desktop()) {
-            angle_degrees *= d->yaxisdir();
-        }
-
         if (zoom != 1.0) {
             Geom::Point m = bbox->midpoint();
             unsigned i = 0;
@@ -259,14 +255,17 @@ void Selection::rotateAnchored(double angle_degrees, double zoom)
         // Remember the rotation anchor for multiple rotation events.
         _previous_rotate_anchor = center;
 
-        if (angle_degrees == 90.0) {
+        // Visual angle might be different from actual angle,
+        // when y axis points up.
+        double visual_angle = angle_degrees * document()->yaxisdir();
+
+        if (visual_angle == 90.0) {
             DocumentUndo::maybeDone(document(), "selector:rotate:cw", RC_("Undo", "Rotate 90\xc2\xb0 CW"), INKSCAPE_ICON("object-rotate-right"));
-        } else if (angle_degrees == -90.0) {
+        } else if (visual_angle == -90.0) {
             DocumentUndo::maybeDone(document(), "selector:rotate:ccw", RC_("Undo", "Rotate 90\xc2\xb0 CCW"), INKSCAPE_ICON("object-rotate-left"));
         } else {
-            DocumentUndo::maybeDone(document(),
-                                ( ( angle_degrees > 0 )? "selector:rotate:ccw": "selector:rotate:cw" ),
-                                RC_("Undo", "Rotate"), INKSCAPE_ICON("tool-pointer"));
+            DocumentUndo::maybeDone(document(), ((visual_angle > 0) ? "selector:rotate:ccw" : "selector:rotate:cw"),
+                                    RC_("Undo", "Rotate"), INKSCAPE_ICON("tool-pointer"));
         }
     }
 }
@@ -279,25 +278,28 @@ SPObject *Selection::_objectForXMLNode(Inkscape::XML::Node *repr) const {
     return object;
 }
 
-size_t Selection::numberOfLayers() {
+std::pair<size_t, size_t> Selection::selectionDistinctLayerAndParentCounts() {
+    // Set to count unique parents and layers only.
+    std::unordered_set<SPObject*> layers;
+    std::unordered_set<SPObject*> parents;
     auto items = this->items();
-    std::set<SPObject*> layers;
-    for (auto item : items) {
-        SPObject *layer = _desktop->layerManager().layerForObject(item);
-        layers.insert(layer);
-    }
+    auto &layerManager = _desktop->layerManager();
 
-    return layers.size();
-}
-
-size_t Selection::numberOfParents() {
-    auto items = this->items();
-    std::set<SPObject*> parents;
-    for (auto item : items) {
-        SPObject *parent = item->parent;
+    for (auto const item : items) {
+        auto const parent = item->parent;
+        auto const group = cast<SPGroup>(parent);
         parents.insert(parent);
+
+        if (group && group->isLayer()) {
+            layers.insert(parent);
+        } else {
+            SPObject *layer = layerManager.layerForObject(item);
+            layers.insert(layer);
+        }
+
     }
-    return parents.size();
+
+    return {layers.size(), parents.size()};
 }
 
 void Selection::_connectSignals(SPObject *object) {

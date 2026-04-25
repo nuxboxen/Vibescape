@@ -366,7 +366,7 @@ char const *sp_style_get_css_unit_string(int unit);  // No change?
 #define SP_CSS_FONT_SIZE_DEFAULT 12.0
 double sp_style_css_size_px_to_units(double size, int unit, double font_size = SP_CSS_FONT_SIZE_DEFAULT); // No change?
 double sp_style_css_size_units_to_px(double size, int unit, double font_size = SP_CSS_FONT_SIZE_DEFAULT); // No change?
-
+const std::vector<double>& sp_style_get_default_font_size_list(int unit);
 
 SPCSSAttr *sp_css_attr_from_style (SPStyle const *const style, unsigned int flags);
 SPCSSAttr *sp_css_attr_from_object(SPObject *object, unsigned int flags = SP_STYLE_FLAG_IFSET);

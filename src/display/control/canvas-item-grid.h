@@ -88,10 +88,9 @@ protected:
     void _render(CanvasItemBuffer &buf) const override;
 
     Geom::Point _world_origin;
-    Geom::Point _world_pitch;
-    Geom::Point _world_gap;
-    Geom::Point _world_tile;
-    Geom::Point _world_margin;
+    Geom::Point _world_pitch[2];
+    Geom::Point _world_corners[4];
+    Geom::Point _world_margin_corners[4];
 
     Geom::Point _gap;
     Geom::Point _margin;
@@ -115,16 +114,12 @@ protected:
 
     bool scaled;          /**< Whether the grid is in scaled mode */
 
-    double angle_deg[3];  /**< Angle of each axis (note that angle[2] == 0) */
-    double angle_rad[3];  /**< Angle of each axis (note that angle[2] == 0) */
-    double tan_angle[3];  /**< tan(angle[.]) */
+    double angle_deg[3];      /**< Angle of each axis (note that angle[Y] == 0) */
+    double angle_rad[3];      /**< Angle of each axis (note that angle[Y] == 0) */
+    Geom::Point direction[3]; /**<  direction of line in screen coordinates */
+    Geom::Point normal[3];    /**< vector perpendicular to lines, also defines spacing, in screen coordinates */
 
-    double lyw   = 1.0;     /**< Transformed length y by the affine for the zoom */
-    double lxw_x = 1.0;
-    double lxw_z = 1.0;
-    double spacing_ylines = 1.0;
-
-    Geom::Point ow;         /**< Transformed origin by the affine for the zoom */
+    Geom::Point ow; /**< Transformed origin by the affine for the zoom and rotation */
 };
 
 } // namespace Inkscape

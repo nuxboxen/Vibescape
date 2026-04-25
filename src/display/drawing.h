@@ -51,6 +51,7 @@ public:
     void setColorMode(ColorMode);
     void setOutlineOverlay(bool);
     void setGrayscaleMatrix(double[20]);
+    void setOutlineColor(Colors::Color);
     void setClipOutlineColor(Colors::Color);
     void setMaskOutlineColor(Colors::Color);
     void setImageOutlineColor(Colors::Color);
@@ -69,6 +70,7 @@ public:
     ColorMode colorMode() const { return _colormode; }
     bool outlineOverlay() const { return _outlineoverlay; }
     auto &grayscaleMatrix() const { return _grayscale_matrix; }
+    Colors::Color const &outlineColor() const { return _outline_color; }
     Colors::Color const &clipOutlineColor() const { return _clip_outline_color; }
     Colors::Color const &maskOutlineColor() const { return _mask_outline_color; }
     Colors::Color const &imageOutlineColor() const { return _image_outline_color; }
@@ -108,6 +110,7 @@ private:
     ColorMode _colormode = ColorMode::NORMAL;
     bool _outlineoverlay = false;
     Filters::FilterColorMatrix::ColorMatrixMatrix _grayscale_matrix;
+    Colors::Color _outline_color;
     Colors::Color _clip_outline_color;
     Colors::Color _mask_outline_color;
     Colors::Color _image_outline_color;
@@ -123,7 +126,7 @@ private:
     std::optional<Antialiasing> _antialiasing_override;
 
     std::set<DrawingItem*> _cached_items; // modified by DrawingItem::_setCached()
-    CacheList _candidate_items;           // keep this list always sorted with std::greater
+    CacheSet _candidate_items;           // keep this list always sorted with std::greater
 
     /*
      * Simple cacheline separator compatible with x86 (64 bytes) and M* (128 bytes).

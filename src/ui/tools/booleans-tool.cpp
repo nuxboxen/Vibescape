@@ -36,11 +36,13 @@ namespace Tools {
 
 InteractiveBooleansTool::InteractiveBooleansTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/booleans", "select.svg")
+    , _items_to_manage(desktop)
 {
     to_commit = false;
     update_status();
     if (auto selection = desktop->getSelection()) {
-        _items_to_manage = selection->items_vector(); // Store the original items before the selection context is lost
+        auto items = selection->items();
+        _items_to_manage.add(items.begin(), items.end());
         desktop->setWaitingCursor();
         boolean_builder = std::make_unique<BooleanBuilder>(selection);
         desktop->clearWaitingCursor();
@@ -71,14 +73,14 @@ void InteractiveBooleansTool::hide_selected_objects(bool hide)
 {
     // Use the stored _items_to_manage list instead of _desktop->getSelection().
     // This is crucial because the selection may have already changed by the time a cleanup/cancel function (like shape_cancel) is called.
-    for (auto item : _items_to_manage) {
+    for (auto item : _items_to_manage.items()) {
         // We don't hide any image or group that contains an image
         // FUTURE: There is a corner case where regular shapes are inside a group
         // alongside an image, they should be hidden, but that's much more convoluted.
         if (hide && boolean_builder && boolean_builder->contains_image(item))
             continue;
         if (auto ditem = item->get_arenaitem(_desktop->dkey)) {
-            ditem->setOpacity(hide ? 0.0 : SP_SCALE24_TO_FLOAT(item->style->opacity.value));
+            ditem->setOpacity(hide ? 0.0 : item->style->opacity.as_double());
         }
     }
 }
@@ -180,7 +182,7 @@ bool InteractiveBooleansTool::root_handler(CanvasEvent const &event)
 
     if (last_cursor_position) {
         boolean_builder->highlight(*last_cursor_position, add);
-    } 
+    }
 
     return ToolBase::root_handler(event);
 }

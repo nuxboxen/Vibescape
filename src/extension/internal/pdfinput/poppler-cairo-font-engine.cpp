@@ -48,11 +48,11 @@
 #include <fofi/FoFiTrueType.h>
 #include <fofi/FoFiType1C.h>
 
-#include <poppler/Error.h>
-#include <poppler/Gfx.h>
-#include <poppler/GlobalParams.h>
-#include <poppler/Page.h>
-#include <poppler/XRef.h>
+#include <Error.h>
+#include <Gfx.h>
+#include <GlobalParams.h>
+#include <Page.h>
+#include <XRef.h>
 
 //========================================================================
 //

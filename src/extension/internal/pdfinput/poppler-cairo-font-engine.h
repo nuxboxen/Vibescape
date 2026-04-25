@@ -39,8 +39,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include <poppler/GfxFont.h>
-#include <poppler/PDFDoc.h>
+#include <GfxFont.h>
+#include <PDFDoc.h>
 #include "poppler-config.h"
 #include "poppler-transition-api.h"
 

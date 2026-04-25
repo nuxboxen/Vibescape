@@ -1024,6 +1024,7 @@ void PaintSelector::set_mode_pattern(PaintSelector::Mode mode)
 
         if (!_selector_pattern) {
             _selector_pattern = Gtk::make_managed<PatternEditor>("/pattern-edit", PatternManager::get());
+            _selector_pattern->set_separator_visible(false);
             _selector_pattern->signal_changed().connect([this](){ _signal_changed.emit(); });
             _selector_pattern->signal_color_changed().connect([this](Colors::Color const &){ _signal_changed.emit(); });
             _selector_pattern->signal_edit().connect([this](){ _signal_edit_pattern.emit(); });

@@ -87,11 +87,14 @@ public:
 
     bool isValid(const Space::Component& component) const;
 private:
-    bool _set(std::string id, Color const &color);
+    bool _set(std::string const &id, Color const &color);
     void colors_changed();
     void colors_cleared();
 
     IdColors _colors;
+
+    // Utility container for very fast id lookup
+    std::unordered_map<std::string, size_t> _colors_index;
 
     // Constraints can only be set up at construction so are immutable.
     std::shared_ptr<Space::AnySpace> const _space_constraint;

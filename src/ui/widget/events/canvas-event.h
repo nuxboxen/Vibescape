@@ -239,6 +239,9 @@ struct KeyEvent : CanvasEvent
 
     /// Location of the cursor, in GDK event / canvas widget coordinates.
     std::optional<Geom::Point> orig_pos;
+
+    /// For forwarding to GTK API only, avoid using directly
+    Glib::RefPtr<Gdk::Event const> original;
 };
 
 /**

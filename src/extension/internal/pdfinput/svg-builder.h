@@ -36,7 +36,7 @@ class AnySpace;
 
 #define Operator Operator_Gfx
 #include <gdkmm/enums.h>
-#include <poppler/Gfx.h>
+#include <Gfx.h>
 #undef Operator
 #undef DOUBLE_CLICK
 
@@ -46,7 +46,7 @@ class AnySpace;
 #include <glibmm/ustring.h>
 #include <lcms2.h>
 
-#include <poppler/CharTypes.h>
+#include <CharTypes.h>
 #include "enums.h"
 #include "poppler-utils.h"
 class Function;

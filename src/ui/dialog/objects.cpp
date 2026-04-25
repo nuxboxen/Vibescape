@@ -352,7 +352,7 @@ void ObjectWatcher::updateRowInfo()
         row[_model->_colBlendMode] = blend;
         auto opacity = 1.0;
         if (item->style && item->style->opacity.set) {
-            opacity = SP_SCALE24_TO_FLOAT(item->style->opacity.value);
+            opacity = item->style->opacity.as_double();
         }
         row[_model->_colOpacity] = opacity;
         std::string item_state;
@@ -753,12 +753,23 @@ ObjectsPanel::ObjectsPanel()
     auto& _move_up_button = get_widget<Gtk::Button>(_builder, "move-up");
     auto& _move_down_button = get_widget<Gtk::Button>(_builder, "move-down");
     auto& _object_delete_button = get_widget<Gtk::Button>(_builder, "remove-object");
-    _move_up_button.signal_clicked().connect([this]() {
-        _activateAction("win.layer-raise", "selection-stack-up");
+
+    // Connect with modifier state support, so we can move items to the top/bottom with an Alt modifier depressed
+    Inkscape::UI::connect_click_with_state(_move_up_button, [this](Gdk::ModifierType state) {
+        if (Controller::has_flag(state, Gdk::ModifierType::ALT_MASK)) {
+            _activateAction("win.layer-top", "selection-top");
+        } else {
+            _activateAction("win.layer-raise", "selection-stack-up");
+        }
     });
-    _move_down_button.signal_clicked().connect([this]() {
-        _activateAction("win.layer-lower", "selection-stack-down");
+    Inkscape::UI::connect_click_with_state(_move_down_button, [this](Gdk::ModifierType state) {
+        if (Controller::has_flag(state, Gdk::ModifierType::ALT_MASK)) {
+            _activateAction("win.layer-bottom", "selection-bottom");
+        } else {
+            _activateAction("win.layer-lower", "selection-stack-down");
+        }
     });
+
     _object_delete_button.signal_clicked().connect([this]() {
         _activateAction("win.layer-delete", "delete-selection");
     });
@@ -1266,7 +1277,7 @@ bool ObjectsPanel::toggleVisible(Gdk::ModifierType const state, Gtk::TreeModel::
     auto desktop = getDesktop();
     auto selection = getSelection();
 
-    if (SPItem* item = getItem(row)) { 
+    if (SPItem* item = getItem(row)) {
         if (Controller::has_flag(state, Gdk::ModifierType::SHIFT_MASK)) {
             // Toggle Visible for layers (hide all other layers)
             if (desktop->layerManager().isLayer(item)) {
@@ -1309,7 +1320,7 @@ bool ObjectsPanel::blendModePopup(int const x, int const y, Gtk::TreeModel::Row 
 
     auto opacity = 1.0;
     if (item->style && item->style->opacity.set) {
-        opacity = SP_SCALE24_TO_FLOAT(item->style->opacity.value);
+        opacity = item->style->opacity.as_double();
     }
 
     for (auto const &btn : _blend_items) {
@@ -1360,7 +1371,7 @@ bool ObjectsPanel::toggleLocked(Gdk::ModifierType const state, Gtk::TreeModel::R
     auto desktop = getDesktop();
     auto selection = getSelection();
 
-    if (SPItem* item = getItem(row)) { 
+    if (SPItem* item = getItem(row)) {
         if (Controller::has_flag(state, Gdk::ModifierType::SHIFT_MASK)) {
             // Toggle lock for layers (lock all other layers)
             if (desktop->layerManager().isLayer(item)) {
@@ -1910,21 +1921,8 @@ SPItem *ObjectsPanel::getItem(Gtk::TreeModel::ConstRow const &row) const
 }
 
 /**
- * Return true if this row has dummy children.
- */
-bool ObjectsPanel::hasDummyChildren(Gtk::TreeModel::ConstRow const &row) const
-{
-    for (auto &c : row.children()) {
-        if (isDummy(c)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/**
  * If the given row has dummy children, remove them.
- * @pre Eiter all, or no children are dummies
+ * @pre Either all, or no children are dummies
  * @post If the function returns true, the row has no children
  * @return False if there are children and they are not dummies
  */
@@ -1935,7 +1933,6 @@ bool ObjectsPanel::removeDummyChildren(Gtk::TreeModel::Row row)
         auto const iter = row.get_iter();
         Gtk::TreeStore::iterator child = children.begin();
         if (!isDummy(*child)) {
-            assert(!hasDummyChildren(row));
             return false;
         }
 
@@ -2043,7 +2040,7 @@ bool ObjectsPanel::on_drag_drop(Glib::ValueBase const &/*value*/, double x, doub
             return true;
         }
     }
-    
+
     auto drop_repr = getRepr(*_store->get_iter(path));
     bool const drop_into = pos != Gtk::TreeView::DropPosition::BEFORE && //
                            pos != Gtk::TreeView::DropPosition::AFTER;

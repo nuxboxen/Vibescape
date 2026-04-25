@@ -36,6 +36,7 @@
 #include "style.h"
 #include "ui/builder-utils.h"
 #include "ui/icon-names.h"
+#include "ui/knot/knot.h"
 #include "ui/tools/gradient-tool.h"
 #include "ui/util.h"
 #include "ui/widget/drop-down-list.h"
@@ -203,7 +204,7 @@ void gr_get_dt_selected_gradient(Inkscape::Selection *selection, std::vector<SPG
 /*
  * Get the current selection and dragger status from the desktop
  */
-void gr_read_selection( Inkscape::Selection *selection,
+bool gr_read_selection( Inkscape::Selection *selection,
                         GrDrag *drag,
                         SPGradient *&gr_selected,
                         bool &gr_multi,
@@ -213,6 +214,7 @@ void gr_read_selection( Inkscape::Selection *selection,
     if (drag && !drag->selected.empty()) {
         // GRADIENTFIXME: make this work for more than one selected dragger?
         GrDragger *dragger = *(drag->selected.begin());
+        bool is_dragging = dragger->knot->is_dragging();
         for(auto draggable : dragger->draggables) { //for all draggables of dragger
             SPGradient *gradient = sp_item_gradient_get_vector(draggable->item, draggable->fill_or_stroke);
             SPGradientSpread spread = sp_item_gradient_get_spread(draggable->item, draggable->fill_or_stroke);
@@ -236,7 +238,7 @@ void gr_read_selection( Inkscape::Selection *selection,
                 }
             }
          }
-        return;
+        return is_dragging;
     }
 
    // If no selected dragger, read desktop selection
@@ -297,6 +299,8 @@ void gr_read_selection( Inkscape::Selection *selection,
             }
         }
     }
+
+    return false;
 }
 
 } // namespace
@@ -718,7 +722,12 @@ void GradientToolbar::_update()
         bool gr_multi = false;
         bool spr_multi = false;
 
-        gr_read_selection(selection, drag, gr_selected, gr_multi, spr_selected, spr_multi);
+        bool is_dragging = gr_read_selection(selection, drag, gr_selected, gr_multi, spr_selected, spr_multi);
+
+        // No need to update toolbar widgets if the knot is being dragged
+        if (is_dragging) {
+            return;
+        }
 
         // Gradient selection menu
         int gradient = gr_vector_list(_gradient_store, _desktop, selection->isEmpty(), gr_selected, gr_multi);

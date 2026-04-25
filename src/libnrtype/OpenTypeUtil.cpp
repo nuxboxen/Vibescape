@@ -31,7 +31,6 @@
 #include "io/stream/gzipstream.h"
 #include "io/stream/bufferstream.h"
 
-#include "display/cairo-utils.h"
 #include "util/delete-with.h"
 
 // Utilities used in this file

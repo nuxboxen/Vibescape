@@ -37,12 +37,20 @@ TraceResult DepixelizeTracingEngine::trace(Glib::RefPtr<Gdk::Pixbuf> const &pixb
 {
     TraceResult res;
 
+    auto const img = ::Depixelize::Image{
+        .pixels = std::as_const(*pixbuf).get_pixels(), // as_const necessary to opt into non-COW overload
+        .n_channels = pixbuf->get_n_channels(),
+        .width = pixbuf->get_width(),
+        .height = pixbuf->get_height(),
+        .rowstride = pixbuf->get_rowstride()
+    };
+
     ::Depixelize::Splines splines;
 
     if (traceType == TraceType::VORONOI) {
-        splines = ::Depixelize::to_voronoi(pixbuf, *params);
+        splines = ::Depixelize::to_voronoi(img, *params);
     } else {
-        splines = ::Depixelize::to_splines(pixbuf, *params);
+        splines = ::Depixelize::to_splines(img, *params);
     }
 
     progress.report_or_throw(0.5);

@@ -182,8 +182,8 @@ unsigned int PrintEmf::begin(Inkscape::Extension::Print *mod, SPDocument *doc)
     float dwInchesX = d.width();
     float dwInchesY = d.height();
 
-    // dwInchesX x dwInchesY in micrometer units, 1200 dpi/25.4 -> dpmm
-    (void) drawing_size((int) ceil(dwInchesX * 25.4), (int) ceil(dwInchesY * 25.4),1200.0/25.4, &rclBounds, &rclFrame);
+    // dwInchesX x dwInchesY in 100th of millimeter units, 1200 dpi/25.4 -> dpmm
+    (void) drawing_size_100th((int) ceil(dwInchesX * 25.4 * 100.), (int) ceil(dwInchesY * 25.4 * 100.),1200.0/25.4, &rclBounds, &rclFrame);
 
     // set up the reference device as 100 X A4 horizontal, (1200 dpi/25.4 -> dpmm).  Extra digits maintain dpi better in EMF
     int MMX = 216;
@@ -356,7 +356,7 @@ int PrintEmf::create_brush(SPStyle const *style, PU_COLORREF fcolor)
             fill_mode = DRAW_PAINT;
 #if 0
 // opacity not supported by EMF
-            float opacity = SP_SCALE24_TO_FLOAT(style->fill_opacity.value);
+            float opacity = style->fill_opacity.as_double();
             if (opacity <= 0.0) {
                 opacity = 0.0;    // basically the same as no fill
             }

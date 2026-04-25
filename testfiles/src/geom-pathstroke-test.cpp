@@ -121,6 +121,10 @@ TEST_F(GeomPathstrokeTest, PathvFullyContainsTest)
     ASSERT_FALSE(pathv_fully_contains(Geom::Path{arc},
                                       Geom::Path{Geom::Rect::from_xywh(0, -1, 2, 2)},
                                       fill_nonZero));
+
+    // Regression test for Issue #6067
+    EXPECT_FALSE(pathv_fully_contains(parse_svgd("M 474.48 517.5600000000001 z"),
+                                      parse_svgd("M 325.98 286.0800000000001 z"), fill_nonZero));
 }
 
 TEST_F(GeomPathstrokeTest, SplitNonintersectingTest)

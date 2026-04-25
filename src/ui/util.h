@@ -16,6 +16,8 @@
 #include <ranges>
 #include <boost/iterator/iterator_facade.hpp>
 #include <gtkmm/notebook.h>
+#include <gtkmm/button.h>
+#include <gtkmm/gestureclick.h>
 #include <2geom/rect.h>
 
 class SPObject;
@@ -64,6 +66,7 @@ void reveal_widget(Gtk::Widget *widget, bool show);
 bool is_widget_effectively_visible(Gtk::Widget const *widget);
 
 namespace Inkscape::UI {
+class DefocusTarget;
 
 void set_icon_sizes(Gtk::Widget *parent, int pixel_size);
 void set_icon_sizes(GtkWidget *parent, int pixel_size);
@@ -186,12 +189,18 @@ inline auto notebook_pages(Gtk::Notebook &notebook)
 [[nodiscard]] bool is_descendant_of(Gtk::Widget const &descendant, Gtk::Widget const &ancestor);
 [[nodiscard]] bool contains_focus(Gtk::Widget &widget);
 
+// set defocus target on all spinbuttons in a container/dialog/panel
+void set_defocus_target(Gtk::Widget* panel, DefocusTarget* target);
+
 [[nodiscard]] int get_font_size(Gtk::Widget &widget);
 
 // If max_width_chars is > 0, then the created Label has :max-width-chars set to
 // that limit, the :ellipsize mode is set to the passed-in @a mode, & a ::query-
 // tooltip handler is connected to show the label as the tooltip when ellipsized
 void ellipsize(Gtk::Label &label, int max_width_chars, Pango::EllipsizeMode mode);
+
+/// Close the parent popover of @a widget, if one exists.
+void close_parent_popover(Gtk::Widget &widget);
 
 } // namespace Inkscape::UI
 
@@ -205,6 +214,8 @@ Gdk::RGBA change_alpha(const Gdk::RGBA& color, double new_alpha);
 /// Calculate luminance of an RGBA color from its RGB in range 0 to 1 inclusive.
 /// This uses the perceived brightness formula given at: https://www.w3.org/TR/AERT/#color-contrast
 double get_luminance(const Gdk::RGBA &color);
+
+GdkRGBA get_color(Gtk::Widget const &widget);
 
 // Get CSS color for a Widget, based on its current state & a given CSS class.
 // N.B.!! Big GTK devs donʼt think changing classes should work ‘within a frame’
@@ -229,16 +240,6 @@ Cairo::Matrix geom_to_cairo(const Geom::Affine &affine);
 Geom::IntPoint dimensions(const Cairo::RefPtr<Cairo::ImageSurface> &surface);
 Geom::IntPoint dimensions(const Gdk::Rectangle &allocation);
 
-template <typename T>
-inline Gdk::Graphene::Rect geom_to_gtk(Geom::GenericRect<T> const &rect) {
-    return Gdk::Graphene::Rect(rect.left(), rect.top(), rect.width(), rect.height());
-}
-inline Gdk::Graphene::Point geom_to_gtk(Geom::IntPoint const &point) {
-    return Gdk::Graphene::Point(point.x(), point.y());
-}
-inline Gdk::Graphene::Point geom_to_gtk(Geom::Point const &point) {
-    return Gdk::Graphene::Point(point.x(), point.y());
-}
 Geom::Affine gtk_to_2geom(graphene_matrix_t const &mat);
 
 // create a gradient with multiple steps to approximate profile described by given cubic spline
@@ -300,6 +301,41 @@ Geom::Affine compute_transform(Gtk::Widget const &widget, Gtk::Widget const &tar
  * but is necessary when accessing Gdk::Event::get_position() or Gdk::Event::get_history() directly.
  */
 Geom::Affine get_event_transform(Glib::RefPtr<Gdk::Surface const> const &event_surface, Gtk::Widget const &target);
+
+namespace Inkscape::UI {
+
+/**
+ * Connect a button click handler that receives keyboard modifier state.
+ *
+ * This function creates a GestureClick controller for the given button and connects
+ * it to a callback that receives the modifier state when the button is clicked.
+ *
+ * @param button The button to connect the controller to
+ * @param callback A callable that accepts Gdk::ModifierType parameter
+ *
+ * Example usage:
+ * @code
+ * connect_click_with_state(button, [](Gdk::ModifierType state) {
+ *     if (Controller::has_flag(state, Gdk::ModifierType::SHIFT_MASK)) {
+ *         // Handle Shift+Click
+ *     } else {
+ *         // Handle normal click
+ *     }
+ * });
+ * @endcode
+ */
+template<typename Callback>
+void connect_click_with_state(Gtk::Button& button, Callback&& callback) {
+    auto click = Gtk::GestureClick::create();
+    click->set_propagation_phase(Gtk::PropagationPhase::CAPTURE);
+    click->signal_released().connect([callback = std::forward<Callback>(callback), click = click.get()](int, double, double) {
+        auto state = click->get_current_event_state();
+        callback(state);
+    });
+    button.add_controller(click);
+}
+
+} // namespace Inkscape::UI
 
 #endif // UI_UTIL_SEEN
 

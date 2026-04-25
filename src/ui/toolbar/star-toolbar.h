@@ -97,6 +97,7 @@ private:
     void rounded_value_changed();
     void randomized_value_changed();
     void length_value_changed();
+    void _turn_upright();
     void _setDefaults();
     void _selectionChanged(Selection *selection);
     void _selectionModified(Selection *selection);

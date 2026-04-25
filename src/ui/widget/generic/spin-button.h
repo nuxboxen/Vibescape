@@ -97,6 +97,8 @@ public:
     void set_context_menu_callback(const std::function<bool ()>& callback) { _context_menu_call = callback; }
     // Should pressing enter/return activate the default widget
     void set_activates_default(bool setting =  true);
+    // format number
+    static std::string format_number(double value, int precision, bool trim_zeros, bool limit_size);
 
 private:
     void construct();
@@ -192,7 +194,7 @@ private:
     int _icon_width = 0;
     bool _enable_arrows = true;
     sigc::scoped_connection _spinning;
-    DefocusTarget *_defocus_target = nullptr;
+    DefocusTarget* _defocus_target = nullptr;
     bool _dont_evaluate = false; // turn off expression evaluator?
     bool _enter_exit_edit = false;
     Glib::RefPtr<Gdk::Cursor> _old_cursor;

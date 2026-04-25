@@ -52,6 +52,7 @@ SvgFontDrawingArea::SvgFontDrawingArea()
 
 void SvgFontDrawingArea::set_svgfont(SvgFont* svgfont){
     _svgfont = svgfont;
+    queue_draw();
 }
 
 void SvgFontDrawingArea::set_text(Glib::ustring text){
@@ -72,8 +73,13 @@ void SvgFontDrawingArea::redraw(){
 void SvgFontDrawingArea::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
                                    int /*width*/, int /*height*/)
 {
-  if (!_svgfont) return;
-
+    if (!_svgfont){
+        cr->save();
+        cr->set_operator(Cairo::Context::Operator::CLEAR);
+        cr->paint();
+        cr->restore();
+        return;
+    } 
     cr->set_font_face( Cairo::RefPtr<Cairo::FontFace>(new Cairo::FontFace(_svgfont->get_font_face(), false /* does not have reference */)) );
     cr->set_font_size (_y-20);
     cr->move_to (10, 10);
@@ -309,22 +315,27 @@ Glib::ustring GlyphMenuButton::get_active_text() const
 void SvgFontsDialog::on_kerning_value_changed(){
     if (_update.pending()) return;
 
-    auto font = get_selected_spfont();
-    if (!get_selected_kerning_pair() || !font) {
+    SPGlyphKerning* pair = get_selected_kerning_pair();
+    if (!pair) {
+        return;
+    }
+
+    SPFont* font = get_selected_spfont();
+    if (!font) {
         return;
     }
 
     //TODO: I am unsure whether this is the correct way of calling SPDocumentUndo::maybe_done
     Glib::ustring undokey = "svgfonts:hkern:k:";
-    undokey += kerning_pair->u1->attribute_string();
+    undokey += pair->u1->attribute_string();
     undokey += ":";
-    undokey += kerning_pair->u2->attribute_string();
+    undokey += pair->u2->attribute_string();
 
     //slider values increase from right to left so that they match the kerning pair preview
 
     //XML Tree being directly used here while it shouldn't be.
-    kerning_pair->setAttribute("k", Glib::Ascii::dtostr(font->horiz_adv_x - kerning_slider->get_value()));
-    DocumentUndo::maybeDone(getDocument(), undokey.c_str(), RC_("Undo", "Adjust kerning value"), "");
+    pair->setAttribute("k", Glib::Ascii::dtostr(font->horiz_adv_x - kerning_slider->get_value()));
+    DocumentUndo::maybeDone(getDocument(), undokey.c_str(), RC_("Undo","Adjust kerning value"),"");
 
     kerning_preview.redraw();
     _font_da.redraw();
@@ -608,10 +619,10 @@ void SvgFontsDialog::on_kerning_pair_selection_changed(){
     str += kern->u2->sample_glyph();
 
     kerning_preview.set_text(str);
-    this->kerning_pair = kern;
-
-    //slider values increase from right to left so that they match the kerning pair preview
-    kerning_slider->set_value(get_selected_spfont()->horiz_adv_x - kern->k);
+    if(get_selected_spfont()){
+   	    //slider values increase from right to left so that they match the kerning pair preview
+   	    kerning_slider->set_value(get_selected_spfont()->horiz_adv_x - kern->k);
+    }
 }
 
 void SvgFontsDialog::update_global_settings_tab(){
@@ -641,19 +652,29 @@ void SvgFontsDialog::update_global_settings_tab(){
 void SvgFontsDialog::font_selected(SvgFont* svgfont, SPFont* spfont) {
     // in update
     auto scoped(_update.block());
-
+    
     first_glyph.update(spfont);
     second_glyph.update(spfont);
     kerning_preview.set_svgfont(svgfont);
+    kerning_preview.set_visible(svgfont != nullptr);
+    kerning_preview.redraw();
     _font_da.set_svgfont(svgfont);
+    _font_da.set_visible(svgfont != nullptr);
     _font_da.redraw();
     _glyph_renderer->set_svg_font(svgfont);
     _glyph_cell_renderer->set_svg_font(svgfont);
+
+    _kerning_slider_conn.disconnect();
+
+    _kerning_slider_conn = kerning_slider->signal_value_changed().connect(
+        sigc::mem_fun(*this, &SvgFontsDialog::on_kerning_value_changed));
+    _kerning_slider_conn.block();
 
     kerning_slider->set_range(0, spfont ? spfont->horiz_adv_x : 0);
     kerning_slider->set_draw_value(false);
     kerning_slider->set_value(0);
 
+    _kerning_slider_conn.unblock();
     update_global_settings_tab();
     populate_glyphs_box();
     populate_kerning_pairs_box();
@@ -1495,50 +1516,82 @@ Gtk::Box* SvgFontsDialog::glyphs_tab() {
 }
 
 void SvgFontsDialog::add_kerning_pair() {
-    if (first_glyph.get_active_text() == "" ||
-        second_glyph.get_active_text() == "") return;
+    if (first_glyph.get_active_text().empty() ||
+        second_glyph.get_active_text().empty()) return;
+
+    auto *font = get_selected_spfont();
+    if (!font || !font->getRepr()) {
+        return;
+    }
+
+    const char u1 = first_glyph.get_active_text()[0];
+    const char u2 = second_glyph.get_active_text()[0];
+
+    //TODO: It is not really correct to get only the first byte of each string.
+    //TODO: We should also support vertical kerning
+
     //look for this kerning pair on the currently selected font
-    this->kerning_pair = nullptr;
-    for (auto& node: get_selected_spfont()->children) {
-        //TODO: It is not really correct to get only the first byte of each string.
-        //TODO: We should also support vertical kerning
-        if(is<SPHkern>(&node) &&
-           (static_cast<SPGlyphKerning*>(&node))->u1->contains((gchar) first_glyph.get_active_text().c_str()[0]) &&
-           (static_cast<SPGlyphKerning*>(&node))->u2->contains((gchar) second_glyph.get_active_text().c_str()[0])) {
-            this->kerning_pair = static_cast<SPGlyphKerning*>(&node);
+    for (auto &node : font->children) {
+        if (!is<SPHkern>(&node)) {
+            continue;
+        }
+
+        auto *pair = cast<SPGlyphKerning>(&node);
+        if (!pair || !pair->u1 || !pair->u2) {
+            continue;
+        }
+
+        if (pair->u1->contains(u1) && pair->u2->contains(u2)) {
+            // Found existing pair → select it
+            if (auto selection = _KerningPairsList.get_selection()) {
+                _KerningPairsListStore->foreach_iter(
+                    [&](Gtk::TreeModel::iterator const &it) {
+                        if (it->get_value(_KerningPairsListColumns.spnode) == pair) {
+                            selection->select(it);
+                            return true; // stop iteration
+                        }
+                        return false;
+                    }
+                );
+            }
             return;
         }
     }
-
-
-    Inkscape::XML::Document *xml_doc = getDocument()->getReprDoc();
+    auto *xml_doc = getDocument()->getReprDoc();
+    if (!xml_doc) {
+        return;
+    }
 
     // create a new hkern node
-    Inkscape::XML::Node *repr = xml_doc->createElement("svg:hkern");
+    auto *repr = xml_doc->createElement("svg:hkern");
 
     repr->setAttribute("u1", first_glyph.get_active_text());
     repr->setAttribute("u2", second_glyph.get_active_text());
     repr->setAttribute("k", "0");
 
     // Append the new hkern node to the current font
-    get_selected_spfont()->getRepr()->appendChild(repr);
+    font->getRepr()->appendChild(repr);
     Inkscape::GC::release(repr);
 
-    // get corresponding object
-    kerning_pair = cast<SPHkern>(getDocument()->getObjectByRepr(repr));
+    // Retrieve created object safely
+    auto *obj = getDocument()->getObjectByRepr(repr);
+    auto *new_pair = cast<SPGlyphKerning>(obj);
+    if (!new_pair) {
+        return;
+    }
 
     // select newly added pair
     if (auto selection = _KerningPairsList.get_selection()) {
-        _KerningPairsListStore->foreach_iter([=, this](Gtk::TreeModel::iterator const &it) {
-            if (it->get_value(_KerningPairsListColumns.spnode) == kerning_pair) {
+        _KerningPairsListStore->foreach_iter([&](Gtk::TreeModel::iterator const &it) {
+            if (it->get_value(_KerningPairsListColumns.spnode) == new_pair) {
                 selection->select(it);
                 return true; // stop
             }
             return false; // continue
         });
     }
-
-    DocumentUndo::done(getDocument(), RC_("Undo", "Add kerning pair"), "");
+    
+    DocumentUndo::done(getDocument(), RC_("Undo", "Add kerning pair"), Glib::ustring{});
 }
 
 Gtk::Box* SvgFontsDialog::kerning_tab(){
@@ -1733,10 +1786,14 @@ SvgFontsDialog::~SvgFontsDialog() = default;
 void SvgFontsDialog::documentReplaced()
 {
     _defs_observer_connection.disconnect();
+    
     if (auto document = getDocument()) {
         _defs_observer.set(document->getDefs());
         _defs_observer_connection = _defs_observer.signal_changed().connect([this](auto, auto){ update_fonts(false); });
-    }
+    } else {
+        _font_da.set_svgfont(nullptr);
+        kerning_preview.set_svgfont(nullptr);
+     }
     update_fonts(true);
 }
 

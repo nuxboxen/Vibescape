@@ -39,6 +39,7 @@
 #include "snap-candidate.h"                          // for SnapCandidatePoint
 #include "snap-preferences.h"                        // for SnapPreferences
 #include "text-editing.h"
+#include "style-text.h"
 
 #include "sp-desc.h"
 #include "sp-rect.h"
@@ -492,7 +493,7 @@ void SPText::_buildLayoutInit()
     if (style) {
 
         // Strut
-        auto font = FontFactory::get().FaceFromStyle(style);
+        auto font = ink_font_from_style(style);
         if (font) {
             font->FontMetrics(layout.strut.ascent, layout.strut.descent, layout.strut.xheight);
         }

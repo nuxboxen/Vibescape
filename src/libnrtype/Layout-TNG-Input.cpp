@@ -19,7 +19,7 @@
 #endif
 
 #include "Layout-TNG.h"
-#include "style.h"
+#include "style-text.h"
 #include "svg/svg-length.h"
 #include "font-factory.h"
 

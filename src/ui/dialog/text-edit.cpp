@@ -186,6 +186,8 @@ TextEdit::TextEdit()
         }
     });
 
+    set_defocus_target(this, this);
+
     on_page_changed(nullptr, 0);
 }
 

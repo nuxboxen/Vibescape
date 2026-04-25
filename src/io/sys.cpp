@@ -22,7 +22,6 @@
 #include <glib/gstdio.h>
 #include <glibmm/ustring.h>
 
-#include "preferences.h"
 #include "sys.h"
 
 //#define INK_DUMP_FILENAME_CONV 1

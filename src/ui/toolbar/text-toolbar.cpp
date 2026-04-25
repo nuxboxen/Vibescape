@@ -52,10 +52,9 @@
 #include "ui/tools/text-tool.h"
 #include "ui/util.h"
 #include "ui/widget/combo-box-entry-tool-item.h"
-#include "ui/widget/combo-tool-item.h"
 #include "ui/widget/spinbutton.h"
 #include "ui/widget/unit-tracker.h"
-#include "util-string/ustring-format.h"
+#include "ui/widget/generic/number-combo-box.h"
 #include "util/font-collections.h"
 #include "widgets/style-utils.h"
 
@@ -92,48 +91,6 @@ void recursively_set_properties(SPObject *object, SPCSSAttr *css, bool unset_des
     sp_repr_css_attr_unref(css_unset);
 }
 
-Glib::RefPtr<Gtk::ListStore> create_sizes_store_uncached(int unit)
-{
-    // List of font sizes for dropdown menu
-    constexpr int sizes[] = {
-        4, 6, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28,
-        32, 36, 40, 48, 56, 64, 72, 144
-    };
-
-    // Array must be same length as SPCSSUnit in style.h
-    constexpr float ratios[] = {1, 1, 1, 10, 4, 40, 100, 16, 8, 0.16};
-
-    struct Columns : Gtk::TreeModelColumnRecord
-    {
-        Gtk::TreeModelColumn<Glib::ustring> str;
-        Columns() { add(str); }
-    };
-    static Columns const columns;
-
-    auto store = Gtk::ListStore::create(columns);
-
-    for (int i : sizes) {
-        store->append()->set_value(columns.str, ustring::format_classic(i / ratios[unit]));
-    }
-
-    return store;
-}
-
-/**
- * Create a ListStore containing the default list of font sizes scaled for the given unit.
- */
-Glib::RefPtr<Gtk::ListStore> create_sizes_store(int unit)
-{
-    static std::unordered_map<int, Glib::RefPtr<Gtk::ListStore>> cache;
-
-    auto &result = cache[unit];
-
-    if (!result) {
-        result = create_sizes_store_uncached(unit);
-    }
-
-    return result;
-}
 
 // TODO: possibly share with font-selector by moving most code to font-lister (passing family name)
 void sp_text_toolbox_select_cb(Gtk::Entry const &entry)
@@ -299,23 +256,22 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
 
     // Font size
     int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
+    _previous_unit = unit;
     auto unit_str = sp_style_get_css_unit_string(unit);
     auto tooltip = Glib::ustring::format(_("Font size"), " (", unit_str, ")");
 
-    _font_size_item = Gtk::manage(new UI::Widget::ComboBoxEntryToolItem(
-        "TextFontSizeAction",
-        _("Font Size"),
-        tooltip,
-        create_sizes_store(unit),
-        5, // Width in characters
-        0, // Extra list width
-        {}, // Cell layout
-        {} // Separator
-    ));
+    _font_size_item = Gtk::make_managed<UI::Widget::NumberComboBox>();
+    _font_size_item->set_name("TextFontSizeAction");
+    _font_size_item->set_tooltip_text(tooltip);
+    _font_size_item->set_menu_options(sp_style_get_default_font_size_list(unit));
+    auto& entry = _font_size_item->get_entry();
+    entry.set_min_size("9999");
+    entry.set_digits(3);
+    int max_size = prefs->getInt("/dialogs/textandfont/maxFontSize", 10000);
+    entry.set_range(0.001, max_size);
 
-    _font_size_item->connectChanged([this] { fontsize_value_changed(); });
-    _font_size_item->focus_on_click(false);
-    _font_size_item->setDefocusWidget(this);
+    _font_size_item->signal_value_changed().connect([this](auto size) { fontsize_value_changed(size); });
+    _font_size_item->get_entry().setDefocusTarget(this);
 
     get_widget<Gtk::Box>(builder, "font_size_box").append(*_font_size_item);
 
@@ -517,7 +473,7 @@ void TextToolbar::fontfamily_value_changed()
     }
 }
 
-void TextToolbar::fontsize_value_changed()
+void TextToolbar::fontsize_value_changed(double size)
 {
     // quit if run by the _changed callbacks
     if (_freeze) {
@@ -525,19 +481,8 @@ void TextToolbar::fontsize_value_changed()
     }
     _freeze = true;
 
-    auto active_text = _font_size_item->get_active_text();
-    char const *text = active_text.c_str();
-    char *endptr;
-    double size = g_strtod(text, &endptr);
-    if (endptr == text) { // Conversion failed, non-numeric input.
-        g_warning("Conversion of size text to double failed, input: %s\n", text);
-        _freeze = false;
-        return;
-    }
-
     auto prefs = Preferences::get();
     int max_size = prefs->getInt("/dialogs/textandfont/maxFontSize", 10000); // somewhat arbitrary, but text&font preview freezes with too huge fontsizes
-
     size = std::min<double>(size, max_size);
 
     // Set css font size.
@@ -1266,6 +1211,9 @@ void TextToolbar::fontsize_unit_changed()
     temp_size_stream << 1 << unit->abbr;
     temp_size.read(temp_size_stream.str().c_str());
     Preferences::get()->setInt("/options/font/unitType", temp_size.unit);
+
+    // refresh font size and list of font sizes after unit change
+    _selectionChanged(nullptr);
 }
 
 void TextToolbar::wordspacing_value_changed()
@@ -1568,28 +1516,26 @@ void TextToolbar::_selectionChanged(Selection *selection) // don't bother to upd
         auto unit_str = sp_style_get_css_unit_string(unit);
         Glib::ustring tooltip = Glib::ustring::format(_("Font size"), " (", unit_str, ")");
 
-        _font_size_item->set_tooltip(tooltip.c_str());
+        _font_size_item->set_tooltip_text(tooltip.c_str());
 
-        CSSOStringStream os;
         // We don't want to parse values just show
 
         _tracker_fs->setActiveUnitByAbbr(sp_style_get_css_unit_string(unit));
         int rounded_size = std::round(size);
         if (std::abs((size - rounded_size)/size) < 0.0001) {
             // We use rounded_size to avoid rounding errors when, say, converting stored 'px' values to displayed 'pt' values.
-            os << rounded_size;
             selection_fontsize = rounded_size;
         } else {
-            os << size;
             selection_fontsize = size;
         }
 
-        // Freeze to ignore callbacks.
-        //g_object_freeze_notify( G_OBJECT( fontSizeAction->combobox ) );
-        _font_size_item->set_model(create_sizes_store(unit));
-        //g_object_thaw_notify( G_OBJECT( fontSizeAction->combobox ) );
+        if (unit != _previous_unit) {
+            // No need to update menu options unless the unit is changed
+            _previous_unit = unit;
+            _font_size_item->set_menu_options(sp_style_get_default_font_size_list(unit));
+        }
 
-        _font_size_item->set_active_text( os.str().c_str() );
+        _font_size_item->set_value(selection_fontsize);
 
         // Superscript
         bool superscriptSet =

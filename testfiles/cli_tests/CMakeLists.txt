@@ -1090,6 +1090,13 @@ add_cli_test(actions-sequential-export-id-only_svg
              OUTPUT_FILENAME actions-sequential-export-id-only.svg
              REFERENCE_FILENAME export-id_export-id-only_expected.svg)
 
+# EMF exports should be exact to a 100th of a milimeter (not increase to the next highest whole millimeter)
+# https://gitlab.com/inkscape/inkscape/-/issues/8300
+add_cli_test(export-emf-100thmm 
+             INPUT_FILENAME emf-100thmm.svg
+             PARAMETERS --export-type=emf --export-extension=org.inkscape.output.emf
+             OUTPUT_FILENAME export-emf-100thmm.emf
+             REFERENCE_FILENAME export-emf-100thmm_expected.emf)
 
 ###########################
 ### pdf input support   ###

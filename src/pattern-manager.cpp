@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <2geom/symbolic/matrix.h>
+#include <2geom/affine.h>
 #include <cairomm/surface.h>
 #include <gtkmm/liststore.h>
 #include <glibmm/i18n.h>
 
+#include "colors/color.h"
 #include "pattern-manager.h"
 #include "pattern-manipulation.h"
 #include "document.h"
 #include "manipulation/copy-resource.h"
 #include "style.h"
-#include "2geom/symbolic/matrix.h"
 #include "object/sp-pattern.h"
 #include "object/sp-defs.h"
 #include "object/sp-hatch.h"

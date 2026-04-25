@@ -329,8 +329,12 @@ void GradientEditor::set_repeat_mode(SPGradientSpread mode) {
 }
 
 void GradientEditor::set_repeat_icon(SPGradientSpread mode) {
-    auto icon = std::get<2>(sp_get_spread_repeats()[mode]);
-    _repeat_mode_btn.set_icon_name(icon);
+    for (auto [repeat_mode, _label, icon_name] : sp_get_spread_repeats()) {
+        if (mode == repeat_mode) {
+             _repeat_mode_btn.set_icon_name(icon_name);
+             break;
+        }
+    }
 }
 
 void GradientEditor::setGradient(SPGradient* gradient) {

@@ -197,7 +197,7 @@ notebook.blink > header > tabs > tab:checked {
 }
 
 .mono-font {
-    /* note: monospaced font is set by ThemeContext::adjust_global_font_scale() */
+    /* note: monospaced font is set by ThemeContext::applyMonospacedFont() */
 }
 
 /*
@@ -1852,6 +1852,10 @@ padding:0 1px;
     padding: 0px;
     background: transparent;
     border: none;
+}
+
+text-combobox .menuitem {
+    min-height: 1.75em;
 }
 
 #FontList indent {

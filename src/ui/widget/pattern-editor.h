@@ -12,6 +12,7 @@
 
 #include "pattern-manager.h"
 #include "ink-property-grid.h"
+#include "resizing-separator.h"
 #include "generic/spin-button.h"
 #include "object/sp-paint-server.h"
 #include "ui/operation-blocker.h"
@@ -73,6 +74,8 @@ public:
     double get_selected_rotation();
     double get_selected_pitch();
     double get_selected_thickness();
+    // enable resizing separator
+    void set_separator_visible(bool visible) { _separator.set_visible(visible); }
 private:
     sigc::signal<void ()> _signal_changed;
     sigc::signal<void (Colors::Color const &)> _signal_color_changed;
@@ -129,7 +132,8 @@ private:
     Gtk::SearchEntry2& _search_box;
     Gtk::Scale& _tile_slider;
     Gtk::CheckButton& _show_names;
-    Glib::RefPtr<Gtk::TreeModel> _categories;
+    ResizingSeparator& _separator;
+    int _list_height = 200;
     bool _scale_linked = true;
     bool _uniform_supported = true;
     Glib::ustring _prefs;

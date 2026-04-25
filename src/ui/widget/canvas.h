@@ -169,10 +169,10 @@ private:
     sigc::scoped_connection blinking;
 
     // EventControllerKey
-    bool on_key_pressed (Gtk::EventControllerKey const &controller,
-                         unsigned keyval, unsigned keycode, Gdk::ModifierType state);
-    void on_key_released(Gtk::EventControllerKey const &controller,
-                         unsigned keyval, unsigned keycode, Gdk::ModifierType state);
+    bool on_key_pressed(Gtk::EventControllerKey &controller, unsigned keyval, unsigned keycode,
+                        Gdk::ModifierType state);
+    void on_key_released(Gtk::EventControllerKey &controller, unsigned keyval, unsigned keycode,
+                         Gdk::ModifierType state);
 
     void on_realize() final;
     void on_unrealize() final;

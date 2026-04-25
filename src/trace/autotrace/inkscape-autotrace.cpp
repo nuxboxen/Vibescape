@@ -20,14 +20,12 @@
 #include "util/safe-printf.h"
 
 extern "C" {
-#include "3rdparty/autotrace/autotrace.h"
-#include "3rdparty/autotrace/output.h"
-#include "3rdparty/autotrace/spline.h"
+#include <autotrace/autotrace.h>
+#include <autotrace/output.h>
+#include <autotrace/spline.h>
 }
 
-namespace Inkscape {
-namespace Trace {
-namespace Autotrace {
+namespace Inkscape::Trace::Autotrace {
 namespace {
 
 struct at_splines_deleter { void operator()(at_splines_type *p) { at_splines_free(p); }; };
@@ -211,9 +209,7 @@ void AutotraceTracingEngine::setErrorThreshold(float error_threshold)
     opts->error_threshold = error_threshold;
 }
 
-} // namespace Autotrace
-} // namespace Trace
-} // namespace Inkscape
+} // namespace Inkscape::Trace::Autotrace
 
 /*
   Local Variables:

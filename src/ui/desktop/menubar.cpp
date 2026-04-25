@@ -126,8 +126,8 @@ void build_menu()
             return;
         }
 
-        auto recent_files = Inkscape::getInkscapeRecentFiles(max_files);
-        auto shortened_path_map = Inkscape::getShortenedPathMap(recent_files);
+        auto recent_files = Inkscape::IO::getInkscapeRecentFiles(max_files);
+        auto shortened_path_map = Inkscape::IO::getShortenedPathMap(recent_files);
         auto regex = Glib::Regex::create("_");
 
         int inserted_entries = 0;

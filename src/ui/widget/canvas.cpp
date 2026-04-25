@@ -1132,8 +1132,8 @@ void Canvas::on_focus_out()
     _signal_focus_out.emit();
 }
 
-bool Canvas::on_key_pressed(Gtk::EventControllerKey const &controller,
-                            unsigned keyval, unsigned keycode, Gdk::ModifierType state)
+bool Canvas::on_key_pressed(Gtk::EventControllerKey &controller, unsigned keyval, unsigned keycode,
+                            Gdk::ModifierType state)
 {
     _state = static_cast<int>(state);
 
@@ -1145,12 +1145,13 @@ bool Canvas::on_key_pressed(Gtk::EventControllerKey const &controller,
     event.group = controller.get_group();
     event.time = controller.get_current_event_time();
     event.orig_pos = d->last_mouse;
+    event.original = controller.get_current_event();
 
     return d->process_event(event);
 }
 
-void Canvas::on_key_released(Gtk::EventControllerKey const &controller,
-                             unsigned keyval, unsigned keycode, Gdk::ModifierType state)
+void Canvas::on_key_released(Gtk::EventControllerKey &controller, unsigned keyval, unsigned keycode,
+                             Gdk::ModifierType state)
 {
     _state = static_cast<int>(state);
 
@@ -1162,6 +1163,7 @@ void Canvas::on_key_released(Gtk::EventControllerKey const &controller,
     event.group = controller.get_group();
     event.time = controller.get_current_event_time();
     event.orig_pos = d->last_mouse;
+    event.original = controller.get_current_event();
 
     d->process_event(event);
 }

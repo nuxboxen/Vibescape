@@ -14,7 +14,7 @@
  */
 
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <utility>
 
 #include <glibmm/i18n.h>
@@ -36,38 +36,45 @@
 #include "xml/quote.h"
 
 // Returns a list of terms for the items to be used in the statusbar
-char* collect_terms (const std::vector<SPItem*> &items)
+std::pair<std::string, int> collect_terms(const std::vector<SPItem*> &items)
 {
-    std::set<Glib::ustring> check;
-    std::stringstream ss;
+    // Currently, there are roughly 25 - 40 different displayNames
+    // Hence, reserving 64 locations should suffice
+    std::unordered_set<std::string> seen;
+    seen.reserve(64);
+
+    std::string out;
+    int count = 0;
     bool first = true;
 
     for (auto item : items) {
-        if (item && item->displayName()) {
-            Glib::ustring term(item->displayName());
-            if (term != "" && (check.insert(term).second)) {
-                ss << (first ? "" : ", ") << "<b>" << term.raw() << "</b>";
-                first = false;
-            }
+        if (!item) {
+            continue;
         }
-    }
-    return g_strdup(ss.str().c_str());
-}
 
-// Returns the number of terms in the list
-static int count_terms (const std::vector<SPItem*> &items)
-{
-    std::set<Glib::ustring> check;
-    int count=0;
-    for (auto item : items) {
-        if (item && item->displayName()) {
-            Glib::ustring term(item->displayName());
-            if (term != "" && (check.insert(term).second)) {
-                count++;
+        auto name = item->displayName();
+        if (!name || !*name) {
+            continue;
+        }
+
+        std::string term(name);
+
+        if (seen.insert(term).second) {
+            count++;
+
+            if (!first) {
+                out += ", ";
             }
+
+            first = false;
+
+            out += "<b>";
+            out += term;
+            out += "</b>";
         }
     }
-    return count;
+
+    return {out, count};
 }
 
 // Returns the number of filtered items in the list
@@ -99,12 +106,10 @@ SelectionDescriber::~SelectionDescriber() = default;
 
 void SelectionDescriber::updateMessage(Inkscape::Selection *selection)
 {
-    auto items = selection->items_vector();
-
-    if (items.empty()) { // no items
+    if (selection->isEmpty()) { // no items
         _context.set(Inkscape::NORMAL_MESSAGE, _when_nothing);
     } else {
-        SPItem *item = items[0];
+        SPItem *item = selection->firstItem();
         g_assert(item != nullptr);
         SPObject *layer = selection->desktop()->layerManager().layerForObject(item);
         SPObject *root = selection->desktop()->layerManager().currentRoot();
@@ -147,8 +152,7 @@ void SelectionDescriber::updateMessage(Inkscape::Selection *selection)
         }
 
         gchar *in_phrase;
-        guint num_layers = selection->numberOfLayers();
-        guint num_parents = selection->numberOfParents();
+        auto const [num_layers, num_parents] = selection->selectionDistinctLayerAndParentCounts();
         if (num_layers == 1) {
             if (num_parents == 1) {
                 if (layer == parent)
@@ -160,15 +164,15 @@ void SelectionDescriber::updateMessage(Inkscape::Selection *selection)
                 else
                     in_phrase = g_strdup_printf(_(" in unnamed group (%s)"), layer_name);
             } else {
-                    in_phrase = g_strdup_printf(ngettext(" in <b>%i</b> parent (%s)", " in <b>%i</b> parents (%s)", num_parents), num_parents, layer_name);
+                    in_phrase = g_strdup_printf(ngettext(" in <b>%zu</b> parent (%s)", " in <b>%zu</b> parents (%s)", num_parents), num_parents, layer_name);
             }
         } else {
-            in_phrase = g_strdup_printf(ngettext(" in <b>%i</b> layer", " in <b>%i</b> layers", num_layers), num_layers);
+            in_phrase = g_strdup_printf(ngettext(" in <b>%zu</b> layer", " in <b>%zu</b> layers", num_layers), num_layers);
         }
         g_free (layer_name);
         g_free (parent_name);
 
-        if (items.size()==1) { // one item
+        if (selection->singleItem()) { // one item
             char *item_desc = item->detailedDescription();
 
             bool isUse = is<SPUse>(item);
@@ -208,16 +212,14 @@ void SelectionDescriber::updateMessage(Inkscape::Selection *selection)
 
             g_free(item_desc);
         } else { // multiple items
+            auto const items = selection->items_vector();
             int objcount = items.size();
-            char *terms = collect_terms (items);
-            int n_terms = count_terms(items);
-            
+            auto const &[types, num] = collect_terms(items);
+
             gchar *objects_str = g_strdup_printf(ngettext(
                 "<b>%1$i</b> objects selected of type %2$s",
-                "<b>%1$i</b> objects selected of types %2$s", n_terms),
-                 objcount, terms);
-
-            g_free(terms);
+                "<b>%1$i</b> objects selected of types %2$s", num),
+                 objcount, types.c_str());
 
             // indicate all, some, or none filtered
             gchar *filt_str = nullptr;

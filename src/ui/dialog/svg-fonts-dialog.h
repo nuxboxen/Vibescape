@@ -46,7 +46,7 @@ public:
     void set_svgfont(SvgFont*);
     void set_size(int x, int y);
     void redraw();
-
+    
 private:
     int _x = 0, _y = 0;
     SvgFont *_svgfont = nullptr;
@@ -172,6 +172,7 @@ private:
     SPFont* get_selected_spfont();
     SPGlyph* get_selected_glyph();
     SPGlyphKerning* get_selected_kerning_pair();
+    sigc::connection _kerning_slider_conn;
 
     void on_font_selection_changed();
     void on_kerning_pair_selection_changed();
@@ -351,7 +352,6 @@ private:
 
     SvgFontDrawingArea _font_da, kerning_preview;
     GlyphMenuButton first_glyph, second_glyph;
-    SPGlyphKerning* kerning_pair;
     Inkscape::UI::Widget::SpinButton setwidth_spin;
     Gtk::Scale* kerning_slider;
 

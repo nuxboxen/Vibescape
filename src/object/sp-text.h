@@ -18,6 +18,7 @@
 #include "sp-string.h"
 #include "text-tag-attributes.h"
 #include "libnrtype/style-attachments.h"
+#include "style.h"
 
 /* Text specific flags */
 #define SP_TEXT_CONTENT_MODIFIED_FLAG SP_OBJECT_USER_MODIFIED_FLAG_A

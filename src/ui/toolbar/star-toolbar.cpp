@@ -124,6 +124,10 @@ StarToolbar::StarToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
         btn->signal_clicked().connect(sigc::bind(sigc::mem_fun(*this, &StarToolbar::side_mode_changed), btn_index++));
     }
 
+    get_widget<Gtk::Button>(builder, "turn_upright_btn")
+        .signal_clicked()
+        .connect(sigc::mem_fun(*this, &StarToolbar::_turn_upright));
+
     get_widget<Gtk::Button>(builder, "reset_btn")
         .signal_clicked()
         .connect(sigc::mem_fun(*this, &StarToolbar::_setDefaults));
@@ -389,6 +393,11 @@ void StarToolbar::length_value_changed()
             }
         }
     }
+}
+
+void StarToolbar::_turn_upright()
+{
+    activate_action("app.object-star-turn-upright");
 }
 
 void StarToolbar::_setDefaults()

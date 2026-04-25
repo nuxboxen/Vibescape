@@ -27,6 +27,7 @@
 #include "pattern-manager.h"
 #include "pattern-manipulation.h"
 #include "ui/builder-utils.h"
+#include "ui/monitor.h"
 #include "ui/util.h"
 #include "util-string/string-compare.h"
 
@@ -44,6 +45,11 @@ int slider_to_tile(double index) {
 }
 double tile_to_slider(int tile) {
     return (tile - 30) / 5.0;
+}
+
+int get_max_list_height() {
+    static int max_height = std::max(500, get_monitor_geometry_primary().get_height() - 400);
+    return max_height;
 }
 
 } // namespace
@@ -76,8 +82,10 @@ PatternEditor::PatternEditor(const char* prefs, PatternManager& manager) :
     _tile_slider(get_widget<Gtk::Scale>(_builder, "tile-slider")),
     _show_names(get_widget<Gtk::CheckButton>(_builder, "show-names")),
     _color_picker(get_derived_widget<ColorPicker>(_builder, "color-btn", _("Pattern color"), false)),
+    _separator(get_derived_widget<ResizingSeparator>(_builder, "resize")),
     _prefs(prefs)
 {
+    _separator.set_orientation(ResizingSeparator::Orientation::Vertical);
     reparent_properties(_input_grid, _main);
     _main.set_hexpand();
 
@@ -194,6 +202,14 @@ PatternEditor::PatternEditor(const char* prefs, PatternManager& manager) :
     _paned.property_position().signal_changed().connect([this](){
         Preferences::get()->setInt(_prefs + "/handlePos", _paned.get_position());
     });
+
+    _list_height = Preferences::get()->getIntLimited(_prefs + "/listHeight", _list_height, 100, get_max_list_height());
+    _separator.resize(&_paned, Geom::Point(-1, get_max_list_height()));
+    _separator.get_signal_resized().connect([this](Geom::Point size) {
+        _list_height = size.y();
+        Preferences::get()->setInt(_prefs + "/listHeight", _list_height);
+    });
+    _paned.set_size_request(-1, _list_height);
 
     update_scale_link();
     set_vexpand();

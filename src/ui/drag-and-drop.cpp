@@ -312,19 +312,29 @@ bool on_drop(Glib::ValueBase const &value, double x, double y, SPDesktopWidget *
         // move to mouse pointer
         desktop->getDocument()->ensureUpToDate();
         if (auto const sel_bbox = selection->visualBounds()) {
-            selection->moveRelative(desktop->point() - sel_bbox->midpoint(), false);
+            selection->moveRelative(dt_pos - sel_bbox->midpoint(), false);
         }
 
         Inkscape::GC::release(newgroup);
         DocumentUndo::done(doc, RC_("Undo", "Drop SVG"), "");
         return true;
     } else if (G_VALUE_HOLDS(value.gobj(), GDK_TYPE_FILE_LIST)) {
-        auto list = reinterpret_cast<GSList *>(g_value_get_boxed(value.gobj()));
+        auto const file_list = static_cast<GdkFileList *>(g_value_get_boxed(value.gobj()));
+        auto const list = gdk_file_list_get_files(file_list);
         foreach<GFile>(list, [&] (GFile *f) {
             auto const path = g_file_get_path(f);
+            auto const uri  = g_file_get_uri(f);
             if (path && std::strlen(path) > 2) {
-                file_import(doc, path, nullptr);
+                file_import(doc, path, nullptr, dt_pos);
             }
+            else if (uri) {
+                // gtk4 on macOS provides URIs instead of local paths. Unescape and import.
+                auto const unescaped = g_uri_unescape_string(uri, nullptr);
+                file_import(doc, unescaped, nullptr, dt_pos);
+                g_free((void*)unescaped);
+            }
+            g_free(path);
+            g_free(uri);
         });
 
         return true;

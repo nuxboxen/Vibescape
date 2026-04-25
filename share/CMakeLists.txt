@@ -65,11 +65,7 @@ endif()
 
 
 # themes (git submodule!)
-install(DIRECTORY themes DESTINATION ${INKSCAPE_SHARE_INSTALL}
-    COMPONENT themes
-    PATTERN ".git*" EXCLUDE
-    PATTERN "*.md" EXCLUDE
-)
+add_subdirectory(themes)
 
 
 # appdata and desktop files, bash completions

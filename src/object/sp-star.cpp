@@ -613,6 +613,35 @@ sp_star_get_xy (SPStar const *star, SPStarPoint point, gint index, bool randomiz
     }
 }
 
+/**
+ * Turn the star upright.
+ */
+void SPStar::turn_upright()
+{
+    if (sides) {
+        auto arg1 = arg[0];
+        auto arg2 = arg[1];
+        auto delta = arg2 - arg1;
+        auto top = -M_PI / 2;
+        auto odd = sides & 1;
+        if (odd) {
+            arg1 = top;
+        } else {
+            arg1 = top - M_PI / sides;
+        }
+        arg2 = arg1 + delta;
+
+        setAttributeDouble("sodipodi:arg1", arg1);
+        setAttributeDouble("sodipodi:arg2", arg2);
+
+        // also revert rotation in transform
+        double angle = std::atan2(transform[1], transform[0]) * (180 / M_PI);
+        rotate_rel(Geom::Rotate::from_degrees(-angle));
+
+        updateRepr();
+    }
+}
+
 /*
   Local Variables:
   mode:c++

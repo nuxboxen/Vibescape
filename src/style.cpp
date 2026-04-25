@@ -23,6 +23,7 @@
 #include "style.h"
 
 #include <cstring>
+#include <ranges>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -1370,6 +1371,33 @@ sp_style_css_size_units_to_px(double size, int unit, double font_size)
     return size * (size / sp_style_css_size_px_to_units(size, unit, font_size));;
 }
 
+/**
+ * Create a vector<double> containing the default list of font sizes scaled for the given unit.
+ */
+const std::vector<double>& sp_style_get_default_font_size_list(int unit) {
+    // List of font sizes for dropdown menu
+    static constexpr int sizes[] = {
+        4, 6, 8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28,
+        32, 36, 40, 48, 56, 64, 72, 144
+    };
+    static std::vector<std::vector<double>> font_size_lists(SP_CSS_UNIT_PERCENT + 1);
+
+    double ratio = 1;
+    if (unit >= SP_CSS_UNIT_NONE && unit <= SP_CSS_UNIT_PERCENT) {
+        ratio = font_size_unit_ratios[unit];
+    }
+    else {
+        g_warning("Unexpected font size unit %d", unit);
+        unit = SP_CSS_UNIT_PX;
+    }
+
+    auto& list = font_size_lists[unit];
+    if (list.empty()) {
+        auto store = sizes | std::views::transform([&](auto n) { return n / ratio; });
+        list = {store.begin(), store.end()};
+    }
+    return list;
+}
 
 // FIXME: Everything below this line belongs in a different file - css-chemistry?
 

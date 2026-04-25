@@ -83,6 +83,12 @@ public:
     bool set_elliptical_path_attribute(Inkscape::XML::Node *repr);
     void position_set(double x, double y, double rx, double ry);
 
+    double getVisibleCx() const;
+    void setVisibleCx(double rx);
+
+    double getVisibleCy() const;
+    void setVisibleCy(double ry);
+
     double getVisibleRx() const;
     void setVisibleRx(double rx);
 

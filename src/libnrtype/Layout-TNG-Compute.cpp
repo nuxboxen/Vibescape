@@ -21,7 +21,7 @@
 #include "livarot/Shape.h"
 #include "object/sp-flowdiv.h"
 #include "object/sp-object.h"
-#include "style.h"
+#include "style-text.h"
 #include "svg/svg-length.h"
 
 namespace Inkscape {
@@ -1250,7 +1250,7 @@ unsigned Layout::Calculator::_buildSpansForPara(ParagraphInfo *para) const
                     }
                     if (style) {
                         new_span.font_size = style->font_size.computed * _flow.getTextLengthMultiplierDue();
-                        auto font = FontFactory::get().FaceFromStyle(style);
+                        auto font = ink_font_from_style(style);
                         new_span.line_height_multiplier = _computeFontLineHeight(style);
                         new_span.line_height.set(font.get());
                         new_span.line_height *= new_span.font_size;
