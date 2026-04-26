@@ -20,8 +20,6 @@
 #include "font-instance.h"
 #include "livarot/Shape.h"
 
-#include "preferences.h"
-
 #include "object/sp-flowdiv.h"
 #include "object/sp-object.h"
 #include "style-text.h"
@@ -1373,9 +1371,7 @@ unsigned Layout::Calculator::_buildSpansForPara(ParagraphInfo *para) const
                                      &para->pango_items[pango_item_index].item->analysis,
                                      new_span.glyph_string);
 
-                    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-                    bool debug_color_fonts = prefs->getBool("/options/rendering/debug_color_fonts");
-                    if (debug_color_fonts) {
+                    if (FontInstance::debug_color_fonts) {
                         printf("Layout::Calculator::_buildSpansForPara: %*.*s\n", new_span.text_bytes, new_span.text_bytes,
                            para->text.data() + para_text_index);
                     }

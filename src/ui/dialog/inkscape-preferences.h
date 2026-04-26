@@ -384,6 +384,8 @@ protected:
     UI::Widget::PrefCheckButton _canvas_debug_animate;
     UI::Widget::PrefCheckButton _canvas_debug_glyph_boxes;
     UI::Widget::PrefCheckButton _canvas_debug_color_fonts;
+    UI::Widget::PrefCheckButton _canvas_debug_cairo_fonts;
+    std::unique_ptr<Preferences::PreferencesObserver> _debug_color_fonts;
 
     UI::Widget::PrefCheckButton _trans_scale_stroke;
     UI::Widget::PrefCheckButton _trans_scale_corner;

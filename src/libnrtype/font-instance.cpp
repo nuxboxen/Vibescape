@@ -49,8 +49,6 @@
 #include <2geom/pathvector.h>
 #include <2geom/path-sink.h>
 
-#include "preferences.h"
-
 /*
  * Outline extraction
  */
@@ -237,8 +235,6 @@ uint32_t compose_tag(Glib::ustring tag_name) {
 
 void FontInstance::init_face()
 {
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    bool debug_color_fonts = prefs->getBool("/options/rendering/debug_color_fonts");
     if (debug_color_fonts) {
       std::cout << "FontInstance::init_face: " << pango_font_description_to_string(descr) << ":" << std::endl;
     }
@@ -455,9 +451,6 @@ FontGlyph const *FontInstance::LoadGlyph(unsigned int glyph_id)
 
     auto n_g = std::make_unique<FontGlyph>();
     
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    bool debug_color_fonts = prefs->getBool("/options/rendering/debug_color_fonts");
-
     if (debug_color_fonts) {
         // For debugging
         const unsigned int MAX_CHAR = 65; // Maximum length + 1 per OpenType spec.

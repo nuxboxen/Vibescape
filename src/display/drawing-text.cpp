@@ -633,6 +633,10 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
         bool debug_color_fonts = prefs->getBool("/options/rendering/debug_color_fonts");
         bool debug_glyph_boxes = prefs->getBool("/options/rendering/debug_glyph_boxes");
 
+        // Cairo 1.18.4 and earlier has a deadlock issue resulting in crashes with cairo fonts.
+        bool debug_cairo_fonts = prefs->getBool("/options/rendering/debug_cairo_fonts", false);
+        bool use_cairo_fonts = (cairo_version() > CAIRO_VERSION_ENCODE(1, 18, 4)) || debug_cairo_fonts;
+
         // Accumulate the path that represents the glyphs and/or draw color glyphs.
         for (auto &i : _children) {
             auto g = cast<DrawingGlyphs>(&i);
@@ -703,8 +707,8 @@ unsigned DrawingText::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::I
                 dc.scale(1.0 / scale, -1.0 / scale);
                 dc.setSource(g->pixbuf->getSurfaceRaw(), 0, 0);
                 dc.paint(1);
-            } else if (g->has_png || g->has_layers || g->has_paint) {
-                // Other color fonts.
+            } else if ((g->has_png || g->has_layers || g->has_paint) && use_cairo_fonts) {
+                // Other color fonts. Rendered by Cairo.
                 Inkscape::DrawingContext::Save save(dc);
 
                 cairo_glyph_t glyph = { 0, 0, 0 }; // {index, x, y}

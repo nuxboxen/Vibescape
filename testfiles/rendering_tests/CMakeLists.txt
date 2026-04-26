@@ -14,6 +14,7 @@ endfunction()
 
 find_package(PkgConfig REQUIRED)
 pkg_search_module(HARFBUZZ REQUIRED harfbuzz)
+pkg_search_module(CAIRO REQUIRED cairo)
 
 # Add your test here (do not put the .svg extension)
 
@@ -79,4 +80,9 @@ endif()
 # custom .otf font with SVG glyphs for testing various edge cases
 add_rendering_test(text-svg-glyph-custom FUZZ 0.3)
 
-add_rendering_test(color-font-test FUZZ 0.1)
+# Cairo 1.18.4 and earlier have a deadlock issue.
+if(${CAIRO_VERSION} VERSION_GREATER_EQUAL "1.18.5")
+  add_rendering_test(color-font-test FUZZ 0.1)
+else()
+  message(STATUS "Disabled color-font-test, need Cairo 1.18.5 or later")
+endif()

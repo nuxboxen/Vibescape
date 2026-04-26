@@ -224,6 +224,9 @@ private:
     };
 
     std::shared_ptr<Data> data;
+
+public:
+    inline static bool debug_color_fonts = false;
 };
 
 #endif // LIBNRTYPE_FONT_INSTANCE_H
