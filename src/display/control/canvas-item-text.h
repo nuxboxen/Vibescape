@@ -21,6 +21,7 @@
 #include <2geom/transforms.h>
 
 #include <glibmm/ustring.h>
+#include <pangomm/layout.h>
 #include <pangomm/rectangle.h>
 
 #include "canvas-item.h"
@@ -63,6 +64,7 @@ protected:
     void _render(Inkscape::CanvasItemBuffer &buf) const override;
 
     Geom::Point _p;  // Position of text (not box around text).
+    Glib::RefPtr<Pango::Layout> _layout;
     Pango::Rectangle _text_extents;
     Geom::Point _anchor_position;
     Geom::Point _adjust_offset;
@@ -77,7 +79,7 @@ protected:
     bool _use_background = true;
     bool _scaled = false;
 
-    Geom::Rect load_text_extents();
+    Geom::Rect draw_text_and_return_extents();
 };
 
 } // namespace Inkscape
