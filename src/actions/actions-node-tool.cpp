@@ -91,6 +91,19 @@ node_nodes_delete(InkscapeWindow* win)
     node_tool->_multipath->deleteNodes((Inkscape::UI::NodeDeleteMode)prefs->getInt("/tools/node/delete-mode-default", (int)Inkscape::UI::NodeDeleteMode::automatic));
 }
 
+void node_simplify(InkscapeWindow* win)
+{
+    auto const tool = win->get_desktop()->getTool();
+    auto node_tool = dynamic_cast<Inkscape::UI::Tools::NodeTool*>(tool);
+    if (!node_tool) {
+        show_output("node_simplify: tool is not Node tool!");
+        return;
+    }
+
+    double epsilon = 2.0 / win->get_desktop()->current_zoom();
+    node_tool->_multipath->simplifyInvisible(epsilon);
+}
+
 void
 node_nodes_join(InkscapeWindow* win)
 {
@@ -181,6 +194,7 @@ std::vector<std::vector<Glib::ustring>> raw_data_node_tool =
     {"win.node-nodes-break",             N_("Nodes break"),                    SECTION, N_("Break path between selected nodes"                       )},
     {"win.node-segments-join",           N_("Segments join"),                  SECTION, N_("Join selected end nodes with a new segment"              )},
     {"win.node-segments-delete",         N_("Segments break"),                 SECTION, N_("Delete segment between two non-end nodes"                )},
+    {"win.node-simplify",                N_("Simplify path"),                  SECTION, N_("Join selected nodes which are very close together"       )},
 
     {"win.node-nodes-to-cusp",           N_("Nodes to cusp"),                  SECTION, N_("Convert selected nodes to corner nodes"                  )},
     {"win.node-nodes-to-smooth",         N_("Nodes to smooth"),                SECTION, N_("Convert selected nodes to smooth nodes"                  )},
@@ -212,6 +226,7 @@ add_actions_node_tool(InkscapeWindow* win)
     win->add_action(   "node-nodes-break",          sigc::bind(sigc::ptr_fun(&node_nodes_break),          win)                                     );
     win->add_action(   "node-segments-join",        sigc::bind(sigc::ptr_fun(&node_segments_join),        win)                                     );
     win->add_action(   "node-segments-delete",      sigc::bind(sigc::ptr_fun(&node_segments_delete),      win)                                     );
+    win->add_action(   "node-simplify",             sigc::bind(sigc::ptr_fun(&node_simplify),             win)                                     );
 
     win->add_action(   "node-nodes-to-cusp",        sigc::bind(sigc::ptr_fun(&node_set_node_type),        win, Inkscape::UI::NODE_CUSP)            );
     win->add_action(   "node-nodes-to-smooth",      sigc::bind(sigc::ptr_fun(&node_set_node_type),        win, Inkscape::UI::NODE_SMOOTH)          );

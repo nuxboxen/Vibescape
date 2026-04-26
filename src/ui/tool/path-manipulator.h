@@ -89,6 +89,7 @@ public:
     void insertNode(NodeList::iterator first, double t, bool take_selection);
     void duplicateNodes();
     void copySelectedPath(Geom::PathBuilder *builder);
+    void simplifyInvisible(double threshold);
     void weldNodes(NodeList::iterator preserve_pos = NodeList::iterator());
     void weldSegments();
     void breakNodes() { breakNodes(true); }

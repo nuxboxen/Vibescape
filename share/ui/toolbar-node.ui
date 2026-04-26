@@ -92,6 +92,19 @@
       </object>
     </child>
     <child>
+      <object class="GtkButton" id="simplify_btn">
+        <property name="valign">center</property>
+        <property name="focusable">True</property>
+        <property name="focus-on-click">False</property>
+        <property name="action-name">win.node-simplify</property>
+        <property name="has-frame">False</property>
+        <property name="icon-name">node-simplify</property>
+        <style>
+            <class name="priority2"/>
+        </style>
+      </object>
+    </child>
+    <child>
       <object class="GtkButton" id="break_btn">
         <property name="valign">center</property>
         <property name="focusable">True</property>

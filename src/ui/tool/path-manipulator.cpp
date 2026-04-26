@@ -422,6 +422,86 @@ void PathManipulator::copySelectedPath(Geom::PathBuilder *builder)
     builder->flush();
 }
 
+void PathManipulator::simplifyInvisible(double threshold)
+{
+    auto tr = _getTransform().inverse();
+    auto is_small = [threshold, tr](NodeList::iterator const &from, NodeList::iterator const &end) {
+        // Build a path for the segment between the two interators and measure it's length
+        Geom::PathBuilder builder;
+        builder.moveTo(from->position());
+        for (auto next_node = from; next_node && next_node != end; next_node.advance()) {
+            next_node->build_segment(builder, &*next_node.next());
+        }
+        builder.flush();
+
+        for (auto &path : builder.peek()) {
+            auto len = Geom::length(Geom::paths_to_pw(path) * tr);
+            return len <= threshold;
+        }
+        return true;
+    };
+
+    if (_selection.size() < 2)
+        return;
+    hideDragPoint();
+
+    for (auto sp : _subpaths) {
+        NodeList::iterator begin = sp->begin();
+
+        if (sp->closed()) {
+            // Find a good starting point by skipping the first node IF it would
+            // join with the end of the path as a tiny segment (and thus be removed)
+            while (begin && begin->selected() && (begin.prev() && is_small(begin.prev(), begin))) {
+                begin++;
+            }
+        }
+
+        while (begin) {
+            NodeList::iterator start;
+            NodeList::iterator end;
+            Geom::OptRect area;
+
+            for (auto node = begin; node != begin.prev() && node->selected() && node.next(); node.advance()) {
+                bool valid = node.next()->selected() && is_small(node, node.next());
+
+                if (valid && !start) {
+                    // The use of OptRect here is needed because there isn't a "Point List" Geom object
+                    // and initalising the Geom::Rect above would cause it to include 0,0
+                    area = Geom::Rect(node->position(), node->position());
+                    start = node;
+                } else if (start) {
+                    area->expandTo(node->position());
+                    if (!valid) {
+                        end = node;
+                        break;
+                    }
+                }
+            }
+
+            if (start && end) {
+                auto new_pos = area->midpoint();
+
+                start->setType(NODE_CUSP, false);
+                start->setPosition(new_pos);
+
+                // do not move handles if they aren't degenerate
+                if (!end->front()->isDegenerate()) {
+                    // This is the exit handle for the bezier, we move it very slightly
+                    // by the same amount as the delta between the sel_end and the new_pos
+                    start->front()->setPosition(end->front()->position() - (end->position() - new_pos));
+                }
+
+                begin = end.next();
+                for (auto to_delete = end; to_delete != start; to_delete = to_delete.prev()) {
+                    sp->erase(to_delete);
+                }
+            } else {
+                begin++;
+            }
+        }
+    }
+}
+
 /** Replace contiguous selections of nodes in each subpath with one node. */
 void PathManipulator::weldNodes(NodeList::iterator preserve_pos)
 {
