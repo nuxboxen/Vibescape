@@ -63,6 +63,7 @@ void sp_style_set_ipaint_to_uri(SPStyle *style, SPIPaint *paint, const Inkscape:
 void sp_style_set_ipaint_to_uri_string (SPStyle *style, SPIPaint *paint, const gchar *uri);
 
 using Inkscape::CSSOStringStream;
+namespace Colors = Inkscape::Colors;
 
 // SPIBase --------------------------------------------------------------
 
@@ -1461,7 +1462,7 @@ bool SPIColor::canHaveCMS() const
     return style && style->document;
 }
 
-Inkscape::Colors::DocumentCMS const &SPIColor::getCMS() const
+Colors::DocumentCMS const &SPIColor::getCMS() const
 {
     if (!style || !style->document) {
         g_error("Can not get Document CMS manager.");
@@ -1477,23 +1478,23 @@ SPIColor& SPIColor::operator=(const SPIColor& rhs)
     return *this;
 }
 
-SPIColor& SPIColor::operator=(const Inkscape::Colors::Color &rhs)
+SPIColor& SPIColor::operator=(const Colors::Color &rhs)
 {
     auto copy = rhs;
     setColor(copy);
     return *this;
 }
 
-void SPIColor::setColor(Inkscape::Colors::Color const &other)
+void SPIColor::setColor(Colors::Color const &other)
 {
     currentcolor = false;
     _color = other;
     set = true;
 }
 
-Inkscape::Colors::Color const &SPIColor::getColor() const
+Colors::Color const &SPIColor::getColor() const
 {
-    static auto default_color = Inkscape::Colors::Color(0x0); // Transparent RGB black
+    static auto default_color = Colors::Color(0x0); // Transparent RGB black
     return _color ? *_color : default_color;
 }
 
@@ -1529,7 +1530,7 @@ void SPIColor::read(gchar const *str)
                     g_error("CMS color '%s' not parsed, no CMS document available.", str);
                 }
             }
-            _color = Inkscape::Colors::Color::parse(str);
+            _color = Colors::Color::parse(str);
         }
         set = (bool)_color;
     }
@@ -1600,7 +1601,7 @@ bool SPIColorInterpolation::canHaveCMS() const
     return style && style->document;
 }
 
-Inkscape::Colors::DocumentCMS const &SPIColorInterpolation::getCMS() const
+Colors::DocumentCMS const &SPIColorInterpolation::getCMS() const
 {
     if (!style || !style->document) {
         g_error("Can not get Document CMS manager.");
@@ -1615,7 +1616,7 @@ void SPIColorInterpolation::read(gchar const *str)
         if (canHaveCMS()) {
             _color_space = getCMS().findSvgColorSpace(str);
         } else {
-            _color_space = Inkscape::Colors::Manager::get().findSvgColorSpace(str);
+            _color_space = Colors::Manager::get().findSvgColorSpace(str);
         }
     }
 }
@@ -1661,7 +1662,7 @@ bool SPIPaint::canHaveCMS() const
     return style && style->document;
 }
 
-Inkscape::Colors::DocumentCMS const &SPIPaint::getCMS() const
+Colors::DocumentCMS const &SPIPaint::getCMS() const
 {
     if (!style || !style->document) {
         g_error("Can not get Document CMS manager.");
@@ -1759,7 +1760,7 @@ SPIPaint::read( gchar const *str ) {
                 // which case a value of 'currentColor' is meaningless, thus we shouldn't reach
                 // here.
                 std::cerr << "SPIPaint::read(): value is 'currentColor' but 'color' not available." << std::endl;
-                setColor(Inkscape::Colors::Color(0x000000ff));
+                setColor(Colors::Color(0x000000ff));
             }
         } else if (streq(str, "context-fill")) {
             set = true;
@@ -1772,7 +1773,7 @@ SPIPaint::read( gchar const *str ) {
         } else if (streq(str, "none")) {
             set = true;
             noneSet = true;
-        } else if (auto color = canHaveCMS() ? getCMS().parse(str) : Inkscape::Colors::Color::parse(str)) {
+        } else if (auto color = canHaveCMS() ? getCMS().parse(str) : Colors::Color::parse(str)) {
             set = true;
             _color = color;
         }
@@ -1811,15 +1812,15 @@ const Glib::ustring SPIPaint::get_value() const
     return ret;
 }
 
-void SPIPaint::setColor(Inkscape::Colors::Color const &other)
+void SPIPaint::setColor(Colors::Color const &other)
 {
     _color = other;
     set = true;
 }
 
-Inkscape::Colors::Color const &SPIPaint::getColor() const
+Colors::Color const &SPIPaint::getColor() const
 {
-    static auto default_color = Inkscape::Colors::Color(0x0); // Transparent RGB black
+    static auto default_color = Colors::Color(0x0); // Transparent RGB black
     if (_color)
         return *_color;
     return default_color;
@@ -1845,7 +1846,7 @@ SPIPaint::reset( bool init ) {
     href.reset();
 
     if (init && id() == SPAttr::FILL) {
-        _color = Inkscape::Colors::Color(0x000000ff); // 'black' is default for 'fill'
+        _color = Colors::Color(0x000000ff); // 'black' is default for 'fill'
     }
 }
 
