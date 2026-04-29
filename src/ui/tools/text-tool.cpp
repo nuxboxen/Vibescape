@@ -101,10 +101,6 @@ TextTool::TextTool(SPDesktop *desktop)
 
     _resetBlinkTimer();
 
-    // When the constructor is run, it means that the Text tool is switched to.
-    // Activate the cursor blinking in response.
-    _showCursor();
-
     imc = gtk_im_multicontext_new();
     if (imc) {
         auto canvas = _desktop->getCanvas();
@@ -1540,6 +1536,7 @@ void TextTool::_updateCursor(bool scroll_to_see)
         }
 
         cursor->set_coords(d0, d1);
+        _showCursor();
 
         /* fixme: ... need another transformation to get canvas widget coordinate space? */
         if (imc) {
