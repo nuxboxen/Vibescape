@@ -1540,6 +1540,7 @@ void TextTool::_updateCursor(bool scroll_to_see)
         }
 
         cursor->set_coords(d0, d1);
+        _showCursor();
 
         /* fixme: ... need another transformation to get canvas widget coordinate space? */
         if (imc) {
