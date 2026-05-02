@@ -93,7 +93,6 @@ private:
     double item_x;
     double item_y;
     double item_length;
-    double _tooltip_border_size = 3.0;
     SPItem *over;
     auto_connection _knot_start_moved_connection;
     auto_connection _knot_start_ungrabbed_connection;
