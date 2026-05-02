@@ -15,8 +15,6 @@
  */
 
 #include <2geom/line.h>
-#include <pangomm/fontdescription.h>
-#include <pangomm/layout.h>
 
 #include "canvas-item-guideline.h"
 #include "canvas-item-ctrl.h"
@@ -162,15 +160,9 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
         ctx->translate(aligned_origin.x(), aligned_origin.y());
 
         ctx->rotate(atan2(normal.cw()) + M_PI * (_context->yaxisdown() ? 1 : 0));
-        ctx->translate(LABEL_SEP, -(_origin_ctrl->radius() + 2 * FONT_SIZE)); // Offset
+        ctx->translate(0, -(_origin_ctrl->radius() + LABEL_SEP)); // Offset by dot radius + 2
         ctx->move_to(0, 0);
-
-        // Call Pango to render text with fallback fonts
-        auto layout = Pango::Layout::create(ctx);
-        layout->set_font_description(Pango::FontDescription(Glib::ustring::compose("Sans %1", FONT_SIZE)));
-        layout->set_text(_label);
-        layout->show_in_cairo_context(ctx);
-
+        ctx->show_text(_label);
         ctx->restore();
     }
 
