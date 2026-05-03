@@ -16,16 +16,18 @@
 #define SEEN_OBJECTS_PANEL_H
 
 #include <gtkmm/gesture.h>
+#include <gtkmm/scrolledwindow.h>
 #include <gtkmm/treerowreference.h>
 #include <gtkmm/treeview.h>
+#include <memory>
 
+#include "colors/color-set.h"
 #include "object/weakptr.h"
+#include "preferences.h"
 #include "selection.h"
 #include "style-enums.h"
 #include "ui/dialog/dialog-base.h"
-#include "ui/widget/color-notebook.h"
 #include "ui/widget/generic/popover-bin.h"
-#include "ui/widget/preferences-widget.h"
 #include "ui/widget/style-subject.h"
 
 namespace Glib {
@@ -55,7 +57,11 @@ class SPObject;
 
 namespace Inkscape::UI {
 
-namespace Widget { class ImageToggler; }
+namespace Widget {
+class ImageToggler;
+class ColorNotebook;
+class PrefCheckButton;
+} // namespace Widget
 
 namespace Dialog {
 
@@ -218,9 +224,66 @@ private:
     UI::Widget::PrefCheckButton& _setting_track;
     bool _drag_flip;
 
+    void _onObjectsPanelRebuild(bool suppress);
+    bool _ongoingRebuild() const;
+    int _rebuild_suspend_count = 0;
+    sigc::scoped_connection _objects_panel_rebuild_connection;
+
     bool _selectionChanged();
     sigc::scoped_connection _idle_connection;
 };
+
+/**
+ * Helper class to reduce ObjectsPanel computation load, useful when doing
+ * large document tree changes.
+ *
+ * On instantiation, its internal SPDocument will signal ObjectsPanel to
+ * clear everthing and ignore document changes.
+ * On destruction, its internal SPDocument will signal ObjectsPanel to
+ * rebuild itself using the current document tree.
+ *
+ * This is a GTK3-specific workaround. When porting ObjectsPanel to GTK4,
+ * reevaluate the usage of this class.
+ */
+class ObjectsPanelRebuildGuard
+{
+public:
+    explicit ObjectsPanelRebuildGuard(SPDocument &doc);
+    ObjectsPanelRebuildGuard() = delete;
+    ObjectsPanelRebuildGuard(ObjectsPanelRebuildGuard &&other) noexcept;
+    ObjectsPanelRebuildGuard(ObjectsPanelRebuildGuard const &) = delete;
+    ObjectsPanelRebuildGuard &operator=(ObjectsPanelRebuildGuard const &) = delete;
+    ObjectsPanelRebuildGuard &operator=(ObjectsPanelRebuildGuard &&) = delete;
+    ~ObjectsPanelRebuildGuard();
+
+private:
+    SPDocument *_doc = nullptr;
+};
+
+/**
+ * Instantiate an ObjectsPanelRebuildGuard only if necessary.
+ *
+ * The expensive cost of ObjectsPanel rebuild is due to the reparenting of
+ * group members, each reparent taking linear time of the ObjectsPanel size.
+ * If there is one or less SPItem to reparent, we skip creating the guard
+ * to avoid rebuilding costs.
+ */
+template <std::ranges::input_range R>
+    requires std::convertible_to<std::ranges::range_reference_t<R>, SPGroup const *>
+std::optional<ObjectsPanelRebuildGuard> getObjectsPanelRebuildGuard(R &&groups, SPDocument &doc)
+{
+    unsigned num_items_to_reparent = 0;
+    for (auto group : groups) {
+        num_items_to_reparent += group->children.template size<SPItemAggregate>();
+    }
+
+    std::optional<ObjectsPanelRebuildGuard> guard;
+    if (num_items_to_reparent > 1) {
+        guard.emplace(doc);
+    }
+
+    return guard;
+}
 
 } //namespace Dialog
 

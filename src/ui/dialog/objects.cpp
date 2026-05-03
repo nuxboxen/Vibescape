@@ -14,7 +14,9 @@
 
 #include "objects.h"
 
+#include <gdkmm/rgba.h>
 #include <glibmm/main.h>
+#include <gtk/gtk.h>
 #include <gtkmm/dragsource.h>
 #include <gtkmm/droptarget.h>
 #include <gtkmm/eventcontrollerkey.h>
@@ -23,7 +25,12 @@
 #include <gtkmm/scale.h>
 #include <gtkmm/searchentry2.h>
 #include <gtkmm/separator.h>
+#include <gtkmm/treeiter.h>
+#include <gtkmm/treerowreference.h>
 #include <gtkmm/treestore.h>
+#include <cassert>
+#include <unordered_map>
+#include <vector>
 
 #include "desktop.h"
 #include "display/translucency-group.h"
@@ -32,6 +39,7 @@
 #include "filter-chemistry.h"
 #include "inkscape-window.h"
 #include "layer-manager.h"
+#include "object/sp-item.h"
 #include "object/sp-root.h"
 #include "style.h"
 #include "svg/css-ostringstream.h"
@@ -43,9 +51,11 @@
 #include "ui/util.h"
 #include "ui/widget-vfuncs-class-init.h"
 #include "ui/widget/canvas.h"
+#include "ui/widget/color-notebook.h"
 #include "ui/widget/filter-effect-chooser.h"
 #include "ui/widget/imagetoggler.h"
 #include "ui/widget/objects-dialog-cells.h"
+#include "ui/widget/preferences-widget.h"
 #include "ui/widget/shapeicon.h"
 #include "util/numeric/converters.h"
 
@@ -169,8 +179,8 @@ public:
     void moveChild(Node &child, Node *sibling);
     bool isFiltered() const { return is_filtered; }
 
-    Gtk::TreeNodeChildren getChildren() const;
-    Gtk::TreeModel::iterator getChildIter(Node *) const;
+    Gtk::TreeNodeChildren getChildren();
+    Gtk::TreeModel::iterator getChildIter(Node *);
 
     void notifyChildRemoved(Node &, Node &, Node *) final;
     void notifyChildOrderChanged(Node &, Node &child, Node *, Node *) final;
@@ -197,6 +207,17 @@ public:
 
     /// True if this watchr has a valid row reference.
     bool hasRow() const { return bool(row_ref); }
+    std::optional<Gtk::TreeIter<Gtk::TreeRow>> getIter()
+    {
+        if (row_ref_cache)
+            return row_ref_cache;
+        if (auto path = row_ref.get_path())
+            if(auto iter = panel->_store->get_iter(path)) {
+                row_ref_cache = iter;
+                return iter;
+            }
+        return {};
+    }
 
     /// Transfer a child watcher to its new parent
     void transferChild(Node *childnode)
@@ -211,12 +232,9 @@ public:
 
     /// The XML node associated with this watcher.
     Node *getRepr() const { return node; }
-    std::optional<Gtk::TreeRow> getRow() const {
-        if (auto path = row_ref.get_path()) {
-            if(auto iter = panel->_store->get_iter(path)) {
-                return *iter;
-            }
-        }
+    std::optional<Gtk::TreeRow> getRow() {
+        if (auto iter = getIter())
+            return *iter.value();
         return std::nullopt;
     }
 
@@ -225,6 +243,7 @@ public:
 private:
     Node *node;
     Gtk::TreeModel::RowReference row_ref;
+    Gtk::TreeIter<Gtk::TreeRow> row_ref_cache;
     ObjectsPanel *panel;
     SelectionState selection_state;
     bool is_filtered;
@@ -291,6 +310,7 @@ ObjectWatcher::ObjectWatcher(ObjectsPanel* panel, SPItem* obj, Gtk::TreeRow *row
     if(row != nullptr) {
         assert(row->children().empty());
         setRow(*row);
+        row_ref_cache = row->get_iter();
         initRowInfo();
         updateRowInfo();
     }
@@ -309,10 +329,16 @@ ObjectWatcher::ObjectWatcher(ObjectsPanel* panel, SPItem* obj, Gtk::TreeRow *row
 ObjectWatcher::~ObjectWatcher()
 {
     node->removeObserver(*this);
+    if (panel->_ongoingRebuild()) {
+        child_watchers.clear();
+        return;
+    }
+
     Gtk::TreeModel::Path path;
     if (bool(row_ref) && (path = row_ref.get_path())) {
-        if (auto iter = panel->_store->get_iter(path)) {
-            panel->_store->erase(iter);
+        if (auto iter = getIter()) {
+            panel->_store->erase(iter.value());
+            // row_ref_cache stale, to be destroyed automatically
         }
     }
     child_watchers.clear();
@@ -321,7 +347,7 @@ ObjectWatcher::~ObjectWatcher()
 void ObjectWatcher::initRowInfo()
 {
     auto const _model = panel->_model.get();
-    auto row = *panel->_store->get_iter(row_ref.get_path());
+    auto row = getRow().value();
     row[_model->_colHover] = false;
 }
 
@@ -335,7 +361,7 @@ void ObjectWatcher::updateRowInfo()
         assert(row_ref.get_path());
 
         auto const _model = panel->_model.get();
-        auto row = *panel->_store->get_iter(row_ref.get_path());
+        auto row = getRow().value();
         row[_model->_colNode] = node;
 
         // show ids without "#"
@@ -384,7 +410,7 @@ void ObjectWatcher::updateRowHighlight() {
     }
 
     if (auto item = cast<SPItem>(panel->getObject(node))) {
-        auto row = *panel->_store->get_iter(row_ref.get_path());
+        auto row = getRow().value();
         auto new_color = item->highlight_color().toRGBA();
         if (new_color != row[panel->_model->_colIconColor]) {
             row[panel->_model->_colIconColor] = new_color;
@@ -401,7 +427,7 @@ void ObjectWatcher::updateRowHighlight() {
  */
 void ObjectWatcher::updateRowAncestorState(bool invisible, bool locked) {
     auto const _model = panel->_model.get();
-    auto row = *panel->_store->get_iter(row_ref.get_path());
+    auto row = getRow().value();
     row[_model->_colAncestorInvisible] = invisible;
     row[_model->_colAncestorLocked] = locked;
     for (auto &watcher : child_watchers) {
@@ -419,16 +445,21 @@ Gdk::RGBA selection_color;
 void ObjectWatcher::updateRowBg(guint32 rgba)
 {
     assert(row_ref);
-    if (auto row = *panel->_store->get_iter(row_ref.get_path())) {
+    if (auto row = getRow()) {
+        auto col = panel->_model->_colBgColor;
+        auto old_color = row->get_value(col);
         auto alpha = SELECTED_ALPHA[selection_state];
         if (alpha == 0.0) {
-            row[panel->_model->_colBgColor] = Gdk::RGBA();
+            auto transparent = Gdk::RGBA();
+            if (!old_color.gobj() || old_color != transparent)
+                row->set_value(col, transparent);
             return;
         }
 
         const auto& sel = selection_color;
         const auto gdk_color = change_alpha(sel, sel.get_alpha() * alpha);
-        row[panel->_model->_colBgColor] = gdk_color;
+        if (!old_color.gobj() || old_color != gdk_color)
+            row->set_value(col, gdk_color);
     }
 }
 
@@ -513,6 +544,7 @@ bool ObjectWatcher::addChild(SPItem *child, bool dummy)
     if (!is_filtered && dummy && row_ref) {
         if (children.empty()) {
             auto const iter = panel->_store->append(children);
+            row_ref_cache = {};
             assert(panel->isDummy(*iter));
             return true;
         } else if (panel->isDummy(children[0])) {
@@ -523,11 +555,12 @@ bool ObjectWatcher::addChild(SPItem *child, bool dummy)
     auto *node = child->getRepr();
     assert(node);
     Gtk::TreeModel::Row row = *(panel->_store->prepend(children));
+    row_ref_cache = {};
 
     // Ancestor states are handled inside the list store (so we don't have to re-ask every update)
     auto const _model = panel->_model.get();
     if (row_ref) {
-        auto parent_row = *panel->_store->get_iter(row_ref.get_path());
+        auto parent_row = getRow().value();
         row[_model->_colAncestorInvisible] = parent_row[_model->_colAncestorInvisible] || parent_row[_model->_colInvisible];
         row[_model->_colAncestorLocked] = parent_row[_model->_colAncestorLocked] || parent_row[_model->_colLocked];
     } else {
@@ -591,11 +624,11 @@ void ObjectWatcher::moveChild(Node &child, Node *sibling)
  *
  * @returns Gtk Tree Node Children iterator
  */
-Gtk::TreeNodeChildren ObjectWatcher::getChildren() const
+Gtk::TreeNodeChildren ObjectWatcher::getChildren()
 {
     Gtk::TreeModel::Path path;
     if (row_ref && (path = row_ref.get_path())) {
-        return panel->_store->get_iter(path)->children();
+        return getRow()->children();
     }
     assert(!row_ref);
     return panel->_store->children();
@@ -607,7 +640,7 @@ Gtk::TreeNodeChildren ObjectWatcher::getChildren() const
  * @param child - The child object to find in this branch
  * @returns Gtk TreeRow for the child, or end() if not found
  */
-Gtk::TreeModel::iterator ObjectWatcher::getChildIter(Node *node) const
+Gtk::TreeModel::iterator ObjectWatcher::getChildIter(Node *node)
 {
     auto childrows = getChildren();
 
@@ -626,6 +659,9 @@ Gtk::TreeModel::iterator ObjectWatcher::getChildIter(Node *node) const
 
 void ObjectWatcher::notifyChildAdded( Node &node, Node &child, Node *prev )
 {
+    if (panel->_ongoingRebuild())
+        return;
+
     assert(this->node == &node);
     // Ignore XML nodes which are not displayable items
     if (auto item = cast<SPItem>(panel->getObject(&child))) {
@@ -643,8 +679,8 @@ void ObjectWatcher::notifyChildRemoved( Node &node, Node &child, Node* /*prev*/ 
 
     if (node.firstChild() == nullptr) {
         assert(row_ref);
-        auto iter = panel->_store->get_iter(row_ref.get_path());
-        panel->removeDummyChildren(*iter);
+        auto row = getRow().value();
+        panel->removeDummyChildren(row);
     }
 }
 void ObjectWatcher::notifyChildOrderChanged( Node &parent, Node &child, Node */*old_prev*/, Node *new_prev )
@@ -1089,6 +1125,14 @@ void ObjectsPanel::desktopReplaced()
 
 void ObjectsPanel::documentReplaced()
 {
+    _objects_panel_rebuild_connection.disconnect();
+    _rebuild_suspend_count = 0;
+
+    if (auto doc = getDocument()) {
+        _objects_panel_rebuild_connection =
+            doc->connectBulkChange(sigc::mem_fun(*this, &ObjectsPanel::_onObjectsPanelRebuild));
+    }
+
     setRootWatcher();
 }
 
@@ -1196,9 +1240,14 @@ void ObjectsPanel::selectionChanged(Selection *selected /* not used */)
 bool ObjectsPanel::_selectionChanged()
 {
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+
+    if (!_ongoingRebuild())
+        _tree.set_visible(false); // prevent rendering callbacks during change
+
     root_watcher->setSelectedBitRecursive(SELECTED_OBJECT, false);
     root_watcher->setSelectedBitRecursive(GROUP_SELECT_CHILD, false);
     bool keep_current_item = false;
+    ObjectWatcher *focus_target = nullptr, *scroll_target = nullptr;
 
     for (auto item : getSelection()->items()) {
         keep_current_item |= (item == current_item);
@@ -1214,18 +1263,21 @@ bool ObjectsPanel::_selectionChanged()
                 watcher = child_watcher;
             }
 
-            {
-                if (prefs->getBool("/dialogs/objects/expand_to_layer", true)) {
-                    _tree.expand_to_path(focus_watcher->getTreePath());
-                    if (!_scroll_lock) {
-                        _tree.scroll_to_row(watcher->getTreePath(), 0.5);
-                    }
-                }
+            if (!_ongoingRebuild() && prefs->getBool("/dialogs/objects/expand_to_layer", true)) {
+                focus_target = focus_watcher;
+                scroll_target = watcher;
             }
         }
     }
     if (!keep_current_item) {
         current_item = nullptr;
+    }
+    if (!_ongoingRebuild()) {
+        if (prefs->getBool("/dialogs/objects/expand_to_layer", true) && !_scroll_lock && scroll_target) {
+            _tree.expand_to_path(focus_target->getTreePath());
+            _tree.scroll_to_row(scroll_target->getTreePath(), 0.5);
+        }
+        _tree.set_visible(true);
     }
     _scroll_lock = false;
 
@@ -2246,6 +2298,50 @@ void ObjectsPanel::_searchActivated()
 {
     // The root watcher and watcher tree handles the search operations
     setRootWatcher();
+}
+
+void ObjectsPanel::_onObjectsPanelRebuild(bool suppress)
+{
+    if (suppress) {
+        if (++_rebuild_suspend_count == 1) {
+            _tree.set_visible(false);
+            _tree.unset_model();
+            _store.reset();
+        }
+    } else {
+        g_return_if_fail(_rebuild_suspend_count > 0);
+
+        if (--_rebuild_suspend_count == 0) {
+            _store = Gtk::TreeStore::create(*_model);
+            setRootWatcher();
+            _tree.set_model(_store);
+            _tree.set_visible(true);
+        }
+    }
+}
+
+bool ObjectsPanel::_ongoingRebuild() const
+{
+    return _rebuild_suspend_count > 0;
+}
+
+ObjectsPanelRebuildGuard::ObjectsPanelRebuildGuard(SPDocument &doc)
+    : _doc(&doc)
+{
+    _doc->emitBulkChange(true);
+}
+
+ObjectsPanelRebuildGuard::ObjectsPanelRebuildGuard(ObjectsPanelRebuildGuard &&other) noexcept
+    : _doc(other._doc)
+{
+    other._doc = nullptr;
+}
+
+ObjectsPanelRebuildGuard::~ObjectsPanelRebuildGuard()
+{
+    if (_doc) {
+        _doc->emitBulkChange(false);
+    }
 }
 
 } // namespace Inkscape::UI::Dialog

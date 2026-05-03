@@ -27,6 +27,7 @@
 #include <cstring>
 #include <deque>
 #include <map>
+#include <optional>
 #include <ranges>
 #include <string>
 #include <glibmm/i18n.h>
@@ -89,6 +90,7 @@
 #include "text-chemistry.h"
 #include "text-editing.h"
 #include "ui/clipboard.h"
+#include "ui/dialog/objects.h"
 #include "ui/icon-names.h"
 #include "ui/tool/control-point-selection.h"
 #include "ui/tool/multi-path-manipulator.h"
@@ -903,7 +905,7 @@ static SPUse *find_clone_to_group(Objects &&objects, std::set<SPGroup *> const &
  *
  * Unlinked clones and children of ungrouped groups will be added to the object set.
  */
-static void ungroup_impl(ObjectSet *set)
+static void ungroup_impl(ObjectSet *set, SPDocument *doc)
 {
     auto groups_range = set->groups();
     auto const groups = std::set<SPGroup *>(groups_range.begin(), groups_range.end());
@@ -915,6 +917,9 @@ static void ungroup_impl(ObjectSet *set)
             set->add(unlinked, true);
         }
     }
+
+    // Anticipating expensive ungroups in the loop below
+    const auto guard = doc ? UI::Dialog::getObjectsPanelRebuildGuard(groups, *doc) : std::nullopt;
 
     std::vector<SPItem *> children;
 
@@ -940,7 +945,7 @@ void ObjectSet::ungroup(bool skip_undo)
         return;
     }
 
-    ungroup_impl(this);
+    ungroup_impl(this, document());
     if (document() && !skip_undo) {
         DocumentUndo::done(document(), RC_("Undo", "Ungroup"), INKSCAPE_ICON("object-ungroup"));
     }
@@ -3961,6 +3966,9 @@ void ObjectSet::unsetMask(const bool apply_clip_path,
             mask_item->doWriteTransform(mask_item->transform * referenced_object.second->transform);
         }
     }
+
+    // Anticipating expensive ungroups in the loop below
+    const auto guard = UI::Dialog::getObjectsPanelRebuildGuard(items_to_ungroup, *doc);
 
     // ungroup marked groups added when setting mask
     for (auto group : items_to_ungroup | std::views::reverse) {
