@@ -38,10 +38,10 @@ S<options :>
         --convert-dpi-method=MÉTHODE
         --no-convert-text-baseline-spacing
 
-    -o, --export-filename=FILENAME
+    -o, --export-filename=FICHIER
         --export-overwrite
         --export-type=TYPE[,TYPE]*
-        --export-extension=EXTENSION-ID
+        --export-extension=ID-EXTENSION
 
     -C, --export-area-page
     -D, --export-area-drawing
@@ -77,7 +77,7 @@ S<options :>
     -H, --query-height
 
         --vacuum-defs
-        --select=OBJECT-ID[,OBJECT-ID]*
+        --select=ID-OBJECT[,ID-OBJECT]*
         --actions=ACTION(:ARG)[;ACTION(:ARG)]*
         --action-list
         --actions-file=FILENAME
@@ -386,7 +386,7 @@ B<$HOME>/.config/inkscape/extensions/ - extensions.
 
 B<$HOME>/.config/inkscape/fonts/ - polices.
 
-B<$HOME>/.config/inkscape/icons/ - icon sets.
+B<$HOME>/.config/inkscape/icons/ - ensembles d'icônes.
 
 B<$HOME>/.config/inkscape/keys/ - configuration des raccourcis clavier.
 
