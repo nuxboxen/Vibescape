@@ -13,14 +13,11 @@
 #ifndef INKSCAPE_DISPLAY_DRAWING_ITEM_H
 #define INKSCAPE_DISPLAY_DRAWING_ITEM_H
 
-#include <cstdint>
 #include <exception>
-#include <list>
 #include <memory>
 #include <optional>
 #include <type_traits>
 #include <utility>
-#include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>
 #include <boost/operators.hpp>
 #include <2geom/affine.h>
@@ -29,6 +26,7 @@
 #include "colors/color.h"
 #include "style-enums.h"
 #include "tags.h"
+#include "util/ordered-list.h"
 
 namespace Glib { class ustring; }
 
@@ -136,6 +134,7 @@ public:
 
     void appendChild(DrawingItem *item);
     void prependChild(DrawingItem *item);
+    void insertChildAtZ(DrawingItem *item, unsigned zorder);
     void clearChildren();
 
     bool visible() const { return _visible; }
@@ -206,14 +205,8 @@ protected:
     Drawing &_drawing;
     DrawingItem *_parent;
 
-    using ListHook = boost::intrusive::list_member_hook<>;
-    ListHook _child_hook;
-
-    using ChildrenList = boost::intrusive::list<
-        DrawingItem,
-        boost::intrusive::member_hook<DrawingItem, ListHook, &DrawingItem::_child_hook>
-        >;
-    ChildrenList _children;
+    Util::OrderedListNode<> _child_hook;
+    Util::OrderedList<DrawingItem, &DrawingItem::_child_hook> _children;
 
     // Todo: Try to get rid of all of these variables, moving them into the object tree.
     unsigned _key; ///< Auxiliary key used by the object tree for showing clips/masks/patterns.

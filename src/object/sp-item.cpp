@@ -17,6 +17,8 @@
 
 #include <algorithm>
 #include <glibmm/i18n.h>
+#include <iterator>
+#include <ranges>
 
 #include "colors/manager.h"
 #include "helper/geom.h"
@@ -71,6 +73,11 @@ SPItemView::SPItemView(unsigned flags, unsigned key, DrawingItemPtr<Inkscape::Dr
     : flags(flags)
     , key(key)
     , drawingitem(std::move(drawingitem)) {}
+
+SPItemAggregate::value_type SPItemAggregate::contribution(SPObject const &item)
+{
+    return is<SPItem>(&item) ? 1 : 0;
+}
 
 SPItem::SPItem()
 {
@@ -417,10 +424,10 @@ SPItem::scaleCenter(Geom::Scale const &sc) {
 
 void SPItem::raiseToTop() {
     auto& list = parent->children;
-    auto end = SPObject::ChildrenList::reverse_iterator(list.iterator_to(*this));
-    auto topmost = std::find_if(list.rbegin(), end, is<SPItem>);
+    auto rev_view = std::ranges::subrange(std::next(list.iterator_to(*this)), list.end()) | std::views::reverse;
+    auto topmost = std::ranges::find_if(rev_view, is<SPItem>);
     // auto topmost = find_last_if(++parent->children.iterator_to(*this), parent->children.end(), &is_item);
-    if (topmost != list.rend()) {
+    if (topmost != rev_view.end()) {
         getRepr()->parent()->changeOrder(getRepr(), topmost->getRepr());
     }
 }
@@ -437,10 +444,9 @@ bool SPItem::raiseOne() {
 
 bool SPItem::lowerOne() {
     auto& list = parent->children;
-    auto self = list.iterator_to(*this);
-    auto start = SPObject::ChildrenList::reverse_iterator(self);
-    auto next_lower = std::find_if(start, list.rend(), is<SPItem>);
-    if (next_lower != list.rend()) {
+    auto rev_view = std::ranges::subrange(list.begin(), list.iterator_to(*this)) | std::views::reverse;
+    auto next_lower = std::ranges::find_if(rev_view, is<SPItem>);
+    if (next_lower != rev_view.end()) {
         auto next = list.iterator_to(*next_lower);
         if (next == list.begin()) {
             getRepr()->parent()->changeOrder(getRepr(), nullptr);
@@ -1083,21 +1089,7 @@ Geom::OptRect SPItem::desktopBounds(BBoxType type) const
 
 unsigned int SPItem::pos_in_parent() const {
     g_assert(parent != nullptr);
-
-    unsigned int pos = 0;
-
-    for (auto& iter: parent->children) {
-        if (&iter == this) {
-            return pos;
-        }
-
-        if (is<SPItem>(&iter)) {
-            pos++;
-        }
-    }
-
-    g_assert_not_reached();
-    return 0;
+    return parent->children.getIndex<SPItemAggregate>(static_cast<SPObject const &>(*this));
 }
 
 // CPPIFY: make pure virtual, see below!
@@ -1878,15 +1870,7 @@ SPItem const *sp_item_first_item_child(SPObject const *obj)
 
 SPItem *sp_item_first_item_child(SPObject *obj)
 {
-    SPItem *child = nullptr;
-    for (auto& iter: obj->children) {
-        auto tmp = cast<SPItem>(&iter);
-        if ( tmp ) {
-            child = tmp;
-            break;
-        }
-    }
-    return child;
+    return cast<SPItem>(obj->children.atIndex<SPItemAggregate>(0));
 }
 
 void SPItem::convert_to_guides() const {

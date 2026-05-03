@@ -14,6 +14,7 @@ target_sources(inkscape_base PRIVATE
     share.cpp
     object-renderer.cpp
     object-modified-tags.cpp
+    ordered-list.cpp
     paper.cpp
     parse-int-range.cpp
     preview.cpp
@@ -57,6 +58,7 @@ target_sources(inkscape_base PRIVATE
     object-renderer.h
     object-modified-tags.h
     optstr.h
+    ordered-list.h
     pages-skeleton.h
     paper.h
     parse-int-range.h
