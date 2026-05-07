@@ -45,36 +45,36 @@
 
 using Inkscape::DocumentUndo;
 
-void sp_selected_path_do_offset(SPDesktop *desktop, bool expand, double prefOffset);
+void sp_selected_path_do_offset(Inkscape::Selection *selection, bool expand, double prefOffset);
 void sp_selected_path_create_offset_object(SPDesktop *desktop, int expand, bool updating);
 
 void
-sp_selected_path_offset(SPDesktop *desktop)
+sp_selected_path_offset(Inkscape::Selection *selection)
 {
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     double prefOffset = prefs->getDouble("/options/defaultoffsetwidth/value", 1.0, "px");
 
-    sp_selected_path_do_offset(desktop, true, prefOffset);
+    sp_selected_path_do_offset(selection, true, prefOffset);
 }
 void
-sp_selected_path_inset(SPDesktop *desktop)
+sp_selected_path_inset(Inkscape::Selection *selection)
 {
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     double prefOffset = prefs->getDouble("/options/defaultoffsetwidth/value", 1.0, "px");
 
-    sp_selected_path_do_offset(desktop, false, prefOffset);
+    sp_selected_path_do_offset(selection, false, prefOffset);
 }
 
 void
 sp_selected_path_offset_screen(SPDesktop *desktop, double pixels)
 {
-    sp_selected_path_do_offset(desktop, true,  pixels / desktop->current_zoom());
+    sp_selected_path_do_offset(desktop->getSelection(), true,  pixels / desktop->current_zoom());
 }
 
 void
 sp_selected_path_inset_screen(SPDesktop *desktop, double pixels)
 {
-    sp_selected_path_do_offset(desktop, false,  pixels / desktop->current_zoom());
+    sp_selected_path_do_offset(desktop->getSelection(), false,  pixels / desktop->current_zoom());
 }
 
 
@@ -264,12 +264,14 @@ void sp_selected_path_create_offset_object(SPDesktop *desktop, int expand, bool 
  * @param prefOffset Size of offset in pixels
  */
 void
-sp_selected_path_do_offset(SPDesktop *desktop, bool expand, double prefOffset)
+sp_selected_path_do_offset(Inkscape::Selection * selection, bool expand, double prefOffset)
 {
-    Inkscape::Selection *selection = desktop->getSelection();
-
     if (selection->isEmpty()) {
-        desktop->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Select <b>path(s)</b> to inset/outset."));
+        if (selection->desktop()) {
+            selection->desktop()->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Select <b>path(s)</b> to inset/outset."));
+        } else {
+            g_printerr("%s\n", "Select paths to inset/outset");
+        }
         return;
     }
 
@@ -409,7 +411,7 @@ sp_selected_path_do_offset(SPDesktop *desktop, bool expand, double prefOffset)
         Inkscape::XML::Node *repr = nullptr;
 
         if (res->descr_cmd.size() > 1) { // if there's 0 or 1 node left, drop this path altogether
-            Inkscape::XML::Document *xml_doc = desktop->doc()->getReprDoc();
+            Inkscape::XML::Document *xml_doc = selection->document()->getReprDoc();
             repr = xml_doc->createElement("svg:path");
 
             Inkscape::copy_object_properties(repr, item->getRepr());
@@ -424,7 +426,7 @@ sp_selected_path_do_offset(SPDesktop *desktop, bool expand, double prefOffset)
             // move to the saved position
             parent->addChildAtPos(repr, pos);
 
-            auto newitem = cast_unsafe<SPItem>(desktop->getDocument()->getObjectByRepr(repr));
+            auto newitem = cast_unsafe<SPItem>(selection->document()->getObjectByRepr(repr));
 
             // reapply the transform
             newitem->doWriteTransform(transform);
@@ -438,11 +440,16 @@ sp_selected_path_do_offset(SPDesktop *desktop, bool expand, double prefOffset)
     }
 
     if (did) {
-        DocumentUndo::done(desktop->getDocument(),
-                           (expand ? RC_("Undo", "Outset path") : RC_("Undo", "Inset path")),
-                           (expand ? INKSCAPE_ICON("path-outset") : INKSCAPE_ICON("path-inset")));
+        if (selection->document()) {
+            DocumentUndo::done(selection->document(),
+                            (expand ? RC_("Undo", "Outset path") : RC_("Undo", "Inset path")),
+                            (expand ? INKSCAPE_ICON("path-outset") : INKSCAPE_ICON("path-inset")));
+        }
     } else {
-        desktop->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("<b>No paths</b> to inset/outset in the selection."));
+        if (selection->desktop()) {
+            // I wonder if this actually runs, because we exited early on empty selection earlier
+            selection->desktop()->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("<b>No paths</b> to inset/outset in the selection."));
+        }
         return;
     }
 }

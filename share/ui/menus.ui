@@ -1047,13 +1047,13 @@
       <section>
         <item>
           <attribute name="label" translatable="yes">I_nset</attribute>
-          <attribute name="action">win.path-inset</attribute>
+          <attribute name="action">app.path-inset</attribute>
           <attribute name="icon">path-inset</attribute>
           <attribute name="use-icon">True</attribute>
         </item>
         <item>
           <attribute name="label" translatable="yes">Outs_et</attribute>
-          <attribute name="action">win.path-offset</attribute>
+          <attribute name="action">app.path-offset</attribute>
           <attribute name="icon">path-outset</attribute>
           <attribute name="use-icon">True</attribute>
         </item>
