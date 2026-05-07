@@ -180,8 +180,8 @@ Future improvements:
   <bind gaction="app.path-exclusion"                 keys="&lt;ctrl&gt;asciicircum, &lt;ctrl&gt;&lt;shift&gt;asciicircum" /> <!-- ^ -->
   <bind gaction="app.path-cut"                       keys="&lt;ctrl&gt;&lt;alt&gt;slash, &lt;ctrl&gt;&lt;alt&gt;&lt;shift&gt;slash" />
   <bind gaction="app.path-division"                  keys="&lt;ctrl&gt;slash, &lt;ctrl&gt;&lt;shift&gt;slash" />
-  <bind gaction="win.path-offset"                    keys="&lt;ctrl&gt;parenright, &lt;ctrl&gt;&lt;shift&gt;parenright, &lt;ctrl&gt;&lt;shift&gt;0" />
-  <bind gaction="win.path-inset"                     keys="&lt;ctrl&gt;parenleft, &lt;ctrl&gt;&lt;shift&gt;parenleft, &lt;ctrl&gt;&lt;shift&gt;9" />
+  <bind gaction="app.path-offset"                    keys="&lt;ctrl&gt;parenright, &lt;ctrl&gt;&lt;shift&gt;parenright, &lt;ctrl&gt;&lt;shift&gt;0" />
+  <bind gaction="app.path-inset"                     keys="&lt;ctrl&gt;parenleft, &lt;ctrl&gt;&lt;shift&gt;parenleft, &lt;ctrl&gt;&lt;shift&gt;9" />
   <bind gaction="win.path-offset-dynamic"            keys="&lt;ctrl&gt;j, &lt;ctrl&gt;J" />
   <bind gaction="win.path-offset-linked"             keys="&lt;ctrl&gt;&lt;alt&gt;j, &lt;ctrl&gt;&lt;alt&gt;J" />
   <bind gaction="app.path-simplify"                  keys="&lt;ctrl&gt;l, &lt;ctrl&gt;L, e, E" />
