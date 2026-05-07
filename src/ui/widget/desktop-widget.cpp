@@ -328,6 +328,9 @@ void SPDesktopWidget::switchDesktop(SPDesktop *desktop)
         if (auto action = dynamic_cast<Gio::SimpleAction *>(_window->lookup_action("canvas-color-mode").get())) {
             action->set_state(Glib::Variant<bool>::create(_desktop->getCanvas()->get_color_mode() == Inkscape::ColorMode::GRAYSCALE));
         }
+        if (auto action = dynamic_cast<Gio::SimpleAction *>(_window->lookup_action("canvas-split-mode").get())) {
+            action->set_state(Glib::Variant<int>::create((int)_desktop->getCanvas()->get_split_mode()));
+        }
         if (auto action = dynamic_cast<Gio::SimpleAction *>(_window->lookup_action("canvas-color-manage").get())) {
             action->set_state(Glib::Variant<bool>::create(_desktop->getCanvas()->get_cms_active()));
         }
