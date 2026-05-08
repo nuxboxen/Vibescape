@@ -116,25 +116,32 @@ Operators in `src/display/spectral/`:
 
 - **9 substrate unit tests** — FFT round-trip, Parseval, linearity,
   DCT 1D/2D round-trip, heat-kernel DC preservation, Dirac
-  isotropy, anisotropic σ.
+  isotropy, σ=0 identity, anisotropic σ.
 - **3 parity tests** — disk σ=8/16, step-edge σ=16, all max-abs ≤ 1
-  vs continuous Gaussian reference.
-- **5 bilateral tests** — flat-region invariance, edge preservation,
-  Gaussian-limit reduction, RGBA joint similarity.
-- **5 SDF/noise tests** — sign correctness, far-field clamping,
-  determinism, profile roughness ordering.
-- **10 pedantic tests** — byte-determinism across operators, edge-
-  case grids (1×1, 1×N, non-pow-2), bilateral ↔ heat cross-validation,
-  SDF radial monotonicity.
+  vs continuous Gaussian reference. (Plus one bench fixture in
+  the same binary.)
+- **5 bilateral tests** — flat-region invariance, edge preservation
+  at small σ_range, Gaussian-limit at large σ_range, RGBA flat
+  invariance, RGBA colour-edge preservation.
+- **5 SDF/noise tests** — SDF sign correctness on disk, SDF
+  far-field sentinel clamping, noise reproducibility, noise seed
+  sensitivity, noise profile roughness ordering.
+- **10 pedantic determinism tests** — byte-determinism across
+  noise/heat/bilateral/SDF (4); edge-case grids and parameter
+  bounds (4); cross-validation (bilateral → heat-limit, SDF radial
+  monotonicity — 2).
 - **3 rendering tests** under `testfiles/rendering_tests/` — golden
   PNGs diffed via ImageMagick `compare` at FUZZ 0.05.
 - **1 bench harness** — IIR vs spectral wall-clock comparison
   (the data behind the Tier 2 `[-]`).
-- **1 experiment** — speculative spectral-SVG compression study,
-  recorded as breadcrumb. See `svg_compression_experiment.md`.
+- **1 compression experiment** — 4 per-input cases + 1 full-report
+  case; speculative spectral-SVG study, recorded as breadcrumb.
+  See `svg_compression_experiment.md`.
 
-Total: **35 individual tests + 3 rendering tests + bench harness +
-experiment**, all green in `ctest -R spectral`.
+Total: **39 unit-test cases across 6 binaries + 3 rendering tests
++ 1 bench harness + 1 compression experiment** (with 5 cases
+inside). All green in `ctest -R spectral`. Run time ~60s on the
+test machine, dominated by the pipeline bench (~37s of the 60s).
 
 ### Removal map
 
@@ -301,3 +308,7 @@ less todo.md         # tier-by-tier completion checklist
    future research direction. Reviewers can ask for it to be
    dropped (option 3 in the removal map above) without affecting
    any production code.
+
+---
+
+*AI authorship: this document was authored with [Claude Code](https://claude.com/claude-code) (Anthropic, primary model: Claude Opus 4.7). The human contributor (lemonforest@gitlab) directed the work, supplied the antikythera-maths framework context, made all scope/methodology decisions, and reviewed every commit before it landed. See [readme.md](readme.md) and [mr_description.md](mr_description.md) for the full disclosure and methodology context.*

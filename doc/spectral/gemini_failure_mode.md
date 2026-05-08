@@ -227,3 +227,7 @@ do the integration over from scratch on a fresh branch, building up
 from the substrate primitives with parity tests at every stage.
 
 Vocabulary doesn't make code spectral. The operators do.
+
+---
+
+*AI authorship: this document was authored with [Claude Code](https://claude.com/claude-code) (Anthropic, primary model: Claude Opus 4.7). The human contributor (lemonforest@gitlab) directed the work, supplied the antikythera-maths framework context, made all scope/methodology decisions, and reviewed every commit before it landed. See [readme.md](readme.md) and [mr_description.md](mr_description.md) for the full disclosure and methodology context.*

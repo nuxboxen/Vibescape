@@ -255,3 +255,7 @@ is what generalizes; specific dB numbers are basis-dependent.
 *If this experiment leads anywhere, please add a forward reference
 back to it from wherever the work continues. The breadcrumb works
 both directions.*
+
+---
+
+*AI authorship: this document was authored with [Claude Code](https://claude.com/claude-code) (Anthropic, primary model: Claude Opus 4.7). The human contributor (lemonforest@gitlab) directed the work, supplied the antikythera-maths framework context, made all scope/methodology decisions, and reviewed every commit before it landed. See [readme.md](readme.md) and [mr_description.md](mr_description.md) for the full disclosure and methodology context.*

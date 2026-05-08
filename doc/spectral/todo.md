@@ -161,22 +161,38 @@ None tested yet on this branch.)
 
 ## Polish bucket — pre-MR checklist
 
-These are bookkeeping/finishing items remaining before opening a
-merge request. None gate the technical work; all are about
-presentation:
+These were bookkeeping/finishing items remaining before opening a
+merge request. All landed in commit `f36d66658e` (and
+`b651544849` follow-on for documentation conventions, AI
+disclosure, doom93 reference, path renames).
 
-- [ ] **`NEWS.md` entry** mentioning the three new SVG filter
+- [x] **`NEWS.md` entry** mentioning the three new SVG filter
       primitives and noting them as Inkscape extensions (not
-      standard SVG 1.1).
-- [ ] **MR description draft** that surfaces: the MPM screening
-      protocol, the bench finding (spectral blur disabled with
-      data), the capability primitives as the actual contribution,
-      the spectral-SVG experiment as a breadcrumb, and the
-      removal map for any subset reviewers don't want.
-- [ ] **Final notebook polish** — read-cold reviewer summary
-      similar to the Skia branch's leading note. Most of the
-      content already exists in `progress.md`; the polish
-      is making the entry-point obvious.
+      standard SVG 1.1). *Landed in `f36d66658e`.*
+- [x] **MR description draft** at `doc/spectral/mr_description.md`
+      surfacing: the MPM screening protocol, the bench finding
+      (spectral blur disabled with data), the capability
+      primitives as the actual contribution, the spectral-SVG
+      experiment as a breadcrumb, the removal map at three
+      granularities, file inventory, local-verification
+      instructions, four reviewer questions worth asking,
+      hardware-dependence + GPU caveats, and AI assistance
+      disclosure. *Landed in `f36d66658e` + updates in
+      `5b650a51a9` and `b651544849`.*
+- [x] **Final notebook polish** — read-cold reviewer summary at
+      the top of `progress.md` (similar to the Skia branch's
+      leading note). *Landed in `f36d66658e`.* TOC + commit log
+      updates landed in the staleness-cleanup pass alongside
+      this very `todo.md` reconciliation.
+- [x] **Documentation conventions** — moved from `docs/` (wrong)
+      and root-level `SPECTRAL_*.md` to `doc/spectral/` with
+      readme.md index, back-link headers, lowercase + underscore
+      filenames per `doc/documentation_style.md`. *Landed in
+      `b651544849`.*
+- [x] **CI Pipeline timeout: 3 hours** on the user's GitLab fork
+      (Settings → CI/CD → General Pipelines). Required by
+      CONTRIBUTING.md; manual step in the GitLab UI, no commit.
+      *Done by user.*
 
 ## Speculative — the spectral-SVG breadcrumb
 
@@ -184,3 +200,7 @@ Recorded in `svg_compression_experiment.md` (commit
 `61fa03d6e6`). Out of scope for this branch; left for whoever
 picks it up. See progress.md §7 for the headline finding
 and pointer.
+
+---
+
+*AI authorship: this document was authored with [Claude Code](https://claude.com/claude-code) (Anthropic, primary model: Claude Opus 4.7). The human contributor (lemonforest@gitlab) directed the work, supplied the antikythera-maths framework context, made all scope/methodology decisions, and reviewed every commit before it landed. See [readme.md](readme.md) and [mr_description.md](mr_description.md) for the full disclosure and methodology context.*

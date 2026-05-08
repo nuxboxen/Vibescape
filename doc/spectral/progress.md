@@ -48,15 +48,25 @@
 > | −1   | Mathematical Provenance Method — six screens              |
 > |  0   | Framework provenance (mlehaptics / antikythera-maths)     |
 > |  0.5 | Why this is being attempted (Gemini-attempt triage)       |
-> |  1   | Commit log                                                |
+> |  1   | Commit log (18 commits)                                   |
 > |  2   | The math: one operator, several primitives                |
-> |  3   | Dispatch design (Tier 2 — recorded `[-]`)                 |
+> |  3   | Dispatch design (Tier 2 — *originally planned*, recorded `[-]` after bench) |
 > |  4   | Self-screening against the Gemini failure pattern         |
 > |  5   | Bench results — IIR wins by 22–50×; dispatch `[-]`        |
 > |  5.1 | Disposition of the `[-]` (substrate kept, dispatch off)   |
 > |  5.2 | Pivot to capability primitives (Tier 3)                   |
+> |  5.3 | Hardware-dependence caveat (SSE4.2 vs AVX-512)            |
+> |  5.4 | GPU compute-shader FFT — would it change anything?        |
 > |  6   | Self-portrait icons                                       |
 > |  7   | Spectral-SVG compression experiment (breadcrumb)          |
+>
+> *Note on file ordering:* sections were added incrementally and
+> appear in the file in roughly chronological-of-authorship order
+> rather than logical reading order. Specifically, §4 appears between
+> §5.2 and §6, and §§5.3 / 5.4 appear after §6 — both because they
+> were added later. Navigation by `## §` heading is reliable; just
+> use your editor's outline view if reading top-to-bottom is
+> confusing.
 >
 > **Sibling work.** A parallel Skia integration is preserved at
 > `github.com/lemonforest/spectral-skai/tree/spectral-faithful`.
@@ -247,13 +257,107 @@ this branch holds itself to.
 
 ## 1. Commit log
 
-(filled in as work lands)
+The branch is 18 commits on top of upstream master. Listed
+newest-first; the rightmost column is the tier the commit
+implements (cross-reference [todo.md](todo.md) for the full
+checklist).
+
+| Commit       | Subject                                                                | Tier |
+|--------------|------------------------------------------------------------------------|------|
+| `b651544849` | Conform to Inkscape's documentation conventions; AI disclosure; doom93 | polish |
+| `5b650a51a9` | Hardware-dependence + GPU caveat — §§5.3 and 5.4                       | polish |
+| `f36d66658e` | Polish bucket: NEWS.md entry, leading-note rewrite, MR description     | polish |
+| `c6f5f941b6` | Reconcile SPECTRAL_TODO.md with what's actually landed                 | polish |
+| `61fa03d6e6` | Spectral-SVG compression experiment: positive findings, breadcrumb     | research |
+| `3bedf0493d` | Tier 3.4f: self-portrait icons for the spectral filter primitives      | 3.4f |
+| `8be41f8b04` | Tier 3.4e: filter-effects-dialog GUI integration                       | 3.4e |
+| `80a77cd7d3` | Tier 3.4d+: pedantic determinism + cross-validation + edge-case tests  | 3.4d+ |
+| `f7cae7655c` | Tier 3.4d: rendering test fixtures for the three spectral primitives   | 3.4d |
+| `4e636a4f12` | Tier 3.4b+c: feSpectralBilateral + feSpectralDistance + MPM named      | 3.4b+c |
+| `3cce97a440` | Tier 3.4a: feSpectralNoise SVG filter primitive                        | 3.4a |
+| `a8885322f1` | Tier 3.2 + 3.3: SDF (Varadhan) + power-spectrum noise substrates       | 3.2/3.3 |
+| `dc9bda109d` | Tier 3.1: bilateral / state-dependent diffusion substrate              | 3.1 |
+| `b520d2ddd0` | Tier 4.1: bench reveals spectral blur 22–50× slower; dispatch `[-]`    | 4.1 |
+| `a8851f6977` | Tier 2.1: parity test vs continuous Gaussian + Tier 4 bench scaffold   | 2.1 |
+| `134ad24ae2` | Tier 5.1: FFT-via-DCT (Makhoul) replaces direct O(N²)                  | 5.1 |
+| `32a2374c33` | Tier 1: spectral feGaussianBlur σ-threshold dispatch + substrate tests | 1   |
+| `30c9021a6c` | Spectral substrate port + scaffolding                                  | 0   |
+
+The commit *order* tells the project's narrative: Tier 0 substrate
+port; Tier 1 dispatch + tests; Tier 5.1 FFT-via-DCT optimization
+(30× speedup of substrate test suite); Tier 2.1 parity tests;
+**Tier 4.1 bench data falsifies the perf claim — dispatch
+becomes `[-]`**; pivot to Tier 3 capability primitives (3.1, 3.2,
+3.3); Tier 3.4a/b/c/d/d+/e/f wires them into Inkscape's pipeline
+all the way through filter-dialog GUI and self-portrait icons;
+research breadcrumb (spectral-SVG compression experiment); polish
+bucket (TODO reconciliation, NEWS, MR description, hardware
+caveat, doc conventions, AI disclosure).
 
 ## 2. The math: one operator, several primitives
 
-(populated when substrate ports)
+The single mathematical object that all three new SVG filter
+primitives share is the **lattice-Laplacian heat kernel** on the
+DCT eigenbasis with Neumann boundary conditions.
+
+The 2D discrete Laplacian on a `W × H` grid has eigenvectors
+
+$$v_{k,l}[m, n] = α_k α_l \cos\bigl(\tfrac{π(n + 1/2)k}{W}\bigr) \cos\bigl(\tfrac{π(m + 1/2)l}{H}\bigr)$$
+
+(with `α_0 = √(1/W)`, `α_{k>0} = √(2/W)`, similarly for `l`) and
+eigenvalues
+
+$$λ_{k,l} = 2(2 - \cos(π k / W) - \cos(π l / H))$$
+
+The heat kernel `e^{-tL}` (with `t = σ²/2`) acts diagonally on
+this basis: each coefficient `ĉ_{k,l}` simply multiplies by
+`exp(-(σ²/2) · λ_{k,l})`. This is exactly what
+`Inkscape::Spectral::apply_lattice_heat_kernel` computes.
+
+Pipeline: `apply_heat_kernel_a8(W, H, buf, σ_x, σ_y)` lifts the
+uint8 buffer to double precision, pads to next-pow-2 (so the FFT-
+via-DCT path applies), runs DCT-II → multiply by per-mode
+exp-decay → DCT-III, crops back, clamps to uint8. This is the
+**SSoT operator**. Every other spectral primitive is a small
+amount of glue around it:
+
+| Primitive                                    | Builds on `apply_heat_kernel_a8` how                                                                 |
+|----------------------------------------------|------------------------------------------------------------------------------------------------------|
+| `Inkscape::Spectral::blur_bgra`              | Deinterleave RGBA → 4 planes → `apply_heat_kernel_a8` per plane → reinterleave.                      |
+| `Inkscape::Spectral::bilateral_a8`           | *Different* — Perona-Malik forward Euler with state-dependent W_ij weights. The Gaussian limit (σ_range → ∞) reduces to the heat-kernel apply. Cross-validated by `BilateralLargeSigmaRangeMatchesPlainHeat`. |
+| `Inkscape::Spectral::distance_field_a8`      | Apply heat kernel to a binary mask; per-pixel evaluate Varadhan's `d ≈ σ · √(-2 · log u_norm)`.      |
+| `Inkscape::Spectral::noise_generate_a8`      | Reverse direction: random DCT coefficients with prescribed `P(λ)`, inverse DCT-III to spatial.       |
+
+Substrate files at `src/display/spectral/`:
+
+| File                            | Provides                                                                       |
+|---------------------------------|--------------------------------------------------------------------------------|
+| `spectral-fft.{h,cpp}`          | Radix-2 complex FFT, length must be pow-2.                                     |
+| `spectral-dct.{h,cpp}`          | DCT-II / DCT-III via Makhoul (length-N/2 complex FFT), `apply_lattice_heat_kernel`. |
+| `spectral-blur.{h,cpp}`         | The SSoT `apply_heat_kernel_a8` + RGBA `blur_bgra`.                            |
+| `spectral-bilateral.{h,cpp}`    | Perona-Malik forward Euler, state-dependent weights.                           |
+| `spectral-distance-field.{h,cpp}` | Varadhan SDF (signed + unsigned) on top of the SSoT operator.                |
+| `spectral-noise.{h,cpp}`        | LCG + Box-Muller normal sampling with a `P(λ)` profile, inverse DCT-III.       |
+
+Math primitives are byte-identical to those in the parallel Skia
+branch (`github.com/lemonforest/spectral-skai/tree/spectral-faithful`).
+Only the integration glue (Cairo wrappers, `FilterPrimitive`
+subclasses, GUI dialog wiring) differs.
 
 ## 3. Dispatch design — σ threshold above the IIR tier
+
+> **Status: originally planned, then rejected.** This section
+> describes the σ-threshold dispatch the branch *originally
+> intended* to add to `nr-filter-gaussian.cpp::render_cairo`. The
+> Tier 4.1 bench (§5) falsified the perf claim that motivated the
+> design — spectral DCT is 22–50× slower than van-Vliet IIR at
+> every production σ on the test machine, and even with optimistic
+> SIMD shifts (§5.3) it doesn't flip. The dispatch is disabled
+> (`constexpr bool use_spectral = false`) and recorded as `[-]`
+> in [todo.md](todo.md) §2. This section is kept as historical
+> design context for any future contributor who revisits the
+> question on different hardware (e.g., AVX-512 commodity CPUs or
+> a GPU compute-shader port).
 
 Inkscape's `nr-filter-gaussian.cpp::render_cairo` already dispatches
 between two implementations based on σ:
@@ -606,3 +710,7 @@ revert.
 The structural finding is the kind of evidence the
 **Mathematical Provenance Method** (§−1) calls for: a falsifiable
 prediction that survived contact with measurement.
+
+---
+
+*AI authorship: this document was authored with [Claude Code](https://claude.com/claude-code) (Anthropic, primary model: Claude Opus 4.7). The human contributor (lemonforest@gitlab) directed the work, supplied the antikythera-maths framework context, made all scope/methodology decisions, and reviewed every commit before it landed. See [readme.md](readme.md) and [mr_description.md](mr_description.md) for the full disclosure and methodology context.*
