@@ -415,6 +415,136 @@ rather than self-portraits — at 16×16 the actual filter outputs
 don't carry enough resolution to be readable. Files in
 `share/icons/hicolor/symbolic/actions/feSpectral*-icon-symbolic.svg`.
 
+### 5.3 Hardware-dependence caveat
+
+**The bench numbers above are from one specific CPU.** Asking
+"would better SIMD on newer hardware change the result?" is
+worth recording, since the answer is "yes, but not enough."
+
+**Test machine:** Intel Xeon E5530 (Nehalem, released 2009).
+Maximum SIMD level: **SSE4.2** — no AVX, no AVX2, no AVX-512, no
+FMA. This is the *oldest* SIMD that compilers reliably target;
+modern desktop CPUs (anything 2015+) have at minimum AVX2 (4-wide
+double FMA), and current-gen has AVX-512 (8-wide double FMA).
+
+**What changes with `-march=native -ffast-math`:**
+
+The default Release build uses `-O3 -DNDEBUG`. Rebuilding with
+`-O3 -DNDEBUG -march=native -ffast-math` lets the compiler emit
+SSE4.2 vectorized code wherever the loops permit (which is most
+of the FFT butterflies and the per-mode multiply, but very
+little of the recursive IIR). The bench was rerun on the same
+hardware:
+
+| Canvas    | σ   | IIR before | IIR after | Spectral before | Spectral after | Ratio before | Ratio after |
+|-----------|-----|-----------:|----------:|----------------:|----------------:|------------:|-----------:|
+| 512×512   | 8   |   10.3 ms  |  14.6 ms  |   450 ms        |   467 ms        |    44×       |    32×      |
+| 512×512   | 32  |   10.1 ms  |  13.0 ms  |   372 ms        |   282 ms        |    37×       |    22×      |
+| 512×512   | 128 |   10.8 ms  |  13.1 ms  |   540 ms        |   283 ms        |    50×       |    22×      |
+| 1024×1024 | 32  |   53.2 ms  |  51.7 ms  |  1679 ms        |  1350 ms        |    32×       |    26×      |
+| 1024×1024 | 128 |   45.8 ms  |  51.7 ms  |  1780 ms        |  1530 ms        |    39×       |    30×      |
+| 2048×2048 | 32  |  210   ms  | 288   ms  |  6672 ms        |  5485 ms        |    32×       |    19×      |
+| 2048×2048 | 128 |  291   ms  | 257   ms  |  6585 ms        |  5545 ms        |    23×       |    22×      |
+
+**Observations.**
+
+1. *Spectral got 1.5–2× faster at high σ.* The FFT butterflies
+   and the per-mode multiply both auto-vectorize cleanly with
+   `-march=native -ffast-math`. The DCT round-trip's constant
+   factor drops noticeably.
+2. *IIR didn't change much.* Inkscape's van-Vliet IIR is a
+   recursive filter — each output depends on the previous output,
+   not just previous input — which limits auto-vectorization. A
+   few cells got slightly slower, plausibly from `-ffast-math`
+   reordering FP rounding in inner loops.
+3. *Ratios narrowed from 22–50× to 18–32×, but didn't flip.*
+   The structural gap is intact.
+
+**What modern hardware would do.**
+
+Going from SSE4.2 (2-wide double, no FMA) to AVX-512 (8-wide
+double FMA) is roughly 4× more vector throughput per scalar
+instruction. The spectral path would capture most of that
+multiplier; the IIR path much less. Realistic estimate:
+
+- **Spectral on AVX-512:** another ~3–4× faster than the
+  `-march=native` numbers above. Per-pixel cost drops to roughly
+  ~70–100 ns/px on a current-gen CPU.
+- **IIR on AVX-512:** another ~1.5–2× at best. Per-pixel cost
+  drops to roughly ~25–30 ns/px.
+
+Resulting ratio: somewhere in the **3–8× range**, not 22–50×.
+Still favors IIR. Crossover σ pushed from ~500+ down to maybe
+~150–200 — possibly relevant for print-resolution canvases at
+huge blurs, but still uncommon in practice.
+
+**Why the gap doesn't close completely.**
+
+Van-Vliet IIR is *O(1) per pixel* regardless of σ (recursive
+filter: each output is a fixed number of operations on previous
+outputs). Spectral DCT is *O(log N) per pixel* where N is the
+padded grid size. SIMD shifts the constant; the asymptotic
+exponent stays the same. On a 4K×4K canvas, log₂(4096) = 12 — so
+even with perfect SIMD parity per operation, spectral does 12×
+more total operations than IIR per pixel. **That's the floor.**
+
+**Why we still kept the substrate compiled.**
+
+Even though spectral blur loses on perf at every realistic σ,
+the substrate is what the Tier 3 capability primitives
+(`feSpectralBilateral`, `feSpectralDistance`,
+`feSpectralNoise`) require. Those don't have a fast vanilla
+competitor — they're new SVG filter primitives Inkscape doesn't
+currently have. Their cost story is "flat in σ, O(N log N) per
+pixel" — which beats not-having-them at any speed.
+
+### 5.4 GPU compute-shader FFT — would it change anything?
+
+Asked during the bench analysis. Honest answer: **for Inkscape,
+not in any timeframe relevant to this contribution** — no GPU
+infrastructure exists in the codebase to plug into.
+
+**State of GPU rendering in Inkscape.** Cairo-only. No Vulkan,
+no OpenGL ES compute, no Metal, no Direct3D. A grep for
+`compute_shader|VkShaderModule|GLES` across `src/display/`
+returns zero hits. To run anything on GPU, Inkscape would first
+need to add a GPU rendering backend — months of architectural
+work unrelated to spectral filters. The existing van-Vliet IIR
+also runs CPU-only; spectral isn't disadvantaged here, the whole
+renderer is.
+
+**State of GPU rendering in Skia (sibling branch).** Skia has
+Ganesh (OpenGL-based), Graphite (Metal/Vulkan/D3D), and a real
+compute-shader infrastructure. We tried the multi-pass
+forward-Euler shader on Skia and recorded `[-]` because it loses
+to the existing texture-fetch separable Gaussian. A
+*single-dispatch compute-shader FFT* is structurally different
+work — it'd batch all O(N log N) operations into one kernel
+launch, which the GPU's parallelism handles well. Could it beat
+texture-fetch separable conv? Plausibly at very large σ; nobody's
+written it to test.
+
+**Disposition for Inkscape.** Same as Tier 2's `[-]`: the perf
+metric isn't movable enough by spectral methods on commodity
+CPUs to justify the integration cost, and Inkscape doesn't have
+GPU infrastructure to make the question moot. If Inkscape's
+renderer ever gains a GPU backend (Cairo's evolution toward
+Pathfinder, Vello, Glyphy, etc.), revisiting the spectral GPU
+path makes sense at *that* point. Not before.
+
+**Disposition for Skia.** This is genuinely tractable on Skia's
+substrate. If a future contributor wants to test it, the work
+is: write a SkSL compute shader implementing the radix-2 FFT,
+host it via `SkRuntimeShaderBuilder` with a compute pipeline,
+port the heat-kernel apply pass to coefficient-space, bench
+against the existing texture-fetch separable Gaussian on real
+GPU hardware. Two-week experiment; concrete deliverable.
+
+Recorded as a second future-work breadcrumb adjacent to the
+spectral-SVG experiment in §7. If picked up, please add a
+forward reference back to this section so the chain stays
+discoverable.
+
 ## 7. Breadcrumb — spectral-SVG compression experiment
 
 A speculative research experiment was run during this branch's
