@@ -36,7 +36,38 @@
 > outright decline. The math, the tests, and the work record stand on
 > their own.
 
-## 0. Why this is being attempted
+## 0. Framework provenance
+
+The mathematical substrate this branch ports comes from the
+mlehaptics / antikythera-maths spectral framework. Three resources
+worth pointing reviewers at:
+
+- **Antikythera-maths spectral notebook** —
+  https://mlehaptics.readthedocs.io/en/latest/antikythera-maths/ —
+  the foundational document. Lattice-Laplacian heat kernel, DCT
+  eigenbasis, Phase-9 BIP residue vectors, AcuteCount integer-ALU
+  similarity proxy, FPU-lifted inner product.
+
+- **Ephemerides spectral research notebook** —
+  https://mlehaptics.readthedocs.io/en/latest/antikythera-maths/ephemerides_spectral_research_notebook/ —
+  an *application* of the same framework to celestial mechanics
+  (52-body solar system, JPL DE441). It does **not** introduce new
+  graphics-relevant primitives. It does demonstrate the same
+  eigenbasis machinery scaling to a very different domain (orbit
+  prediction, ITN-chain search, body classification). Useful as
+  evidence that the substrate is general-purpose; not a source of
+  new operators for Inkscape.
+
+- **`ephemerides-spectral` PyPI package** —
+  https://pypi.org/project/ephemerides-spectral/ — native-C reference
+  implementation of the framework's BIP and Fiedler-partition
+  primitives applied to astronomy. Cited for empirical performance
+  claims ("305× FPU-less speedup", "~1000× native C backend") that
+  characterize the framework's value outside graphics. Not a
+  dependency of this branch; the substrate is reimplemented locally
+  for Inkscape's GPL licensing and to keep the build self-contained.
+
+## 0.5. Why this is being attempted
 
 A prior Gemini-generated branch (in `~/gitlab/GeminiPlayground/inkscape`)
 claimed a 3.85× speedup on `14-filters.svg`. On inspection:

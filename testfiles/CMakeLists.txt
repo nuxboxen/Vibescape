@@ -111,6 +111,7 @@ set(TEST_SOURCES
     object-test
     sp-glyph-kerning-test
     cairo-utils-test
+    spectral-parity-test
     spectral-substrate-test
     svg-extension-test
     curve-test
