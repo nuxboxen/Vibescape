@@ -40,6 +40,9 @@ target_sources(inkscape_base PRIVATE
     nr-light.cpp
     nr-style.cpp
     nr-svgfonts.cpp
+    spectral/spectral-blur.cpp
+    spectral/spectral-dct.cpp
+    spectral/spectral-fft.cpp
     threading.cpp
     translucency-group.cpp
 
@@ -113,6 +116,9 @@ target_sources(inkscape_base PRIVATE
     nr-style.h
     nr-svgfonts.h
     rendermode.h
+    spectral/spectral-blur.h
+    spectral/spectral-dct.h
+    spectral/spectral-fft.h
     tags.h
     threading.h
     translucency-group.h
