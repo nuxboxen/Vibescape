@@ -444,7 +444,10 @@ filter2D_FIR(PT *const dst, int const dstr1, int const dstr2,
     });
 }
 
-static void
+// Non-static: also called from testfiles/src/spectral-pipeline-bench.cpp
+// to time IIR vs spectral at the same σ on the same surface. No
+// production caller other than render_cairo below.
+void
 gaussian_pass_IIR(Geom::Dim2 d, double deviation, cairo_surface_t *src, cairo_surface_t *dest,
     IIRValue **tmpdata, dispatch_pool &pool)
 {
@@ -596,16 +599,16 @@ void FilterGaussian::render_cairo(FilterSlot &slot) const
     bool use_IIR_x = deviation_x > 3;
     bool use_IIR_y = deviation_y > 3;
 
-    // Spectral DCT third tier: above some σ cutoff, the heat-kernel
-    // path's flat-in-σ cost beats van-Vliet IIR's per-pixel constant.
-    // Below the cutoff the IIR path remains the canonical implementation.
-    // Cutoff is empirically tuned in SPECTRAL_PROGRESS.md §N (bench).
-    //
-    // The spectral path is *2D* (single DCT round trip on the whole
-    // surface), not per-axis, so when it fires it replaces both
-    // gaussian_pass_*_X and *_Y in one call.
-    constexpr double kSpectralCutoff = 30.0;
-    const bool use_spectral = std::max(deviation_x, deviation_y) > kSpectralCutoff;
+    // Spectral DCT third tier — *disabled by default* (perf
+    // bench shows it is ~25-50× slower than IIR at every σ tested
+    // across all canvas sizes; see SPECTRAL_PROGRESS.md §5 and the
+    // [-] entry in SPECTRAL_TODO.md §2). Kept reachable as
+    // `use_spectral = false` so the substrate stays linked for
+    // capability primitives (Tier 3 bilateral / SDF / noise) and so
+    // future contributors can experiment with cutoffs if hardware
+    // changes the perf landscape. Removing this branch entirely is
+    // a clean cut.
+    constexpr bool use_spectral = false;
 
     // Temporary storage for IIR filter
     // NOTE: This can be eliminated, but it reduces the precision a bit

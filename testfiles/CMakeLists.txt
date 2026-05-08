@@ -112,6 +112,7 @@ set(TEST_SOURCES
     sp-glyph-kerning-test
     cairo-utils-test
     spectral-parity-test
+    spectral-pipeline-bench
     spectral-substrate-test
     svg-extension-test
     curve-test

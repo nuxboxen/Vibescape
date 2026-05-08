@@ -33,17 +33,33 @@ relicense to GPL-2+ to match Inkscape.
       Mirrors `tests/SkRadix2FFTTest.cpp` and `tests/LatticeDCTTest.cpp`
       from the Skia branch.
 
-## Tier 2 — feGaussianBlur σ-threshold dispatch
+## Tier 2 — feGaussianBlur σ-threshold dispatch — `[-]` (rejected)
 
-- [ ] Add `gaussian_pass_spectral()` alongside `gaussian_pass_IIR()`
-      and `gaussian_pass_FIR()` in `nr-filter-gaussian.cpp`.
-- [ ] Third-tier dispatch in `FilterGaussian::render_cairo()`:
-      `deviation > kSpectralCutoff` routes to spectral.
-- [ ] Empirically determine `kSpectralCutoff` from the bench harness
-      (Tier 5). Initial guess: σ ≥ 30. Refine.
-- [ ] Parity test: at σ = `kSpectralCutoff`, spectral and IIR outputs
-      differ by ≤ 4 pixel units of max-abs (matches Skia's parity
-      tolerance).
+- [-] **Spectral DCT third tier above some σ cutoff.**
+
+      *Tested and rejected for perf reasons.* Full bench results
+      under SPECTRAL_PROGRESS.md §5: spectral path is 22–50× slower
+      than van-Vliet IIR at every (canvas, σ) combination measured
+      across {512², 1024², 2048²} × {8, 16, 32, 64, 128}. No
+      crossover exists in the production σ regime; extrapolation
+      suggests crossover would land at σ ≈ 500+ on multi-thousand-pixel
+      canvases, well past anything Inkscape rasterizes in practice.
+
+      The constant-factor gap (IIR ~50 ns/px, spectral ~1600 ns/px)
+      is structural — IIR's Triggs-Sdika fixed-point recursive filter
+      vs spectral's double-precision DCT plus pad-to-pow-2 doubling.
+      Substrate SIMD (Tier 5.x) would narrow but not close it.
+
+      Disposition: dispatch site in `nr-filter-gaussian.cpp` left
+      as `constexpr bool use_spectral = false` so the substrate
+      stays linked for Tier 3 capability primitives. Removing the
+      dispatch entirely is a clean cut.
+
+      Parity test (`testfiles/src/spectral-parity-test.cpp`) and
+      bench harness (`testfiles/src/spectral-pipeline-bench.cpp`)
+      kept — they document the operator correctness and the perf
+      reality respectively, and any future contributor evaluating a
+      spectral substrate revisit needs both.
 
 ## Tier 3 — New SVG filter primitives (capability, not displacement)
 

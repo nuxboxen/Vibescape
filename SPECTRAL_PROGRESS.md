@@ -130,6 +130,87 @@ print-resolution canvases).
 This is *additive*: nothing existing is displaced. Removing the
 spectral path is a clean revert.
 
+## 5. Bench results — spectral path 25–50× slower than van-Vliet IIR
+
+`testfiles/src/spectral-pipeline-bench.cpp` measures the spectral
+DCT path (`Inkscape::Spectral::blur_bgra`) against Inkscape's
+production `gaussian_pass_IIR` (van-Vliet recursive filter with
+Triggs-Sdika boundary handling) on the same Cairo ARGB32 surface
+at matched σ values. Local Release results (single run; bot numbers
+will dominate but constant-factor ratio should hold):
+
+| Canvas    | σ   | IIR (ms) | Spectral (ms) | Spectral/IIR |
+|-----------|-----|---------:|--------------:|-------------:|
+| 512×512   | 8   |    10.3  |        450    |      44×     |
+| 512×512   | 16  |    12.1  |        478    |      40×     |
+| 512×512   | 32  |    10.1  |        372    |      37×     |
+| 512×512   | 64  |    10.3  |        374    |      36×     |
+| 512×512   | 128 |    10.8  |        540    |      50×     |
+| 1024×1024 | 32  |    53.2  |       1679    |      32×     |
+| 1024×1024 | 128 |    45.8  |       1780    |      39×     |
+| 2048×2048 | 32  |   210    |       6672    |      32×     |
+| 2048×2048 | 64  |   248    |       7248    |      29×     |
+| 2048×2048 | 128 |   291    |       6585    |      23×     |
+
+What the numbers say:
+
+- **Both paths are flat in σ at fixed grid size** (theory confirmed).
+  IIR's recursive filter is O(1) per pixel regardless of σ; the
+  spectral DCT's per-mode multiply is also flat in σ.
+- **IIR's per-pixel cost is ~50 ns**; spectral's is ~1600 ns. The
+  ratio is a constant-factor gap of ~32×. It does not close at any
+  σ tested.
+- **No crossover exists in the production σ regime.** Extrapolating
+  the trends (which barely move with σ), spectral might catch up at
+  σ ≈ 500+ on a multi-thousand-pixel canvas — well past anything
+  Inkscape rasterizes in practice.
+- **The constant-factor gap is structural.** IIR runs in fixed-point
+  with Triggs-Sdika init; spectral runs double-precision DCT plus
+  pad-to-pow-2 (which itself doubles work for awkward sizes). Even
+  with substrate SIMD (Tier 5.x deferred) the gap narrows but does
+  not close.
+
+This matches the Skia branch's finding (5–13× slower) but is more
+extreme: Inkscape's IIR is more aggressively tuned than Skia's
+separable Gaussian, so the spectral path's relative position is
+worse.
+
+### 5.1 Disposition: spectral blur dispatch is `[-]`
+
+Per the framework's "patch shrinks residual" discipline: the perf
+metric the spectral blur was supposed to move (large-σ blur cost on
+print-resolution canvases) is *not* moved by this implementation.
+The IIR baseline already minimizes it.
+
+Recorded in `SPECTRAL_TODO.md` §2 as `[-]` — tested and rejected for
+perf reasons, with the bench numbers as the rejection evidence.
+
+The dispatch site in `nr-filter-gaussian.cpp::render_cairo` is
+disabled (`use_spectral = false`) but kept as a single-line constexpr
+so the spectral substrate stays linked. The substrate is what the
+Tier 3 capability primitives (bilateral, SDF, noise) require —
+they're not perf-claim primitives, they're *new SVG filter
+primitives Inkscape doesn't have today*.
+
+### 5.2 Where the value actually lives — Tier 3
+
+The branch's contribution shifts from "faster blur" to "new filter
+capabilities":
+
+- **`feSpectralBilateral`** — edge-preserving smoothing. Inkscape
+  has no bilateral filter primitive. Useful for stylized photographic
+  effects on imported raster content embedded in SVGs.
+- **`feSpectralDistance`** — heat-kernel SDF. Could complement
+  `feMorphology` with smoother dilate/erode behavior, and is the
+  substrate for stroke-based effects.
+- **`feSpectralNoise`** — power-spectrum-controlled noise. The SVG
+  spec only ships Perlin-style `feTurbulence`; spectral noise gives
+  white/pink/brown/blue spectra directly.
+
+These don't compete with anything fast that already exists. They're
+additions, not displacements. Tier 3 is now the load-bearing tier
+of this branch.
+
 ## 4. Self-screening against the Gemini failure pattern
 
 Every commit on this branch must pass the six screens described in
