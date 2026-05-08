@@ -2831,11 +2831,13 @@ static const std::map<Inkscape::Filters::FilterPrimitiveType, EffectMetadata>& g
     { NR_FILTER_TURBULENCE,        { EffectCategory::Generation, "feTurbulence-icon",
         _("Renders Perlin noise, which is useful to generate textures such as clouds, fire, smoke, marble or granite.") }},
     // -- Inkscape spectral extensions; see SPECTRAL_PROGRESS.md --
-    { NR_FILTER_SPECTRAL_BILATERAL, { EffectCategory::Effect,     "feMorphology-icon",
+    // Each icon is a self-portrait — the SVG icon uses the primitive
+    // it represents, rendered by the primitive itself at icon load.
+    { NR_FILTER_SPECTRAL_BILATERAL, { EffectCategory::Effect,     "feSpectralBilateral-icon",
         _("Edge-preserving smoothing via Perona-Malik anisotropic diffusion. Smooths within flat regions while preserving sharp edges. Inkscape extension.") }},
-    { NR_FILTER_SPECTRAL_DISTANCE,  { EffectCategory::Effect,     "feMorphology-icon",
+    { NR_FILTER_SPECTRAL_DISTANCE,  { EffectCategory::Effect,     "feSpectralDistance-icon",
         _("Heat-kernel signed distance field. Visualizes proximity to the input's alpha mask boundary. Inkscape extension.") }},
-    { NR_FILTER_SPECTRAL_NOISE,     { EffectCategory::Generation, "feTurbulence-icon",
+    { NR_FILTER_SPECTRAL_NOISE,     { EffectCategory::Generation, "feSpectralNoise-icon",
         _("Power-spectrum-controlled synthetic noise (white, pink, brown, or blue). Lets the caller specify the spectrum directly rather than relying on Perlin's intrinsic spectrum. Inkscape extension.") }},
     };
     return effects;

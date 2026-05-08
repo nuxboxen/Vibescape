@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Self-portrait icon for the feSpectralBilateral filter primitive.
+  Top half: noisy red/blue colour edge (the input the bilateral
+  filter is designed to clean up). Bottom half: same input
+  filtered through feSpectralBilateral — interior noise smoothed
+  away while the colour edge stays sharp. The icon is rendered by
+  the actual primitive at icon-load time. See SPECTRAL_PROGRESS.md.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <!-- Tile of pink-noise jitter mixed into the source colour -->
+    <filter id="add-noise" x="0" y="0" width="100%" height="100%">
+      <feSpectralNoise spectralNoiseProfile="pink" seed="305419896" result="n"/>
+      <feComposite in="SourceGraphic" in2="n" operator="arithmetic"
+                   k1="0" k2="0.85" k3="0.15" k4="0"/>
+    </filter>
+    <filter id="self-bilateral" x="0" y="0" width="100%" height="100%">
+      <feSpectralBilateral spectralSigmaSpatial="3"
+                            spectralSigmaRange="16"
+                            in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect x="3" y="3" width="90" height="90"
+        fill="#ffffff" stroke="#222222" stroke-width="2"/>
+  <!-- Top: noisy input -->
+  <g filter="url(#add-noise)">
+    <rect x="8"  y="8" width="40" height="38" fill="#cc3333"/>
+    <rect x="48" y="8" width="40" height="38" fill="#3333cc"/>
+  </g>
+  <!-- Bottom: bilateral-smoothed (interior smoothed, edge preserved) -->
+  <g filter="url(#self-bilateral)">
+    <g filter="url(#add-noise)">
+      <rect x="8"  y="50" width="40" height="38" fill="#cc3333"/>
+      <rect x="48" y="50" width="40" height="38" fill="#3333cc"/>
+    </g>
+  </g>
+  <!-- Divider line between input and output -->
+  <line x1="8" y1="48" x2="88" y2="48"
+        stroke="#222222" stroke-width="1" stroke-dasharray="2,2"/>
+</svg>
