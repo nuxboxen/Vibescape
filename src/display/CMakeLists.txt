@@ -43,7 +43,9 @@ target_sources(inkscape_base PRIVATE
     spectral/spectral-bilateral.cpp
     spectral/spectral-blur.cpp
     spectral/spectral-dct.cpp
+    spectral/spectral-distance-field.cpp
     spectral/spectral-fft.cpp
+    spectral/spectral-noise.cpp
     threading.cpp
     translucency-group.cpp
 
@@ -120,7 +122,9 @@ target_sources(inkscape_base PRIVATE
     spectral/spectral-bilateral.h
     spectral/spectral-blur.h
     spectral/spectral-dct.h
+    spectral/spectral-distance-field.h
     spectral/spectral-fft.h
+    spectral/spectral-noise.h
     tags.h
     threading.h
     translucency-group.h
