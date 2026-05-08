@@ -320,6 +320,11 @@ enum class SPAttr {
     SEED,
     STITCHTILES,
     //TYPE,
+    /*feSpectralNoise / feSpectralBilateral / feSpectralDistance — Inkscape extensions*/
+    SPECTRAL_NOISE_PROFILE,
+    SPECTRAL_SIGMA_SPATIAL,
+    SPECTRAL_SIGMA_RANGE,
+    SPECTRAL_DISTANCE_MODE,
     /* SPGradient */
     GRADIENTUNITS,
     GRADIENTTRANSFORM,

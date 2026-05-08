@@ -30,6 +30,9 @@ enum FilterPrimitiveType
     NR_FILTER_MORPHOLOGY,
     NR_FILTER_OFFSET,
     NR_FILTER_SPECULARLIGHTING,
+    NR_FILTER_SPECTRAL_BILATERAL,    // Inkscape extension — see SPECTRAL_PROGRESS.md
+    NR_FILTER_SPECTRAL_DISTANCE,     // Inkscape extension — see SPECTRAL_PROGRESS.md
+    NR_FILTER_SPECTRAL_NOISE,        // Inkscape extension — see SPECTRAL_PROGRESS.md
     NR_FILTER_TILE,
     NR_FILTER_TURBULENCE,
     NR_FILTER_ENDPRIMITIVETYPE // This must be last

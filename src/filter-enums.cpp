@@ -35,6 +35,9 @@ const EnumData<Inkscape::Filters::FilterPrimitiveType> FPData[Inkscape::Filters:
     {Inkscape::Filters::NR_FILTER_MORPHOLOGY,        _("Morphology"),         "svg:feMorphology"},
     {Inkscape::Filters::NR_FILTER_OFFSET,            _("Offset"),             "svg:feOffset"},
     {Inkscape::Filters::NR_FILTER_SPECULARLIGHTING,  _("Specular Lighting"),  "svg:feSpecularLighting"},
+    {Inkscape::Filters::NR_FILTER_SPECTRAL_BILATERAL,_("Spectral Bilateral"), "svg:feSpectralBilateral"},
+    {Inkscape::Filters::NR_FILTER_SPECTRAL_DISTANCE, _("Spectral Distance"),  "svg:feSpectralDistance"},
+    {Inkscape::Filters::NR_FILTER_SPECTRAL_NOISE,    _("Spectral Noise"),     "svg:feSpectralNoise"},
     {Inkscape::Filters::NR_FILTER_TILE,              _("Tile"),               "svg:feTile"},
     {Inkscape::Filters::NR_FILTER_TURBULENCE,        _("Turbulence"),         "svg:feTurbulence"}
     // clang-format on

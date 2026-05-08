@@ -20,6 +20,7 @@ target_sources(inkscape_base PRIVATE
   morphology.cpp
   offset.cpp
   pointlight.cpp
+  spectral-noise.cpp
   specularlighting.cpp
   spotlight.cpp
   slot-resolver.cpp
@@ -47,6 +48,7 @@ target_sources(inkscape_base PRIVATE
   morphology.h
   offset.h
   pointlight.h
+  spectral-noise.h
   specularlighting.h
   spotlight.h
   slot-resolver.h

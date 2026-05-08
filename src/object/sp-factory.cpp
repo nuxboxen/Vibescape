@@ -91,6 +91,7 @@
 #include "filters/morphology.h"
 #include "filters/offset.h"
 #include "filters/pointlight.h"
+#include "filters/spectral-noise.h"
 #include "filters/specularlighting.h"
 #include "filters/spotlight.h"
 #include "filters/tile.h"
@@ -268,6 +269,7 @@ private:
         { "svg:feOffset", make<SPFeOffset> },
         { "svg:fePointLight", make<SPFePointLight> },
         { "svg:feSpecularLighting", make<SPFeSpecularLighting> },
+        { "svg:feSpectralNoise", make<SPFeSpectralNoise> },
         { "svg:feSpotLight", make<SPFeSpotLight> },
         { "svg:feTile", make<SPFeTile> },
         { "svg:feTurbulence", make<SPFeTurbulence> },

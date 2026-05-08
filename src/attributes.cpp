@@ -320,6 +320,11 @@ static SPStyleProp const props[] = {
     {SPAttr::SEED, "seed"},
     {SPAttr::STITCHTILES, "stitchTiles"},
     //{SPAttr::TYPE, "type"},
+    /*feSpectralNoise / feSpectralBilateral / feSpectralDistance — Inkscape extensions*/
+    {SPAttr::SPECTRAL_NOISE_PROFILE, "spectralNoiseProfile"},
+    {SPAttr::SPECTRAL_SIGMA_SPATIAL, "spectralSigmaSpatial"},
+    {SPAttr::SPECTRAL_SIGMA_RANGE,   "spectralSigmaRange"},
+    {SPAttr::SPECTRAL_DISTANCE_MODE, "spectralDistanceMode"},
     /* SPGradient */
     {SPAttr::GRADIENTUNITS, "gradientUnits"},
     {SPAttr::GRADIENTTRANSFORM, "gradientTransform"},
