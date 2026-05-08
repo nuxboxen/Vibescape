@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Self-portrait icon for the feSpectralNoise filter primitive.
+  Renders a pink-noise tile via the primitive itself — the visible
+  texture is produced by the same code that runs when a user adds
+  feSpectralNoise to their document. See SPECTRAL_PROGRESS.md.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <filter id="self-pink" x="0" y="0" width="100%" height="100%">
+      <feSpectralNoise spectralNoiseProfile="pink" seed="3735928559"/>
+    </filter>
+  </defs>
+  <!-- Frame (always rendered, even if the spectral filter is unsupported) -->
+  <rect x="3" y="3" width="90" height="90"
+        fill="#ffffff" stroke="#222222" stroke-width="2"/>
+  <!-- Self-portrait: filled by feSpectralNoise -->
+  <rect x="8" y="8" width="80" height="80"
+        fill="#ffffff" filter="url(#self-pink)"/>
+</svg>

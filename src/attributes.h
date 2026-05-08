@@ -24,8 +24,9 @@
  * line-by-line comparison. Also, inorder for proper parsing, some
  * properties must be before others (e.g. 'font' before 'font-family').
  */
-enum class SPAttr {
-    INVALID,  ///< Must have value 0.
+enum class SPAttr
+{
+    INVALID, ///< Must have value 0.
     /* SPObject */
     ID,
     STYLE,
@@ -256,20 +257,20 @@ enum class SPAttr {
     TYPE,
     VALUES,
     /*feComponentTransfer*/
-    //TYPE,
+    // TYPE,
     TABLEVALUES,
     SLOPE,
     INTERCEPT,
     AMPLITUDE,
     EXPONENT,
-    //OFFSET,
+    // OFFSET,
     /*feComposite*/
     OPERATOR,
     K1,
     K2,
     K3,
     K4,
-    //IN2,
+    // IN2,
     /*feConvolveMatrix*/
     ORDER,
     KERNELMATRIX,
@@ -283,12 +284,12 @@ enum class SPAttr {
     /*feDiffuseLighting*/
     SURFACESCALE,
     DIFFUSECONSTANT,
-    //KERNELUNITLENGTH,
+    // KERNELUNITLENGTH,
     /*feDisplacementMap*/
     SCALE,
     XCHANNELSELECTOR,
     YCHANNELSELECTOR,
-    //IN2,
+    // IN2,
     /*feDistantLight*/
     AZIMUTH,
     ELEVATION,
@@ -304,13 +305,13 @@ enum class SPAttr {
     /*feImage*/
     /*feMerge*/
     /*feMorphology*/
-    //OPERATOR,
+    // OPERATOR,
     RADIUS,
     /*feOffset*/
-    //DX,
-    //DY,
+    // DX,
+    // DY,
     /*feSpecularLighting*/
-    //SURFACESCALE,
+    // SURFACESCALE,
     SPECULARCONSTANT,
     SPECULAREXPONENT,
     /*feTile*/
@@ -319,7 +320,12 @@ enum class SPAttr {
     NUMOCTAVES,
     SEED,
     STITCHTILES,
-    //TYPE,
+    // TYPE,
+    /*feSpectralNoise / feSpectralBilateral / feSpectralDistance — Inkscape extensions*/
+    SPECTRAL_NOISE_PROFILE,
+    SPECTRAL_SIGMA_SPATIAL,
+    SPECTRAL_SIGMA_RANGE,
+    SPECTRAL_DISTANCE_MODE,
     /* SPGradient */
     GRADIENTUNITS,
     GRADIENTTRANSFORM,
@@ -332,7 +338,7 @@ enum class SPAttr {
     FR,
     /* SPMeshPatch */
     TENSOR,
-    //TYPE,
+    // TYPE,
     /* SPPattern */
     PATTERNUNITS,
     PATTERNCONTENTUNITS,
@@ -355,7 +361,7 @@ enum class SPAttr {
     MARKERHEIGHT,
     ORIENT,
     /* SPStyleElem */
-    //TYPE,
+    // TYPE,
     /* Animations */
     ATTRIBUTENAME,
     ATTRIBUTETYPE,
@@ -370,7 +376,7 @@ enum class SPAttr {
 
     /* Interpolating animations */
     CALCMODE,
-    //VALUES,
+    // VALUES,
     KEYTIMES,
     KEYSPLINES,
     FROM,
@@ -390,7 +396,7 @@ enum class SPAttr {
 
     UNICODE,
     GLYPH_NAME,
-    //ORIENTATION,
+    // ORIENTATION,
     ARABIC_FORM,
     LANG,
 
@@ -402,18 +408,18 @@ enum class SPAttr {
     K,
 
     /*<font-face>*/
-//    FONT_FAMILY,
-//    FONT_STYLE,
-//    FONT_VARIANT,
-//    FONT_WEIGHT,
-//    FONT_STRETCH,
-//    FONT_SIZE,
+    //    FONT_FAMILY,
+    //    FONT_STYLE,
+    //    FONT_VARIANT,
+    //    FONT_WEIGHT,
+    //    FONT_STRETCH,
+    //    FONT_SIZE,
     UNICODE_RANGE,
     UNITS_PER_EM,
     PANOSE_1,
     STEMV,
     STEMH,
-    //SLOPE,
+    // SLOPE,
     CAP_HEIGHT,
     X_HEIGHT,
     ACCENT_HEIGHT,
@@ -480,7 +486,7 @@ enum class SPAttr {
     SOLID_COLOR,
     SOLID_OPACITY,
     VECTOR_EFFECT,
-    
+
     /* CSS Blending/Compositing */
     MIX_BLEND_MODE,
     ISOLATION,
@@ -499,7 +505,7 @@ enum class SPAttr {
     /* Font: Order is important! */
     FONT,
     FONT_FAMILY,
-    INKSCAPE_FONT_SPEC,  // Remove me
+    INKSCAPE_FONT_SPEC, // Remove me
     FONT_SIZE,
     FONT_SIZE_ADJUST,
     FONT_STRETCH,
@@ -547,9 +553,9 @@ enum class SPAttr {
     SHAPE_PADDING,
     SHAPE_MARGIN,
     INLINE_SIZE,
-    
+
     /* Text Decoration */
-    TEXT_DECORATION,  // CSS 2/CSS3-Shorthand
+    TEXT_DECORATION, // CSS 2/CSS3-Shorthand
     TEXT_DECORATION_LINE,
     TEXT_DECORATION_STYLE,
     TEXT_DECORATION_COLOR,

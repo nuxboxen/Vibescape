@@ -12,6 +12,8 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include "display/nr-filter-gaussian.h"
+
 #include <algorithm>
 #include <cmath>
 #include <complex>
@@ -23,10 +25,10 @@
 
 #include "display/cairo-utils.h"
 #include "display/dispatch-pool.h"
-#include "display/nr-filter-gaussian.h"
 #include "display/nr-filter-primitive.h"
 #include "display/nr-filter-slot.h"
 #include "display/nr-filter-units.h"
+#include "display/spectral/spectral-blur.h"
 #include "display/threading.h"
 #include "util/fixed_point.h"
 
@@ -443,9 +445,11 @@ filter2D_FIR(PT *const dst, int const dstr1, int const dstr2,
     });
 }
 
-static void
-gaussian_pass_IIR(Geom::Dim2 d, double deviation, cairo_surface_t *src, cairo_surface_t *dest,
-    IIRValue **tmpdata, dispatch_pool &pool)
+// Non-static: also called from testfiles/src/spectral-pipeline-bench.cpp
+// to time IIR vs spectral at the same σ on the same surface. No
+// production caller other than render_cairo below.
+void gaussian_pass_IIR(Geom::Dim2 d, double deviation, cairo_surface_t *src, cairo_surface_t *dest, IIRValue **tmpdata,
+                       dispatch_pool &pool)
 {
     // Filter variables
     IIRValue b[N+1];  // scaling coefficient + filter coefficients (can be 10.21 fixed point)
@@ -595,6 +599,17 @@ void FilterGaussian::render_cairo(FilterSlot &slot) const
     bool use_IIR_x = deviation_x > 3;
     bool use_IIR_y = deviation_y > 3;
 
+    // Spectral DCT third tier — *disabled by default* (perf
+    // bench shows it is ~25-50× slower than IIR at every σ tested
+    // across all canvas sizes; see doc/spectral/progress.md §5 and the
+    // [-] entry in doc/spectral/todo.md §2). Kept reachable as
+    // `use_spectral = false` so the substrate stays linked for
+    // capability primitives (Tier 3 bilateral / SDF / noise) and so
+    // future contributors can experiment with cutoffs if hardware
+    // changes the perf landscape. Removing this branch entirely is
+    // a clean cut.
+    constexpr bool use_spectral = false;
+
     // Temporary storage for IIR filter
     // NOTE: This can be eliminated, but it reduces the precision a bit
     std::vector<IIRValue *> tmpdata(threads, nullptr);
@@ -620,19 +635,43 @@ void FilterGaussian::render_cairo(FilterSlot &slot) const
     }
     cairo_surface_flush(downsampled);
 
-    if (scr_len_x > 0) {
-        if (use_IIR_x) {
-            gaussian_pass_IIR(Geom::X, deviation_x, downsampled, downsampled, tmpdata.data(), *pool);
+    if (use_spectral) {
+        // Single 2D pass — heat kernel handles both axes via per-axis
+        // decay tables in apply_lattice_heat_kernel(). No IIR/FIR
+        // per-axis dispatch needed when this tier fires.
+        unsigned char *data = cairo_image_surface_get_data(downsampled);
+        int const w = cairo_image_surface_get_width(downsampled);
+        int const h = cairo_image_surface_get_height(downsampled);
+        int const stride = cairo_image_surface_get_stride(downsampled);
+        if (cairo_image_surface_get_format(downsampled) == CAIRO_FORMAT_A8) {
+            // Pack rows tightly if stride > w (Cairo aligns A8 rows to
+            // 4 bytes), then unpack after.
+            std::vector<unsigned char> packed(static_cast<std::size_t>(w) * static_cast<std::size_t>(h));
+            for (int y = 0; y < h; ++y) {
+                std::memcpy(packed.data() + static_cast<std::size_t>(y) * w, data + y * stride, w);
+            }
+            Inkscape::Spectral::apply_heat_kernel_a8(w, h, packed.data(), deviation_x, deviation_y);
+            for (int y = 0; y < h; ++y) {
+                std::memcpy(data + y * stride, packed.data() + static_cast<std::size_t>(y) * w, w);
+            }
         } else {
-            gaussian_pass_FIR(Geom::X, deviation_x, downsampled, downsampled, *pool);
+            Inkscape::Spectral::blur_bgra(w, h, data, stride, data, stride, deviation_x, deviation_y);
         }
-    }
+    } else {
+        if (scr_len_x > 0) {
+            if (use_IIR_x) {
+                gaussian_pass_IIR(Geom::X, deviation_x, downsampled, downsampled, tmpdata.data(), *pool);
+            } else {
+                gaussian_pass_FIR(Geom::X, deviation_x, downsampled, downsampled, *pool);
+            }
+        }
 
-    if (scr_len_y > 0) {
-        if (use_IIR_y) {
-            gaussian_pass_IIR(Geom::Y, deviation_y, downsampled, downsampled, tmpdata.data(), *pool);
-        } else {
-            gaussian_pass_FIR(Geom::Y, deviation_y, downsampled, downsampled, *pool);
+        if (scr_len_y > 0) {
+            if (use_IIR_y) {
+                gaussian_pass_IIR(Geom::Y, deviation_y, downsampled, downsampled, tmpdata.data(), *pool);
+            } else {
+                gaussian_pass_FIR(Geom::Y, deviation_y, downsampled, downsampled, *pool);
+            }
         }
     }
 

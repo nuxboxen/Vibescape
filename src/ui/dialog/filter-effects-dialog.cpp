@@ -2796,40 +2796,84 @@ struct EffectMetadata {
 
 static const std::map<Inkscape::Filters::FilterPrimitiveType, EffectMetadata>& get_effects() {
     static std::map<Inkscape::Filters::FilterPrimitiveType, EffectMetadata> effects = {
-    { NR_FILTER_GAUSSIANBLUR,      { EffectCategory::Effect,     "feGaussianBlur-icon",
-        _("Uniformly blurs its input. Commonly used together with Offset to create a drop shadow effect.") }},
-    { NR_FILTER_MORPHOLOGY,        { EffectCategory::Effect,     "feMorphology-icon",
-        _("Provides erode and dilate effects. For single-color objects erode makes the object thinner and dilate makes it thicker.") }},
-    { NR_FILTER_OFFSET,            { EffectCategory::Effect,     "feOffset-icon",
-        _("Offsets the input by an user-defined amount. Commonly used for drop shadow effects.") }},
-    { NR_FILTER_CONVOLVEMATRIX,    { EffectCategory::Effect,     "feConvolveMatrix-icon",
-        _("Performs a convolution on the input image enabling effects like blur, sharpening, embossing and edge detection.") }},
-    { NR_FILTER_DISPLACEMENTMAP,   { EffectCategory::Effect,     "feDisplacementMap-icon",
-        _("Displaces pixels from the first input using the second as a map of displacement intensity. Classical examples are whirl and pinch effects.") }},
-    { NR_FILTER_DROPSHADOW,        { EffectCategory::Effect,     "feDropShadow-icon",
-        _("Creates a drop shadow of the input image. Combines offset, blur, and compositing in a single convenient primitive.") }},
-    { NR_FILTER_TILE,              { EffectCategory::Effect,     "feTile-icon",
-        _("Tiles a region with an input graphic. The source tile is defined by the filter primitive subregion of the input.") }},
-    { NR_FILTER_COMPOSITE,         { EffectCategory::Compose,    "feComposite-icon",
-        _("Composites two images using one of the Porter-Duff blending modes or the arithmetic mode described in SVG standard.") }},
-    { NR_FILTER_BLEND,             { EffectCategory::Compose,    "feBlend-icon",
-        _("Provides image blending modes, such as screen, multiply, darken and lighten.") }},
-    { NR_FILTER_MERGE,             { EffectCategory::Compose,    "feMerge-icon",
-        _("Merges multiple inputs using normal alpha compositing. Equivalent to using several Blend primitives in 'normal' mode or several Composite primitives in 'over' mode.") }},
-    { NR_FILTER_COLORMATRIX,       { EffectCategory::Colors,     "feColorMatrix-icon",
-        _("Modifies pixel colors based on a transformation matrix. Useful for adjusting color hue and saturation.") }},
-    { NR_FILTER_COMPONENTTRANSFER, { EffectCategory::Colors,     "feComponentTransfer-icon",
-        _("Manipulates color components according to particular transfer functions. Useful for brightness and contrast adjustment, color balance, and thresholding.") }},
-    { NR_FILTER_DIFFUSELIGHTING,   { EffectCategory::Colors,     "feDiffuseLighting-icon",
-        _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.") }},
-    { NR_FILTER_SPECULARLIGHTING,  { EffectCategory::Colors,     "feSpecularLighting-icon",
-        _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.") }},
-    { NR_FILTER_FLOOD,             { EffectCategory::Generation, "feFlood-icon",
-        _("Fills the region with a given color and opacity. Often used as input to other filters to apply color to a graphic.") }},
-    { NR_FILTER_IMAGE,             { EffectCategory::Generation, "feImage-icon",
-        _("Fills the region with graphics from an external file or from another portion of the document.") }},
-    { NR_FILTER_TURBULENCE,        { EffectCategory::Generation, "feTurbulence-icon",
-        _("Renders Perlin noise, which is useful to generate textures such as clouds, fire, smoke, marble or granite.") }},
+        {NR_FILTER_GAUSSIANBLUR,
+         {EffectCategory::Effect, "feGaussianBlur-icon",
+          _("Uniformly blurs its input. Commonly used together with Offset to create a drop shadow effect.")}},
+        {NR_FILTER_MORPHOLOGY,
+         {EffectCategory::Effect, "feMorphology-icon",
+          _("Provides erode and dilate effects. For single-color objects erode makes the object thinner and dilate "
+            "makes it thicker.")}},
+        {NR_FILTER_OFFSET,
+         {EffectCategory::Effect, "feOffset-icon",
+          _("Offsets the input by an user-defined amount. Commonly used for drop shadow effects.")}},
+        {NR_FILTER_CONVOLVEMATRIX,
+         {EffectCategory::Effect, "feConvolveMatrix-icon",
+          _("Performs a convolution on the input image enabling effects like blur, sharpening, embossing and edge "
+            "detection.")}},
+        {NR_FILTER_DISPLACEMENTMAP,
+         {EffectCategory::Effect, "feDisplacementMap-icon",
+          _("Displaces pixels from the first input using the second as a map of displacement intensity. Classical "
+            "examples are whirl and pinch effects.")}},
+        {NR_FILTER_DROPSHADOW,
+         {EffectCategory::Effect, "feDropShadow-icon",
+          _("Creates a drop shadow of the input image. Combines offset, blur, and compositing in a single convenient "
+            "primitive.")}},
+        {NR_FILTER_TILE,
+         {EffectCategory::Effect, "feTile-icon",
+          _("Tiles a region with an input graphic. The source tile is defined by the filter primitive subregion of the "
+            "input.")}},
+        {NR_FILTER_COMPOSITE,
+         {EffectCategory::Compose, "feComposite-icon",
+          _("Composites two images using one of the Porter-Duff blending modes or the arithmetic mode described in SVG "
+            "standard.")}},
+        {NR_FILTER_BLEND,
+         {EffectCategory::Compose, "feBlend-icon",
+          _("Provides image blending modes, such as screen, multiply, darken and lighten.")}},
+        {NR_FILTER_MERGE,
+         {EffectCategory::Compose, "feMerge-icon",
+          _("Merges multiple inputs using normal alpha compositing. Equivalent to using several Blend primitives in "
+            "'normal' mode or several Composite primitives in 'over' mode.")}},
+        {NR_FILTER_COLORMATRIX,
+         {EffectCategory::Colors, "feColorMatrix-icon",
+          _("Modifies pixel colors based on a transformation matrix. Useful for adjusting color hue and saturation.")}},
+        {NR_FILTER_COMPONENTTRANSFER,
+         {EffectCategory::Colors, "feComponentTransfer-icon",
+          _("Manipulates color components according to particular transfer functions. Useful for brightness and "
+            "contrast adjustment, color balance, and thresholding.")}},
+        {NR_FILTER_DIFFUSELIGHTING,
+         {EffectCategory::Colors, "feDiffuseLighting-icon",
+          _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher "
+            "opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.")}},
+        {NR_FILTER_SPECULARLIGHTING,
+         {EffectCategory::Colors, "feSpecularLighting-icon",
+          _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher "
+            "opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.")}},
+        {NR_FILTER_FLOOD,
+         {EffectCategory::Generation, "feFlood-icon",
+          _("Fills the region with a given color and opacity. Often used as input to other filters to apply color to a "
+            "graphic.")}},
+        {NR_FILTER_IMAGE,
+         {EffectCategory::Generation, "feImage-icon",
+          _("Fills the region with graphics from an external file or from another portion of the document.")}},
+        {NR_FILTER_TURBULENCE,
+         {EffectCategory::Generation, "feTurbulence-icon",
+          _("Renders Perlin noise, which is useful to generate textures such as clouds, fire, smoke, marble or "
+            "granite.")}},
+        // -- Inkscape spectral extensions; see doc/spectral/progress.md --
+        // Each icon is a self-portrait — the SVG icon uses the primitive
+        // it represents, rendered by the primitive itself at icon load.
+        {NR_FILTER_SPECTRAL_BILATERAL,
+         {EffectCategory::Effect, "feSpectralBilateral-icon",
+          _("Edge-preserving smoothing via Perona-Malik anisotropic diffusion. Smooths within flat regions while "
+            "preserving sharp edges. Inkscape extension.")}},
+        {NR_FILTER_SPECTRAL_DISTANCE,
+         {EffectCategory::Effect, "feSpectralDistance-icon",
+          _("Heat-kernel signed distance field. Visualizes proximity to the input's alpha mask boundary. Inkscape "
+            "extension.")}},
+        {NR_FILTER_SPECTRAL_NOISE,
+         {EffectCategory::Generation, "feSpectralNoise-icon",
+          _("Power-spectrum-controlled synthetic noise (white, pink, brown, or blue). Lets the caller specify the "
+            "spectrum directly rather than relying on Perlin's intrinsic spectrum. Inkscape extension.")}},
     };
     return effects;
 }
@@ -3232,6 +3276,32 @@ void FilterEffectsDialog::init_settings_widgets()
     _settings->add_dualspinscale(SPAttr::BASEFREQUENCY, _("Size:"), 0.001, 10, 0.001, 0.1, 3);
     _settings->add_spinscale(1, SPAttr::NUMOCTAVES, _("Detail:"), 1, 10, 1, 1, 0);
     _settings->add_spinscale(0, SPAttr::SEED, _("Seed:"), 0, 1000, 1, 1, 0, _("The starting number for the pseudo random number generator."));
+
+    // -- Inkscape spectral extensions; see doc/spectral/progress.md --
+    _settings->type(NR_FILTER_SPECTRAL_BILATERAL);
+    _settings->add_spinscale(4.0, SPAttr::SPECTRAL_SIGMA_SPATIAL, _("Spatial σ:"), 0.5, 20.0, 0.5, 0.1, 1,
+                             _("Blur radius in pixels. Pass count grows quadratically (N = ceil(2σ²))."));
+    _settings->add_spinscale(16.0, SPAttr::SPECTRAL_SIGMA_RANGE, _("Range σ:"), 1.0, 128.0, 1.0, 0.5, 1,
+                             _("Edge sensitivity in 0..255 alpha units. Smaller → sharper edges preserved; larger → "
+                               "closer to plain Gaussian."));
+
+    _settings->type(NR_FILTER_SPECTRAL_DISTANCE);
+    _settings->add_spinscale(
+        3.0, SPAttr::SPECTRAL_SIGMA_SPATIAL, _("Spatial σ:"), 0.5, 16.0, 0.5, 0.1, 1,
+        _("Diffusion length scale in pixels. Smaller → tighter near-boundary accuracy but smaller meaningful range."));
+    _settings->add_combo(SPECTRAL_DISTANCE_UNSIGNED, SPAttr::SPECTRAL_DISTANCE_MODE, _("Mode:"),
+                         SpectralDistanceModeConverter,
+                         _("Unsigned: 0 inside, ramps to 255 outside. Signed: 0 (black) deep inside, 128 at boundary, "
+                           "255 deep outside."));
+
+    _settings->type(NR_FILTER_SPECTRAL_NOISE);
+    _settings->add_combo(Inkscape::Spectral::NoiseProfile::kPink, SPAttr::SPECTRAL_NOISE_PROFILE, _("Profile:"),
+                         SpectralNoiseProfileConverter,
+                         _("Power-spectrum shape. White = flat, Pink = 1/sqrt(λ) (natural look), Brown = 1/λ "
+                           "(smoothest), Blue = sqrt(λ) (high-frequency dither)."));
+    _settings->add_spinscale(
+        0, SPAttr::SEED, _("Seed:"), 0, 1000000, 1, 1, 0,
+        _("RNG seed. Different seeds produce different deterministic tiles for the same profile."));
 }
 
 void FilterEffectsDialog::add_filter_primitive(Filters::FilterPrimitiveType type) {

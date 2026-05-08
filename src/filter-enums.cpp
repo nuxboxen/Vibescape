@@ -18,7 +18,7 @@
 using Inkscape::Util::EnumData;
 using Inkscape::Util::EnumDataConverter;
 
-const EnumData<Inkscape::Filters::FilterPrimitiveType> FPData[Inkscape::Filters::NR_FILTER_ENDPRIMITIVETYPE] = {
+EnumData<Inkscape::Filters::FilterPrimitiveType> const FPData[Inkscape::Filters::NR_FILTER_ENDPRIMITIVETYPE] = {
     // clang-format off
     {Inkscape::Filters::NR_FILTER_BLEND,             _("Blend"),              "svg:feBlend"},
     {Inkscape::Filters::NR_FILTER_COLORMATRIX,       _("Color Matrix"),       "svg:feColorMatrix"},
@@ -35,6 +35,9 @@ const EnumData<Inkscape::Filters::FilterPrimitiveType> FPData[Inkscape::Filters:
     {Inkscape::Filters::NR_FILTER_MORPHOLOGY,        _("Morphology"),         "svg:feMorphology"},
     {Inkscape::Filters::NR_FILTER_OFFSET,            _("Offset"),             "svg:feOffset"},
     {Inkscape::Filters::NR_FILTER_SPECULARLIGHTING,  _("Specular Lighting"),  "svg:feSpecularLighting"},
+    {Inkscape::Filters::NR_FILTER_SPECTRAL_BILATERAL,_("Spectral Bilateral"), "svg:feSpectralBilateral"},
+    {Inkscape::Filters::NR_FILTER_SPECTRAL_DISTANCE, _("Spectral Distance"),  "svg:feSpectralDistance"},
+    {Inkscape::Filters::NR_FILTER_SPECTRAL_NOISE,    _("Spectral Noise"),     "svg:feSpectralNoise"},
     {Inkscape::Filters::NR_FILTER_TILE,              _("Tile"),               "svg:feTile"},
     {Inkscape::Filters::NR_FILTER_TURBULENCE,        _("Turbulence"),         "svg:feTurbulence"}
     // clang-format on
@@ -128,6 +131,27 @@ const EnumData<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeData[Inksc
     // clang-format on
 };
 const EnumDataConverter<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeConverter(TurbulenceTypeData, Inkscape::Filters::TURBULENCE_ENDTYPE);
+
+// feSpectralNoise (Inkscape extension)
+EnumData<Inkscape::Spectral::NoiseProfile> const SpectralNoiseProfileData[4] = {
+    // clang-format off
+    {Inkscape::Spectral::NoiseProfile::kWhite, _("White (flat)"),    "white"},
+    {Inkscape::Spectral::NoiseProfile::kPink,  _("Pink (1/sqrt λ)"), "pink"},
+    {Inkscape::Spectral::NoiseProfile::kBrown, _("Brown (1/λ)"),     "brown"},
+    {Inkscape::Spectral::NoiseProfile::kBlue,  _("Blue (sqrt λ)"),   "blue"}
+    // clang-format on
+};
+EnumDataConverter<Inkscape::Spectral::NoiseProfile> const SpectralNoiseProfileConverter(SpectralNoiseProfileData, 4);
+
+// feSpectralDistance mode (Inkscape extension)
+EnumData<Inkscape::Filters::SpectralDistanceMode> const SpectralDistanceModeData[2] = {
+    // clang-format off
+    {Inkscape::Filters::SPECTRAL_DISTANCE_UNSIGNED, _("Unsigned"), "unsigned"},
+    {Inkscape::Filters::SPECTRAL_DISTANCE_SIGNED,   _("Signed"),   "signed"}
+    // clang-format on
+};
+EnumDataConverter<Inkscape::Filters::SpectralDistanceMode> const SpectralDistanceModeConverter(SpectralDistanceModeData,
+                                                                                               2);
 
 // Light source
 const EnumData<LightSource> LightSourceData[LIGHT_ENDSOURCE] = {

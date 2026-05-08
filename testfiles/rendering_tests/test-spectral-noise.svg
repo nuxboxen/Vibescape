@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Rendering test for <feSpectralNoise> (Inkscape extension).
+  Four 64×64 cells, one per power-spectrum profile with the same
+  seed. Each profile produces a distinct deterministic tile; the
+  golden PNG pins all four against the substrate's reproducibility
+  guarantee. See SPECTRAL_PROGRESS.md §−1 / Tier 3.4.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="64" viewBox="0 0 256 64">
+  <defs>
+    <filter id="white" x="0" y="0" width="100%" height="100%">
+      <feSpectralNoise spectralNoiseProfile="white" seed="3735928559"/>
+    </filter>
+    <filter id="pink" x="0" y="0" width="100%" height="100%">
+      <feSpectralNoise spectralNoiseProfile="pink" seed="3735928559"/>
+    </filter>
+    <filter id="brown" x="0" y="0" width="100%" height="100%">
+      <feSpectralNoise spectralNoiseProfile="brown" seed="3735928559"/>
+    </filter>
+    <filter id="blue" x="0" y="0" width="100%" height="100%">
+      <feSpectralNoise spectralNoiseProfile="blue" seed="3735928559"/>
+    </filter>
+  </defs>
+  <rect x="0"   y="0" width="64" height="64" fill="white" filter="url(#white)"/>
+  <rect x="64"  y="0" width="64" height="64" fill="white" filter="url(#pink)"/>
+  <rect x="128" y="0" width="64" height="64" fill="white" filter="url(#brown)"/>
+  <rect x="192" y="0" width="64" height="64" fill="white" filter="url(#blue)"/>
+</svg>

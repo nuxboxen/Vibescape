@@ -32,6 +32,9 @@ target_sources(inkscape_base PRIVATE
     nr-filter-primitive.cpp
     # nr-filter-skeleton.cpp
     nr-filter-slot.cpp
+    nr-filter-spectral-bilateral.cpp
+    nr-filter-spectral-distance.cpp
+    nr-filter-spectral-noise.cpp
     nr-filter-specularlighting.cpp
     nr-filter-tile.cpp
     nr-filter-turbulence.cpp
@@ -40,6 +43,12 @@ target_sources(inkscape_base PRIVATE
     nr-light.cpp
     nr-style.cpp
     nr-svgfonts.cpp
+    spectral/spectral-bilateral.cpp
+    spectral/spectral-blur.cpp
+    spectral/spectral-dct.cpp
+    spectral/spectral-distance-field.cpp
+    spectral/spectral-fft.cpp
+    spectral/spectral-noise.cpp
     threading.cpp
     translucency-group.cpp
 
@@ -101,6 +110,9 @@ target_sources(inkscape_base PRIVATE
     nr-filter-primitive.h
     nr-filter-skeleton.h
     nr-filter-slot.h
+    nr-filter-spectral-bilateral.h
+    nr-filter-spectral-distance.h
+    nr-filter-spectral-noise.h
     nr-filter-specularlighting.h
     nr-filter-tile.h
     nr-filter-turbulence.h
@@ -113,6 +125,12 @@ target_sources(inkscape_base PRIVATE
     nr-style.h
     nr-svgfonts.h
     rendermode.h
+    spectral/spectral-bilateral.h
+    spectral/spectral-blur.h
+    spectral/spectral-dct.h
+    spectral/spectral-distance-field.h
+    spectral/spectral-fft.h
+    spectral/spectral-noise.h
     tags.h
     threading.h
     translucency-group.h

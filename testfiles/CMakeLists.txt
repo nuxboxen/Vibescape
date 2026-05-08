@@ -111,6 +111,13 @@ set(TEST_SOURCES
     object-test
     sp-glyph-kerning-test
     cairo-utils-test
+    spectral-bilateral-test
+    spectral-compression-experiment-test
+    spectral-parity-test
+    spectral-pipeline-bench
+    spectral-pipeline-determinism-test
+    spectral-sdf-noise-test
+    spectral-substrate-test
     svg-extension-test
     curve-test
     2geom-characterization-test

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Rendering test for <feSpectralBilateral> (Inkscape extension).
+  Three cells:
+    1. source — sharp red↔blue colour edge
+    2. bilateral σ_range=16 — edge preserved (joint Δ=255 collapses
+       weight to ~0)
+    3. bilateral σ_range=∞ — Gaussian limit, edge smears
+  See SPECTRAL_PROGRESS.md §−1 / Tier 3.4.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="128" viewBox="0 0 384 128">
+  <defs>
+    <filter id="bilat-edge" x="0" y="0" width="100%" height="100%">
+      <feSpectralBilateral spectralSigmaSpatial="3" spectralSigmaRange="16" in="SourceGraphic"/>
+    </filter>
+    <filter id="bilat-gauss" x="0" y="0" width="100%" height="100%">
+      <feSpectralBilateral spectralSigmaSpatial="3" spectralSigmaRange="1000000" in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g transform="translate(0,0)">
+    <rect x="0"  y="0" width="64"  height="128" fill="#cc3333"/>
+    <rect x="64" y="0" width="64"  height="128" fill="#3333cc"/>
+  </g>
+  <g transform="translate(128,0)" filter="url(#bilat-edge)">
+    <rect x="0"  y="0" width="64"  height="128" fill="#cc3333"/>
+    <rect x="64" y="0" width="64"  height="128" fill="#3333cc"/>
+  </g>
+  <g transform="translate(256,0)" filter="url(#bilat-gauss)">
+    <rect x="0"  y="0" width="64"  height="128" fill="#cc3333"/>
+    <rect x="64" y="0" width="64"  height="128" fill="#3333cc"/>
+  </g>
+</svg>

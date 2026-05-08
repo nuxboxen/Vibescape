@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Rendering test for <feSpectralDistance> (Inkscape extension).
+  Two cells, both showing a black disk visualised as a heat-kernel
+  distance field — left in unsigned mode, right in signed mode.
+    - unsigned: 0 inside the disk, ramps to 255 (white) outside
+      within ~4σ of the boundary, saturates beyond.
+    - signed: 0 (black) at the centre, 128 at the boundary, 255
+      (white) outside via the soft signed ramp.
+  See SPECTRAL_PROGRESS.md §−1 / Tier 3.4.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="128" viewBox="0 0 256 128">
+  <defs>
+    <filter id="sdf-unsigned" x="0" y="0" width="100%" height="100%">
+      <feSpectralDistance spectralSigmaSpatial="4" spectralDistanceMode="unsigned" in="SourceGraphic"/>
+    </filter>
+    <filter id="sdf-signed" x="0" y="0" width="100%" height="100%">
+      <feSpectralDistance spectralSigmaSpatial="4" spectralDistanceMode="signed" in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g transform="translate(0,0)" filter="url(#sdf-unsigned)">
+    <circle cx="64" cy="64" r="32" fill="#000000"/>
+  </g>
+  <g transform="translate(128,0)" filter="url(#sdf-signed)">
+    <circle cx="64" cy="64" r="32" fill="#000000"/>
+  </g>
+</svg>

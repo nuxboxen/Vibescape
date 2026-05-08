@@ -77,3 +77,12 @@ if(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 endif()
 # custom .otf font with SVG glyphs for testing various edge cases
 add_rendering_test(text-svg-glyph-custom FUZZ 0.3)
+
+# -- Spectral filter primitives (Inkscape extensions; see SPECTRAL_PROGRESS.md) --
+# Substrate output is bit-deterministic (substrate unit tests assert this),
+# but Cairo's premultiplied-alpha rounding and CTM scaling can introduce
+# small differences across builds. Loose FUZZ tolerance here matches the
+# pattern other Cairo-rendered filter tests use.
+add_rendering_test(test-spectral-noise FUZZ 0.05)
+add_rendering_test(test-spectral-bilateral FUZZ 0.05)
+add_rendering_test(test-spectral-distance FUZZ 0.05)

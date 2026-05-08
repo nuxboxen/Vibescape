@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Self-portrait icon for the feSpectralDistance filter primitive.
+  A black disk run through feSpectralDistance in unsigned mode,
+  producing the heat-kernel SDF radial gradient that visualizes
+  what the primitive computes. The icon is rendered by the actual
+  primitive at icon-load time. See SPECTRAL_PROGRESS.md.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <filter id="self-sdf" x="0" y="0" width="100%" height="100%">
+      <feSpectralDistance spectralSigmaSpatial="6"
+                           spectralDistanceMode="unsigned"
+                           in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect x="3" y="3" width="90" height="90"
+        fill="#ffffff" stroke="#222222" stroke-width="2"/>
+  <g filter="url(#self-sdf)">
+    <circle cx="48" cy="48" r="20" fill="#000000"/>
+  </g>
+</svg>

@@ -73,10 +73,12 @@
 #include "live_effects/lpeobject.h"
 
 // filters
+#include <unordered_map>
+
 #include "filters/blend.h"
 #include "filters/colormatrix.h"
-#include "filters/componenttransfer.h"
 #include "filters/componenttransfer-funcnode.h"
+#include "filters/componenttransfer.h"
 #include "filters/composite.h"
 #include "filters/convolvematrix.h"
 #include "filters/diffuselighting.h"
@@ -91,12 +93,13 @@
 #include "filters/morphology.h"
 #include "filters/offset.h"
 #include "filters/pointlight.h"
+#include "filters/spectral-bilateral.h"
+#include "filters/spectral-distance.h"
+#include "filters/spectral-noise.h"
 #include "filters/specularlighting.h"
 #include "filters/spotlight.h"
 #include "filters/tile.h"
 #include "filters/turbulence.h"
-
-#include <unordered_map>
 
 namespace {
 
@@ -133,152 +136,164 @@ private:
     static Func constexpr make = [] () -> SPObject* { return new T; };
     static Func constexpr null = [] () -> SPObject* { return nullptr; };
 
-    std::unordered_map<std::string, Func> const map =
-    {
+    std::unordered_map<std::string, Func> const map = {
         // primary
-        { "inkscape:box3d", make<SPBox3D> },
-        { "inkscape:box3dside", make<Box3DSide> },
-        { "svg:color-profile", make<Inkscape::ColorProfile> },
-        { "inkscape:persp3d", make<Persp3D> },
-        { "svg:a", make<SPAnchor> },
-        { "svg:clipPath", make<SPClipPath> },
-        { "svg:defs", make<SPDefs> },
-        { "svg:desc", make<SPDesc> },
-        { "svg:ellipse", [] () -> SPObject* {
-            auto e = new SPGenericEllipse;
-            e->type = SP_GENERIC_ELLIPSE_ELLIPSE;
-            return e;
-        }},
-        { "svg:circle", [] () -> SPObject* {
-            auto c = new SPGenericEllipse;
-            c->type = SP_GENERIC_ELLIPSE_CIRCLE;
-            return c;
-        }},
-        { "arc", [] () -> SPObject* {
-            auto a = new SPGenericEllipse;
-            a->type = SP_GENERIC_ELLIPSE_ARC;
-            return a;
-        }},
-        { "svg:filter", make<SPFilter> },
-        { "svg:flowDiv", make<SPFlowdiv> },
-        { "svg:flowSpan", make<SPFlowtspan> },
-        { "svg:flowPara", make<SPFlowpara> },
-        { "svg:flowLine", make<SPFlowline> },
-        { "svg:flowRegionBreak", make<SPFlowregionbreak> },
-        { "svg:flowRegion", make<SPFlowregion> },
-        { "svg:flowRegionExclude", make<SPFlowregionExclude> },
-        { "svg:flowRoot", make<SPFlowtext> },
-        { "svg:font", make<SPFont> },
-        { "svg:font-face", make<SPFontFace> },
-        { "svg:glyph", make<SPGlyph> },
-        { "svg:hkern", make<SPHkern> },
-        { "svg:vkern", make<SPVkern> },
-        { "sodipodi:guide", make<SPGuide> },
-        { "svg:view", make<SPPage> },
-        { "svg:hatch", make<SPHatch> },
-        { "svg:hatchpath", make<SPHatchPath> },
-        { "svg:hatchPath", [] () -> SPObject* {
-            std::cerr << "Warning: <hatchPath> has been renamed <hatchpath>" << std::endl;
-            return new SPHatchPath;
-        }},
-        { "svg:image", make<SPImage> },
-        { "svg:g", make<SPGroup> },
-        { "svg:line", make<SPLine> },
-        { "svg:linearGradient", make<SPLinearGradient> },
-        { "svg:marker", make<SPMarker> },
-        { "svg:mask", make<SPMask> },
-        { "svg:mesh", [] () -> SPObject* { // SVG 2 old
+        {"inkscape:box3d", make<SPBox3D>},
+        {"inkscape:box3dside", make<Box3DSide>},
+        {"svg:color-profile", make<Inkscape::ColorProfile>},
+        {"inkscape:persp3d", make<Persp3D>},
+        {"svg:a", make<SPAnchor>},
+        {"svg:clipPath", make<SPClipPath>},
+        {"svg:defs", make<SPDefs>},
+        {"svg:desc", make<SPDesc>},
+        {"svg:ellipse",
+         []() -> SPObject * {
+             auto e = new SPGenericEllipse;
+             e->type = SP_GENERIC_ELLIPSE_ELLIPSE;
+             return e;
+         }},
+        {"svg:circle",
+         []() -> SPObject * {
+             auto c = new SPGenericEllipse;
+             c->type = SP_GENERIC_ELLIPSE_CIRCLE;
+             return c;
+         }},
+        {"arc",
+         []() -> SPObject * {
+             auto a = new SPGenericEllipse;
+             a->type = SP_GENERIC_ELLIPSE_ARC;
+             return a;
+         }},
+        {"svg:filter", make<SPFilter>},
+        {"svg:flowDiv", make<SPFlowdiv>},
+        {"svg:flowSpan", make<SPFlowtspan>},
+        {"svg:flowPara", make<SPFlowpara>},
+        {"svg:flowLine", make<SPFlowline>},
+        {"svg:flowRegionBreak", make<SPFlowregionbreak>},
+        {"svg:flowRegion", make<SPFlowregion>},
+        {"svg:flowRegionExclude", make<SPFlowregionExclude>},
+        {"svg:flowRoot", make<SPFlowtext>},
+        {"svg:font", make<SPFont>},
+        {"svg:font-face", make<SPFontFace>},
+        {"svg:glyph", make<SPGlyph>},
+        {"svg:hkern", make<SPHkern>},
+        {"svg:vkern", make<SPVkern>},
+        {"sodipodi:guide", make<SPGuide>},
+        {"svg:view", make<SPPage>},
+        {"svg:hatch", make<SPHatch>},
+        {"svg:hatchpath", make<SPHatchPath>},
+        {"svg:hatchPath",
+         []() -> SPObject * {
+             std::cerr << "Warning: <hatchPath> has been renamed <hatchpath>" << std::endl;
+             return new SPHatchPath;
+         }},
+        {"svg:image", make<SPImage>},
+        {"svg:g", make<SPGroup>},
+        {"svg:line", make<SPLine>},
+        {"svg:linearGradient", make<SPLinearGradient>},
+        {"svg:marker", make<SPMarker>},
+        {"svg:mask", make<SPMask>},
+        {"svg:mesh",
+         []() -> SPObject * { // SVG 2 old
              std::cerr << "Warning: <mesh> has been renamed <meshgradient>." << std::endl;
              std::cerr << "Warning: <mesh> has been repurposed as a shape that tightly wraps a <meshgradient>." << std::endl;
              return new SPMeshGradient;
-        }},
-        { "svg:meshGradient", [] () -> SPObject* { // SVG 2 old
+         }},
+        {"svg:meshGradient",
+         []() -> SPObject * { // SVG 2 old
              std::cerr << "Warning: <meshGradient> has been renamed <meshgradient>" << std::endl;
              return new SPMeshGradient;
-        }},
-        { "svg:meshgradient", [] () -> SPObject* { // SVG 2
+         }},
+        {"svg:meshgradient",
+         []() -> SPObject * { // SVG 2
              return new SPMeshGradient;
-        }},
-        { "svg:meshPatch", [] () -> SPObject* {
+         }},
+        {"svg:meshPatch",
+         []() -> SPObject * {
              std::cerr << "Warning: <meshPatch> and <meshRow> have been renamed <meshpatch> and <meshrow>" << std::endl;
              return new SPMeshpatch;
-        }},
-        { "svg:meshpatch", make<SPMeshpatch> },
-        { "svg:meshRow", make<SPMeshrow> },
-        { "svg:meshrow", make<SPMeshrow> },
-        { "svg:metadata", make<SPMetadata> },
-        { "svg:missing-glyph", make<SPMissingGlyph> },
-        { "sodipodi:namedview", make<SPNamedView> },
-        { "inkscape:offset", make<SPOffset> },
-        { "svg:path", make<SPPath> },
-        { "svg:pattern", make<SPPattern> },
-        { "svg:polygon", make<SPPolygon> },
-        { "svg:polyline", make<SPPolyLine> },
-        { "svg:radialGradient", make<SPRadialGradient> },
-        { "svg:rect", make<SPRect> },
-        { "rect", make<SPRect> }, // LPE rect;
-        { "svg:svg", make<SPRoot> },
-        { "svg:script", make<SPScript> },
-        { "svg:solidColor", [] () -> SPObject* {
-            std::cerr << "Warning: <solidColor> has been renamed <solidcolor>" << std::endl;
-            return new SPSolidColor;
-        }},
-        { "svg:solidColor", [] () -> SPObject* {
-            std::cerr << "Warning: <solidColor> has been renamed <solidcolor>" << std::endl;
-            return new SPSolidColor;
-        }},
-        { "svg:solidcolor", make<SPSolidColor> },
-        { "spiral", make<SPSpiral> },
-        { "star", make<SPStar> },
-        { "svg:stop", make<SPStop> },
-        { "string", make<SPString> },
-        { "svg:style", make<SPStyleElem> },
-        { "svg:switch", make<SPSwitch> },
-        { "svg:symbol", make<SPSymbol> },
-        { "inkscape:tag", make<SPTag> },
-        { "inkscape:tagref", make<SPTagUse> },
-        { "svg:text", make<SPText> },
-        { "svg:title", make<SPTitle> },
-        { "svg:tref", make<SPTRef> },
-        { "svg:tspan", make<SPTSpan> },
-        { "svg:textPath", make<SPTextPath> },
-        { "svg:use", make<SPUse> },
-        { "inkscape:path-effect", make<LivePathEffectObject> },
+         }},
+        {"svg:meshpatch", make<SPMeshpatch>},
+        {"svg:meshRow", make<SPMeshrow>},
+        {"svg:meshrow", make<SPMeshrow>},
+        {"svg:metadata", make<SPMetadata>},
+        {"svg:missing-glyph", make<SPMissingGlyph>},
+        {"sodipodi:namedview", make<SPNamedView>},
+        {"inkscape:offset", make<SPOffset>},
+        {"svg:path", make<SPPath>},
+        {"svg:pattern", make<SPPattern>},
+        {"svg:polygon", make<SPPolygon>},
+        {"svg:polyline", make<SPPolyLine>},
+        {"svg:radialGradient", make<SPRadialGradient>},
+        {"svg:rect", make<SPRect>},
+        {"rect", make<SPRect>}, // LPE rect;
+        {"svg:svg", make<SPRoot>},
+        {"svg:script", make<SPScript>},
+        {"svg:solidColor",
+         []() -> SPObject * {
+             std::cerr << "Warning: <solidColor> has been renamed <solidcolor>" << std::endl;
+             return new SPSolidColor;
+         }},
+        {"svg:solidColor",
+         []() -> SPObject * {
+             std::cerr << "Warning: <solidColor> has been renamed <solidcolor>" << std::endl;
+             return new SPSolidColor;
+         }},
+        {"svg:solidcolor", make<SPSolidColor>},
+        {"spiral", make<SPSpiral>},
+        {"star", make<SPStar>},
+        {"svg:stop", make<SPStop>},
+        {"string", make<SPString>},
+        {"svg:style", make<SPStyleElem>},
+        {"svg:switch", make<SPSwitch>},
+        {"svg:symbol", make<SPSymbol>},
+        {"inkscape:tag", make<SPTag>},
+        {"inkscape:tagref", make<SPTagUse>},
+        {"svg:text", make<SPText>},
+        {"svg:title", make<SPTitle>},
+        {"svg:tref", make<SPTRef>},
+        {"svg:tspan", make<SPTSpan>},
+        {"svg:textPath", make<SPTextPath>},
+        {"svg:use", make<SPUse>},
+        {"inkscape:path-effect", make<LivePathEffectObject>},
 
         // filters
-        { "svg:feBlend", make<SPFeBlend> },
-        { "svg:feColorMatrix", make<SPFeColorMatrix> },
-        { "svg:feComponentTransfer", make<SPFeComponentTransfer> },
-        { "svg:feFuncR", [] () -> SPObject* { return new SPFeFuncNode(SPFeFuncNode::R); }},
-        { "svg:feFuncG", [] () -> SPObject* { return new SPFeFuncNode(SPFeFuncNode::G); }},
-        { "svg:feFuncB", [] () -> SPObject* { return new SPFeFuncNode(SPFeFuncNode::B); }},
-        { "svg:feFuncA", [] () -> SPObject* { return new SPFeFuncNode(SPFeFuncNode::A); }},
-        { "svg:feComposite", make<SPFeComposite> },
-        { "svg:feConvolveMatrix", make<SPFeConvolveMatrix> },
-        { "svg:feDiffuseLighting", make<SPFeDiffuseLighting> },
-        { "svg:feDisplacementMap", make<SPFeDisplacementMap> },
-        { "svg:feDistantLight", make<SPFeDistantLight> },
-        { "svg:feDropShadow", make<SPFeDropShadow> },
-        { "svg:feFlood", make<SPFeFlood> },
-        { "svg:feGaussianBlur", make<SPGaussianBlur> },
-        { "svg:feImage", make<SPFeImage> },
-        { "svg:feMerge", make<SPFeMerge> },
-        { "svg:feMergeNode", make<SPFeMergeNode> },
-        { "svg:feMorphology", make<SPFeMorphology> },
-        { "svg:feOffset", make<SPFeOffset> },
-        { "svg:fePointLight", make<SPFePointLight> },
-        { "svg:feSpecularLighting", make<SPFeSpecularLighting> },
-        { "svg:feSpotLight", make<SPFeSpotLight> },
-        { "svg:feTile", make<SPFeTile> },
-        { "svg:feTurbulence", make<SPFeTurbulence> },
-        { "inkscape:grid", make<SPGrid> },
+        {"svg:feBlend", make<SPFeBlend>},
+        {"svg:feColorMatrix", make<SPFeColorMatrix>},
+        {"svg:feComponentTransfer", make<SPFeComponentTransfer>},
+        {"svg:feFuncR", []() -> SPObject * { return new SPFeFuncNode(SPFeFuncNode::R); }},
+        {"svg:feFuncG", []() -> SPObject * { return new SPFeFuncNode(SPFeFuncNode::G); }},
+        {"svg:feFuncB", []() -> SPObject * { return new SPFeFuncNode(SPFeFuncNode::B); }},
+        {"svg:feFuncA", []() -> SPObject * { return new SPFeFuncNode(SPFeFuncNode::A); }},
+        {"svg:feComposite", make<SPFeComposite>},
+        {"svg:feConvolveMatrix", make<SPFeConvolveMatrix>},
+        {"svg:feDiffuseLighting", make<SPFeDiffuseLighting>},
+        {"svg:feDisplacementMap", make<SPFeDisplacementMap>},
+        {"svg:feDistantLight", make<SPFeDistantLight>},
+        {"svg:feDropShadow", make<SPFeDropShadow>},
+        {"svg:feFlood", make<SPFeFlood>},
+        {"svg:feGaussianBlur", make<SPGaussianBlur>},
+        {"svg:feImage", make<SPFeImage>},
+        {"svg:feMerge", make<SPFeMerge>},
+        {"svg:feMergeNode", make<SPFeMergeNode>},
+        {"svg:feMorphology", make<SPFeMorphology>},
+        {"svg:feOffset", make<SPFeOffset>},
+        {"svg:fePointLight", make<SPFePointLight>},
+        {"svg:feSpecularLighting", make<SPFeSpecularLighting>},
+        {"svg:feSpectralBilateral", make<SPFeSpectralBilateral>},
+        {"svg:feSpectralDistance", make<SPFeSpectralDistance>},
+        {"svg:feSpectralNoise", make<SPFeSpectralNoise>},
+        {"svg:feSpotLight", make<SPFeSpotLight>},
+        {"svg:feTile", make<SPFeTile>},
+        {"svg:feTurbulence", make<SPFeTurbulence>},
+        {"inkscape:grid", make<SPGrid>},
 
         // ignore
-        { "rdf:RDF", null }, // no SP node yet
-        { "inkscape:clipboard", null }, // SP node not necessary
-        { "inkscape:templateinfo", null }, // metadata for templates
-        { "inkscape:_templateinfo", null }, // metadata for templates
-        { "", null } // comments
+        {"rdf:RDF", null},                // no SP node yet
+        {"inkscape:clipboard", null},     // SP node not necessary
+        {"inkscape:templateinfo", null},  // metadata for templates
+        {"inkscape:_templateinfo", null}, // metadata for templates
+        {"", null}                        // comments
     };
 };
 

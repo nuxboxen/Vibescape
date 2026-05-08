@@ -65,6 +65,9 @@ def get_dependencies(filename, deps):
             if lib == "OPENGL32.dll": #ignored since it's a system library but is absent from the CI (no display)
                 skip_indent = indent
                 continue
+            elif lib == "dcomp.dll": # ignored: DirectComposition is a Windows system library but absent from the CI runner
+                skip_indent = indent
+                continue
             elif location == 'not found':
                 location = None
             else:
