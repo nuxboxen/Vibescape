@@ -1,51 +1,77 @@
 # Spectral effects for Inkscape — progress notebook
 
-> **For Inkscape reviewers:** this branch is built using the
-> **Mathematical Provenance Method** (MPM). Before reading the
-> commits, please read §-1 — it names the discipline and lists the
-> six screening criteria every commit on this branch holds itself
-> to. The discipline is what distinguishes a real framework
-> integration from LLM-generated "vocabulary-match" code that uses
-> framework names without implementing the framework operators.
-> See `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md` for the
-> diagnosis of how that failure manifests in practice.
-
-> **For Inkscape reviewers (cont.):** this notebook is the design
-> rationale and work record for porting the antikythera-maths
-> spectral framework into Inkscape's filter rendering pipeline. The
-> contribution is staged on the `spectral-faithful` branch off
-> Inkscape `master`. Reading it cold:
+> ### Read-cold orientation for Inkscape reviewers
 >
-> - **§1** is the chronological commit summary.
-> - **§2** is the math: lattice-Laplacian heat kernel `e^{-tL}` as the
->   single source of truth (SSoT) operator behind blur, RGBA blur,
->   bilateral, distance fields, and noise synthesis.
-> - **§3** documents the σ-threshold dispatch — Inkscape's existing
->   van-Vliet IIR is *not* displaced; the spectral path is added as a
->   third dispatch tier above some empirically-determined σ threshold
->   where the heat kernel's flat-in-σ cost becomes competitive.
-> - **§4** is the screening protocol from `GeminiPlayground/GEMINI_FAILURE_MODE.md`,
->   applied to every commit on this branch.
-> - **§N** (last) carries the bench numbers paired against vanilla
->   Inkscape so reviewers can see the tradeoff explicitly.
+> **What this branch is.** Three new SVG filter primitives —
+> `feSpectralBilateral`, `feSpectralDistance`, `feSpectralNoise` —
+> wired through Inkscape's filter pipeline (renderer + parser +
+> element registration + GUI editor + rendering tests + icons).
+> Each primitive computes something Inkscape does not currently
+> compute:
 >
-> This work has a sibling on Skia (preserved at `lemonforest/spectral-skai`
-> on GitHub), where the same operator family was integrated against a
-> different rasterizer. The math primitives are byte-identical
-> between the two; only the integration glue differs. The Skia work
-> closed with a candid finding that spectral blur is 5–13× *slower*
-> than vanilla in the typical-σ production regime and only catches up
-> at σ ≈ 100. The Inkscape work targets the regime where that
-> tradeoff actually flips: large-σ blurs on print-resolution canvases
-> (the case Inkscape is currently slowest at), plus capability
-> additions (bilateral, SDF, spectral noise) that are new SVG filter
-> primitives, not displacements of existing ones.
+> - **Bilateral** — Perona-Malik anisotropic diffusion (edge-
+>   preserving smoothing).
+> - **Distance** — heat-kernel signed distance field via Varadhan's
+>   classical asymptotic.
+> - **Noise** — power-spectrum-controlled synthetic noise (white,
+>   pink, brown, blue) as an alternative to `feTurbulence`'s Perlin.
 >
-> If carrying any of this isn't a fit, every public surface ships with
-> a "removal note" describing the clean cut. The contributor is
-> one-and-done; no offense will be taken in any decision, including
-> outright decline. The math, the tests, and the work record stand on
-> their own.
+> All three are *additive* — they don't replace anything Inkscape
+> already does well. The mathematical substrate (lattice-Laplacian
+> heat kernel on the DCT eigenbasis, FFT-via-DCT, Perona-Malik
+> diffusion) is shared across all three.
+>
+> **What this branch is NOT.** Initially this branch attempted a
+> σ-threshold dispatch in `feGaussianBlur` to route large-σ blurs
+> through a spectral path. The bench data killed that idea:
+> spectral is **22-50× slower than van-Vliet IIR** at every
+> production σ. The dispatch is disabled
+> (`constexpr bool use_spectral = false`) and the decision recorded
+> as `[-]` with full bench numbers as evidence. See §5.
+>
+> **The methodology.** This branch is built under the
+> **Mathematical Provenance Method** (MPM) — six screening criteria
+> that distinguish a real framework integration from LLM-generated
+> "vocabulary-match" code. Each commit holds itself to all six.
+> See §−1 for the protocol. The Tier 2 `[-]` decision is itself an
+> example of MPM working: the bench falsified the perf claim and
+> the branch pivoted honestly. The diagnostic counterpart of MPM is
+> `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md`.
+>
+> **Reading order.** The notebook is structured for a reviewer who
+> wants to verify the work, not just read about it:
+>
+> | §    | What                                                      |
+> |------|-----------------------------------------------------------|
+> | −1   | Mathematical Provenance Method — six screens              |
+> |  0   | Framework provenance (mlehaptics / antikythera-maths)     |
+> |  0.5 | Why this is being attempted (Gemini-attempt triage)       |
+> |  1   | Commit log                                                |
+> |  2   | The math: one operator, several primitives                |
+> |  3   | Dispatch design (Tier 2 — recorded `[-]`)                 |
+> |  4   | Self-screening against the Gemini failure pattern         |
+> |  5   | Bench results — IIR wins by 22–50×; dispatch `[-]`        |
+> |  5.1 | Disposition of the `[-]` (substrate kept, dispatch off)   |
+> |  5.2 | Pivot to capability primitives (Tier 3)                   |
+> |  6   | Self-portrait icons                                       |
+> |  7   | Spectral-SVG compression experiment (breadcrumb)          |
+>
+> **Sibling work.** A parallel Skia integration is preserved at
+> `github.com/lemonforest/spectral-skai/tree/spectral-faithful`.
+> Math primitives are byte-identical between Skia and Inkscape;
+> only the integration glue differs. The Skia branch closed with
+> the same shape of finding (vanilla blur wins; capability
+> primitives are the contribution) at smaller margin (5–13× there
+> vs 22–50× here, since Inkscape's IIR is more aggressively
+> optimized than Skia's separable Gaussian).
+>
+> **Removal map.** If carrying any of this isn't a fit, every
+> public surface (filter primitives, dialog entries, icons,
+> SVG attributes) ships with explicit removal notes describing
+> the clean cut. The substrate in `src/display/spectral/` can stay
+> linked for any internal consumer regardless of whether the
+> public APIs land. The contributor is one-and-done; no offense
+> will be taken in any decision, including outright decline.
 
 ## −1. The Mathematical Provenance Method (MPM)
 

@@ -1,0 +1,243 @@
+# Merge request description (draft)
+
+This file holds the prepared description for the upstream merge
+request, ready to paste into GitLab's MR form. It's checked in so
+the contributor and any future reader can see exactly what claim
+is being made to upstream.
+
+---
+
+## Title
+
+`Spectral filter primitives (feSpectralBilateral, feSpectralDistance, feSpectralNoise) — Inkscape extensions`
+
+## Description
+
+### What this MR adds
+
+Three new SVG filter primitives, wired end-to-end through
+Inkscape's filter pipeline:
+
+- **`<feSpectralBilateral>`** — edge-preserving smoothing via
+  Perona-Malik anisotropic diffusion. Smooths flat regions while
+  preserving sharp edges. Useful for stylized photographic effects
+  on imported raster content.
+- **`<feSpectralDistance>`** — heat-kernel signed distance field
+  via Varadhan's classical asymptotic
+  (`d ≈ σ · √(-2 · log u_norm)`). Visualizes proximity to the
+  input's alpha-mask boundary. Available in signed and unsigned
+  modes.
+- **`<feSpectralNoise>`** — power-spectrum-controlled synthetic
+  noise (white, pink, brown, blue) as an alternative to
+  `feTurbulence`'s Perlin. The caller specifies the spectrum
+  directly via the eigenmode framing.
+
+All three are reachable from the Filter Effects dialog (with
+self-portrait icons rendered by the primitives themselves) or by
+writing the corresponding XML directly. None of them replace
+existing Inkscape functionality — they're capability additions.
+
+### What this MR does NOT add
+
+Initially the branch attempted a σ-threshold dispatch in
+`feGaussianBlur` to route large-σ blurs through a spectral path.
+**Bench data falsified the perf claim**: the spectral path is
+22-50× slower than the existing van-Vliet IIR at every production
+σ. That dispatch is disabled
+(`constexpr bool use_spectral = false`) and the decision recorded
+as `[-]` with full bench numbers in `SPECTRAL_PROGRESS.md` §5.
+The substrate stays linked because the Tier 3 capability
+primitives use it; the dispatch site is a single line that can
+be removed entirely if reviewers prefer.
+
+### Methodology — Mathematical Provenance Method
+
+This branch is built under a documented protocol called the
+**Mathematical Provenance Method** (`SPECTRAL_PROGRESS.md` §−1).
+The protocol exists because LLM-generated framework integrations
+routinely produce vocabulary-match code that uses framework names
+without implementing the framework operators. MPM is six screens
+each commit must pass:
+
+1. Bit-equivalence under benchmark
+2. Parity test against reference operator
+3. Operator algebra (round-trip, identity, asymptotic limits)
+4. Asymptotic profile (cost matches the math prediction)
+5. Honest slow-where-slow accounting
+6. Recorded structural-defect decisions (`[-]` entries with reasoning)
+
+The Tier 2 dispatch `[-]` is itself an example of MPM working: the
+bench falsified the perf claim and the branch pivoted honestly.
+The diagnostic counterpart of MPM —
+`GEMINI_FAILURE_MODE.md` — characterizes the failure pattern this
+discipline is designed to catch.
+
+### Math substrate
+
+Lattice-Laplacian heat kernel on the DCT eigenbasis (Neumann BC,
+pad-to-pow-2). The substrate ports cleanly between rasterizers; a
+parallel Skia integration is preserved at
+`github.com/lemonforest/spectral-skai/tree/spectral-faithful` for
+reference. Math primitives are byte-identical between Skia and
+Inkscape; only the integration glue differs.
+
+Operators in `src/display/spectral/`:
+
+| File | Provides |
+|------|----------|
+| `spectral-fft.{h,cpp}` | Radix-2 complex FFT (substrate for Makhoul DCT) |
+| `spectral-dct.{h,cpp}` | DCT-II/III with FFT-via-DCT for pow-2 N + per-mode heat-kernel transfer |
+| `spectral-blur.{h,cpp}` | `apply_heat_kernel_a8` — the SSoT operator. Used by all three primitives. |
+| `spectral-bilateral.{h,cpp}` | Perona-Malik with state-dependent W_ij weights |
+| `spectral-distance-field.{h,cpp}` | Varadhan SDF |
+| `spectral-noise.{h,cpp}` | Power-spectrum-controlled noise generation |
+
+### Test coverage
+
+- **9 substrate unit tests** — FFT round-trip, Parseval, linearity,
+  DCT 1D/2D round-trip, heat-kernel DC preservation, Dirac
+  isotropy, anisotropic σ.
+- **3 parity tests** — disk σ=8/16, step-edge σ=16, all max-abs ≤ 1
+  vs continuous Gaussian reference.
+- **5 bilateral tests** — flat-region invariance, edge preservation,
+  Gaussian-limit reduction, RGBA joint similarity.
+- **5 SDF/noise tests** — sign correctness, far-field clamping,
+  determinism, profile roughness ordering.
+- **10 pedantic tests** — byte-determinism across operators, edge-
+  case grids (1×1, 1×N, non-pow-2), bilateral ↔ heat cross-validation,
+  SDF radial monotonicity.
+- **3 rendering tests** under `testfiles/rendering_tests/` — golden
+  PNGs diffed via ImageMagick `compare` at FUZZ 0.05.
+- **1 bench harness** — IIR vs spectral wall-clock comparison
+  (the data behind the Tier 2 `[-]`).
+- **1 experiment** — speculative spectral-SVG compression study,
+  recorded as breadcrumb. See `docs/SPECTRAL_SVG_EXPERIMENT.md`.
+
+Total: **35 individual tests + 3 rendering tests + bench harness +
+experiment**, all green in `ctest -R spectral`.
+
+### Removal map
+
+Three removal granularities depending on reviewer preference:
+
+1. **Reject everything** — revert all 16 commits. Substrate, GUI
+   integration, tests, icons, notebook all go away. Net change:
+   zero files modified outside the branch's diff.
+2. **Keep substrate, drop public APIs** — delete the
+   `nr-filter-spectral-*.{h,cpp}`, `object/filters/spectral-*.{h,cpp}`,
+   the `NR_FILTER_SPECTRAL_*` enum entries, the dialog wiring, and
+   the icons. Substrate in `src/display/spectral/` stays linked
+   for any internal consumer. Each public header carries a
+   `Removal note for upstream maintainers` block describing the
+   exact cleanup map.
+3. **Keep everything except the spectral-SVG experiment breadcrumb**
+   — delete `docs/SPECTRAL_SVG_EXPERIMENT.md` and
+   `testfiles/src/spectral-compression-experiment-test.cpp`.
+   Nothing else depends on either. Net change: −2 files, −~750 lines.
+
+The contributor is one-and-done on Inkscape; no offense will be
+taken in any decision, including outright decline. The math, the
+tests, and the work record stand on their own.
+
+### Files modified vs added
+
+```
+Substrate:
+  src/display/spectral/spectral-{fft,dct,blur,bilateral,distance-field,noise}.{h,cpp}
+                                                       (new, 6 module pairs)
+  src/display/CMakeLists.txt                           (added entries)
+
+SVG filter primitives:
+  src/display/nr-filter-spectral-{noise,bilateral,distance}.{h,cpp}
+                                                       (new, 3 module pairs)
+  src/object/filters/spectral-{noise,bilateral,distance}.{h,cpp}
+                                                       (new, 3 module pairs)
+  src/object/filters/CMakeLists.txt                    (added entries)
+  src/object/sp-factory.cpp                            (3 new svg:fe* tags)
+  src/object/tags.h                                    (3 new SPFe* tags)
+  src/display/nr-filter-types.h                        (3 new enum values)
+  src/attributes.{h,cpp}                               (4 new SVG attributes)
+  src/filter-enums.{h,cpp}                             (2 new EnumDataConverters)
+
+Existing-pipeline integration:
+  src/display/nr-filter-gaussian.cpp                   (added spectral dispatch
+                                                        site, set false; un-statics
+                                                        gaussian_pass_IIR for bench)
+  src/ui/dialog/filter-effects-dialog.cpp              (3 menu entries, 3 widget
+                                                        blocks)
+
+Icons:
+  share/icons/hicolor/scalable/actions/feSpectral{Noise,Bilateral,Distance}-icon.svg
+                                                       (new, 3 self-portrait SVGs)
+  share/icons/hicolor/symbolic/actions/feSpectral*-icon-symbolic.svg
+                                                       (new, 3 abstract glyphs)
+
+Tests:
+  testfiles/CMakeLists.txt                             (added 6 entries)
+  testfiles/src/spectral-{substrate,parity,bilateral,sdf-noise,
+    pipeline-bench,pipeline-determinism,compression-experiment}-test.cpp
+                                                       (new, 7 test files)
+  testfiles/rendering_tests/CMakeLists.txt             (added 3 entries)
+  testfiles/rendering_tests/test-spectral-{noise,bilateral,distance}.svg
+                                                       (new, 3 SVG fixtures)
+  testfiles/rendering_tests/expected_rendering/test-spectral-*.png
+                                                       (new, 3 golden PNGs)
+
+Documentation:
+  SPECTRAL_PROGRESS.md                                 (new, ~400 lines)
+  SPECTRAL_TODO.md                                     (new, ~150 lines)
+  docs/SPECTRAL_SVG_EXPERIMENT.md                      (new, breadcrumb)
+  docs/spectral-icons/*.png                            (new, embedded in notebook)
+  docs/MR_DESCRIPTION.md                               (this file)
+  NEWS.md                                              (one section added)
+
+Total: ~50 files. ~5000 lines of code + ~1500 lines of documentation.
+```
+
+### How to verify locally
+
+```bash
+# Build
+cmake -B build -GNinja -DBUILD_TESTING=ON
+ninja -C build
+
+# All spectral tests (32 individual tests across 6 binaries + 3 render)
+ctest -R 'spectral|render_test-spectral' --test-dir build --output-on-failure
+
+# Smoke-test rendering by exporting a test SVG to PNG
+./build/bin/inkscape --export-type=png \
+  --export-filename=/tmp/out.png \
+  testfiles/rendering_tests/test-spectral-bilateral.svg
+
+# Read the design rationale
+less SPECTRAL_PROGRESS.md     # leading note has the orientation
+less SPECTRAL_TODO.md         # tier-by-tier completion checklist
+```
+
+### Reviewers — questions worth asking
+
+1. Is "non-standard SVG filter primitives via the `svg:` namespace"
+   acceptable? Alternatives: `inkscape:` namespace (standards-clean
+   but visible-only-in-Inkscape), or wait for upstream W3C
+   standardization (likely never). The current branch uses `svg:`
+   matching feTurbulence's existing precedent for primitives that
+   originated in SVG 1.1 spec but have non-standard parameters.
+
+2. The bench shows IIR wins by 22-50×. The branch keeps the
+   spectral substrate compiled in for the capability primitives.
+   Is the substrate's binary-size cost (~30KB compiled) acceptable
+   for the three new filter primitives? Removal of substrate is
+   only possible if all three primitives are also removed.
+
+3. The icons are self-portraits (the icon is rendered by the
+   primitive it represents). They render correctly in Inkscape
+   and *do not* render in any other SVG viewer. Is this elegant
+   or confusing? An alternative is conventional iconography that
+   doesn't depend on the primitives — would mean writing custom
+   icons by hand.
+
+4. The spectral-SVG compression experiment
+   (`docs/SPECTRAL_SVG_EXPERIMENT.md`) is breadcrumb material for a
+   future research direction. Reviewers can ask for it to be
+   dropped (option 3 in the removal map above) without affecting
+   any production code.

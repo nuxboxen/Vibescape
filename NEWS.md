@@ -1,3 +1,37 @@
+Inkscape 1.5-dev (in development)
+
+Filters
+
+Three new SVG filter primitives, contributed as Inkscape extensions
+(non-standard SVG 1.1):
+
+- feSpectralBilateral — edge-preserving smoothing via Perona-Malik
+  anisotropic diffusion. Smooths within flat regions while preserving
+  sharp edges. Useful for stylized photographic effects on imported
+  raster content.
+- feSpectralDistance — heat-kernel signed distance field via Varadhan's
+  asymptotic d ≈ σ·√(-2·log u_norm). Visualizes proximity to the
+  input's alpha mask boundary. Available in signed and unsigned modes.
+- feSpectralNoise — power-spectrum-controlled synthetic noise (white,
+  pink, brown, blue) as an alternative to feTurbulence's Perlin. Lets
+  the caller specify the spectrum directly via the eigenmode framing.
+
+All three are reachable from the Filter Effects dialog (with
+self-portrait icons rendered by the primitives themselves) or by
+writing the corresponding XML directly in any SVG document. The
+mathematical substrate (lattice-Laplacian heat kernel, FFT-via-DCT,
+Perona-Malik diffusion) is shared across all three primitives.
+
+Design rationale, math derivations, parity tests against reference
+operators, and a structured screening protocol
+(the "Mathematical Provenance Method") are documented in
+SPECTRAL_PROGRESS.md and SPECTRAL_TODO.md at the repository root.
+A speculative spectral-SVG compression experiment, included as
+breadcrumb material for future contributors, is in
+docs/SPECTRAL_SVG_EXPERIMENT.md.
+
+==================================================================
+
 Inkscape 1.2-alpha
 
 Release highlights
