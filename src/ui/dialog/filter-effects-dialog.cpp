@@ -2830,6 +2830,13 @@ static const std::map<Inkscape::Filters::FilterPrimitiveType, EffectMetadata>& g
         _("Fills the region with graphics from an external file or from another portion of the document.") }},
     { NR_FILTER_TURBULENCE,        { EffectCategory::Generation, "feTurbulence-icon",
         _("Renders Perlin noise, which is useful to generate textures such as clouds, fire, smoke, marble or granite.") }},
+    // -- Inkscape spectral extensions; see SPECTRAL_PROGRESS.md --
+    { NR_FILTER_SPECTRAL_BILATERAL, { EffectCategory::Effect,     "feMorphology-icon",
+        _("Edge-preserving smoothing via Perona-Malik anisotropic diffusion. Smooths within flat regions while preserving sharp edges. Inkscape extension.") }},
+    { NR_FILTER_SPECTRAL_DISTANCE,  { EffectCategory::Effect,     "feMorphology-icon",
+        _("Heat-kernel signed distance field. Visualizes proximity to the input's alpha mask boundary. Inkscape extension.") }},
+    { NR_FILTER_SPECTRAL_NOISE,     { EffectCategory::Generation, "feTurbulence-icon",
+        _("Power-spectrum-controlled synthetic noise (white, pink, brown, or blue). Lets the caller specify the spectrum directly rather than relying on Perlin's intrinsic spectrum. Inkscape extension.") }},
     };
     return effects;
 }
@@ -3232,6 +3239,31 @@ void FilterEffectsDialog::init_settings_widgets()
     _settings->add_dualspinscale(SPAttr::BASEFREQUENCY, _("Size:"), 0.001, 10, 0.001, 0.1, 3);
     _settings->add_spinscale(1, SPAttr::NUMOCTAVES, _("Detail:"), 1, 10, 1, 1, 0);
     _settings->add_spinscale(0, SPAttr::SEED, _("Seed:"), 0, 1000, 1, 1, 0, _("The starting number for the pseudo random number generator."));
+
+    // -- Inkscape spectral extensions; see SPECTRAL_PROGRESS.md --
+    _settings->type(NR_FILTER_SPECTRAL_BILATERAL);
+    _settings->add_spinscale(4.0,  SPAttr::SPECTRAL_SIGMA_SPATIAL, _("Spatial σ:"),
+        0.5, 20.0, 0.5, 0.1, 1,
+        _("Blur radius in pixels. Pass count grows quadratically (N = ceil(2σ²))."));
+    _settings->add_spinscale(16.0, SPAttr::SPECTRAL_SIGMA_RANGE,   _("Range σ:"),
+        1.0, 128.0, 1.0, 0.5, 1,
+        _("Edge sensitivity in 0..255 alpha units. Smaller → sharper edges preserved; larger → closer to plain Gaussian."));
+
+    _settings->type(NR_FILTER_SPECTRAL_DISTANCE);
+    _settings->add_spinscale(3.0, SPAttr::SPECTRAL_SIGMA_SPATIAL, _("Spatial σ:"),
+        0.5, 16.0, 0.5, 0.1, 1,
+        _("Diffusion length scale in pixels. Smaller → tighter near-boundary accuracy but smaller meaningful range."));
+    _settings->add_combo(SPECTRAL_DISTANCE_UNSIGNED, SPAttr::SPECTRAL_DISTANCE_MODE,
+        _("Mode:"), SpectralDistanceModeConverter,
+        _("Unsigned: 0 inside, ramps to 255 outside. Signed: 0 (black) deep inside, 128 at boundary, 255 deep outside."));
+
+    _settings->type(NR_FILTER_SPECTRAL_NOISE);
+    _settings->add_combo(Inkscape::Spectral::NoiseProfile::kPink, SPAttr::SPECTRAL_NOISE_PROFILE,
+        _("Profile:"), SpectralNoiseProfileConverter,
+        _("Power-spectrum shape. White = flat, Pink = 1/sqrt(λ) (natural look), Brown = 1/λ (smoothest), Blue = sqrt(λ) (high-frequency dither)."));
+    _settings->add_spinscale(0, SPAttr::SEED, _("Seed:"),
+        0, 1000000, 1, 1, 0,
+        _("RNG seed. Different seeds produce different deterministic tiles for the same profile."));
 }
 
 void FilterEffectsDialog::add_filter_primitive(Filters::FilterPrimitiveType type) {

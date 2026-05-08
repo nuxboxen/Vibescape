@@ -132,6 +132,26 @@ const EnumData<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeData[Inksc
 };
 const EnumDataConverter<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeConverter(TurbulenceTypeData, Inkscape::Filters::TURBULENCE_ENDTYPE);
 
+// feSpectralNoise (Inkscape extension)
+const EnumData<Inkscape::Spectral::NoiseProfile> SpectralNoiseProfileData[4] = {
+    // clang-format off
+    {Inkscape::Spectral::NoiseProfile::kWhite, _("White (flat)"),    "white"},
+    {Inkscape::Spectral::NoiseProfile::kPink,  _("Pink (1/sqrt λ)"), "pink"},
+    {Inkscape::Spectral::NoiseProfile::kBrown, _("Brown (1/λ)"),     "brown"},
+    {Inkscape::Spectral::NoiseProfile::kBlue,  _("Blue (sqrt λ)"),   "blue"}
+    // clang-format on
+};
+const EnumDataConverter<Inkscape::Spectral::NoiseProfile> SpectralNoiseProfileConverter(SpectralNoiseProfileData, 4);
+
+// feSpectralDistance mode (Inkscape extension)
+const EnumData<Inkscape::Filters::SpectralDistanceMode> SpectralDistanceModeData[2] = {
+    // clang-format off
+    {Inkscape::Filters::SPECTRAL_DISTANCE_UNSIGNED, _("Unsigned"), "unsigned"},
+    {Inkscape::Filters::SPECTRAL_DISTANCE_SIGNED,   _("Signed"),   "signed"}
+    // clang-format on
+};
+const EnumDataConverter<Inkscape::Filters::SpectralDistanceMode> SpectralDistanceModeConverter(SpectralDistanceModeData, 2);
+
 // Light source
 const EnumData<LightSource> LightSourceData[LIGHT_ENDSOURCE] = {
     // clang-format off

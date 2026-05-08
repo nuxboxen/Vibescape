@@ -19,8 +19,10 @@
 #include "display/nr-filter-composite.h"
 #include "display/nr-filter-convolve-matrix.h"
 #include "display/nr-filter-morphology.h"
+#include "display/nr-filter-spectral-distance.h"
 #include "display/nr-filter-turbulence.h"
 #include "display/nr-filter-types.h"
+#include "display/spectral/spectral-noise.h"
 #include "object/filters/displacementmap.h"
 #include "util/enums.h"
 
@@ -62,6 +64,12 @@ extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterMorpholo
 // Turbulence type
 extern const Inkscape::Util::EnumData<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeData[Inkscape::Filters::TURBULENCE_ENDTYPE];
 extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeConverter;
+// Spectral noise profile (Inkscape extension)
+extern const Inkscape::Util::EnumData<Inkscape::Spectral::NoiseProfile> SpectralNoiseProfileData[4];
+extern const Inkscape::Util::EnumDataConverter<Inkscape::Spectral::NoiseProfile> SpectralNoiseProfileConverter;
+// Spectral distance mode (Inkscape extension)
+extern const Inkscape::Util::EnumData<Inkscape::Filters::SpectralDistanceMode> SpectralDistanceModeData[2];
+extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::SpectralDistanceMode> SpectralDistanceModeConverter;
 // Lighting
 enum LightSource {
     LIGHT_DISTANT,
