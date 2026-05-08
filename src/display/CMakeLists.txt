@@ -32,6 +32,8 @@ target_sources(inkscape_base PRIVATE
     nr-filter-primitive.cpp
     # nr-filter-skeleton.cpp
     nr-filter-slot.cpp
+    nr-filter-spectral-bilateral.cpp
+    nr-filter-spectral-distance.cpp
     nr-filter-spectral-noise.cpp
     nr-filter-specularlighting.cpp
     nr-filter-tile.cpp
@@ -108,6 +110,8 @@ target_sources(inkscape_base PRIVATE
     nr-filter-primitive.h
     nr-filter-skeleton.h
     nr-filter-slot.h
+    nr-filter-spectral-bilateral.h
+    nr-filter-spectral-distance.h
     nr-filter-spectral-noise.h
     nr-filter-specularlighting.h
     nr-filter-tile.h

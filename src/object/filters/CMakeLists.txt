@@ -20,6 +20,8 @@ target_sources(inkscape_base PRIVATE
   morphology.cpp
   offset.cpp
   pointlight.cpp
+  spectral-bilateral.cpp
+  spectral-distance.cpp
   spectral-noise.cpp
   specularlighting.cpp
   spotlight.cpp
@@ -48,6 +50,8 @@ target_sources(inkscape_base PRIVATE
   morphology.h
   offset.h
   pointlight.h
+  spectral-bilateral.h
+  spectral-distance.h
   spectral-noise.h
   specularlighting.h
   spotlight.h

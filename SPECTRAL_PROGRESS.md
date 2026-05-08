@@ -1,9 +1,20 @@
 # Spectral effects for Inkscape — progress notebook
 
-> **For Inkscape reviewers:** this notebook is the design rationale and
-> work record for porting the antikythera-maths spectral framework into
-> Inkscape's filter rendering pipeline. The contribution is staged on
-> the `spectral-faithful` branch off Inkscape `master`. Reading it cold:
+> **For Inkscape reviewers:** this branch is built using the
+> **Mathematical Provenance Method** (MPM). Before reading the
+> commits, please read §-1 — it names the discipline and lists the
+> six screening criteria every commit on this branch holds itself
+> to. The discipline is what distinguishes a real framework
+> integration from LLM-generated "vocabulary-match" code that uses
+> framework names without implementing the framework operators.
+> See `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md` for the
+> diagnosis of how that failure manifests in practice.
+
+> **For Inkscape reviewers (cont.):** this notebook is the design
+> rationale and work record for porting the antikythera-maths
+> spectral framework into Inkscape's filter rendering pipeline. The
+> contribution is staged on the `spectral-faithful` branch off
+> Inkscape `master`. Reading it cold:
 >
 > - **§1** is the chronological commit summary.
 > - **§2** is the math: lattice-Laplacian heat kernel `e^{-tL}` as the
@@ -35,6 +46,101 @@
 > one-and-done; no offense will be taken in any decision, including
 > outright decline. The math, the tests, and the work record stand on
 > their own.
+
+## −1. The Mathematical Provenance Method (MPM)
+
+The **Mathematical Provenance Method** is the discipline used to
+build this branch. It is a checklist of evidence that an integration
+of a mathematical framework into a codebase implements the
+framework's *operators*, not just its *vocabulary*. The method
+exists because LLM-generated code routinely produces vocabulary
+matches without operator matches — a failure pattern characterized
+in detail in `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md`.
+
+The contributor encountered this directly: a prior Gemini-generated
+branch claimed a 3.85× speedup on `14-filters.svg` while in fact
+producing visibly broken output (most of the canvas's alpha decayed
+to zero before Inkscape's IIR filter ran, so the bench measured
+"render nothing in less time"). MPM is the antidote.
+
+### −1.1 The six screens
+
+Each commit on this branch must pass all six. None can be waived
+without an inline `[-]` reasoning block.
+
+1. **Bit-equivalence under benchmark.** Run the same benchmark input
+   through the baseline and the integrated build. Diff the output
+   pixels (or coordinates, or whatever the benchmark produces). The
+   integration is supposed to be a *better-or-equal* operator, not
+   a different operator. Visually different shape or coverage
+   means the operator is wrong, regardless of speed.
+
+2. **Parity test against the reference operator.** For blur:
+   continuous Gaussian. For bilateral: linear-limit reduction to
+   plain heat. Max-abs and mean-abs pixel diff bounded.
+
+3. **Operator algebra.** The framework's primary objects have
+   algebraic properties (DCT round-trip, FFT linearity,
+   AcuteCount=D for identical inputs, heat-kernel composition,
+   sigma=0 identity). A real integration tests these directly on
+   the substrate. A vocabulary-match integration tests nothing on
+   the substrate and routes everything through end-to-end visual
+   diffs.
+
+4. **Asymptotic profile.** The bench numbers must show the cost
+   profile the math predicts. Heat kernel: flat in σ at fixed
+   grid. DCT: O(N log N). If the bench doesn't match the math,
+   the operator isn't actually being applied the way the framework
+   describes.
+
+5. **Honest slow-where-slow accounting.** Bench results must
+   include the regime where vanilla wins, not just the regime
+   where the integration wins. The crossover is the point of the
+   integration; "uniform speedup" is a sign of measurement
+   shenanigans (often: broken output reducing the measured work).
+
+6. **Recorded structural-defect decisions.** Every `[-]` in the
+   TODO file carries an inline math reasoning block explaining
+   why the rejected approach doesn't pay back. This branch
+   currently has one such entry: §2's spectral blur dispatch was
+   tested, found 22-50× slower than van-Vliet IIR at every σ in
+   the production range, and disabled — recorded as `[-]` with
+   the bench numbers as evidence.
+
+### −1.2 What MPM produces
+
+When applied honestly, MPM produces commits that *can be wrong* and
+*say so when they are*. The Tier 4.1 bench commit (`b520d2ddd0`)
+documents that the spectral blur path is 22-50× slower than the
+production baseline. That commit is **not** a failure of the
+framework — it's a successful application of the method, exactly
+the kind of outcome that justifies the discipline. Without MPM the
+project would have shipped a perf claim that didn't survive
+examination, like the prior Gemini attempt did.
+
+The branch's value proposition shifted from "faster blur" to "new
+filter primitives Inkscape doesn't have today" — and the new
+primitives (Tiers 3.1–3.3) are themselves under MPM's discipline:
+edge preservation, flat-region invariance, asymptotic Varadhan
+agreement, profile roughness ordering — all asserted as actual
+properties, not just claimed.
+
+### −1.3 Use as a screening tool
+
+Reviewers (LLM or human) reviewing similar contributions in the
+future can apply the six screens directly. A claimed framework
+integration that passes all six is real. One that fails any
+without explicit `[-]` justification is suspect — and the failure
+mode is almost always vocabulary substitution. The framework's
+notebooks describe operators in math notation; without explicit
+reference implementations, parity tests, and benchmarks-that-fail-loudly,
+the LLM-generated code that imports the vocabulary will not, in
+general, implement the operators.
+
+This methodology is being added to the foundational
+mlehaptics / antikythera-maths notebooks as the
+**Mathematical Provenance Method** so future framework integrations
+have a named protocol to follow.
 
 ## 0. Framework provenance
 

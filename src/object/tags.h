@@ -40,6 +40,8 @@ X(SPObject,\
         X(SPFeMorphology)\
         X(SPFeOffset)\
         X(SPFeSpecularLighting)\
+        X(SPFeSpectralBilateral)\
+        X(SPFeSpectralDistance)\
         X(SPFeSpectralNoise)\
         X(SPFeTile)\
         X(SPFeTurbulence)\
