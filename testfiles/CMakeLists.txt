@@ -114,6 +114,7 @@ set(TEST_SOURCES
     spectral-bilateral-test
     spectral-parity-test
     spectral-pipeline-bench
+    spectral-pipeline-determinism-test
     spectral-sdf-noise-test
     spectral-substrate-test
     svg-extension-test
