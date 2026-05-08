@@ -1,14 +1,26 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Spectral substrate: direct (O(N²)) lattice DCT-II / DCT-III, plus
- * the heat-kernel transfer function in eigenmode space.
+ * Spectral substrate: lattice DCT-II / DCT-III with FFT acceleration.
  *
- * The direct implementation is the mathematical reference; an
- * FFT-accelerated path will land later (Tier 5) when bench numbers
- * justify the complexity.
+ * Two implementations selected by length:
+ *
+ *   - Pow-2 N >= 4: Makhoul method — real-input length-N DCT-II via
+ *     length-(N/2) complex FFT plus a phase-correction pass. O(N log N).
+ *     This is the production path for the heat-kernel blur, which
+ *     pads to next-pow-2 internally.
+ *
+ *   - Non-pow-2 or N <= 2: direct O(N²) summation. Fallback used for
+ *     unit tests at small or non-pow-2 sizes; never hit by the
+ *     production blur consumer.
+ *
+ * Math is byte-identical to `src/core/SkLatticeDCT.cpp` from the Skia
+ * spectral-faithful branch — that file carries the derivation comments
+ * for the Makhoul reduction and the real-input FFT.
  */
 
 #include "display/spectral/spectral-dct.h"
+
+#include "display/spectral/spectral-fft.h"
 
 #include <cassert>
 #include <cmath>
@@ -21,12 +33,15 @@ namespace {
 
 constexpr double kPi = 3.14159265358979323846;
 
-} // anonymous namespace
-
-void dct2_1d(const double *in, double *out, int N)
+inline bool is_pow2(int n)
 {
-    assert(in != nullptr && out != nullptr && in != out);
-    assert(N > 0);
+    return n > 0 && (n & (n - 1)) == 0;
+}
+
+// ---------------- Direct O(N²) path (fallback for non-pow-2) ---------------
+
+void direct_dct2_1d(const double *in, double *out, int N)
+{
     const double a0 = std::sqrt(1.0 / N);
     const double ak = std::sqrt(2.0 / N);
     for (int k = 0; k < N; ++k) {
@@ -38,14 +53,11 @@ void dct2_1d(const double *in, double *out, int N)
     }
 }
 
-void dct3_1d(const double *in, double *out, int N)
+void direct_dct3_1d(const double *in, double *out, int N)
 {
-    assert(in != nullptr && out != nullptr && in != out);
-    assert(N > 0);
     const double a0 = std::sqrt(1.0 / N);
     const double ak = std::sqrt(2.0 / N);
     for (int n = 0; n < N; ++n) {
-        // k=0 term is constant; remaining terms have α_k = ak.
         double s = a0 * in[0];
         for (int k = 1; k < N; ++k) {
             s += ak * in[k] * std::cos(kPi * (n + 0.5) * k / N);
@@ -54,26 +66,263 @@ void dct3_1d(const double *in, double *out, int N)
     }
 }
 
+// ---------------- FFT-based path (Makhoul + length-N/2 complex FFT) -------
+
+// Length-N real-input FFT via length-(N/2) complex FFT (forward).
+//   in:                  length-N real input
+//   out_re, out_im:      length-(N/2)+1 — conjugate-symmetric DFT (k = 0..N/2)
+//   work_re, work_im:    length-(N/2) scratch
+//   half_tw_re, half_tw_im:    twiddles for the length-(N/2) complex FFT
+//                              (compute_twiddles(N/2, ...))
+//   split_tw_re, split_tw_im:  twiddles W_N^k = exp(-i 2π k/N), k = 0..N/2-1
+void fft_real_forward(const double *in, int N,
+                       double *out_re, double *out_im,
+                       double *work_re, double *work_im,
+                       const double *half_tw_re, const double *half_tw_im,
+                       const double *split_tw_re, const double *split_tw_im)
+{
+    assert(is_pow2(N) && N >= 4);
+    const int half = N / 2;
+    for (int m = 0; m < half; ++m) {
+        work_re[m] = in[2 * m];
+        work_im[m] = in[2 * m + 1];
+    }
+    radix2_fft_with_twiddles(work_re, work_im, half,
+                              half_tw_re, half_tw_im, kForward);
+
+    const int mask = half - 1;
+    for (int k = 0; k < half; ++k) {
+        const int km = (half - k) & mask;
+        const double yRe  = work_re[k];
+        const double yIm  = work_im[k];
+        const double ymRe = work_re[km];
+        const double ymIm = work_im[km];
+        const double eRe  = 0.5 * (yRe + ymRe);
+        const double eIm  = 0.5 * (yIm - ymIm);
+        const double oRe  = 0.5 * (yIm + ymIm);
+        const double oIm  = -0.5 * (yRe - ymRe);
+        const double wRe  = split_tw_re[k];
+        const double wIm  = split_tw_im[k];
+        const double woRe = wRe * oRe - wIm * oIm;
+        const double woIm = wRe * oIm + wIm * oRe;
+        out_re[k] = eRe + woRe;
+        out_im[k] = eIm + woIm;
+    }
+    out_re[half] = work_re[0] - work_im[0];
+    out_im[half] = 0.0;
+}
+
+// Length-N real-output IFFT given length-(N/2)+1 conjugate-symmetric input.
+void fft_real_inverse(const double *in_re, const double *in_im, int N,
+                       double *out,
+                       double *work_re, double *work_im,
+                       const double *half_tw_re, const double *half_tw_im,
+                       const double *split_tw_re, const double *split_tw_im)
+{
+    assert(is_pow2(N) && N >= 4);
+    const int half = N / 2;
+    const int mask = half - 1;
+
+    for (int k = 0; k < half; ++k) {
+        const int km = (half - k) & mask;
+        double xmRe, xmIm;
+        if (k == 0) {
+            xmRe = in_re[half];
+            xmIm = in_im[half];
+        } else {
+            xmRe =  in_re[km];
+            xmIm = -in_im[km];
+        }
+        const double eRe = 0.5 * (in_re[k] + xmRe);
+        const double eIm = 0.5 * (in_im[k] + xmIm);
+        const double dRe = 0.5 * (in_re[k] - xmRe);
+        const double dIm = 0.5 * (in_im[k] - xmIm);
+        const double oRe = dRe *  split_tw_re[k] + dIm *  split_tw_im[k];
+        const double oIm = dIm *  split_tw_re[k] - dRe *  split_tw_im[k];
+        work_re[k] = eRe - oIm;
+        work_im[k] = eIm + oRe;
+    }
+
+    radix2_fft_with_twiddles(work_re, work_im, half,
+                              half_tw_re, half_tw_im, kInverse);
+
+    for (int m = 0; m < half; ++m) {
+        out[2 * m]     = work_re[m];
+        out[2 * m + 1] = work_im[m];
+    }
+}
+
+// Bundle of precomputed tables for one axis length N.
+struct AxisTables {
+    std::vector<double> half_tw_re;   // size N/4
+    std::vector<double> half_tw_im;
+    std::vector<double> split_re;     // size N/2
+    std::vector<double> split_im;
+    std::vector<double> ph_re;        // size N/2 + 1 — Makhoul phase
+    std::vector<double> ph_im;
+};
+
+void build_axis_tables(int N, AxisTables *t)
+{
+    assert(is_pow2(N) && N >= 4);
+    const int half = N / 2;
+    t->half_tw_re.resize(half / 2);
+    t->half_tw_im.resize(half / 2);
+    compute_twiddles(half, t->half_tw_re.data(), t->half_tw_im.data());
+
+    t->split_re.resize(half);
+    t->split_im.resize(half);
+    const double base_split = -2.0 * kPi / N;
+    for (int k = 0; k < half; ++k) {
+        const double ang = base_split * k;
+        t->split_re[k] = std::cos(ang);
+        t->split_im[k] = std::sin(ang);
+    }
+
+    t->ph_re.resize(half + 1);
+    t->ph_im.resize(half + 1);
+    const double base_ph = -kPi / (2.0 * N);
+    for (int k = 0; k <= half; ++k) {
+        const double ang = base_ph * k;
+        t->ph_re[k] = std::cos(ang);
+        t->ph_im[k] = std::sin(ang);
+    }
+}
+
+void fft_dct2_1d(const double *in, double *out, int N, const AxisTables &t)
+{
+    assert(is_pow2(N) && N >= 4);
+    const int half = N >> 1;
+    std::vector<double> permuted(N);
+    std::vector<double> z_re(half + 1), z_im(half + 1);
+    std::vector<double> work_re(half), work_im(half);
+
+    for (int n = 0; n < half; ++n) {
+        permuted[n]         = in[2 * n];
+        permuted[N - 1 - n] = in[2 * n + 1];
+    }
+
+    fft_real_forward(permuted.data(), N,
+                     z_re.data(), z_im.data(),
+                     work_re.data(), work_im.data(),
+                     t.half_tw_re.data(), t.half_tw_im.data(),
+                     t.split_re.data(), t.split_im.data());
+
+    const double a0 = std::sqrt(1.0 / N);
+    const double ak = std::sqrt(2.0 / N);
+    for (int k = 0; k <= half; ++k) {
+        const double pRe = t.ph_re[k];
+        const double pIm = t.ph_im[k];
+        const double re  = pRe * z_re[k] - pIm * z_im[k];
+        out[k] = (k == 0 ? a0 : ak) * re;
+    }
+    for (int k = half + 1; k < N; ++k) {
+        const int j = N - k;
+        const double pRe = t.ph_re[j];
+        const double pIm = t.ph_im[j];
+        const double im = pRe * z_im[j] + pIm * z_re[j];
+        out[k] = ak * (-im);
+    }
+}
+
+void fft_dct3_1d(const double *in, double *out, int N, const AxisTables &t)
+{
+    assert(is_pow2(N) && N >= 4);
+    const int half = N >> 1;
+    std::vector<double> z_re(half + 1), z_im(half + 1);
+    std::vector<double> work_re(half), work_im(half);
+    std::vector<double> permuted(N);
+
+    const double a0 = std::sqrt(1.0 / N);
+    const double ak = std::sqrt(2.0 / N);
+    auto U = [&](int k) -> double {
+        if (k == 0) return in[0] / a0;
+        if (k >= N) return 0.0;
+        return in[k] / ak;
+    };
+
+    for (int k = 0; k <= half; ++k) {
+        const double Uk  = U(k);
+        const double UnK = U(N - k);
+        const double pRe = t.ph_re[k];
+        const double pIm = t.ph_im[k];
+        z_re[k] =  pRe * Uk  - pIm * UnK;
+        z_im[k] = -pIm * Uk  - pRe * UnK;
+    }
+    z_im[half] = 0.0;
+
+    fft_real_inverse(z_re.data(), z_im.data(), N, permuted.data(),
+                     work_re.data(), work_im.data(),
+                     t.half_tw_re.data(), t.half_tw_im.data(),
+                     t.split_re.data(), t.split_im.data());
+
+    for (int n = 0; n < half; ++n) {
+        out[2 * n]     = permuted[n];
+        out[2 * n + 1] = permuted[N - 1 - n];
+    }
+}
+
+// Length-2 closed form (Makhoul wants N >= 4).
+void dct2_n2(const double *in, double *out)
+{
+    const double a0 = std::sqrt(0.5);
+    const double a1 = 1.0;
+    out[0] = a0 * (in[0] + in[1]);
+    out[1] = a1 * std::cos(kPi * 0.25) * (in[0] - in[1]);
+}
+
+void dct3_n2(const double *in, double *out)
+{
+    const double a0 = std::sqrt(0.5);
+    const double a1 = 1.0;
+    const double c = std::cos(kPi * 0.25);
+    out[0] = a0 * in[0] + a1 * c * in[1];
+    out[1] = a0 * in[0] - a1 * c * in[1];
+}
+
+} // anonymous namespace
+
+void dct2_1d(const double *in, double *out, int N)
+{
+    assert(in != nullptr && out != nullptr && in != out);
+    assert(N > 0);
+    if (N == 1) { out[0] = in[0]; return; }
+    if (N == 2) { dct2_n2(in, out); return; }
+    if (!is_pow2(N)) { direct_dct2_1d(in, out, N); return; }
+    AxisTables t;
+    build_axis_tables(N, &t);
+    fft_dct2_1d(in, out, N, t);
+}
+
+void dct3_1d(const double *in, double *out, int N)
+{
+    assert(in != nullptr && out != nullptr && in != out);
+    assert(N > 0);
+    if (N == 1) { out[0] = in[0]; return; }
+    if (N == 2) { dct3_n2(in, out); return; }
+    if (!is_pow2(N)) { direct_dct3_1d(in, out, N); return; }
+    AxisTables t;
+    build_axis_tables(N, &t);
+    fft_dct3_1d(in, out, N, t);
+}
+
 namespace {
 
-// 2D row-major helper. Apply a 1D transform op(in, out, N) along each
-// row, then along each column. Internal scratch ping-pongs between
-// `out` and a working buffer so callers can pass aliased in/out.
-template <typename Op>
-void apply_separable_2d(const double *in, double *out, int W, int H, Op op)
+// 2D row-major helper. Apply a 1D transform along each row, then
+// each column. `in` and `out` may alias.
+template <typename Op1D>
+void apply_separable_2d(const double *in, double *out, int W, int H, Op1D op)
 {
     std::vector<double> rowSrc(W);
     std::vector<double> rowDst(W);
     std::vector<double> work(static_cast<size_t>(W) * static_cast<size_t>(H));
 
-    // Row pass: in → work.
     for (int y = 0; y < H; ++y) {
         std::memcpy(rowSrc.data(), in + y * W, sizeof(double) * W);
         op(rowSrc.data(), rowDst.data(), W);
         std::memcpy(work.data() + y * W, rowDst.data(), sizeof(double) * W);
     }
 
-    // Column pass: work → out.
     std::vector<double> colSrc(H);
     std::vector<double> colDst(H);
     for (int x = 0; x < W; ++x) {
@@ -107,8 +356,6 @@ void apply_lattice_heat_kernel(double *dct_coeffs,
     assert(W > 0 && H > 0);
     assert(sigma_x >= 0.0 && sigma_y >= 0.0);
 
-    // Per-axis decay tables: exp(-(σ² / 2) · λ_k). Precomputed once per
-    // call so the inner loop is a multiply rather than a transcendental.
     std::vector<double> decayX(W), decayY(H);
     const double half_sx2 = 0.5 * sigma_x * sigma_x;
     const double half_sy2 = 0.5 * sigma_y * sigma_y;
