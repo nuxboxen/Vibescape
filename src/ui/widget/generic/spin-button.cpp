@@ -1064,8 +1064,11 @@ void InkSpinButton::set_label(const std::string& label) {
         _label_width = 0;
     }
     else {
-        _label.set_visible(true);
+        _label.set_visible(); // show it, so it can be measured
         _label_width = _label.measure(Gtk::Orientation::HORIZONTAL).sizes.minimum;
+        if (_mouse_entered) {
+            _label.set_visible(false); // cannot be shown now
+        }
     }
 }
 

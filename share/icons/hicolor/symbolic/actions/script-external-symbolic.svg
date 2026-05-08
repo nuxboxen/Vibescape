@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg width="16" height="16" viewBox="0 0 16 16" version="1.1" id="svg1" inkscape:version="1.5-dev (6a01648af5, 2025-01-17, custom)" sodipodi:docname="script-external-symbolic.svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview id="namedview1" pagecolor="#ffffff" bordercolor="#000000" borderopacity="0.25" inkscape:showpageshadow="2" inkscape:pageopacity="0.0" inkscape:pagecheckerboard="0" inkscape:deskcolor="#e6e6e6" inkscape:document-units="px" inkscape:zoom="22.627417" showgrid="false" inkscape:cx="8.4631843" inkscape:cy="7.88866" inkscape:current-layer="layer1">
+    <inkscape:grid type="xygrid" id="grid1" units="px" originx="0" originy="0" spacingx="1" spacingy="1" empcolor="#0099e5" empopacity="0.30196078" color="#0099e5" opacity="0.14901961" empspacing="5" enabled="true" visible="false" />
+  </sodipodi:namedview>
+  <defs id="defs1" />
+  <g inkscape:label="Layer 1" inkscape:groupmode="layer" id="layer1">
+    <path id="rect14" style="stroke:none" d="M 10 1 V 2 H 13.293 L 7.646 7.646 8.354 8.354 14 2.707 V 6 h 1 V 2 1 Z m -7.5 2 C 1.149 3 0.04 4.087 0.002 5.43 H 0 v 1 H 4 V 12.5 C 4 13.875 5.125 15 6.5 15 h 6 c 1.368 0 2.489 -1.115 2.5 -2.48 0 -0.006 0 -0.013 0 -0.02 v -0.98 H 12 V 7.535 l -1 1 V 11.52 H 8 v 1 C 7.99 13.345 7.328 14 6.5 14 5.666 14 5 13.334 5 12.5 V 5.389 H 4.998 C 4.975 4.87 4.791 4.391 4.496 4 h 3.969 L 9.463 3 Z m 0 1 c 0.811 0 1.462 0.629 1.498 1.43 H 1.002 C 1.038 4.629 1.689 4 2.5 4 Z m 6.5 8.52 H 14 C 13.99 13.345 13.328 14 12.5 14 H 8.496 c 0.312 -0.414 0.5 -0.926 0.504 -1.48 z" />
+  </g>
+</svg>

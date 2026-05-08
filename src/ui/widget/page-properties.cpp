@@ -88,7 +88,7 @@ class PagePropertiesBox final : public PageProperties {
             _template_action->get_state(index);
             set_page_template(index);
         });
-        insert_action_group(group_name, std::move(group));
+        _left_grid->insert_action_group(group_name, std::move(group));
 
         Glib::RefPtr<Gio::Menu> menu = Gio::Menu::create(), submenu = {};
         Glib::ustring prev_submenu_label;
@@ -112,17 +112,15 @@ public:
   PagePropertiesBox()
       // clang-format-off
       : _builder(create_builder("page-properties.glade"))
-      , _main_grid            (get_widget<Gtk::Grid>             (_builder, "main-grid"))
-      , _left_grid            (get_widget<Gtk::Grid>             (_builder, "left-grid"))
       , _page_width           (get_derived_widget<MathSpinButton>(_builder, "page-width"))
       , _page_height          (get_derived_widget<MathSpinButton>(_builder, "page-height"))
-      , _portrait             (get_widget<Gtk::CheckButton>      (_builder, "page-portrait"))
-      , _landscape            (get_widget<Gtk::CheckButton>      (_builder, "page-landscape"))
-      , _y_axis_up            (get_widget<Gtk::CheckButton>      (_builder, "y-axis-up"))
-      , _y_axis_down          (get_widget<Gtk::CheckButton>      (_builder, "y-axis-down"))
+      , _portrait             (get_widget<Gtk::ToggleButton>     (_builder, "page-portrait"))
+      , _landscape            (get_widget<Gtk::ToggleButton>     (_builder, "page-landscape"))
+      , _y_axis_up            (get_widget<Gtk::ToggleButton>     (_builder, "y-axis-up"))
+      , _y_axis_down          (get_widget<Gtk::ToggleButton>     (_builder, "y-axis-down"))
       , _origin_page          (get_widget<Gtk::CheckButton>      (_builder, "origin-page"))
       , _scale_x              (get_derived_widget<MathSpinButton>(_builder, "scale-x"))
-      , _link_scale_content   (get_widget<Gtk::Button>           (_builder, "link-scale-content"))
+      , _link_scale_content   (get_widget<Gtk::ToggleButton>     (_builder, "link-scale-content"))
       , _unsupported_size     (get_widget<Gtk::Label>            (_builder, "unsupported"))
       , _nonuniform_scale     (get_widget<Gtk::Label>            (_builder, "nonuniform-scale"))
       , _doc_units            (get_widget<Gtk::Label>            (_builder, "user-units"))
@@ -134,13 +132,13 @@ public:
       , _templates_popover    (get_widget<Gtk::PopoverMenu>      (_builder, "templates-popover"))
       , _template_name        (get_widget<Gtk::Label>            (_builder, "page-template-name"))
       , _preview_box          (get_widget<Gtk::Box>              (_builder, "preview-box"))
-      , _checkerboard         (get_widget<Gtk::CheckButton>      (_builder, "checkerboard"))
+      , _checkerboard         (get_widget<Gtk::ToggleButton>     (_builder, "checkerboard"))
       , _antialias            (get_widget<Gtk::CheckButton>      (_builder, "use-antialias"))
       , _clip_to_page         (get_widget<Gtk::CheckButton>      (_builder, "clip-to-page"))
-      , _page_label_style     (get_widget<Gtk::CheckButton>      (_builder, "page-label-style"))
-      , _border               (get_widget<Gtk::CheckButton>      (_builder, "border"))
+      , _page_label_style     (get_widget<Gtk::ToggleButton>     (_builder, "page-label-style"))
+      , _border               (get_widget<Gtk::ToggleButton>     (_builder, "border"))
       , _border_on_top        (get_widget<Gtk::CheckButton>      (_builder, "border-top"))
-      , _shadow               (get_widget<Gtk::CheckButton>      (_builder, "shadow"))
+      , _shadow               (get_widget<Gtk::ToggleButton>     (_builder, "shadow"))
       , _link_width_height    (get_widget<Gtk::Button>           (_builder, "link-width-height"))
       , _viewbox_expander     (get_widget<Gtk::Expander>         (_builder, "viewbox-expander"))
       , _linked_viewbox_scale (get_widget<Gtk::Image>            (_builder, "linked-scale-img"))
@@ -151,6 +149,9 @@ public:
       , _desk_color_picker    (get_derived_widget<ColorPicker>   (_builder, "desk-color", _("Desk color"), false))
       // clang-format-on
     {
+        _left_grid  = &get_widget<Gtk::Grid>(_builder, "left-grid");
+        _right_grid = &get_widget<Gtk::Grid>(_builder, "right-grid");
+
         for (auto element : {Color::Background, Color::Border, Color::Desk}) {
             get_color_picker(element).connectChanged([element, this](Colors::Color const &color) {
                 update_preview_color(element, color);
@@ -172,9 +173,13 @@ public:
         _preview->set_expand(true);
         _preview_box.append(*_preview);
 
-        for (auto check : {Check::Border, Check::Shadow, Check::Checkerboard, Check::BorderOnTop, Check::AntiAlias, Check::ClipToPage, Check::PageLabelStyle, Check::YAxisPointsDown, Check::OriginCurrentPage}) {
-            auto checkbutton = &get_checkbutton(check);
-            checkbutton->signal_toggled().connect([=, this](){ fire_checkbox_toggled(*checkbutton, check); });
+        for (auto check : {Check::Border, Check::Shadow, Check::Checkerboard, Check::BorderOnTop, Check::AntiAlias, Check::ClipToPage, Check::PageLabelStyle, /*Check::YAxisPointsDown, */ Check::OriginCurrentPage}) {
+            if (auto checkbutton = get_checkbutton(check)) {
+                checkbutton->signal_toggled().connect([=, this](){ fire_checkbox_toggled(*checkbutton, check); });
+            }
+            else if (auto button = get_togglebutton(check)) {
+                button->signal_toggled().connect([=, this](){ fire_togglebutton_toggled(*button, check); });
+            }
         }
         _border.signal_toggled().connect([this](){
             _preview->draw_border(_border.get_active());
@@ -200,11 +205,12 @@ public:
         });
         _link_width_height.set_image_from_icon_name(g_unlinked, Gtk::IconSize::NORMAL);
 
-        _link_scale_content.signal_clicked().connect([this](){
-            _locked_content_scale = !_locked_content_scale;
+        _link_scale_content.set_active(!_locked_content_scale);
+        _link_scale_content.set_image_from_icon_name(s_unlinked, Gtk::IconSize::NORMAL);
+        _link_scale_content.signal_toggled().connect([this](){
+            _locked_content_scale = !_link_scale_content.get_active();
             _link_scale_content.set_image_from_icon_name(_locked_content_scale ? s_linked : s_unlinked, Gtk::IconSize::NORMAL);
         });
-        _link_scale_content.set_image_from_icon_name(s_unlinked, Gtk::IconSize::NORMAL);
 
         // set image for linked scale
         _linked_viewbox_scale.set_from_icon_name(s_linked);
@@ -239,7 +245,7 @@ public:
         auto& page_resize = get_widget<Gtk::Button>(_builder, "page-resize");
         page_resize.signal_clicked().connect([this](){ _signal_resize_to_fit.emit(); });
 
-        append(_main_grid);
+        // append(_main_grid);
         set_visible(true);
     }
 
@@ -247,7 +253,7 @@ private:
     void show_viewbox(bool show_widgets) {
         auto const show = [=](Gtk::Widget &w){ w.set_visible(show_widgets); };
 
-        for (auto &widget : UI::children(_left_grid)) {
+        for (auto &widget : UI::children(*_left_grid)) {
             if (widget.has_css_class("viewbox")) {
                 show(widget);
             }
@@ -425,7 +431,12 @@ private:
             _unsupported_size.set_visible(checked);
         }
         else {
-            get_checkbutton(element).set_active(checked);
+            if (auto button = get_togglebutton(element)) {
+                button->set_active(checked);
+            }
+            else if (auto checkbutton = get_checkbutton(element)) {
+                checkbutton->set_active(checked);
+            }
 
             // special cases
             if (element == Check::Checkerboard) _preview->enable_checkerboard(checked);
@@ -482,6 +493,12 @@ private:
         }
     }
 
+    void fire_togglebutton_toggled(Gtk::ToggleButton& togglebutton, Check check) {
+        if (!_update.pending()) {
+            _signal_check_toggled.emit(togglebutton.get_active(), check);
+        }
+    }
+
     std::vector<PaperSize>::const_iterator
     find_page_template(double const width, double const height, Unit const &unit)
     {
@@ -500,20 +517,26 @@ private:
         });
     }
 
-    Gtk::CheckButton& get_checkbutton(Check check) {
+    Gtk::CheckButton* get_checkbutton(Check check) {
         switch (check) {
-            case Check::AntiAlias: return _antialias;
-            case Check::Border: return _border;
-            case Check::Shadow: return _shadow;
-            case Check::BorderOnTop: return _border_on_top;
-            case Check::Checkerboard: return _checkerboard;
-            case Check::ClipToPage: return _clip_to_page;
-            case Check::PageLabelStyle: return _page_label_style;
-            case Check::YAxisPointsDown: return _y_axis_down;
-            case Check::OriginCurrentPage: return _origin_page;
+            case Check::AntiAlias: return &_antialias;
+            case Check::BorderOnTop: return &_border_on_top;
+            case Check::ClipToPage: return &_clip_to_page;
+            case Check::OriginCurrentPage: return &_origin_page;
 
-            default:
-                throw std::runtime_error("missing case in get_checkbutton");
+            default: return nullptr;
+        }
+    }
+
+    Gtk::ToggleButton* get_togglebutton(Check check) {
+        switch (check) {
+            case Check::Border: return &_border;
+            case Check::Shadow: return &_shadow;
+            case Check::Checkerboard: return &_checkerboard;
+            case Check::PageLabelStyle: return &_page_label_style;
+            case Check::YAxisPointsDown: return &_y_axis_down;
+
+            default: return nullptr;
         }
     }
 
@@ -533,17 +556,15 @@ private:
     }
 
     Glib::RefPtr<Gtk::Builder> _builder;
-    Gtk::Grid &_main_grid;
-    Gtk::Grid &_left_grid;
     MathSpinButton &_page_width;
     MathSpinButton &_page_height;
-    Gtk::CheckButton &_portrait;
-    Gtk::CheckButton &_landscape;
-    Gtk::CheckButton& _y_axis_up;
-    Gtk::CheckButton& _y_axis_down;
+    Gtk::ToggleButton& _portrait;
+    Gtk::ToggleButton& _landscape;
+    Gtk::ToggleButton& _y_axis_up;
+    Gtk::ToggleButton& _y_axis_down;
     Gtk::CheckButton& _origin_page;
     MathSpinButton &_scale_x;
-    Gtk::Button &_link_scale_content;
+    Gtk::ToggleButton& _link_scale_content;
     Gtk::Label &_unsupported_size;
     Gtk::Label &_nonuniform_scale;
     Gtk::Label &_doc_units;
@@ -561,16 +582,16 @@ private:
     Gtk::Label &_template_name;
     Gtk::Box &_preview_box;
     std::unique_ptr<PageSizePreview> _preview = std::make_unique<PageSizePreview>();
-    Gtk::CheckButton &_border;
-    Gtk::CheckButton &_border_on_top;
-    Gtk::CheckButton &_shadow;
-    Gtk::CheckButton &_checkerboard;
-    Gtk::CheckButton &_antialias;
-    Gtk::CheckButton &_clip_to_page;
-    Gtk::CheckButton &_page_label_style;
-    Gtk::Button &_link_width_height;
-    Gtk::Expander &_viewbox_expander;
-    Gtk::Image &_linked_viewbox_scale;
+    Gtk::CheckButton& _border_on_top;
+    Gtk::ToggleButton& _border;
+    Gtk::ToggleButton& _shadow;
+    Gtk::ToggleButton& _checkerboard;
+    Gtk::ToggleButton& _page_label_style;
+    Gtk::CheckButton& _antialias;
+    Gtk::CheckButton& _clip_to_page;
+    Gtk::Button& _link_width_height;
+    Gtk::Expander& _viewbox_expander;
+    Gtk::Image& _linked_viewbox_scale;
 
     UnitMenu &_display_units;
     UnitMenu &_page_units;

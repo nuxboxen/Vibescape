@@ -29,6 +29,7 @@ public:
 
     // Add this observer to the SPObject and remove it from any previous object
     void set(SPObject* o);
+    SPObject* get() const { return _oldsel; }
     void notifyChildAdded(Node&, Node&, Node*) override;
     void notifyChildRemoved(Node&, Node&, Node*) override;
     void notifyChildOrderChanged(Node&, Node&, Node*, Node*) override;

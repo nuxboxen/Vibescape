@@ -239,67 +239,67 @@ struct rdf_license_t rdf_licenses [] = {
 // the localization functions when you use them!
 struct rdf_work_entity_t rdf_work_entities [] = {
     // clang-format off
-    { "title", N_("Title:"), "dc:title", RDF_CONTENT,
+    { "title", N_("Title"), "dc:title", RDF_CONTENT,
       N_("A name given to the resource"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "date", N_("Date:"), "dc:date", RDF_CONTENT,
+    { "date", N_("Date"), "dc:date", RDF_CONTENT,
       N_("A point or period of time associated with an event in the lifecycle of the resource"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "format", N_("Format:"), "dc:format", RDF_CONTENT,
+    { "format", N_("Format"), "dc:format", RDF_CONTENT,
       N_("The file format, physical medium, or dimensions of the resource"), RDF_FORMAT_LINE, RDF_EDIT_HARDCODED,
     },
-    { "type", N_("Type:"), "dc:type", RDF_RESOURCE,
+    { "type", N_("Type"), "dc:type", RDF_RESOURCE,
       N_("The nature or genre of the resource"), RDF_FORMAT_LINE, RDF_EDIT_HARDCODED,
     },
 
-    { "creator", N_("Creator:"), "dc:creator", RDF_AGENT,
+    { "creator", N_("Creator"), "dc:creator", RDF_AGENT,
       N_("An entity primarily responsible for making the resource"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "rights", N_("Rights:"), "dc:rights", RDF_AGENT,
+    { "rights", N_("Rights"), "dc:rights", RDF_AGENT,
       N_("Information about rights held in and over the resource"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "publisher", N_("Publisher:"), "dc:publisher", RDF_AGENT,
+    { "publisher", N_("Publisher"), "dc:publisher", RDF_AGENT,
       N_("An entity responsible for making the resource available"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
 
-    { "identifier", N_("Identifier:"), "dc:identifier", RDF_CONTENT,
+    { "identifier", N_("Identifier"), "dc:identifier", RDF_CONTENT,
       N_("An unambiguous reference to the resource within a given context"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "source", N_("Source:"), "dc:source", RDF_CONTENT,
+    { "source", N_("Source"), "dc:source", RDF_CONTENT,
       N_("A related resource from which the described resource is derived"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "relation", N_("Relation:"), "dc:relation", RDF_CONTENT,
+    { "relation", N_("Relation"), "dc:relation", RDF_CONTENT,
       N_("A related resource"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "language", N_("Language:"), "dc:language", RDF_CONTENT,
+    { "language", N_("Language"), "dc:language", RDF_CONTENT,
       N_("A language of the resource"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
-    { "subject", N_("Keywords:"), "dc:subject", RDF_BAG,
+    { "subject", N_("Keywords"), "dc:subject", RDF_BAG,
       N_("The topic of the resource"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
     // TRANSLATORS: "Coverage": the spatial or temporal characteristics of the content.
     // For info, see Appendix D of http://www.w3.org/TR/1998/WD-rdf-schema-19980409/
-    { "coverage", N_("Coverage:"), "dc:coverage", RDF_CONTENT,
+    { "coverage", N_("Coverage"), "dc:coverage", RDF_CONTENT,
       N_("The spatial or temporal topic of the resource, the spatial applicability of the resource, or the jurisdiction under which the resource is relevant"), RDF_FORMAT_LINE, RDF_EDIT_GENERIC,
     },
 
-    { "description", N_("Description:"), "dc:description", RDF_CONTENT,
+    { "description", N_("Description"), "dc:description", RDF_CONTENT,
       N_("An account of the resource"), RDF_FORMAT_MULTILINE, RDF_EDIT_GENERIC,
     },
 
     // FIXME: need to handle 1 agent per line of input
-    { "contributor", N_("Contributors:"), "dc:contributor", RDF_AGENT,
+    { "contributor", N_("Contributors"), "dc:contributor", RDF_AGENT,
       N_("An entity responsible for making contributions to the resource"), RDF_FORMAT_MULTILINE, RDF_EDIT_GENERIC,
     },
 
     // TRANSLATORS: URL to a page that defines the license for the document
-    { "license_uri", N_("URI:"), "cc:license", RDF_RESOURCE,
+    { "license_uri", N_("URI"), "cc:license", RDF_RESOURCE,
       // TRANSLATORS: this is where you put a URL to a page that defines the license
       N_("URI to this document's license's namespace definition"), RDF_FORMAT_LINE, RDF_EDIT_SPECIAL,
     },
 
       // TRANSLATORS: fragment of XML representing the license of the document
-    { "license_fragment", N_("Fragment:"), "License", RDF_XML,
+    { "license_fragment", N_("Fragment"), "License", RDF_XML,
       N_("XML fragment for the RDF 'License' section"), RDF_FORMAT_MULTILINE, RDF_EDIT_SPECIAL,
     },
 

@@ -378,7 +378,7 @@ DocumentResources::DocumentResources()
 
             auto str = _search.get_text().lowercase();
             if (str.empty()) return true;
-        
+
             return ptr->value.lowercase().find(str) != Glib::ustring::npos;
         });
         _info_filter->set_expression(expression);
@@ -969,7 +969,7 @@ void add_stats(Glib::RefPtr<Gio::ListStoreBase> info_store, SPDocument* document
     }
 }
 
-void add_metadata(Glib::RefPtr<Gio::ListStoreBase> info_store, SPDocument* document, 
+void add_metadata(Glib::RefPtr<Gio::ListStoreBase> info_store, SPDocument* document,
     const boost::ptr_vector<Inkscape::UI::Widget::EntityEntry>& rdf_list) {
 
     for (auto& entry : rdf_list) {

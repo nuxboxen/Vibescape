@@ -16,6 +16,7 @@
 #define INKSCAPE_UI_WIDGET_TAB_STRIP_H
 
 #include <2geom/point.h>
+#include <glibmm/property.h>
 #include <gtkmm/builder.h>
 #include <gtkmm/menubutton.h>
 #include <gtkmm/orientable.h>
@@ -34,6 +35,7 @@ class TabStrip : public Gtk::Orientable, public BuildableWidget<TabStrip, Gtk::W
 {
 public:
     using BaseObjectType = GtkWidget;
+    static GType get_base_type() G_GNUC_CONST { return get_gtype(); }
 
     TabStrip(Gtk::Orientation orientation = Gtk::Orientation::HORIZONTAL);
     explicit TabStrip(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& builder = {});
@@ -91,8 +93,19 @@ public:
     // tab d&d has ended; bool argument is true if it was cancelled
     sigc::signal<void (bool)> signal_dnd_end() { return _signal_dnd_end; }
 
+    // Property accessors
+    Glib::PropertyProxy<Glib::ustring> property_show_labels() { return _show_labels_prop.get_proxy(); }
+    Glib::PropertyProxy<bool> property_show_close_button() { return _show_close_btn_prop.get_proxy(); }
+    Glib::PropertyProxy<bool> property_show_drag_handles() { return _show_drag_handles_prop.get_proxy(); }
+    Glib::PropertyProxy<Glib::ustring> property_rearranging_tabs() { return _rearranging_tabs_prop.get_proxy(); }
+    Glib::PropertyProxy<bool> property_stretch_tabs() { return _stretch_tabs_prop.get_proxy(); }
+    Glib::PropertyProxy<bool> property_show_plus_button() { return _show_plus_button_prop.get_proxy(); }
+
 private:
     void construct();
+    void apply_initial_property_values();
+    ShowLabels parse_show_labels_value(const Glib::ustring& value);
+    Rearrange parse_rearranging_tabs_value(const Glib::ustring& value);
 
     Gtk::Widget *const _overlay;
     Gtk::Popover *_popover = nullptr;
@@ -111,8 +124,14 @@ private:
     sigc::signal<void (bool)> _signal_dnd_end;
     Rearrange _rearrange = Rearrange::Externally;
     ShowLabels _show_labels = ShowLabels::Never;
-    bool _show_close_btn = true;
-    bool _show_drag_handles = false;
+
+    // Properties
+    Glib::Property<Glib::ustring> _show_labels_prop;
+    Glib::Property<bool> _show_close_btn_prop;
+    Glib::Property<bool> _show_drag_handles_prop;
+    Glib::Property<Glib::ustring> _rearranging_tabs_prop;
+    Glib::Property<bool> _stretch_tabs_prop;
+    Glib::Property<bool> _show_plus_button_prop;
 
     friend TabWidgetDrag;
     std::shared_ptr<TabWidgetDrag> _drag_src;

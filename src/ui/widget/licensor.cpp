@@ -11,8 +11,9 @@
  *   Jon Phillips <jon@rejon.org>
  *   Ralf Stephan <ralf@ark.in-berlin.de> (Gtkmm)
  *   Abhishek Sharma
+ *   Mike Kowalski
  *
- * Copyright (C) 2000 - 2005 Authors
+ * Copyright (C) 2000 - 2026 Authors
  *
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
@@ -20,122 +21,131 @@
 #include "licensor.h"
 
 #include <gtkmm/entry.h>
-#include <gtkmm/checkbutton.h>
+#include <gtkmm/dropdown.h>
 
-#include "desktop.h"
 #include "document.h"
 #include "document-undo.h"
 #include "rdf.h"
-#include "ui/pack.h"
-#include "ui/widget/entity-entry.h"
-#include "ui/widget/registry.h"
+#include "ui/builder-utils.h"
+#include "ui/operation-blocker.h"
+#include "ui/widget/drop-down-list.h"
+
+using Inkscape::UI::create_builder;
+using Inkscape::UI::get_widget;
 
 namespace Inkscape::UI::Widget {
 
-const struct rdf_license_t _proprietary_license = 
+const struct rdf_license_t _proprietary_license =
   {_("Proprietary"), "", nullptr};
 
-const struct rdf_license_t _other_license = 
+const struct rdf_license_t _other_license =
   {Q_("MetadataLicence|Other"), "", nullptr};
-
-class LicenseItem final : public Gtk::CheckButton {
-public:
-    LicenseItem (struct rdf_license_t const* license, EntityEntry* entity, Registry &wr, Gtk::CheckButton *group);
-    [[nodiscard]] rdf_license_t const *get_license() const { return _lic; }
-
-private:
-    void on_toggled() final;
-    struct rdf_license_t const *_lic;
-    EntityEntry                *_eep;
-    Registry                   &_wr;
-};
-
-LicenseItem::LicenseItem (struct rdf_license_t const* license, EntityEntry* entity, Registry &wr, Gtk::CheckButton *group)
-: Gtk::CheckButton(_(license->name)), _lic(license), _eep(entity), _wr(wr)
-{
-    if (group) {
-        set_group (*group);
-    }
-}
-
-/// \pre it is assumed that the license URI entry is a Gtk::Entry
-void LicenseItem::on_toggled()
-{
-    if (_wr.isUpdating() || !_wr.desktop())
-        return;
-
-    _wr.setUpdating (true);
-    SPDocument *doc = _wr.desktop()->getDocument();
-    rdf_set_license (doc, _lic->details ? _lic : nullptr);
-    if (doc->isSensitive()) {
-        DocumentUndo::done(doc, RC_("Undo", "Document license updated"), "");
-    }
-    _wr.setUpdating (false);
-    static_cast<Gtk::Entry*>(_eep->_packable)->set_text (_lic->uri);
-    _eep->on_changed();
-}
 
 Licensor::Licensor()
 : Gtk::Box{Gtk::Orientation::VERTICAL, 4}
 {
+    auto builder = create_builder("licensor.ui");
+    auto& grid = get_widget<Gtk::Grid>(builder, "licensor_grid");
+    _license_dropdown = &get_widget<Gtk::DropDown>(builder, "license_dropdown");
+    _uri_label = &get_widget<Gtk::Label>(builder, "uri_label");
+    _uri_entry = &get_widget<Gtk::Entry>(builder, "uri_entry");
+
+    append(grid);
 }
 
 Licensor::~Licensor() = default;
 
-void Licensor::init (Registry& wr)
-{
-    /* add license-specific metadata entry areas */
-    rdf_work_entity_t* entity = rdf_find_entity ( "license_uri" );
-    _eentry.reset(EntityEntry::create(entity, wr));
+void Licensor::init() {
+    auto scoped(_update.block());
 
-    wr.setUpdating (true);
-
-    auto const item = add_item(wr, _proprietary_license, nullptr);
-    item->set_active(true);
+    _licenses.clear();
+    _licenses.push_back(&_proprietary_license);
 
     for (auto license = rdf_licenses; license && license->name; ++license) {
-        add_item(wr, *license, item);
+        _licenses.push_back(license);
     }
 
-    // add Other at the end before the URI field for the confused ppl.
-    add_item(wr, _other_license, item);
+    _licenses.push_back(&_other_license);
 
-    wr.setUpdating (false);
+    // Create string list for dropdown
+    auto string_list = Gtk::StringList::create({});
+    for (auto license : _licenses) {
+        string_list->append(_(license->name));
+    }
+    _license_dropdown->set_model(string_list);
+    _license_dropdown->set_selected(0);
 
-    auto const box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
-    UI::pack_start(*this, *box, true, true, 0);
-    UI::pack_start(*box, _eentry->_label, false, false, 5);
-    UI::pack_start(*box, *_eentry->_packable, true, true, 0);
+    _uri_entry->set_hexpand();
+
+    _license_dropdown->property_selected().signal_changed().connect([this] {
+        on_license_changed();
+    });
+    _uri_entry->signal_changed().connect(sigc::mem_fun(*this, &Licensor::on_uri_changed));
 }
 
-LicenseItem *Licensor::add_item(Registry &wr, rdf_license_t const &license,
-                                Gtk::CheckButton * const group)
-{
-    assert(_eentry);
-    auto const item = Gtk::make_managed<LicenseItem>(&license, _eentry.get(), wr, group);
-    append(*item);
-    _items.push_back(item);
-    return item;
+void Licensor::set_document(SPDocument* document) {
+    _document = document;
 }
 
-void Licensor::update(SPDocument *doc)
-{
-    assert(_eentry);
-    assert(!_items.empty());
+const rdf_license_t* Licensor::get_selected_license() const {
+    if (!_license_dropdown) return nullptr;
+    auto selected = _license_dropdown->get_selected();
+    if (selected >= _licenses.size()) return nullptr;
+    return _licenses[selected];
+}
 
-    /* identify the license info */
+void Licensor::set_uri_text(const char* text) {
+    auto scoped(_update.block());
+    _uri_entry->set_text(text ? text : "");
+}
+
+void Licensor::on_license_changed() {
+    if (_update.pending() || !_document) return;
+
+    const auto license = get_selected_license();
+    if (!license) return;
+
+    auto scoped(_update.block());
+    rdf_set_license(_document, license->details ? license : nullptr);
+    if (_document->isSensitive()) {
+        DocumentUndo::done(_document, RC_("Undo", "Document license updated"), "");
+    }
+
+    set_uri_text(license->uri);
+    rdf_work_entity_t *entity = rdf_find_entity("license_uri");
+    if (!entity) return;
+    rdf_set_work_entity(_document, entity, _uri_entry->get_text().c_str());
+}
+
+void Licensor::on_uri_changed() {
+    if (_update.pending() || !_document) return;
+
+    rdf_work_entity_t *entity = rdf_find_entity("license_uri");
+    if (!entity) return;
+
+    auto scoped(_update.block());
+    if (rdf_set_work_entity(_document, entity, _uri_entry->get_text().c_str()) && _document->isSensitive()) {
+        DocumentUndo::done(_document, RC_("Undo", "Document metadata updated"), "");
+    }
+}
+
+void Licensor::update(SPDocument* doc) {
+    if (!doc || !_license_dropdown || _licenses.empty()) return;
+
     constexpr bool read_only = false;
-    auto const license = rdf_get_license(doc, read_only);
+    const auto license = rdf_get_license(doc, read_only);
 
-    // Set the active licenseʼs button to active/checked.
-    auto item = std::find_if(_items.begin(), _items.end(),
-                             [=](auto const item){ return item->get_license() == license; });
-    // If we canʼt match license, just activate 1st.
-    if (item == _items.end()) item = _items.begin();
-    (*item)->set_active(true);
+    auto it = std::find(_licenses.begin(), _licenses.end(), license);
+    if (it == _licenses.end()) {
+        it = _licenses.begin();
+    }
 
-    /* update the URI */
-    _eentry->update(doc, read_only);
+    auto scoped(_update.block());
+    _license_dropdown->set_selected(std::distance(_licenses.begin(), it));
+
+    auto entity = rdf_find_entity("license_uri");
+    const auto text = entity ? rdf_get_work_entity(doc, entity) : nullptr;
+    set_uri_text(text);
 }
 
 } // namespace Inkscape::UI::Widget

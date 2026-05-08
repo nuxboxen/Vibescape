@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <placeholder width="367" height="78"></placeholder>
+  <requires lib="gtk" version="4.0"></requires>
+  <object class="GtkGrid" id="licensor_grid">
+    <property name="orientation">vertical</property>
+    <property name="row-spacing">4</property>
+    <property name="column-spacing">4</property>
+    <property name="margin-top">4</property>
+    <child>
+      <object class="GtkDropDown" id="license_dropdown">
+        <property name="hexpand">True</property>
+        <property name="valign">center</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">0</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="uri_label">
+        <property name="label" translatable="yes">URI</property>
+        <property name="halign">start</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkEntry" id="uri_entry">
+        <property name="hexpand">True</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">1</property>
+        </layout>
+      </object>
+    </child>
+  </object>
+</interface>

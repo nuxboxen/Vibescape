@@ -21,9 +21,22 @@ void AlignmentSelector::setupButton(const Glib::ustring& icon, Gtk::Button& butt
     button.set_focusable(false);
 }
 
-AlignmentSelector::AlignmentSelector()
+AlignmentSelector::AlignmentSelector() {
+    construct();
+}
+
+AlignmentSelector::AlignmentSelector(BaseObjectType* cobject, const Glib::RefPtr<Gtk::Builder>& builder)
+    : Gtk::Box(cobject)
 {
+    construct();
+}
+
+void AlignmentSelector::construct() {
+    // This constructor is used when the widget is created from a UI file
+    // The actual setup will be done in the UI file itself
     set_halign(Gtk::Align::CENTER);
+
+    // Setup buttons from the UI file
     // clang-format off
     setupButton(INKSCAPE_ICON("boundingbox_top_left"),     _buttons[0]);
     setupButton(INKSCAPE_ICON("boundingbox_top"),          _buttons[1]);

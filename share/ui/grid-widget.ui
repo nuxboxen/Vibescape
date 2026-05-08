@@ -1,0 +1,479 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <placeholder width="731" height="491"></placeholder>
+  <requires lib="gtk" version="4.0"></requires>
+  <object class="GtkGrid" id="main">
+    <property name="valign">start</property>
+    <property name="column-spacing">4</property>
+    <property name="row-spacing">4</property>
+    <child>
+      <object class="GtkSwitch" id="enabled-switch">
+        <property name="tooltip-text" translatable="yes">Makes the grid available for working with on the canvas</property>
+        <property name="halign">start</property>
+        <property name="valign">center</property>
+        <style>
+          <class name="small-switch"></class>
+        </style>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">0</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <property name="spacing">4</property>
+        <property name="hexpand">true</property>
+        <child>
+          <object class="GtkToggleButton" id="visible-toggle">
+            <property name="icon-name">object-visible</property>
+            <property name="tooltip-text" translatable="yes">Determines whether the grid is displayed or not. Objects are still snapped to invisible grids.</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="id-label">
+            <property name="halign">start</property>
+            <property name="ellipsize">end</property>
+            <property name="hexpand">true</property>
+          </object>
+        </child>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">0</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkDropDown" id="grid-type-dropdown">
+        <property name="tooltip-text" translatable="yes">Change to a different grid type</property>
+        <property name="hexpand-set">true</property>
+        <property name="hexpand">true</property>
+        <property name="halign">fill</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">1</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuButton" id="color-button">
+        <property name="hexpand">true</property>
+        <property name="hexpand-set">true</property>
+        <property name="tooltip-text" translatable="yes">Color of the grid lines</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">6</property>
+          <property name="column-span">2</property>
+        </layout>
+        <style>
+          <class name="small"></class>
+        </style>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="delete-button">
+        <property name="has-frame">false</property>
+        <property name="icon-name">minus</property>
+        <property name="tooltip-text" translatable="yes">Delete this grid</property>
+        <property name="halign">end</property>
+        <layout>
+          <property name="column">3</property>
+          <property name="row">0</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuButton" id="options-button">
+        <property name="halign">end</property>
+        <property name="tooltip-text" translatable="yes">Grid options</property>
+        <property name="has-frame">false</property>
+        <property name="popover">options_popover</property>
+        <property name="sensitive">true</property>
+        <property name="icon-name">gear</property>
+        <layout>
+          <property name="column">3</property>
+          <property name="row">1</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuButton" id="units-button">
+        <property name="halign">end</property>
+        <property name="tooltip-text" translatable="yes">Grid units</property>
+        <property name="focus-on-click">false</property>
+        <property name="focusable">false</property>
+        <property name="can-focus">true</property>
+        <property name="has-frame">false</property>
+        <property name="popover">units</property>
+        <property name="sensitive">true</property>
+        <property name="icon-name">unit-measure</property>
+        <layout>
+          <property name="column">3</property>
+          <property name="row">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuButton" id="align-button">
+        <property name="valign">center</property>
+        <property name="has-frame">false</property>
+        <property name="icon-name">grid-origin</property>
+        <property name="tooltip-text" translatable="yes">Align grid origin relative to active page.</property>
+        <property name="halign">end</property>
+        <property name="popover">align_popover</property>
+        <layout>
+          <property name="column">3</property>
+          <property name="row">7</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="origin-x-spin">
+        <property name="label" translatable="yes">X</property>
+        <property name="tooltip-text" translatable="yes">X coordinate of grid origin</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">7</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="origin-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">O_rigin</property>
+        <property name="use-underline">true</property>
+        <property name="xalign">0</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">7</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="origin-y-spin">
+        <property name="label" translatable="yes">Y</property>
+        <property name="tooltip-text" translatable="yes">Y coordinate of grid origin</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">7</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="spacing-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Spacing</property>
+        <property name="use-underline">true</property>
+        <property name="xalign">0</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="spacing-x-spin">
+        <property name="tooltip-text" translatable="yes">Distance between horizontal grid lines</property>
+        <property name="label" translatable="yes">X</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="spacing-y-spin">
+        <property name="tooltip-text" translatable="yes">Distance between vertical grid lines</property>
+        <property name="label" translatable="yes">Y</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="angle-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">An_gle</property>
+        <property name="use-underline">true</property>
+        <property name="xalign">0</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">3</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="angle-x-spin">
+        <property name="label" translatable="yes">X</property>
+        <property name="tooltip-text" translatable="yes">Angle of X-axis relative to horizontal direction</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">3</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuButton" id="angle-popup-button">
+        <property name="tooltip-text" translatable="yes" comments="TRANSLATORS: Axonometric grid looks like a pattern of parallelograms. Their width to height proportions can be manipulated by changing angles in the axonometric grid. This DX/DY ratio does just that. Pressing &quot;Set&quot; button will calculate grid angles to produce parallelograms with requested widh to height ratio.">Automatically calculate angles from width to height ratio
+of a single grid parallelogram</property>
+        <property name="valign">center</property>
+        <property name="halign">end</property>
+        <property name="has-frame">false</property>
+        <property name="icon-name">pan-down</property>
+        <property name="popover">angle-popover</property>
+        <layout>
+          <property name="column">3</property>
+          <property name="row">3</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="angle-z-spin">
+        <property name="label" translatable="yes">Z</property>
+        <property name="tooltip-text" translatable="yes">Angle of Z-axis relative to horizontal direction</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">3</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="no-of-lines-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Major grid line e_very</property>
+        <property name="use-underline">true</property>
+        <property name="xalign">0</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">5</property>
+          <property name="column-span">2</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="no-of-lines-spin">
+        <property name="suffix" translatable="yes"> lines</property>
+        <property name="tooltip-text" translatable="yes">Number of lines</property>
+        <property name="hexpand">true</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">5</property>
+        </layout>
+      </object>
+    </child>
+    <!--dim: 4, 10-->
+    <child>
+      <object class="GtkLabel" id="type-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Type</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">1</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="color-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Color</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">6</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="gap-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">Gap</property>
+        <property name="use-underline">true</property>
+        <property name="xalign">0</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">4</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="gap-x-spin">
+        <property name="label" translatable="yes">X</property>
+        <property name="tooltip-text" translatable="yes">Horizontal distance between blocks</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">4</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="gap-y-spin">
+        <property name="label" translatable="yes">Y</property>
+        <property name="tooltip-text" translatable="yes">Vertical distance between blocks</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">4</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkLabel" id="margin-label">
+        <property name="halign">start</property>
+        <property name="label" translatable="yes">_Margin</property>
+        <property name="use-underline">true</property>
+        <property name="xalign">0</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">8</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="margin-x-spin">
+        <property name="label" translatable="yes">X</property>
+        <property name="tooltip-text" translatable="yes">Right and left margins</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">1</property>
+          <property name="row">8</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="gtkmm__CustomObject_InkSpinButton" id="margin-y-spin">
+        <property name="label" translatable="yes">Y</property>
+        <property name="tooltip-text" translatable="yes">Top and bottom margins</property>
+        <property name="hexpand">true</property>
+        <property name="digits">6</property>
+        <layout>
+          <property name="column">2</property>
+          <property name="row">8</property>
+        </layout>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox" id="spacer">
+        <property name="halign">start</property>
+        <property name="width-request">70</property>
+        <layout>
+          <property name="column">0</property>
+          <property name="row">9</property>
+        </layout>
+      </object>
+    </child>
+  </object>
+  <!-- Options Popover -->
+  <object class="GtkPopover" id="options_popover">
+    <property name="has-arrow">false</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">4</property>
+        <property name="margin-top">8</property>
+        <property name="margin-bottom">8</property>
+        <property name="margin-start">8</property>
+        <property name="margin-end">8</property>
+        <child>
+          <object class="GtkCheckButton" id="snap-visible-check">
+            <property name="label" translatable="yes">Snap to visible _grid lines only</property>
+            <property name="tooltip-text" translatable="yes">When zoomed out, not all grid lines will be displayed. Only the visible ones will be snapped to</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkCheckButton" id="dotted-check">
+            <property name="label" translatable="yes">_Show dots instead of lines</property>
+            <property name="tooltip-text" translatable="yes">If set, displays dots at gridpoints instead of gridlines</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+  <!-- Alignment Popover -->
+  <object class="GtkPopover" id="align_popover">
+    <property name="has-arrow">false</property>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <property name="spacing">4</property>
+        <property name="margin-top">8</property>
+        <property name="margin-bottom">8</property>
+        <property name="margin-start">8</property>
+        <property name="margin-end">8</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="label" translatable="yes">Align to page:</property>
+            <property name="margin-top">8</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox" id="alignment-selector"></object>
+        </child>
+      </object>
+    </child>
+  </object>
+  <!-- Angle Popover -->
+  <object class="GtkPopover" id="angle-popover">
+    <property name="has-arrow">false</property>
+    <child>
+      <object class="GtkGrid">
+        <property name="margin-top">8</property>
+        <property name="margin-bottom">8</property>
+        <property name="margin-start">8</property>
+        <property name="margin-end">8</property>
+        <property name="row-spacing">4</property>
+        <property name="column-spacing">4</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="label" translatable="yes">Set angle from aspect ratio:</property>
+            <property name="halign">start</property>
+            <layout>
+              <property name="column">0</property>
+              <property name="row">0</property>
+            </layout>
+          </object>
+        </child>
+        <child>
+          <object class="GtkEntry" id="aspect-ratio-entry">
+            <property name="max-width-chars">9</property>
+            <layout>
+              <property name="column">0</property>
+              <property name="row">1</property>
+            </layout>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="apply-angle-button">
+            <property name="label" translatable="yes">Set</property>
+            <property name="halign">center</property>
+            <property name="width-request">100</property>
+            <property name="tooltip-text" translatable="yes">Automatically calculate angles from width to height ratio
+of a single grid parallelogram</property>
+            <layout>
+              <property name="column">0</property>
+              <property name="row">2</property>
+            </layout>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkPopoverMenu" id="units"></object>
+</interface>

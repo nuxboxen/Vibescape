@@ -16,8 +16,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <gtkmm/widget.h>
 #include <memory>
 #include <optional>
+#include <sigc++/scoped_connection.h>
 #include <string>
 #include <tuple>
 #include <2geom/rect.h>
@@ -73,6 +75,8 @@
 #include "object/sp-polyline.h"
 #include "object/sp-radial-gradient.h"
 #include "object/sp-rect.h"
+#include "object/sp-root.h"
+#include "object/sp-script.h"
 #include "object/sp-star.h"
 #include "object/sp-stop.h"
 #include "object/sp-text.h"
@@ -83,13 +87,23 @@
 #include "ui/gridview-utils.h"
 #include "ui/icon-names.h"
 #include "ui/syntax.h"
+#include "ui/tools/pages-tool.h"
 #include "ui/util.h"
 #include "ui/tools/object-picker-tool.h"
 #include "ui/tools/text-tool.h"
+#include "ui/widget/pages-panel.h"
+#include "ui/widget/color-system-panel.h"
+#include "ui/widget/document-props-panel.h"
+#include "ui/widget/display-props-panel.h"
+#include "ui/widget/guides-panel.h"
+#include "ui/widget/grids-panel.h"
 #include "ui/widget/image-properties.h"
 #include "ui/widget/ink-property-grid.h"
+#include "ui/widget/license-panel.h"
+#include "ui/widget/metadata-panel.h"
 #include "ui/widget/object-composite-settings.h"
 #include "ui/widget/paint-attribute.h"
+#include "ui/widget/scripting-panel.h"
 #include "util/object-modified-tags.h"
 #include "widgets/sp-attribute-widget.h"
 
@@ -242,6 +256,13 @@ void ObjectAttributes::desktopReplaced() {
         _cursor_move = desktop->connect_text_cursor_moved([this](auto tool) {
             cursor_moved(tool);
         });
+        _tool_changed = desktop->connectEventContextChanged([this](auto, auto tool) {
+            tool_changed(tool);
+        });
+    }
+    else {
+        _cursor_move.disconnect();
+        _tool_changed.disconnect();
     }
 }
 
@@ -253,12 +274,21 @@ void ObjectAttributes::cursor_moved(Tools::TextTool* tool) {
     //TODO: text panel
 }
 
+void ObjectAttributes::tool_changed(Inkscape::UI::Tools::ToolBase* tool) {
+    widget_setup();
+
+    if (_current_panel) {
+        _current_panel->tool_changed(tool);
+    }
+}
+
 void ObjectAttributes::documentReplaced() {
     auto doc = getDocument();
     for (auto& kv : _panels) {
         if (kv.second) kv.second->set_document(doc);
     }
     if (_multi_obj_panel) _multi_obj_panel->set_document(doc);
+    if (_document_panel) _document_panel->set_document(doc);
     //todo: watch doc modified to update locked state of current obj
 }
 
@@ -714,6 +744,7 @@ void details::AttributesPanel::set_document(SPDocument* document) {
     if (_show_fill_stroke) {
         _paint->set_document(document);
     }
+    document_replaced(document);
 }
 
 void details::AttributesPanel::set_desktop(SPDesktop* desktop) {
@@ -2443,32 +2474,320 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////
 
-class EmptyPanel : public details::AttributesPanel {
-public:
-    EmptyPanel(Glib::RefPtr<Gtk::Builder> builder) {
-        Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "empty-panel"), _grid);
+struct DirtyFlags {
+    bool doc = true;
+    bool display = true;
+    bool guides = true;
+    bool grids = true;
+    bool about = true;  // For document-dependent panels (meta, license)
+    bool script = true; // For script panel changes
+    bool colors = true; // CMS
 
-if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
-        // TODO: panel with default paint and other style attributes
-        _grid.add_property(_("Defaults"), nullptr, nullptr, nullptr);
-        add_fill_and_stroke(Parts::FillPaint);
-}
+    // Helper method to mark all flags as dirty
+    void set_all() {
+        doc = display = guides = grids = about = script = colors = true;
     }
 
-    void update(SPObject* object) override {
-if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
-        if (!_desktop || !_desktop->getDocument()) return;
-
-        if (auto view = _desktop->getDocument()->getNamedView()) {
-            if (view->style) {
-                update_paint(view);
-            }
-        }
-}
+    // Helper method to clear all flags
+    void clear_all() {
+        doc = display = guides = grids = about = script = colors = false;
     }
 };
 
+class DocumentPanel : public details::AttributesPanel {
+public:
+    DocumentPanel(Glib::RefPtr<Gtk::Builder> /*builder*/) {
+        _title = _("Document");
+
+        // Initialize dirty flags
+        _dirty.set_all();
+
+        // --- Document section ---
+        _sec_doc    = _grid.add_section(_("Document"));
+        _doc_panel  = Gtk::make_managed<Widget::DocumentPropertiesPanel>();
+        _grid.add_full_row(_doc_panel->get_widget());
+        _grid.add_section_divider();
+
+        // --- Display section ---
+        _sec_display = _grid.add_section(_("Display"));
+        _display_panel = Gtk::make_managed<Widget::DisplayPropertiesPanel>();
+        _grid.add_full_row(_display_panel->get_widget());
+        _grid.add_section_divider();
+
+        // --- Grids section ---
+        _sec_grids  = _grid.add_section(_("Grids"));
+        _grids_panel = Gtk::make_managed<Widget::GridsPanel>();
+        _grid.add_full_row(_grids_panel);
+        _grid.add_section_divider();
+
+        // --- Guides section ---
+        _sec_guides  = _grid.add_section(_("Guides"));
+        _guides_panel = Gtk::make_managed<Widget::GuidesPanel>();
+        _grid.add_full_row(_guides_panel);
+        _grid.add_section_divider();
+
+        // --- Color profiles section ---
+        _sec_color  = _grid.add_section(_("Color Profiles"));
+        _color_panel = Gtk::make_managed<Widget::ColorSystemPanel>();
+        _grid.add_full_row(_color_panel);
+        _grid.add_section_divider();
+
+        // --- Scripting section ---
+        _sec_script  = _grid.add_section(_("Scripting"));
+        _script_panel = Gtk::make_managed<Widget::ScriptingPanel>();
+        _grid.add_full_row(_script_panel);
+        _grid.add_section_divider();
+
+        // --- About section ---
+        _sec_about  = _grid.add_section(_("About"));
+        _meta_panel = Gtk::make_managed<Widget::MetadataPanel>();
+        _grid.add_full_row(_meta_panel);
+        _license_panel = Gtk::make_managed<Widget::LicensePanel>();
+        _grid.add_full_row(_license_panel);
+
+        // Restore collapsed/expanded state from preferences and wire toggles
+        auto wire = [this](Gtk::Button* btn, Pref<bool>& pref,
+                           std::function<void(bool)> show_fn) {
+            show_fn(pref);
+            pref.action = [show_fn, &pref] { show_fn(pref); };
+            btn->signal_clicked().connect([this, btn, &pref, show_fn] {
+                bool next = !static_cast<bool>(pref);
+                show_fn(next);
+                Preferences::get()->setBool(pref.observed_path, next);
+            });
+        };
+
+        wire(_sec_doc,     _pref_doc,     [this](bool v){ show_section(_sec_doc,     _doc_panel->get_widget(),     v); if (v && _dirty.doc) update(nullptr); });
+        wire(_sec_display, _pref_display, [this](bool v){ show_section(_sec_display, _display_panel->get_widget(), v); if (v && _dirty.display) update(nullptr); });
+        wire(_sec_guides,  _pref_guides,  [this](bool v){ show_section(_sec_guides,  _guides_panel,  v); if (v && _dirty.guides) update(nullptr); });
+        wire(_sec_grids,   _pref_grids,   [this](bool v){ show_section(_sec_grids,   _grids_panel,   v); if (v && _dirty.grids) update(nullptr); });
+        wire(_sec_color,   _pref_color,   [this](bool v){ show_section(_sec_color,   _color_panel,   v); if (v) _color_panel->populate_available_profiles(false); });
+        wire(_sec_script,  _pref_script,  [this](bool v){ show_section(_sec_script,  _script_panel,  v); if (v && _dirty.script) update(nullptr); });
+        wire(_sec_about,   _pref_about,   [this](bool v){ show_section(_sec_about,   _meta_panel, _license_panel, v); if (v && _dirty.about) update(nullptr); });
+
+        // Observer fires when the namedview XML changes (grids, guides, etc.)
+        _nv_observer.signal_changed().connect([this](auto change, auto) {
+            if (change == XML::SignalObserver::ChildAdded || change == XML::SignalObserver::ChildRemoved) {
+                _dirty.grids = true;
+            }
+            _dirty.doc = true; // Only mark namedview-dependent panels as dirty
+            _dirty.display = true; // Display panel also needs update
+            _dirty.guides = true;
+            update(_current_object);
+        });
+
+        // Observer fires when metadata XML changes (license, metadata, scripts)
+        _metadata_observer.signal_changed().connect([this](auto change, auto) {
+            _dirty.about = true; // Mark document-dependent panels as dirty
+            update(nullptr);
+        });
+
+        // Root observer fires when metadata elements are added/removed
+        _root_observer.signal_changed().connect([this](auto change, auto) {
+            if (change == XML::SignalObserver::ChildAdded || change == XML::SignalObserver::ChildRemoved) {
+                // Check if this affects metadata elements
+                // Re-setup metadata observer to catch new metadata element or disconnect if removed
+                if (_document) {
+                    setup_metadata_observer(_document);
+                    _dirty.about = true;
+                    update(nullptr);
+                }
+            }
+        });
+    }
+
+    void document_replaced(SPDocument* document) override {
+        auto namedview = document ? document->getNamedView() : nullptr;
+
+        _doc_panel->set_document(document);
+        _doc_panel->set_desktop(_desktop);
+        _display_panel->set_document(document);
+        _grids_panel->set_namedview(namedview);
+        _color_panel->set_document(document);
+        _meta_panel->set_document(document);
+        _license_panel->set_document(document);
+        _license_panel->update(document);
+
+        // Insert document action group for doc.new-grid action to work
+        if (document) {
+            _widget->insert_action_group("doc", document->getActionGroup());
+        }
+
+        _nv_observer.set(namedview);
+        _dirty.set_all();
+
+        // Set up observers for metadata changes
+        if (document) {
+            // Root observer watches for metadata element addition/removal
+            _root_observer.set(document->getRoot());
+            // Metadata observer watches for content changes within metadata
+            setup_metadata_observer(document);
+
+            // Connect to script resources changes
+            _script_resources_connection = document->connectResourcesChanged("script", [this]() {
+                _dirty.script = true;
+                update(nullptr);
+            });
+        } else {
+            _root_observer.set(nullptr);
+            _metadata_observer.set(nullptr);
+            _script_resources_connection.disconnect();
+        }
+
+        update(nullptr);
+    }
+
+    void update(SPObject* /*object*/) override {
+        if (!_desktop || !_document) return;
+
+        auto nv = _document->getNamedView();
+        if (nv && nv->getRepr() && _nv_observer.get() != nv) {
+            _nv_observer.set(nv);
+        }
+        else if (!nv) {
+            _nv_observer.set(nullptr);
+        }
+
+        // Update namedview-dependent panels
+        if (_dirty.doc && _doc_panel->get_visible()) {
+            _dirty.doc = false;
+            auto root = _document->getRoot();
+            _doc_panel->update(nv, root);
+        }
+        if (_dirty.display && _display_panel->get_visible()) {
+            _dirty.display = false;
+            _display_panel->update(nv);
+        }
+        if (_dirty.guides && _guides_panel->get_visible()) {
+            _dirty.guides = false;
+            _guides_panel->update(nv);
+        }
+        if (_dirty.grids && _grids_panel->get_visible()) {
+            _dirty.grids = false;
+            _grids_panel->set_namedview(nv);
+            _grids_panel->update(nv);
+        }
+        // Update color panel (color profiles are document-wide)
+        if (_dirty.colors && _color_panel->get_visible()) {
+            //TODO: _dirty.colors is not set, cms is not being monitored for changes
+            _dirty.colors = false;
+            _color_panel->update(_document);
+        }
+        // Update script panel
+        if (_dirty.script && _script_panel->get_visible()) {
+            _dirty.script = false;
+            _script_panel->set_desktop(_desktop);
+            _script_panel->update(_document);
+        }
+        // Update document-dependent panels (metadata and license only)
+        if (_dirty.about && _meta_panel->get_visible() && _license_panel->get_visible()) {
+            _dirty.about = false;
+            _meta_panel->update(_document);
+            _license_panel->update(_document);
+        }
+    }
+
+private:
+    static void show_section(Gtk::Button* btn, Gtk::Widget* content, bool open) {
+        content->set_visible(open);
+        Widget::InkPropertyGrid::open_section(btn, open);
+    }
+
+    static void show_section(Gtk::Button* btn, Gtk::Widget* content1, Gtk::Widget* content2, bool open) {
+        content1->set_visible(open);
+        content2->set_visible(open);
+        Widget::InkPropertyGrid::open_section(btn, open);
+    }
+
+    // Helper function to set up metadata observer when metadata element exists
+    void setup_metadata_observer(SPDocument* document) {
+        SPObject* metadata = nullptr;
+        if (document) {
+            for (auto& child : document->getRoot()->children) {
+                if (child.getRepr() && strcmp(child.getRepr()->name(), "svg:metadata") == 0) {
+                    metadata = &child;
+                    break;
+                }
+            }
+        }
+        _metadata_observer.set(metadata);
+    }
+
+    DirtyFlags _dirty;
+    XML::SignalObserver _nv_observer;
+    XML::SignalObserver _root_observer; // Observer for document root changes
+    XML::SignalObserver _metadata_observer; // Observer for metadata changes
+    sigc::scoped_connection _script_resources_connection; // Connection to script resources changes
+
+    // Sub-panels (managed by GTK, owned by _grid)
+    Widget::DocumentPropertiesPanel* _doc_panel    = nullptr;
+    Widget::DisplayPropertiesPanel*  _display_panel = nullptr;
+    Widget::GuidesPanel*             _guides_panel = nullptr;
+    Widget::GridsPanel*              _grids_panel  = nullptr;
+    Widget::ColorSystemPanel*        _color_panel  = nullptr;
+    Widget::ScriptingPanel*          _script_panel = nullptr;
+    Widget::MetadataPanel*           _meta_panel   = nullptr;
+    Widget::LicensePanel*            _license_panel = nullptr;
+
+    // Section toggle buttons
+    Gtk::Button* _sec_doc     = nullptr;
+    Gtk::Button* _sec_display = nullptr;
+    Gtk::Button* _sec_guides  = nullptr;
+    Gtk::Button* _sec_grids   = nullptr;
+    Gtk::Button* _sec_color   = nullptr;
+    Gtk::Button* _sec_script  = nullptr;
+    Gtk::Button* _sec_about   = nullptr;
+
+    // Persistent collapsed/expanded state
+    Pref<bool> _pref_doc     = {details::dlg_pref_path + "/empty/doc"};
+    Pref<bool> _pref_display = {details::dlg_pref_path + "/empty/display"};
+    Pref<bool> _pref_guides  = {details::dlg_pref_path + "/empty/guides"};
+    Pref<bool> _pref_grids   = {details::dlg_pref_path + "/empty/grids"};
+    Pref<bool> _pref_color   = {details::dlg_pref_path + "/empty/color"};
+    Pref<bool> _pref_script  = {details::dlg_pref_path + "/empty/script"};
+    Pref<bool> _pref_about   = {details::dlg_pref_path + "/empty/about"};
+};
+
 ///////////////////////////////////////////////////////////////////////////////
+
+class PagesPanel : public details::AttributesPanel {
+public:
+    PagesPanel(Glib::RefPtr<Gtk::Builder> builder) {
+        _title = _("Pages");
+
+        _pages_panel = Gtk::make_managed<Inkscape::UI::Widget::PagesPropertiesPanel>();
+        _grid.add_full_row(_pages_panel);
+
+    }
+
+    void update(SPObject* /*object*/) override {
+        if (!_desktop) return;
+
+        _pages_panel->update(_document);
+    }
+
+    void document_replaced(SPDocument* document) override {
+        _pages_panel->update(document);
+    }
+
+private:
+    Inkscape::UI::Widget::PagesPropertiesPanel* _pages_panel;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+
+namespace {
+
+void set_defocus_target(Gtk::Widget& parent, DefocusTarget* target) {
+    for_each_descendant(parent, [target](auto& widget) {
+        if (auto sb = dynamic_cast<UI::Widget::InkSpinButton*>(&widget)) {
+            sb->setDefocusTarget(target);
+        }
+        return ForEachResult::_continue;
+    });
+}
+
+} // namespace
 
 details::AttributesPanel* ObjectAttributes::get_panel(Selection* selection) {
     if (auto item = selection->singleItem()) {
@@ -2481,29 +2800,38 @@ details::AttributesPanel* ObjectAttributes::get_panel(Selection* selection) {
             panel = obj_panel.get();
             _panels[tag] = std::move(obj_panel);
             if (panel) {
+                panel->widget().set_margin_top(4);
                 panel->set_document(getDocument());
-                for_each_descendant(panel->widget(), [this](auto& widget) {
-                    if (auto sb = dynamic_cast<UI::Widget::InkSpinButton*>(&widget)) {
-                        sb->setDefocusTarget(this);
-                    }
-                    return ForEachResult::_continue;
-                });
+                set_defocus_target(panel->widget(), this);
             }
         }
         return panel;
     }
 
     if (selection->isEmpty()) {
-        if (!_empty_panel) {
-            _empty_panel = std::make_unique<EmptyPanel>(_builder);
+        if (dynamic_cast<Inkscape::UI::Tools::PagesTool*>(getDesktop()->getTool())) {
+            if (!_pages_panel) {
+                _pages_panel = std::make_unique<PagesPanel>(_builder);
+                _pages_panel->set_desktop(getDesktop());
+                _pages_panel->set_document(getDocument());
+                set_defocus_target(_pages_panel->widget(), this);
+            }
+            return _pages_panel.get();
         }
-        return _empty_panel.get();
+        if (!_document_panel) {
+            _document_panel = std::make_unique<DocumentPanel>(_builder);
+            _document_panel->set_desktop(getDesktop());
+            _document_panel->set_document(getDocument());
+            set_defocus_target(_document_panel->widget(), this);
+        }
+        return _document_panel.get();
     }
 
     if (selection->size() > 1) {
         if (!_multi_obj_panel) {
             _multi_obj_panel = std::make_unique<MultiObjPanel>(_builder);
             _multi_obj_panel->set_document(getDocument());
+            set_defocus_target(_multi_obj_panel->widget(), this);
         }
         return _multi_obj_panel.get();
     }

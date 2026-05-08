@@ -16,6 +16,7 @@
 #define INKSCAPE_UI_WIDGET_PAGE_PROPERTIES_H
 
 #include <gtkmm/box.h>
+#include <gtkmm/grid.h>
 
 namespace Inkscape {
 
@@ -41,6 +42,9 @@ public:
     enum class Units { Display, Document };
     virtual void set_unit(Units unit, const Glib::ustring& abbr) = 0;
 
+    Gtk::Grid* left_grid() { return _left_grid; }
+    Gtk::Grid* right_grid() { return _right_grid; }
+
     auto signal_color_changed    () { return _signal_color_changed    ; }
     auto signal_check_toggled    () { return _signal_check_toggled    ; }
     auto signal_dimension_changed() { return _signal_dimension_changed; }
@@ -55,6 +59,9 @@ protected:
     sigc::signal<void (const Util::Unit*, Units)> _signal_unit_changed;
     sigc::signal<void ()> _signal_resize_to_fit;
     sigc::signal<void (bool)> _signal_origin_changed;
+
+    Gtk::Grid* _left_grid = nullptr;
+    Gtk::Grid* _right_grid = nullptr;
 };
 
 } // namespace UI::Widget

@@ -28,6 +28,9 @@ namespace UI {
 namespace Dialog {
 class DocumentProperties;
 }
+namespace Widget {
+class DisplayPropertiesPanel;
+}
 } // namespace UI
 namespace Colors {
 class Color;
@@ -136,6 +139,7 @@ public:
 
 protected:
     friend class Inkscape::UI::Dialog::DocumentProperties;
+    friend class Inkscape::UI::Widget::DisplayPropertiesPanel;
 
     // Default settings from sp-namedview
     SVGBool border_show;
