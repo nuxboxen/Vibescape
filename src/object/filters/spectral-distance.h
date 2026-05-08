@@ -31,8 +31,7 @@ public:
 
 private:
     double sigma_spatial = 3.0;
-    Inkscape::Filters::SpectralDistanceMode mode =
-        Inkscape::Filters::SPECTRAL_DISTANCE_UNSIGNED;
+    Inkscape::Filters::SpectralDistanceMode mode = Inkscape::Filters::SPECTRAL_DISTANCE_UNSIGNED;
 
 protected:
     void build(SPDocument *doc, Inkscape::XML::Node *repr) override;

@@ -43,27 +43,25 @@ void bit_reverse(double *re, double *im, int N)
 }
 
 // Scalar Cooley-Tukey butterfly stage.
-void butterfly_scalar(double *re, double *im, int N, int len,
-                       const double *twRe, const double *twIm,
-                       double imSign)
+void butterfly_scalar(double *re, double *im, int N, int len, double const *twRe, double const *twIm, double imSign)
 {
-    const int half = len >> 1;
-    const int stride = N / len;
+    int const half = len >> 1;
+    int const stride = N / len;
     for (int i = 0; i < N; i += len) {
         for (int k = 0; k < half; ++k) {
-            const int idx = k * stride;
-            const double wRe = twRe[idx];
-            const double wIm = imSign * twIm[idx];
-            const double aRe = re[i + k];
-            const double aIm = im[i + k];
-            const double bRe = re[i + k + half];
-            const double bIm = im[i + k + half];
-            const double tRe = wRe * bRe - wIm * bIm;
-            const double tIm = wRe * bIm + wIm * bRe;
+            int const idx = k * stride;
+            double const wRe = twRe[idx];
+            double const wIm = imSign * twIm[idx];
+            double const aRe = re[i + k];
+            double const aIm = im[i + k];
+            double const bRe = re[i + k + half];
+            double const bIm = im[i + k + half];
+            double const tRe = wRe * bRe - wIm * bIm;
+            double const tIm = wRe * bIm + wIm * bRe;
             re[i + k + half] = aRe - tRe;
             im[i + k + half] = aIm - tIm;
-            re[i + k]        = aRe + tRe;
-            im[i + k]        = aIm + tIm;
+            re[i + k] = aRe + tRe;
+            im[i + k] = aIm + tIm;
         }
     }
 }
@@ -74,33 +72,32 @@ void compute_twiddles(int N, double *twRe, double *twIm)
 {
     assert(is_pow2(N) && N >= 2);
     assert(twRe != nullptr && twIm != nullptr);
-    const double base = -2.0 * kPi / N;
+    double const base = -2.0 * kPi / N;
     for (int k = 0; k < N / 2; ++k) {
-        const double ang = base * k;
+        double const ang = base * k;
         twRe[k] = std::cos(ang);
         twIm[k] = std::sin(ang);
     }
 }
 
-void radix2_fft_with_twiddles(double *re, double *im, int N,
-                               const double *twRe, const double *twIm,
-                               FFTDirection dir)
+void radix2_fft_with_twiddles(double *re, double *im, int N, double const *twRe, double const *twIm, FFTDirection dir)
 {
     assert(is_pow2(N));
     assert(dir == kForward || dir == kInverse);
     assert(re != nullptr && im != nullptr);
     assert(N == 1 || (twRe != nullptr && twIm != nullptr));
 
-    if (N <= 1) return;
+    if (N <= 1)
+        return;
     bit_reverse(re, im, N);
 
-    const double imSign = (dir == kForward) ? 1.0 : -1.0;
+    double const imSign = (dir == kForward) ? 1.0 : -1.0;
     for (int len = 2; len <= N; len <<= 1) {
         butterfly_scalar(re, im, N, len, twRe, twIm, imSign);
     }
 
     if (dir == kInverse) {
-        const double inv = 1.0 / N;
+        double const inv = 1.0 / N;
         for (int i = 0; i < N; ++i) {
             re[i] *= inv;
             im[i] *= inv;
@@ -111,7 +108,8 @@ void radix2_fft_with_twiddles(double *re, double *im, int N,
 void radix2_fft(double *re, double *im, int N, FFTDirection dir)
 {
     assert(is_pow2(N));
-    if (N <= 1) return;
+    if (N <= 1)
+        return;
     std::vector<double> twRe(N / 2), twIm(N / 2);
     compute_twiddles(N, twRe.data(), twIm.data());
     radix2_fft_with_twiddles(re, im, N, twRe.data(), twIm.data(), dir);

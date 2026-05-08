@@ -12,6 +12,8 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include "display/nr-filter-gaussian.h"
+
 #include <algorithm>
 #include <cmath>
 #include <complex>
@@ -23,7 +25,6 @@
 
 #include "display/cairo-utils.h"
 #include "display/dispatch-pool.h"
-#include "display/nr-filter-gaussian.h"
 #include "display/nr-filter-primitive.h"
 #include "display/nr-filter-slot.h"
 #include "display/nr-filter-units.h"
@@ -447,9 +448,8 @@ filter2D_FIR(PT *const dst, int const dstr1, int const dstr2,
 // Non-static: also called from testfiles/src/spectral-pipeline-bench.cpp
 // to time IIR vs spectral at the same σ on the same surface. No
 // production caller other than render_cairo below.
-void
-gaussian_pass_IIR(Geom::Dim2 d, double deviation, cairo_surface_t *src, cairo_surface_t *dest,
-    IIRValue **tmpdata, dispatch_pool &pool)
+void gaussian_pass_IIR(Geom::Dim2 d, double deviation, cairo_surface_t *src, cairo_surface_t *dest, IIRValue **tmpdata,
+                       dispatch_pool &pool)
 {
     // Filter variables
     IIRValue b[N+1];  // scaling coefficient + filter coefficients (can be 10.21 fixed point)
@@ -640,29 +640,22 @@ void FilterGaussian::render_cairo(FilterSlot &slot) const
         // decay tables in apply_lattice_heat_kernel(). No IIR/FIR
         // per-axis dispatch needed when this tier fires.
         unsigned char *data = cairo_image_surface_get_data(downsampled);
-        const int w = cairo_image_surface_get_width(downsampled);
-        const int h = cairo_image_surface_get_height(downsampled);
-        const int stride = cairo_image_surface_get_stride(downsampled);
+        int const w = cairo_image_surface_get_width(downsampled);
+        int const h = cairo_image_surface_get_height(downsampled);
+        int const stride = cairo_image_surface_get_stride(downsampled);
         if (cairo_image_surface_get_format(downsampled) == CAIRO_FORMAT_A8) {
             // Pack rows tightly if stride > w (Cairo aligns A8 rows to
             // 4 bytes), then unpack after.
-            std::vector<unsigned char> packed(static_cast<std::size_t>(w) *
-                                              static_cast<std::size_t>(h));
+            std::vector<unsigned char> packed(static_cast<std::size_t>(w) * static_cast<std::size_t>(h));
             for (int y = 0; y < h; ++y) {
-                std::memcpy(packed.data() + static_cast<std::size_t>(y) * w,
-                            data + y * stride, w);
+                std::memcpy(packed.data() + static_cast<std::size_t>(y) * w, data + y * stride, w);
             }
-            Inkscape::Spectral::apply_heat_kernel_a8(w, h, packed.data(),
-                                                     deviation_x, deviation_y);
+            Inkscape::Spectral::apply_heat_kernel_a8(w, h, packed.data(), deviation_x, deviation_y);
             for (int y = 0; y < h; ++y) {
-                std::memcpy(data + y * stride,
-                            packed.data() + static_cast<std::size_t>(y) * w, w);
+                std::memcpy(data + y * stride, packed.data() + static_cast<std::size_t>(y) * w, w);
             }
         } else {
-            Inkscape::Spectral::blur_bgra(w, h,
-                                           data, stride,
-                                           data, stride,
-                                           deviation_x, deviation_y);
+            Inkscape::Spectral::blur_bgra(w, h, data, stride, data, stride, deviation_x, deviation_y);
         }
     } else {
         if (scr_len_x > 0) {

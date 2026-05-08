@@ -52,11 +52,7 @@ namespace Inkscape::Spectral {
 //                  → closer to a plain Gaussian. Must be > 0.
 //
 // `src == dst` is allowed (operates via internal scratch).
-void bilateral_a8(int W, int H,
-                   const std::uint8_t *src,
-                   std::uint8_t *dst,
-                   double sigma_spatial,
-                   double sigma_range);
+void bilateral_a8(int W, int H, std::uint8_t const *src, std::uint8_t *dst, double sigma_spatial, double sigma_range);
 
 // 4-channel bilateral on packed BGRA pixels (Cairo native ARGB32).
 // Joint similarity across all four channels: W_ij = exp(-Σ_c
@@ -69,11 +65,8 @@ void bilateral_a8(int W, int H,
 // alpha: callers are responsible for unpremultiplying before and
 // re-premultiplying after if their content uses premultiplied alpha;
 // the operator treats the alpha channel like any other channel.
-void bilateral_bgra(int W, int H,
-                     const std::uint8_t *src, std::size_t src_stride,
-                     std::uint8_t *dst,       std::size_t dst_stride,
-                     double sigma_spatial,
-                     double sigma_range);
+void bilateral_bgra(int W, int H, std::uint8_t const *src, std::size_t src_stride, std::uint8_t *dst,
+                    std::size_t dst_stride, double sigma_spatial, double sigma_range);
 
 } // namespace Inkscape::Spectral
 

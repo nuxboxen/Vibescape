@@ -31,7 +31,7 @@ public:
 
 private:
     double sigma_spatial = 4.0;
-    double sigma_range   = 16.0;
+    double sigma_range = 16.0;
 
 protected:
     void build(SPDocument *doc, Inkscape::XML::Node *repr) override;

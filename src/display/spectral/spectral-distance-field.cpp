@@ -9,12 +9,12 @@
 
 #include "display/spectral/spectral-distance-field.h"
 
-#include "display/spectral/spectral-blur.h"
-
 #include <cassert>
 #include <cmath>
 #include <cstring>
 #include <vector>
+
+#include "display/spectral/spectral-blur.h"
 
 namespace Inkscape::Spectral {
 
@@ -24,7 +24,7 @@ constexpr double kLogFloor = 1.0 / 255.0;
 
 inline float distance_from_diffused(std::uint8_t diffused, double sigma_spatial)
 {
-    const double u_norm = static_cast<double>(diffused) / 255.0;
+    double const u_norm = static_cast<double>(diffused) / 255.0;
     if (u_norm <= kLogFloor) {
         return kDistanceFieldFar;
     }
@@ -33,16 +33,13 @@ inline float distance_from_diffused(std::uint8_t diffused, double sigma_spatial)
 
 } // anonymous namespace
 
-void distance_field_a8(int W, int H,
-                        const std::uint8_t *binary_mask,
-                        float *out_distance,
-                        double sigma_spatial)
+void distance_field_a8(int W, int H, std::uint8_t const *binary_mask, float *out_distance, double sigma_spatial)
 {
     assert(binary_mask && out_distance);
     assert(W > 0 && H > 0);
     assert(sigma_spatial > 0);
 
-    const std::size_t N = static_cast<std::size_t>(W) * H;
+    std::size_t const N = static_cast<std::size_t>(W) * H;
     std::vector<std::uint8_t> diffused(N);
     std::memcpy(diffused.data(), binary_mask, N);
     apply_heat_kernel_a8(W, H, diffused.data(), sigma_spatial, sigma_spatial);
@@ -52,16 +49,13 @@ void distance_field_a8(int W, int H,
     }
 }
 
-void signed_distance_field_a8(int W, int H,
-                                const std::uint8_t *binary_mask,
-                                float *out_distance,
-                                double sigma_spatial)
+void signed_distance_field_a8(int W, int H, std::uint8_t const *binary_mask, float *out_distance, double sigma_spatial)
 {
     assert(binary_mask && out_distance);
     assert(W > 0 && H > 0);
     assert(sigma_spatial > 0);
 
-    const std::size_t N = static_cast<std::size_t>(W) * H;
+    std::size_t const N = static_cast<std::size_t>(W) * H;
 
     std::vector<float> d_out(N);
     distance_field_a8(W, H, binary_mask, d_out.data(), sigma_spatial);
@@ -74,7 +68,7 @@ void signed_distance_field_a8(int W, int H,
     distance_field_a8(W, H, inverted.data(), d_in.data(), sigma_spatial);
 
     for (std::size_t i = 0; i < N; ++i) {
-        const bool inside = binary_mask[i] >= 128;
+        bool const inside = binary_mask[i] >= 128;
         out_distance[i] = inside ? -d_in[i] : d_out[i];
     }
 }

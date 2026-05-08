@@ -26,16 +26,14 @@
  * correctness, not speed.
  */
 
-#include <gtest/gtest.h>
-
-#include <src/display/spectral/spectral-blur.h>
-
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <vector>
+#include <gtest/gtest.h>
+#include <src/display/spectral/spectral-blur.h>
 
 using namespace Inkscape::Spectral;
 
@@ -45,25 +43,26 @@ constexpr double kPi = 3.14159265358979323846;
 
 // Reference: continuous separable Gaussian, double precision, 4σ kernel
 // truncated and renormalized. Slow (O(W·H·σ)) but the math ground truth.
-void reference_gaussian_a8(const std::uint8_t *in, int W, int H,
-                            std::uint8_t *out, double sigma)
+void reference_gaussian_a8(std::uint8_t const *in, int W, int H, std::uint8_t *out, double sigma)
 {
     if (sigma <= 0) {
         std::memcpy(out, in, static_cast<std::size_t>(W) * H);
         return;
     }
-    const int radius = static_cast<int>(std::ceil(4.0 * sigma));
-    const double k = 1.0 / (2.0 * sigma * sigma);
+    int const radius = static_cast<int>(std::ceil(4.0 * sigma));
+    double const k = 1.0 / (2.0 * sigma * sigma);
     std::vector<double> kernel(2 * radius + 1);
     double sum = 0;
     for (int t = -radius; t <= radius; ++t) {
         kernel[t + radius] = std::exp(-static_cast<double>(t * t) * k);
         sum += kernel[t + radius];
     }
-    for (auto &v : kernel) v /= sum;
+    for (auto &v : kernel)
+        v /= sum;
 
     auto src_at = [&](int x, int y) -> double {
-        if (x < 0 || x >= W || y < 0 || y >= H) return 0.0;
+        if (x < 0 || x >= W || y < 0 || y >= H)
+            return 0.0;
         return static_cast<double>(in[y * W + x]);
     };
 
@@ -82,7 +81,7 @@ void reference_gaussian_a8(const std::uint8_t *in, int W, int H,
         for (int x = 0; x < W; ++x) {
             double s = 0;
             for (int t = -radius; t <= radius; ++t) {
-                const int yy = y - t;
+                int const yy = y - t;
                 if (yy >= 0 && yy < H) {
                     s += kernel[t + radius] * tmp[yy * W + x];
                 }
@@ -91,20 +90,19 @@ void reference_gaussian_a8(const std::uint8_t *in, int W, int H,
         }
     }
     for (int i = 0; i < W * H; ++i) {
-        const double v = std::round(col[i]);
+        double const v = std::round(col[i]);
         out[i] = (v < 0) ? 0 : (v > 255) ? 255 : static_cast<std::uint8_t>(v);
     }
 }
 
-void make_centered_disk(std::uint8_t *m, int W, int H,
-                          double radius_pixels)
+void make_centered_disk(std::uint8_t *m, int W, int H, double radius_pixels)
 {
-    const double cx = W * 0.5, cy = H * 0.5;
-    const double r2 = radius_pixels * radius_pixels;
+    double const cx = W * 0.5, cy = H * 0.5;
+    double const r2 = radius_pixels * radius_pixels;
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
-            const double dx = x + 0.5 - cx;
-            const double dy = y + 0.5 - cy;
+            double const dx = x + 0.5 - cx;
+            double const dy = y + 0.5 - cy;
             m[y * W + x] = (dx * dx + dy * dy <= r2) ? 255 : 0;
         }
     }
@@ -123,10 +121,11 @@ void make_centered_step(std::uint8_t *m, int W, int H, int halo_pixels)
     }
 }
 
-struct ParityStats {
-    int    max_abs;
+struct ParityStats
+{
+    int max_abs;
     double mean_abs;
-    int    sample_count;
+    int sample_count;
 };
 
 // Compare only pixels at least `margin` away from any edge. The
@@ -134,15 +133,14 @@ struct ParityStats {
 // uses zero BC. Within `margin = 4*sigma` of either, the BC mismatch
 // dominates the diff and makes comparison meaningless. Cropping to
 // the interior measures the operator agreement, not the BC mismatch.
-ParityStats compare_interior(const std::uint8_t *a, const std::uint8_t *b,
-                              int W, int H, int margin)
+ParityStats compare_interior(std::uint8_t const *a, std::uint8_t const *b, int W, int H, int margin)
 {
     int max_a = 0;
     long long sum = 0;
     int n = 0;
     for (int y = margin; y < H - margin; ++y) {
         for (int x = margin; x < W - margin; ++x) {
-            const int d = std::abs(a[y * W + x] - b[y * W + x]);
+            int const d = std::abs(a[y * W + x] - b[y * W + x]);
             max_a = std::max(max_a, d);
             sum += d;
             ++n;
@@ -172,10 +170,9 @@ TEST(SpectralParity, DiskAtSigma8)
     std::vector<std::uint8_t> ref(W * H);
     reference_gaussian_a8(src.data(), W, H, ref.data(), sigma);
 
-    const auto s = compare_interior(spec.data(), ref.data(), W, H, margin);
-    std::fprintf(stderr,
-        "[parity disk sigma=8 %dx%d interior] max-abs=%d mean-abs=%.3f n=%d\n",
-        W, H, s.max_abs, s.mean_abs, s.sample_count);
+    auto const s = compare_interior(spec.data(), ref.data(), W, H, margin);
+    std::fprintf(stderr, "[parity disk sigma=8 %dx%d interior] max-abs=%d mean-abs=%.3f n=%d\n", W, H, s.max_abs,
+                 s.mean_abs, s.sample_count);
     EXPECT_LE(s.max_abs, 3);
     EXPECT_LT(s.mean_abs, 0.5);
 }
@@ -197,10 +194,9 @@ TEST(SpectralParity, DiskAtSigma16)
     std::vector<std::uint8_t> ref(W * H);
     reference_gaussian_a8(src.data(), W, H, ref.data(), sigma);
 
-    const auto s = compare_interior(spec.data(), ref.data(), W, H, margin);
-    std::fprintf(stderr,
-        "[parity disk sigma=16 %dx%d interior] max-abs=%d mean-abs=%.3f n=%d\n",
-        W, H, s.max_abs, s.mean_abs, s.sample_count);
+    auto const s = compare_interior(spec.data(), ref.data(), W, H, margin);
+    std::fprintf(stderr, "[parity disk sigma=16 %dx%d interior] max-abs=%d mean-abs=%.3f n=%d\n", W, H, s.max_abs,
+                 s.mean_abs, s.sample_count);
     EXPECT_LE(s.max_abs, 3);
     EXPECT_LT(s.mean_abs, 0.5);
 }
@@ -226,10 +222,9 @@ TEST(SpectralParity, StepEdgeAtSigma16)
     std::vector<std::uint8_t> ref(W * H);
     reference_gaussian_a8(src.data(), W, H, ref.data(), sigma);
 
-    const auto s = compare_interior(spec.data(), ref.data(), W, H, margin);
-    std::fprintf(stderr,
-        "[parity step sigma=16 %dx%d interior] max-abs=%d mean-abs=%.3f n=%d\n",
-        W, H, s.max_abs, s.mean_abs, s.sample_count);
+    auto const s = compare_interior(spec.data(), ref.data(), W, H, margin);
+    std::fprintf(stderr, "[parity step sigma=16 %dx%d interior] max-abs=%d mean-abs=%.3f n=%d\n", W, H, s.max_abs,
+                 s.mean_abs, s.sample_count);
     EXPECT_LE(s.max_abs, 4);
     EXPECT_LT(s.mean_abs, 0.5);
 }
@@ -240,27 +235,23 @@ TEST(SpectralParity, StepEdgeAtSigma16)
 TEST(SpectralBench, HeatKernelAcrossSizesAndSigmas)
 {
     using Clock = std::chrono::steady_clock;
-    const int sizes[] = {256, 512, 1024, 2048};
-    const double sigmas[] = {8, 16, 32, 64, 128};
+    int const sizes[] = {256, 512, 1024, 2048};
+    double const sigmas[] = {8, 16, 32, 64, 128};
 
-    std::fprintf(stderr,
-        "\n[bench] spectral apply_heat_kernel_a8 wall-clock\n");
-    std::fprintf(stderr,
-        "%-10s %-8s %-12s %-12s\n",
-        "size", "sigma", "wall-ms", "ns/px");
+    std::fprintf(stderr, "\n[bench] spectral apply_heat_kernel_a8 wall-clock\n");
+    std::fprintf(stderr, "%-10s %-8s %-12s %-12s\n", "size", "sigma", "wall-ms", "ns/px");
 
     for (int N : sizes) {
         std::vector<std::uint8_t> src(N * N);
         make_centered_disk(src.data(), N, N, /*radius_pixels=*/N * 0.25);
         for (double s : sigmas) {
             std::vector<std::uint8_t> buf(src);
-            const auto t0 = Clock::now();
+            auto const t0 = Clock::now();
             apply_heat_kernel_a8(N, N, buf.data(), s, s);
-            const auto t1 = Clock::now();
-            const double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-            const double ns_per_px = ms * 1.0e6 / (static_cast<double>(N) * N);
-            std::fprintf(stderr, "%-10d %-8.0f %-12.3f %-12.2f\n",
-                         N, s, ms, ns_per_px);
+            auto const t1 = Clock::now();
+            double const ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+            double const ns_per_px = ms * 1.0e6 / (static_cast<double>(N) * N);
+            std::fprintf(stderr, "%-10d %-8.0f %-12.3f %-12.2f\n", N, s, ms, ns_per_px);
         }
     }
     SUCCEED();

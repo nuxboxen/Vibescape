@@ -127,7 +127,8 @@ static SPStyleProp const props[] = {
     // {SPAttr::INKSCAPE_SNAP_BBOX_CORNER, "inkscape:bbox-nodes"},
     // {SPAttr::INKSCAPE_SNAP_PAGE_BORDER, "inkscape:snap-page"},
     {SPAttr::INKSCAPE_CURRENT_LAYER, "inkscape:current-layer"},
-    {SPAttr::INKSCAPE_DOCUMENT_UNITS, "inkscape:document-units"},  // This setting sets the Display units, *not* the units used in SVG
+    {SPAttr::INKSCAPE_DOCUMENT_UNITS, "inkscape:document-units"}, // This setting sets the Display units, *not* the
+                                                                  // units used in SVG
     {SPAttr::INKSCAPE_LOCKGUIDES, "inkscape:lockguides"},
     {SPAttr::UNITS, "units"},
     /* ColorProfile */
@@ -323,7 +324,7 @@ static SPStyleProp const props[] = {
     /*feSpectralNoise / feSpectralBilateral / feSpectralDistance — Inkscape extensions*/
     {SPAttr::SPECTRAL_NOISE_PROFILE, "spectralNoiseProfile"},
     {SPAttr::SPECTRAL_SIGMA_SPATIAL, "spectralSigmaSpatial"},
-    {SPAttr::SPECTRAL_SIGMA_RANGE,   "spectralSigmaRange"},
+    {SPAttr::SPECTRAL_SIGMA_RANGE, "spectralSigmaRange"},
     {SPAttr::SPECTRAL_DISTANCE_MODE, "spectralDistanceMode"},
     /* SPGradient */
     {SPAttr::GRADIENTUNITS, "gradientUnits"},
@@ -407,9 +408,8 @@ static SPStyleProp const props[] = {
     {SPAttr::K, "k"},
 
     /*<font-face>*/
-    //{SPAttr::FONT_FAMILY, "font-family"}, these are already set for CSS2 (SPAttr::FONT_FAMILY, SPAttr::FONT_STYLE, SPAttr::FONT_VARIANT etc...)
-    //{SPAttr::FONT_STYLE, "font-style"},
-    //{SPAttr::FONT_VARIANT, "font-variant"},
+    //{SPAttr::FONT_FAMILY, "font-family"}, these are already set for CSS2 (SPAttr::FONT_FAMILY, SPAttr::FONT_STYLE,
+    // SPAttr::FONT_VARIANT etc...) {SPAttr::FONT_STYLE, "font-style"}, {SPAttr::FONT_VARIANT, "font-variant"},
     //{SPAttr::FONT_WEIGHT, "font-weight"},
     //{SPAttr::FONT_STRETCH, "font-stretch"},
     //{SPAttr::FONT_SIZE, "font-size"},
@@ -443,17 +443,17 @@ static SPStyleProp const props[] = {
 
     /* XML */
     {SPAttr::XML_SPACE, "xml:space"},
-    {SPAttr::XML_LANG,  "xml:lang"},
+    {SPAttr::XML_LANG, "xml:lang"},
 
     /* typeset */
     {SPAttr::TEXT_NOMARKUP, "inkscape:srcNoMarkup"},
-    {SPAttr::TEXT_PANGOMARKUP, "inkscape:srcPango" },
+    {SPAttr::TEXT_PANGOMARKUP, "inkscape:srcPango"},
     {SPAttr::TEXT_INSHAPE, "inkscape:dstShape"},
     {SPAttr::TEXT_ONPATH, "inkscape:dstPath"},
-    {SPAttr::TEXT_INBOX,"inkscape:dstBox"},
-    {SPAttr::TEXT_INCOLUMN,"inkscape:dstColumn"},
-    {SPAttr::TEXT_EXCLUDE,"inkscape:excludeShape"},
-    {SPAttr::LAYOUT_OPTIONS,"inkscape:layoutOptions"},
+    {SPAttr::TEXT_INBOX, "inkscape:dstBox"},
+    {SPAttr::TEXT_INCOLUMN, "inkscape:dstColumn"},
+    {SPAttr::TEXT_EXCLUDE, "inkscape:excludeShape"},
+    {SPAttr::LAYOUT_OPTIONS, "inkscape:layoutOptions"},
 
     /* CSS & SVG Properties */
 
@@ -479,7 +479,7 @@ static SPStyleProp const props[] = {
     {SPAttr::MARKER_END, "marker-end"},
     {SPAttr::MARKER_MID, "marker-mid"},
     {SPAttr::MARKER_START, "marker-start"},
-    {SPAttr::PAINT_ORDER, "paint-order" },
+    {SPAttr::PAINT_ORDER, "paint-order"},
     {SPAttr::SOLID_COLOR, "solid-color"},
     {SPAttr::SOLID_OPACITY, "solid-opacity"},
     {SPAttr::VECTOR_EFFECT, "vector-effect"},
@@ -511,16 +511,16 @@ static SPStyleProp const props[] = {
     {SPAttr::FONT_WEIGHT, "font-weight"},
 
     /* Font Variants CSS 3 */
-    {SPAttr::FONT_VARIANT_LIGATURES,  "font-variant-ligatures"},
-    {SPAttr::FONT_VARIANT_POSITION,   "font-variant-position"},
-    {SPAttr::FONT_VARIANT_CAPS,       "font-variant-caps"},
-    {SPAttr::FONT_VARIANT_NUMERIC,    "font-variant-numeric"},
+    {SPAttr::FONT_VARIANT_LIGATURES, "font-variant-ligatures"},
+    {SPAttr::FONT_VARIANT_POSITION, "font-variant-position"},
+    {SPAttr::FONT_VARIANT_CAPS, "font-variant-caps"},
+    {SPAttr::FONT_VARIANT_NUMERIC, "font-variant-numeric"},
     {SPAttr::FONT_VARIANT_ALTERNATES, "font-variant-alternates"},
     {SPAttr::FONT_VARIANT_EAST_ASIAN, "font-variant-east-asian"},
-    {SPAttr::FONT_FEATURE_SETTINGS,   "font-feature-settings"},
+    {SPAttr::FONT_FEATURE_SETTINGS, "font-feature-settings"},
 
     /* Variable Fonts (CSS Fonts Module Level 4) */
-    {SPAttr::FONT_VARIATION_SETTINGS,   "font-variation-settings"},
+    {SPAttr::FONT_VARIATION_SETTINGS, "font-variation-settings"},
 
     /* Text */
     {SPAttr::TEXT_INDENT, "text-indent"},
@@ -545,19 +545,19 @@ static SPStyleProp const props[] = {
     {SPAttr::WHITE_SPACE, "white-space"},
 
     /* SVG 2 Text Wrapping */
-    {SPAttr::SHAPE_INSIDE,  "shape-inside"},
-    {SPAttr::SHAPE_SUBTRACT,"shape-subtract"},
+    {SPAttr::SHAPE_INSIDE, "shape-inside"},
+    {SPAttr::SHAPE_SUBTRACT, "shape-subtract"},
     {SPAttr::SHAPE_PADDING, "shape-padding"},
-    {SPAttr::SHAPE_MARGIN,  "shape-margin"},
-    {SPAttr::INLINE_SIZE,   "inline-size"},
+    {SPAttr::SHAPE_MARGIN, "shape-margin"},
+    {SPAttr::INLINE_SIZE, "inline-size"},
 
     /* Text Decoration */
-    {SPAttr::TEXT_DECORATION,       "text-decoration"},  // CSS 2/CSS3-Shorthand
-    {SPAttr::TEXT_DECORATION_LINE,  "text-decoration-line"},
+    {SPAttr::TEXT_DECORATION, "text-decoration"}, // CSS 2/CSS3-Shorthand
+    {SPAttr::TEXT_DECORATION_LINE, "text-decoration-line"},
     {SPAttr::TEXT_DECORATION_STYLE, "text-decoration-style"},
     {SPAttr::TEXT_DECORATION_COLOR, "text-decoration-color"},
-    {SPAttr::TEXT_DECORATION_FILL,  "text-decoration-fill"},
-    {SPAttr::TEXT_DECORATION_STROKE,"text-decoration-stroke"},
+    {SPAttr::TEXT_DECORATION_FILL, "text-decoration-fill"},
+    {SPAttr::TEXT_DECORATION_STROKE, "text-decoration-stroke"},
 
     /* Filter */
     {SPAttr::ENABLE_BACKGROUND, "enable-background"},

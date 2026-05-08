@@ -6,10 +6,10 @@
 #include "display/nr-filter-spectral-distance.h"
 
 #include <algorithm>
-#include <cairo/cairo.h>
 #include <cmath>
 #include <cstdint>
 #include <vector>
+#include <cairo/cairo.h>
 
 #include "display/cairo-utils.h"
 #include "display/nr-filter-slot.h"
@@ -30,15 +30,16 @@ namespace {
 // approximation is reliable.
 inline std::uint8_t encode_signed(float d, float sigma)
 {
-    const float clamped = std::clamp(d, -4.0f * sigma, 4.0f * sigma);
-    const float t = clamped / (8.0f * sigma) + 0.5f;  // [0, 1]
+    float const clamped = std::clamp(d, -4.0f * sigma, 4.0f * sigma);
+    float const t = clamped / (8.0f * sigma) + 0.5f; // [0, 1]
     return static_cast<std::uint8_t>(std::round(t * 255.0f));
 }
 
 inline std::uint8_t encode_unsigned(float d, float sigma)
 {
-    if (d >= Inkscape::Spectral::kDistanceFieldFar * 0.5f) return 255;
-    const float clamped = std::clamp(d, 0.0f, 4.0f * sigma);
+    if (d >= Inkscape::Spectral::kDistanceFieldFar * 0.5f)
+        return 255;
+    float const clamped = std::clamp(d, 0.0f, 4.0f * sigma);
     return static_cast<std::uint8_t>(std::round((clamped / (4.0f * sigma)) * 255.0f));
 }
 
@@ -51,29 +52,28 @@ void FilterSpectralDistance::render_cairo(FilterSlot &slot) const
     set_cairo_surface_ci(out, color_interpolation);
 
     cairo_surface_flush(input);
-    const int W = cairo_image_surface_get_width(input);
-    const int H = cairo_image_surface_get_height(input);
+    int const W = cairo_image_surface_get_width(input);
+    int const H = cairo_image_surface_get_height(input);
     if (W <= 0 || H <= 0 || _sigma <= 0.0) {
         slot.set(_output, out);
         cairo_surface_destroy(out);
         return;
     }
 
-    const std::uint8_t *src_data = cairo_image_surface_get_data(input);
-    const int src_stride = cairo_image_surface_get_stride(input);
-    const cairo_format_t fmt = cairo_image_surface_get_format(input);
+    std::uint8_t const *src_data = cairo_image_surface_get_data(input);
+    int const src_stride = cairo_image_surface_get_stride(input);
+    cairo_format_t const fmt = cairo_image_surface_get_format(input);
 
     // Extract alpha as a packed binary mask.
     std::vector<std::uint8_t> mask(static_cast<std::size_t>(W) * H);
     if (fmt == CAIRO_FORMAT_A8) {
         for (int y = 0; y < H; ++y) {
-            std::memcpy(mask.data() + static_cast<std::size_t>(y) * W,
-                        src_data + y * src_stride, W);
+            std::memcpy(mask.data() + static_cast<std::size_t>(y) * W, src_data + y * src_stride, W);
         }
     } else {
         // ARGB32 native = BGRA on LE — alpha is byte index 3.
         for (int y = 0; y < H; ++y) {
-            const std::uint8_t *row = src_data + y * src_stride;
+            std::uint8_t const *row = src_data + y * src_stride;
             for (int x = 0; x < W; ++x) {
                 mask[static_cast<std::size_t>(y) * W + x] = row[x * 4 + 3];
             }
@@ -88,15 +88,14 @@ void FilterSpectralDistance::render_cairo(FilterSlot &slot) const
     }
 
     std::uint8_t *dst_data = cairo_image_surface_get_data(out);
-    const int dst_stride = cairo_image_surface_get_stride(out);
-    const float sigma_f = static_cast<float>(_sigma);
+    int const dst_stride = cairo_image_surface_get_stride(out);
+    float const sigma_f = static_cast<float>(_sigma);
     for (int y = 0; y < H; ++y) {
         std::uint8_t *row = dst_data + y * dst_stride;
-        const float *drow = dist.data() + static_cast<std::size_t>(y) * W;
+        float const *drow = dist.data() + static_cast<std::size_t>(y) * W;
         for (int x = 0; x < W; ++x) {
-            const std::uint8_t v = (_mode == SPECTRAL_DISTANCE_SIGNED)
-                ? encode_signed(drow[x], sigma_f)
-                : encode_unsigned(drow[x], sigma_f);
+            std::uint8_t const v = (_mode == SPECTRAL_DISTANCE_SIGNED) ? encode_signed(drow[x], sigma_f)
+                                                                       : encode_unsigned(drow[x], sigma_f);
             // Output: opaque grayscale visualisation. Premultiplied
             // BGRA (A=255 → values stay as is).
             row[x * 4 + 0] = v;

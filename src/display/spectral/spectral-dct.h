@@ -38,27 +38,25 @@ namespace Inkscape::Spectral {
 
 // Forward DCT-II of length N. `in` and `out` may not alias.
 //   out[k] = α_k · sum_n in[n] · cos(π · (n + 1/2) · k / N)
-void dct2_1d(const double *in, double *out, int N);
+void dct2_1d(double const *in, double *out, int N);
 
 // Inverse DCT-III of length N (mathematical inverse of dct2_1d).
 //   out[n] = sum_k α_k · in[k] · cos(π · (n + 1/2) · k / N)
-void dct3_1d(const double *in, double *out, int N);
+void dct3_1d(double const *in, double *out, int N);
 
 // 2D forward DCT-II on a row-major (W × H) image.
 // `in` and `out` may alias (internal scratch is used).
-void dct2_2d(const double *in, double *out, int W, int H);
+void dct2_2d(double const *in, double *out, int W, int H);
 
 // 2D inverse DCT-III on a row-major (W × H) image.
 // `in` and `out` may alias.
-void dct3_2d(const double *in, double *out, int W, int H);
+void dct3_2d(double const *in, double *out, int W, int H);
 
 // Multiply every (k, l) DCT coefficient by exp(-(σ²/2) · λ_{k,l}),
 // where λ_{k,l} = 2(2 - cos(π k / W) - cos(π l / H)) is the 2D
 // lattice Laplacian eigenvalue with Neumann BC. Operates in place.
 // Supports anisotropic σ.
-void apply_lattice_heat_kernel(double *dct_coeffs,
-                                int W, int H,
-                                double sigma_x, double sigma_y);
+void apply_lattice_heat_kernel(double *dct_coeffs, int W, int H, double sigma_x, double sigma_y);
 
 } // namespace Inkscape::Spectral
 

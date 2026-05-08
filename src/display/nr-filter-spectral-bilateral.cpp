@@ -5,9 +5,9 @@
 
 #include "display/nr-filter-spectral-bilateral.h"
 
-#include <cairo/cairo.h>
 #include <cstdint>
 #include <vector>
+#include <cairo/cairo.h>
 
 #include "display/cairo-utils.h"
 #include "display/nr-filter-slot.h"
@@ -37,12 +37,12 @@ void FilterSpectralBilateral::render_cairo(FilterSlot &slot) const
     }
 
     cairo_surface_flush(input);
-    const int W = cairo_image_surface_get_width(input);
-    const int H = cairo_image_surface_get_height(input);
-    const int src_stride = cairo_image_surface_get_stride(input);
-    const int dst_stride = cairo_image_surface_get_stride(out);
-    const std::uint8_t *src_data = cairo_image_surface_get_data(input);
-    std::uint8_t *dst_data       = cairo_image_surface_get_data(out);
+    int const W = cairo_image_surface_get_width(input);
+    int const H = cairo_image_surface_get_height(input);
+    int const src_stride = cairo_image_surface_get_stride(input);
+    int const dst_stride = cairo_image_surface_get_stride(out);
+    std::uint8_t const *src_data = cairo_image_surface_get_data(input);
+    std::uint8_t *dst_data = cairo_image_surface_get_data(out);
 
     if (W <= 0 || H <= 0) {
         slot.set(_output, out);
@@ -55,20 +55,14 @@ void FilterSpectralBilateral::render_cairo(FilterSlot &slot) const
         std::vector<std::uint8_t> packed_in(static_cast<std::size_t>(W) * H);
         std::vector<std::uint8_t> packed_out(static_cast<std::size_t>(W) * H);
         for (int y = 0; y < H; ++y) {
-            std::memcpy(packed_in.data() + static_cast<std::size_t>(y) * W,
-                        src_data + y * src_stride, W);
+            std::memcpy(packed_in.data() + static_cast<std::size_t>(y) * W, src_data + y * src_stride, W);
         }
-        Spectral::bilateral_a8(W, H, packed_in.data(), packed_out.data(),
-                                _sigma_spatial, _sigma_range);
+        Spectral::bilateral_a8(W, H, packed_in.data(), packed_out.data(), _sigma_spatial, _sigma_range);
         for (int y = 0; y < H; ++y) {
-            std::memcpy(dst_data + y * dst_stride,
-                        packed_out.data() + static_cast<std::size_t>(y) * W, W);
+            std::memcpy(dst_data + y * dst_stride, packed_out.data() + static_cast<std::size_t>(y) * W, W);
         }
     } else {
-        Spectral::bilateral_bgra(W, H,
-                                  src_data, src_stride,
-                                  dst_data, dst_stride,
-                                  _sigma_spatial, _sigma_range);
+        Spectral::bilateral_bgra(W, H, src_data, src_stride, dst_data, dst_stride, _sigma_spatial, _sigma_range);
     }
 
     cairo_surface_mark_dirty(out);
@@ -81,8 +75,7 @@ double FilterSpectralBilateral::complexity(Geom::Affine const &) const
     // Pass count grows quadratically with σ_spatial. Each pass is a
     // 5-point stencil with state-dependent weights — comparable to a
     // single Gaussian convolution pass per σ²/2 of integration time.
-    const double passes = std::max(1.0,
-        std::ceil(2.0 * _sigma_spatial * _sigma_spatial));
+    double const passes = std::max(1.0, std::ceil(2.0 * _sigma_spatial * _sigma_spatial));
     return passes;
 }
 

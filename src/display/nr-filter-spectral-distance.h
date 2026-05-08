@@ -26,9 +26,10 @@
 
 namespace Inkscape::Filters {
 
-enum SpectralDistanceMode {
-    SPECTRAL_DISTANCE_UNSIGNED,  // 0 inside, distance outside
-    SPECTRAL_DISTANCE_SIGNED,    // negative inside, positive outside
+enum SpectralDistanceMode
+{
+    SPECTRAL_DISTANCE_UNSIGNED, // 0 inside, distance outside
+    SPECTRAL_DISTANCE_SIGNED,   // negative inside, positive outside
 };
 
 class FilterSpectralDistance : public FilterPrimitive
@@ -41,14 +42,14 @@ public:
     double complexity(Geom::Affine const &ctm) const override;
     bool uses_background() const override { return false; }
 
-    void set_sigma(double s)             { _sigma = s; }
+    void set_sigma(double s) { _sigma = s; }
     void set_mode(SpectralDistanceMode m) { _mode = m; }
 
     Glib::ustring name() const override { return Glib::ustring("Spectral Distance"); }
 
 private:
-    double                 _sigma = 3.0;
-    SpectralDistanceMode   _mode  = SPECTRAL_DISTANCE_UNSIGNED;
+    double _sigma = 3.0;
+    SpectralDistanceMode _mode = SPECTRAL_DISTANCE_UNSIGNED;
 };
 
 } // namespace Inkscape::Filters

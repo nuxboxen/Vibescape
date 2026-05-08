@@ -44,17 +44,11 @@ constexpr float kDistanceFieldFar = 1.0e9f;
 //                   coverage in between is handled linearly).
 //   out_distance:   W × H float; on return out_distance[y*W + x] is
 //                   the approximate Euclidean distance in pixel units.
-void distance_field_a8(int W, int H,
-                        const std::uint8_t *binary_mask,
-                        float *out_distance,
-                        double sigma_spatial);
+void distance_field_a8(int W, int H, std::uint8_t const *binary_mask, float *out_distance, double sigma_spatial);
 
 // Signed variant: negative inside, positive outside, zero on the
 // boundary (the standard SDF convention; mask >= 128 ↔ inside).
-void signed_distance_field_a8(int W, int H,
-                                const std::uint8_t *binary_mask,
-                                float *out_distance,
-                                double sigma_spatial);
+void signed_distance_field_a8(int W, int H, std::uint8_t const *binary_mask, float *out_distance, double sigma_spatial);
 
 } // namespace Inkscape::Spectral
 

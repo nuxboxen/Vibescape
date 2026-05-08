@@ -12,118 +12,29 @@
 
 // Class hierarchy structure
 
-#define SPOBJECT_HIERARCHY_DATA(X)\
-X(SPObject,\
-    X(ColorProfile_PLACEHOLDER)\
-    X(LivePathEffectObject)\
-    X(Persp3D)\
-    X(SPDefs)\
-    X(SPDesc)\
-    X(SPFeDistantLight)\
-    X(SPFeFuncNode)\
-    X(SPFeMergeNode)\
-    X(SPFePointLight)\
-    X(SPFeSpotLight)\
-    X(SPFilter)\
-    X(SPFilterPrimitive,\
-        X(SPFeBlend)\
-        X(SPFeColorMatrix)\
-        X(SPFeComponentTransfer)\
-        X(SPFeComposite)\
-        X(SPFeConvolveMatrix)\
-        X(SPFeDiffuseLighting)\
-        X(SPFeDisplacementMap)\
-        X(SPFeDropShadow)\
-        X(SPFeFlood)\
-        X(SPFeImage)\
-        X(SPFeMerge)\
-        X(SPFeMorphology)\
-        X(SPFeOffset)\
-        X(SPFeSpecularLighting)\
-        X(SPFeSpectralBilateral)\
-        X(SPFeSpectralDistance)\
-        X(SPFeSpectralNoise)\
-        X(SPFeTile)\
-        X(SPFeTurbulence)\
-        X(SPGaussianBlur)\
-    )\
-    X(SPFlowline)\
-    X(SPFlowregionbreak)\
-    X(SPFont)\
-    X(SPFontFace)\
-    X(SPGlyph)\
-    X(SPGlyphKerning,\
-        X(SPHkern)\
-        X(SPVkern)\
-    )\
-    X(SPGrid)\
-    X(SPGuide)\
-    X(SPHatchPath)\
-    X(SPItem,\
-        X(SPFlowdiv)\
-        X(SPFlowpara)\
-        X(SPFlowregion)\
-        X(SPFlowregionExclude)\
-        X(SPFlowtext)\
-        X(SPFlowtspan)\
-        X(SPImage)\
-        X(SPLPEItem,\
-            X(SPGroup,\
-                X(SPAnchor)\
-                X(SPBox3D)\
-                X(SPMarker)\
-                X(SPRoot)\
-                X(SPSwitch)\
-                X(SPSymbol)\
-            )\
-            X(SPShape,\
-                X(SPGenericEllipse)\
-                X(SPLine)\
-                X(SPOffset)\
-                X(SPPath)\
-                X(SPPolyLine)\
-                X(SPPolygon,\
-                    X(Box3DSide)\
-                )\
-                X(SPRect)\
-                X(SPSpiral)\
-                X(SPStar)\
-            )\
-        )\
-        X(SPTRef)\
-        X(SPTSpan)\
-        X(SPText)\
-        X(SPTextPath)\
-        X(SPUse)\
-    )\
-    X(SPMeshpatch)\
-    X(SPMeshrow)\
-    X(SPMetadata)\
-    X(SPMissingGlyph)\
-    X(SPObjectGroup,\
-        X(SPClipPath)\
-        X(SPMask)\
-        X(SPNamedView)\
-    )\
-    X(SPPage)\
-    X(SPPaintServer,\
-        X(SPGradient,\
-            X(SPLinearGradient)\
-            X(SPMeshGradient)\
-            X(SPRadialGradient)\
-        )\
-        X(SPHatch)\
-        X(SPPattern)\
-        X(SPSolidColor)\
-    )\
-    X(SPScript)\
-    X(SPStop)\
-    X(SPString)\
-    X(SPStyleElem)\
-    X(SPTag)\
-    X(SPTagUse)\
-    X(SPTitle)\
-)
+#define SPOBJECT_HIERARCHY_DATA(X)                                                                                     \
+    X(SPObject,                                                                                                        \
+      X(ColorProfile_PLACEHOLDER) X(LivePathEffectObject) X(Persp3D) X(SPDefs) X(SPDesc) X(SPFeDistantLight) X(        \
+          SPFeFuncNode) X(SPFeMergeNode) X(SPFePointLight) X(SPFeSpotLight) X(SPFilter)                                \
+          X(SPFilterPrimitive,                                                                                         \
+            X(SPFeBlend) X(SPFeColorMatrix) X(SPFeComponentTransfer) X(SPFeComposite) X(SPFeConvolveMatrix)            \
+                X(SPFeDiffuseLighting) X(SPFeDisplacementMap) X(SPFeDropShadow) X(SPFeFlood) X(SPFeImage) X(SPFeMerge) \
+                    X(SPFeMorphology) X(SPFeOffset) X(SPFeSpecularLighting) X(SPFeSpectralBilateral)                   \
+                        X(SPFeSpectralDistance) X(SPFeSpectralNoise) X(SPFeTile) X(SPFeTurbulence)                     \
+                            X(SPGaussianBlur)) X(SPFlowline) X(SPFlowregionbreak) X(SPFont) X(SPFontFace) X(SPGlyph)   \
+              X(SPGlyphKerning, X(SPHkern) X(SPVkern)) X(SPGrid) X(SPGuide) X(SPHatchPath)                             \
+                  X(SPItem,                                                                                            \
+                    X(SPFlowdiv) X(SPFlowpara) X(SPFlowregion) X(SPFlowregionExclude) X(SPFlowtext) X(SPFlowtspan)     \
+                        X(SPImage) X(SPLPEItem,                                                                        \
+                                     X(SPGroup, X(SPAnchor) X(SPBox3D) X(SPMarker) X(SPRoot) X(SPSwitch) X(SPSymbol))  \
+                                         X(SPShape, X(SPGenericEllipse) X(SPLine) X(SPOffset) X(SPPath) X(SPPolyLine)  \
+                                                        X(SPPolygon, X(Box3DSide)) X(SPRect) X(SPSpiral) X(SPStar)))   \
+                            X(SPTRef) X(SPTSpan) X(SPText) X(SPTextPath) X(SPUse)) X(SPMeshpatch) X(SPMeshrow)         \
+                      X(SPMetadata) X(SPMissingGlyph) X(SPObjectGroup, X(SPClipPath) X(SPMask) X(SPNamedView))         \
+                          X(SPPage) X(SPPaintServer,                                                                   \
+                                      X(SPGradient, X(SPLinearGradient) X(SPMeshGradient) X(SPRadialGradient))         \
+                                          X(SPHatch) X(SPPattern) X(SPSolidColor)) X(SPScript) X(SPStop) X(SPString)   \
+                              X(SPStyleElem) X(SPTag) X(SPTagUse) X(SPTitle))
 
 // Forward declarations
 

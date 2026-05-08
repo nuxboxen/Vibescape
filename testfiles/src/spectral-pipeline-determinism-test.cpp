@@ -36,25 +36,23 @@
  * testfiles/rendering_tests/.
  */
 
-#include <gtest/gtest.h>
-
-#include <src/display/spectral/spectral-bilateral.h>
-#include <src/display/spectral/spectral-blur.h>
-#include <src/display/spectral/spectral-distance-field.h>
-#include <src/display/spectral/spectral-noise.h>
-
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <vector>
+#include <gtest/gtest.h>
+#include <src/display/spectral/spectral-bilateral.h>
+#include <src/display/spectral/spectral-blur.h>
+#include <src/display/spectral/spectral-distance-field.h>
+#include <src/display/spectral/spectral-noise.h>
 
 using namespace Inkscape::Spectral;
 
 namespace {
 
-bool buffers_equal(const std::uint8_t *a, const std::uint8_t *b, std::size_t n)
+bool buffers_equal(std::uint8_t const *a, std::uint8_t const *b, std::size_t n)
 {
     return std::equal(a, a + n, b);
 }
@@ -73,14 +71,12 @@ TEST(SpectralDeterminism, NoiseDoubleCallByteIdentical)
     // dependency.
     constexpr int W = 256, H = 256;
     std::vector<std::uint8_t> a(W * H), b(W * H);
-    for (auto profile : {NoiseProfile::kWhite, NoiseProfile::kPink,
-                          NoiseProfile::kBrown, NoiseProfile::kBlue}) {
-        const std::uint32_t seed = 0x12345678u;
+    for (auto profile : {NoiseProfile::kWhite, NoiseProfile::kPink, NoiseProfile::kBrown, NoiseProfile::kBlue}) {
+        std::uint32_t const seed = 0x12345678u;
         noise_generate_a8(W, H, profile, seed, a.data());
         noise_generate_a8(W, H, profile, seed, b.data());
         EXPECT_TRUE(buffers_equal(a.data(), b.data(), W * H))
-            << "noise profile " << static_cast<int>(profile)
-            << " is not deterministic across calls";
+            << "noise profile " << static_cast<int>(profile) << " is not deterministic across calls";
     }
 }
 
@@ -114,10 +110,12 @@ TEST(SpectralDeterminism, DistanceFieldDoubleCallByteIdentical)
 {
     constexpr int W = 64, H = 64;
     std::vector<std::uint8_t> mask(W * H, 0);
-    for (int y = 0; y < H; ++y) for (int x = 0; x < W; ++x) {
-        const int dx = x - W/2, dy = y - H/2;
-        if (dx*dx + dy*dy < 16*16) mask[y*W + x] = 255;
-    }
+    for (int y = 0; y < H; ++y)
+        for (int x = 0; x < W; ++x) {
+            int const dx = x - W / 2, dy = y - H / 2;
+            if (dx * dx + dy * dy < 16 * 16)
+                mask[y * W + x] = 255;
+        }
     std::vector<float> a(W * H), b(W * H);
     distance_field_a8(W, H, mask.data(), a.data(), 3.0);
     distance_field_a8(W, H, mask.data(), b.data(), 3.0);
@@ -159,7 +157,8 @@ TEST(SpectralEdgeCases, HeatKernelZeroSigmaIsExactIdentity)
     // could in principle introduce drift.
     constexpr int W = 17, H = 23;
     std::vector<std::uint8_t> input(W * H);
-    for (int i = 0; i < W * H; ++i) input[i] = static_cast<std::uint8_t>(i & 0xFF);
+    for (int i = 0; i < W * H; ++i)
+        input[i] = static_cast<std::uint8_t>(i & 0xFF);
     std::vector<std::uint8_t> orig(input);
     apply_heat_kernel_a8(W, H, input.data(), 0.0, 0.0);
     EXPECT_TRUE(buffers_equal(input.data(), orig.data(), W * H));
@@ -186,11 +185,11 @@ TEST(SpectralCrossValidation, BilateralLargeSigmaRangeMatchesPlainHeat)
     }
     std::vector<std::uint8_t> bilat(W * H);
     bilateral_a8(W, H, src.data(), bilat.data(),
-                  /*sigma_spatial=*/2.0, /*sigma_range=*/1.0e6);
+                 /*sigma_spatial=*/2.0, /*sigma_range=*/1.0e6);
 
     std::vector<std::uint8_t> heat(src);
     apply_heat_kernel_a8(W, H, heat.data(),
-                          /*sigma_x=*/2.0, /*sigma_y=*/2.0);
+                         /*sigma_x=*/2.0, /*sigma_y=*/2.0);
 
     // Both operators target σ²/2 = 2 of integration time — flat-
     // region behavior should agree to within a few quantization
@@ -201,12 +200,10 @@ TEST(SpectralCrossValidation, BilateralLargeSigmaRangeMatchesPlainHeat)
     for (int i = 0; i < W * H; ++i) {
         sum_abs += std::abs(bilat[i] - heat[i]);
     }
-    const double mean_abs = sum_abs / (W * H);
-    std::fprintf(stderr,
-        "[xval bilateral=heat-limit] mean-abs=%.3f\n", mean_abs);
-    EXPECT_LT(mean_abs, 8.0)
-        << "bilateral at σ_range=∞ should approximate plain heat "
-        << "(mean-abs=" << mean_abs << ")";
+    double const mean_abs = sum_abs / (W * H);
+    std::fprintf(stderr, "[xval bilateral=heat-limit] mean-abs=%.3f\n", mean_abs);
+    EXPECT_LT(mean_abs, 8.0) << "bilateral at σ_range=∞ should approximate plain heat "
+                             << "(mean-abs=" << mean_abs << ")";
 }
 
 TEST(SpectralCrossValidation, DistanceFieldRadialMonotone)
@@ -217,22 +214,23 @@ TEST(SpectralCrossValidation, DistanceFieldRadialMonotone)
     // misapplied or the heat kernel's symmetry is broken.
     constexpr int W = 64, H = 64;
     std::vector<std::uint8_t> mask(W * H, 0);
-    for (int y = 0; y < H; ++y) for (int x = 0; x < W; ++x) {
-        const int dx = x - W/2, dy = y - H/2;
-        if (dx*dx + dy*dy <= 12*12) mask[y * W + x] = 255;
-    }
+    for (int y = 0; y < H; ++y)
+        for (int x = 0; x < W; ++x) {
+            int const dx = x - W / 2, dy = y - H / 2;
+            if (dx * dx + dy * dy <= 12 * 12)
+                mask[y * W + x] = 255;
+        }
     std::vector<float> dist(W * H);
     distance_field_a8(W, H, mask.data(), dist.data(), /*sigma=*/3.0);
 
     // Walk right from (W/2, H/2) past the disk boundary (radius 12).
     float prev = -1.0f;
     int probed = 0;
-    for (int dx = 12; dx < W/2 - 1; ++dx) {
-        const float v = dist[(H/2) * W + (W/2 + dx)];
-        if (v >= 1.0e9f * 0.5f) break;  // far-field clamp
-        EXPECT_GE(v, prev - 1e-3f)
-            << "non-monotone radial distance at dx=" << dx
-            << ": prev=" << prev << " cur=" << v;
+    for (int dx = 12; dx < W / 2 - 1; ++dx) {
+        float const v = dist[(H / 2) * W + (W / 2 + dx)];
+        if (v >= 1.0e9f * 0.5f)
+            break; // far-field clamp
+        EXPECT_GE(v, prev - 1e-3f) << "non-monotone radial distance at dx=" << dx << ": prev=" << prev << " cur=" << v;
         prev = v;
         ++probed;
     }
@@ -256,13 +254,12 @@ TEST(SpectralEdgeCases, BilateralRejectsZeroSigmaRangeAtSubstrate)
     constexpr int W = 8, H = 8;
     std::vector<std::uint8_t> src(W * H, 100), dst(W * H);
     bilateral_a8(W, H, src.data(), dst.data(),
-                  /*sigma_spatial=*/1.0, /*sigma_range=*/0.001);
+                 /*sigma_spatial=*/1.0, /*sigma_range=*/0.001);
     // With ε σ_range, every neighbour is "different enough" that
     // weights collapse to 0. Output ≈ input (no diffusion happens).
     int max_drift = 0;
     for (int i = 0; i < W * H; ++i) {
         max_drift = std::max(max_drift, std::abs(dst[i] - 100));
     }
-    EXPECT_LE(max_drift, 1)
-        << "tiny sigma_range should approximately freeze the input";
+    EXPECT_LE(max_drift, 1) << "tiny sigma_range should approximately freeze the input";
 }

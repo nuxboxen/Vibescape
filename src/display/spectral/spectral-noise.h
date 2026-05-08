@@ -26,19 +26,17 @@
 
 namespace Inkscape::Spectral {
 
-enum class NoiseProfile {
-    kWhite,   ///< P(λ) = 1.       Flat spectrum; high-frequency salt-and-pepper.
-    kPink,    ///< P(λ) = 1 / √λ.  Canonical 1/f, "natural" look.
-    kBrown,   ///< P(λ) = 1 / λ.   Very smooth, blob-like.
-    kBlue,    ///< P(λ) = √λ.      High-frequency emphasis; useful for dithering.
+enum class NoiseProfile
+{
+    kWhite, ///< P(λ) = 1.       Flat spectrum; high-frequency salt-and-pepper.
+    kPink,  ///< P(λ) = 1 / √λ.  Canonical 1/f, "natural" look.
+    kBrown, ///< P(λ) = 1 / λ.   Very smooth, blob-like.
+    kBlue,  ///< P(λ) = √λ.      High-frequency emphasis; useful for dithering.
 };
 
 // Generate a (W × H) A8 noise tile into caller-supplied storage `out`.
 // `out` must have at least W*H bytes.
-void noise_generate_a8(int W, int H,
-                        NoiseProfile profile,
-                        std::uint32_t seed,
-                        std::uint8_t *out);
+void noise_generate_a8(int W, int H, NoiseProfile profile, std::uint32_t seed, std::uint8_t *out);
 
 } // namespace Inkscape::Spectral
 

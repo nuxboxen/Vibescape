@@ -5,9 +5,9 @@
 
 #include "display/nr-filter-spectral-noise.h"
 
-#include <cairo/cairo.h>
 #include <cstdint>
 #include <vector>
+#include <cairo/cairo.h>
 
 #include "display/cairo-utils.h"
 #include "display/nr-filter-slot.h"
@@ -27,8 +27,8 @@ void FilterSpectralNoise::render_cairo(FilterSlot &slot) const
     // Render at device-scale-1 like feTurbulence does.
     double x_scale = 1.0, y_scale = 1.0;
     cairo_surface_get_device_scale(input, &x_scale, &y_scale);
-    const int width  = static_cast<int>(std::ceil(cairo_image_surface_get_width( input) / x_scale / x_scale));
-    const int height = static_cast<int>(std::ceil(cairo_image_surface_get_height(input) / y_scale / y_scale));
+    int const width = static_cast<int>(std::ceil(cairo_image_surface_get_width(input) / x_scale / x_scale));
+    int const height = static_cast<int>(std::ceil(cairo_image_surface_get_height(input) / y_scale / y_scale));
     if (width <= 0 || height <= 0) {
         slot.set(_output, out);
         cairo_surface_destroy(out);
@@ -45,12 +45,12 @@ void FilterSpectralNoise::render_cairo(FilterSlot &slot) const
     Spectral::noise_generate_a8(width, height, _profile, _seed, tile.data());
 
     std::uint8_t *dst = cairo_image_surface_get_data(temp);
-    const int stride = cairo_image_surface_get_stride(temp);
+    int const stride = cairo_image_surface_get_stride(temp);
     for (int y = 0; y < height; ++y) {
         std::uint8_t *row = dst + y * stride;
-        const std::uint8_t *src_row = tile.data() + static_cast<std::size_t>(y) * width;
+        std::uint8_t const *src_row = tile.data() + static_cast<std::size_t>(y) * width;
         for (int x = 0; x < width; ++x) {
-            const std::uint8_t v = src_row[x];
+            std::uint8_t const v = src_row[x];
             // Cairo ARGB32 is premultiplied BGRA on LE. Opaque grayscale:
             // R = G = B = v, A = 255. Premultiplied = v (since A=1).
             row[x * 4 + 0] = v;

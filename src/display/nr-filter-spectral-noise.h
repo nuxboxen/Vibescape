@@ -40,13 +40,13 @@ public:
     bool uses_background() const override { return false; }
 
     void set_profile(Spectral::NoiseProfile p) { _profile = p; }
-    void set_seed(std::uint32_t s)             { _seed = s; }
+    void set_seed(std::uint32_t s) { _seed = s; }
 
     Glib::ustring name() const override { return Glib::ustring("Spectral Noise"); }
 
 private:
     Spectral::NoiseProfile _profile = Spectral::NoiseProfile::kPink;
-    std::uint32_t          _seed    = 0;
+    std::uint32_t _seed = 0;
 };
 
 } // namespace Inkscape::Filters

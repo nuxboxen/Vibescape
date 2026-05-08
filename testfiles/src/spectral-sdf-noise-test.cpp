@@ -14,29 +14,26 @@
  * differences; blue > white).
  */
 
-#include <gtest/gtest.h>
-
-#include <src/display/spectral/spectral-distance-field.h>
-#include <src/display/spectral/spectral-noise.h>
-
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <vector>
+#include <gtest/gtest.h>
+#include <src/display/spectral/spectral-distance-field.h>
+#include <src/display/spectral/spectral-noise.h>
 
 using namespace Inkscape::Spectral;
 
 namespace {
 
-void make_disk_mask(std::uint8_t *m, int W, int H,
-                     int cx, int cy, double radius)
+void make_disk_mask(std::uint8_t *m, int W, int H, int cx, int cy, double radius)
 {
-    const double r2 = radius * radius;
+    double const r2 = radius * radius;
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
-            const double dx = x + 0.5 - cx;
-            const double dy = y + 0.5 - cy;
+            double const dx = x + 0.5 - cx;
+            double const dy = y + 0.5 - cy;
             m[y * W + x] = (dx * dx + dy * dy <= r2) ? 255 : 0;
         }
     }
@@ -44,11 +41,11 @@ void make_disk_mask(std::uint8_t *m, int W, int H,
 
 double analytical_signed(int x, int y, int cx, int cy, double radius)
 {
-    const double dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+    double const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
     return std::sqrt(dx * dx + dy * dy) - radius;
 }
 
-double mean_abs_neighbour_diff(const std::uint8_t *m, int W, int H)
+double mean_abs_neighbour_diff(std::uint8_t const *m, int W, int H)
 {
     double sum = 0;
     long long n = 0;
@@ -87,24 +84,26 @@ TEST(SpectralSDF, SignedSDFOnCenteredDisk)
     int mismatches = 0, samples = 0;
     for (int y = 4; y < H - 4; y += 4) {
         for (int x = 4; x < W - 4; x += 4) {
-            const double truth = analytical_signed(x, y, cx, cy, radius);
-            if (std::abs(truth) < 1.5) continue;
-            const float est = sdf[y * W + x];
-            if (std::abs(est) >= kDistanceFieldFar * 0.5f) continue;
+            double const truth = analytical_signed(x, y, cx, cy, radius);
+            if (std::abs(truth) < 1.5)
+                continue;
+            float const est = sdf[y * W + x];
+            if (std::abs(est) >= kDistanceFieldFar * 0.5f)
+                continue;
             ++samples;
-            if ((truth < 0) != (est < 0)) ++mismatches;
+            if ((truth < 0) != (est < 0))
+                ++mismatches;
         }
     }
     EXPECT_GT(samples, 0);
-    EXPECT_EQ(mismatches, 0)
-        << mismatches << " sign mismatches across " << samples << " probes";
+    EXPECT_EQ(mismatches, 0) << mismatches << " sign mismatches across " << samples << " probes";
 }
 
 TEST(SpectralSDF, FarFieldClampsRatherThanOverflows)
 {
     constexpr int W = 64, H = 64;
     std::vector<std::uint8_t> mask(W * H);
-    make_disk_mask(mask.data(), W, H, W/2, H/2, /*radius=*/4.0);
+    make_disk_mask(mask.data(), W, H, W / 2, H / 2, /*radius=*/4.0);
 
     std::vector<float> dist(W * H);
     distance_field_a8(W, H, mask.data(), dist.data(), /*sigma=*/1.5);
@@ -112,12 +111,13 @@ TEST(SpectralSDF, FarFieldClampsRatherThanOverflows)
     int finite = 0, sentinel = 0;
     for (int i = 0; i < W * H; ++i) {
         EXPECT_TRUE(std::isfinite(dist[i]));
-        if (dist[i] >= kDistanceFieldFar * 0.5f) ++sentinel;
-        else                                     ++finite;
+        if (dist[i] >= kDistanceFieldFar * 0.5f)
+            ++sentinel;
+        else
+            ++finite;
     }
-    EXPECT_GT(sentinel, 0)
-        << "expected far-field clamping with σ=1.5 on a 4-px disk; "
-        << "saw finite=" << finite << " sentinel=" << sentinel;
+    EXPECT_GT(sentinel, 0) << "expected far-field clamping with σ=1.5 on a 4-px disk; "
+                           << "saw finite=" << finite << " sentinel=" << sentinel;
 }
 
 TEST(SpectralNoise, SeededReproducibility)
@@ -127,7 +127,8 @@ TEST(SpectralNoise, SeededReproducibility)
     noise_generate_a8(W, H, NoiseProfile::kPink, /*seed=*/0xDEADBEEFu, a.data());
     noise_generate_a8(W, H, NoiseProfile::kPink, /*seed=*/0xDEADBEEFu, b.data());
     bool identical = true;
-    for (int i = 0; i < W * H; ++i) identical &= (a[i] == b[i]);
+    for (int i = 0; i < W * H; ++i)
+        identical &= (a[i] == b[i]);
     EXPECT_TRUE(identical) << "same (W,H,profile,seed) must produce same tile";
 }
 
@@ -138,10 +139,11 @@ TEST(SpectralNoise, SeedSensitivity)
     noise_generate_a8(W, H, NoiseProfile::kPink, /*seed=*/0xDEADBEEFu, a.data());
     noise_generate_a8(W, H, NoiseProfile::kPink, /*seed=*/0xDEADBEEEu, b.data());
     int diff = 0;
-    for (int i = 0; i < W * H; ++i) if (a[i] != b[i]) ++diff;
-    EXPECT_GT(diff, W * H / 2)
-        << "different seeds should diverge over most of the tile (got "
-        << diff << "/" << (W*H) << " pixels)";
+    for (int i = 0; i < W * H; ++i)
+        if (a[i] != b[i])
+            ++diff;
+    EXPECT_GT(diff, W * H / 2) << "different seeds should diverge over most of the tile (got " << diff << "/" << (W * H)
+                               << " pixels)";
 }
 
 TEST(SpectralNoise, ProfileRoughnessOrdering)
@@ -152,20 +154,18 @@ TEST(SpectralNoise, ProfileRoughnessOrdering)
     // most high-freq energy.)
     constexpr int W = 128, H = 128;
     std::vector<std::uint8_t> w(W * H), pk(W * H), br(W * H), bl(W * H);
-    const std::uint32_t seed = 0xCAFEBABEu;
+    std::uint32_t const seed = 0xCAFEBABEu;
     noise_generate_a8(W, H, NoiseProfile::kWhite, seed, w.data());
-    noise_generate_a8(W, H, NoiseProfile::kPink,  seed, pk.data());
+    noise_generate_a8(W, H, NoiseProfile::kPink, seed, pk.data());
     noise_generate_a8(W, H, NoiseProfile::kBrown, seed, br.data());
-    noise_generate_a8(W, H, NoiseProfile::kBlue,  seed, bl.data());
+    noise_generate_a8(W, H, NoiseProfile::kBlue, seed, bl.data());
 
-    const double rW  = mean_abs_neighbour_diff(w.data(),  W, H);
-    const double rPk = mean_abs_neighbour_diff(pk.data(), W, H);
-    const double rBr = mean_abs_neighbour_diff(br.data(), W, H);
-    const double rBl = mean_abs_neighbour_diff(bl.data(), W, H);
-    std::fprintf(stderr,
-        "[noise-roughness] white=%.2f pink=%.2f brown=%.2f blue=%.2f\n",
-        rW, rPk, rBr, rBl);
-    EXPECT_GT(rBl, rW)  << "blue should have more high-freq than white";
-    EXPECT_GT(rW,  rPk) << "white should be rougher than pink";
+    double const rW = mean_abs_neighbour_diff(w.data(), W, H);
+    double const rPk = mean_abs_neighbour_diff(pk.data(), W, H);
+    double const rBr = mean_abs_neighbour_diff(br.data(), W, H);
+    double const rBl = mean_abs_neighbour_diff(bl.data(), W, H);
+    std::fprintf(stderr, "[noise-roughness] white=%.2f pink=%.2f brown=%.2f blue=%.2f\n", rW, rPk, rBr, rBl);
+    EXPECT_GT(rBl, rW) << "blue should have more high-freq than white";
+    EXPECT_GT(rW, rPk) << "white should be rougher than pink";
     EXPECT_GT(rPk, rBr) << "pink should be rougher than brown";
 }

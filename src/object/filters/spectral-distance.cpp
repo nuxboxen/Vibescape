@@ -16,16 +16,21 @@
 class SPDocument;
 namespace Inkscape {
 class DrawingItem;
-namespace XML { class Document; }
+namespace XML {
+class Document;
+}
 } // namespace Inkscape
 
 namespace {
 Inkscape::Filters::SpectralDistanceMode read_mode(char const *value)
 {
     using M = Inkscape::Filters::SpectralDistanceMode;
-    if (!value) return M::SPECTRAL_DISTANCE_UNSIGNED;
-    if (std::strcmp(value, "signed")   == 0) return M::SPECTRAL_DISTANCE_SIGNED;
-    if (std::strcmp(value, "unsigned") == 0) return M::SPECTRAL_DISTANCE_UNSIGNED;
+    if (!value)
+        return M::SPECTRAL_DISTANCE_UNSIGNED;
+    if (std::strcmp(value, "signed") == 0)
+        return M::SPECTRAL_DISTANCE_SIGNED;
+    if (std::strcmp(value, "unsigned") == 0)
+        return M::SPECTRAL_DISTANCE_UNSIGNED;
     return M::SPECTRAL_DISTANCE_UNSIGNED;
 }
 
@@ -47,7 +52,7 @@ void SPFeSpectralDistance::set(SPAttr key, char const *value)
 {
     switch (key) {
         case SPAttr::SPECTRAL_SIGMA_SPATIAL: {
-            const double v = value ? Inkscape::Util::read_number(value) : 3.0;
+            double const v = value ? Inkscape::Util::read_number(value) : 3.0;
             if (v != sigma_spatial) {
                 sigma_spatial = v;
                 requestModified(SP_OBJECT_MODIFIED_FLAG);
@@ -55,7 +60,7 @@ void SPFeSpectralDistance::set(SPAttr key, char const *value)
             break;
         }
         case SPAttr::SPECTRAL_DISTANCE_MODE: {
-            const auto m = read_mode(value);
+            auto const m = read_mode(value);
             if (m != mode) {
                 mode = m;
                 requestModified(SP_OBJECT_MODIFIED_FLAG);
@@ -68,7 +73,8 @@ void SPFeSpectralDistance::set(SPAttr key, char const *value)
     }
 }
 
-Inkscape::XML::Node *SPFeSpectralDistance::write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr, unsigned flags)
+Inkscape::XML::Node *SPFeSpectralDistance::write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr,
+                                                 unsigned flags)
 {
     if (!repr) {
         repr = getRepr()->duplicate(doc);
@@ -78,8 +84,7 @@ Inkscape::XML::Node *SPFeSpectralDistance::write(Inkscape::XML::Document *doc, I
     return repr;
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive>
-SPFeSpectralDistance::build_renderer(Inkscape::DrawingItem *) const
+std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeSpectralDistance::build_renderer(Inkscape::DrawingItem *) const
 {
     auto sdf = std::make_unique<Inkscape::Filters::FilterSpectralDistance>();
     build_renderer_common(sdf.get());

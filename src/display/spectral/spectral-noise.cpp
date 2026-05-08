@@ -10,12 +10,12 @@
 
 #include "display/spectral/spectral-noise.h"
 
-#include "display/spectral/spectral-dct.h"
-
 #include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <vector>
+
+#include "display/spectral/spectral-dct.h"
 
 namespace Inkscape::Spectral {
 
@@ -24,59 +24,66 @@ namespace {
 constexpr double kPi = 3.14159265358979323846;
 
 // Numerical Recipes LCG. Visualization-grade; not cryptographic.
-struct LCG {
+struct LCG
+{
     std::uint32_t s;
-    explicit LCG(std::uint32_t seed) : s(seed) {}
-    std::uint32_t next() { s = s * 1664525u + 1013904223u; return s; }
-    // Uniform in (0, 1] — exclude 0 so log() is safe in Box-Muller.
-    double uniform()
+    explicit LCG(std::uint32_t seed)
+        : s(seed)
+    {}
+    std::uint32_t next()
     {
-        return ((next() >> 8) + 1u) / static_cast<double>(1u << 24);
+        s = s * 1664525u + 1013904223u;
+        return s;
     }
+    // Uniform in (0, 1] — exclude 0 so log() is safe in Box-Muller.
+    double uniform() { return ((next() >> 8) + 1u) / static_cast<double>(1u << 24); }
 };
 
 double next_normal(LCG *rng)
 {
-    const double u1 = rng->uniform();
-    const double u2 = rng->uniform();
+    double const u1 = rng->uniform();
+    double const u2 = rng->uniform();
     return std::sqrt(-2.0 * std::log(u1)) * std::cos(2.0 * kPi * u2);
 }
 
 double power_at_lambda(NoiseProfile profile, double lambda)
 {
-    if (lambda <= 0.0) return 0.0;  // DC coefficient — explicit zero
+    if (lambda <= 0.0)
+        return 0.0; // DC coefficient — explicit zero
     switch (profile) {
-        case NoiseProfile::kWhite: return 1.0;
-        case NoiseProfile::kPink:  return 1.0 / std::sqrt(lambda);
-        case NoiseProfile::kBrown: return 1.0 / lambda;
-        case NoiseProfile::kBlue:  return std::sqrt(lambda);
+        case NoiseProfile::kWhite:
+            return 1.0;
+        case NoiseProfile::kPink:
+            return 1.0 / std::sqrt(lambda);
+        case NoiseProfile::kBrown:
+            return 1.0 / lambda;
+        case NoiseProfile::kBlue:
+            return std::sqrt(lambda);
     }
     return 0.0;
 }
 
-void normalize_to_uint8(const double *in, std::uint8_t *out, int n)
+void normalize_to_uint8(double const *in, std::uint8_t *out, int n)
 {
     double minV = in[0], maxV = in[0];
     for (int i = 1; i < n; ++i) {
-        if (in[i] < minV) minV = in[i];
-        if (in[i] > maxV) maxV = in[i];
+        if (in[i] < minV)
+            minV = in[i];
+        if (in[i] > maxV)
+            maxV = in[i];
     }
-    const double range = maxV - minV;
-    const double inv   = (range > 1e-12) ? 1.0 / range : 0.0;
+    double const range = maxV - minV;
+    double const inv = (range > 1e-12) ? 1.0 / range : 0.0;
     for (int i = 0; i < n; ++i) {
-        const double v = (in[i] - minV) * inv * 255.0;
-        const int iv = (v < 0.0) ? 0 : (v > 255.0) ? 255
-                     : static_cast<int>(v + 0.5);
+        double const v = (in[i] - minV) * inv * 255.0;
+        int const iv = (v < 0.0) ? 0 : (v > 255.0) ? 255 : static_cast<int>(v + 0.5);
         out[i] = static_cast<std::uint8_t>(iv);
     }
 }
 
 } // anonymous namespace
 
-void noise_generate_a8(int W, int H,
-                        NoiseProfile profile,
-                        std::uint32_t seed,
-                        std::uint8_t *out)
+void noise_generate_a8(int W, int H, NoiseProfile profile, std::uint32_t seed, std::uint8_t *out)
 {
     assert(W > 0 && H > 0);
     assert(out != nullptr);
@@ -89,14 +96,14 @@ void noise_generate_a8(int W, int H,
         lambda_y[l] = 2.0 * (1.0 - std::cos(kPi * l / H));
     }
 
-    const std::size_t N = static_cast<std::size_t>(W) * H;
+    std::size_t const N = static_cast<std::size_t>(W) * H;
     std::vector<double> coeffs(N), spatial(N);
 
     LCG rng(seed);
     for (int l = 0; l < H; ++l) {
         for (int k = 0; k < W; ++k) {
-            const double lambda = lambda_x[k] + lambda_y[l];
-            const double power  = power_at_lambda(profile, lambda);
+            double const lambda = lambda_x[k] + lambda_y[l];
+            double const power = power_at_lambda(profile, lambda);
             coeffs[l * W + k] = std::sqrt(power) * next_normal(&rng);
         }
     }

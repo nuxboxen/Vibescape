@@ -15,7 +15,9 @@
 class SPDocument;
 namespace Inkscape {
 class DrawingItem;
-namespace XML { class Document; }
+namespace XML {
+class Document;
+}
 } // namespace Inkscape
 
 void SPFeSpectralBilateral::build(SPDocument *document, Inkscape::XML::Node *repr)
@@ -29,7 +31,7 @@ void SPFeSpectralBilateral::set(SPAttr key, char const *value)
 {
     switch (key) {
         case SPAttr::SPECTRAL_SIGMA_SPATIAL: {
-            const double v = value ? Inkscape::Util::read_number(value) : 4.0;
+            double const v = value ? Inkscape::Util::read_number(value) : 4.0;
             if (v != sigma_spatial) {
                 sigma_spatial = v;
                 requestModified(SP_OBJECT_MODIFIED_FLAG);
@@ -37,7 +39,7 @@ void SPFeSpectralBilateral::set(SPAttr key, char const *value)
             break;
         }
         case SPAttr::SPECTRAL_SIGMA_RANGE: {
-            const double v = value ? Inkscape::Util::read_number(value) : 16.0;
+            double const v = value ? Inkscape::Util::read_number(value) : 16.0;
             if (v != sigma_range) {
                 sigma_range = v;
                 requestModified(SP_OBJECT_MODIFIED_FLAG);
@@ -50,7 +52,8 @@ void SPFeSpectralBilateral::set(SPAttr key, char const *value)
     }
 }
 
-Inkscape::XML::Node *SPFeSpectralBilateral::write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr, unsigned flags)
+Inkscape::XML::Node *SPFeSpectralBilateral::write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr,
+                                                  unsigned flags)
 {
     if (!repr) {
         repr = getRepr()->duplicate(doc);
@@ -59,8 +62,7 @@ Inkscape::XML::Node *SPFeSpectralBilateral::write(Inkscape::XML::Document *doc, 
     return repr;
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive>
-SPFeSpectralBilateral::build_renderer(Inkscape::DrawingItem *) const
+std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeSpectralBilateral::build_renderer(Inkscape::DrawingItem *) const
 {
     auto bilateral = std::make_unique<Inkscape::Filters::FilterSpectralBilateral>();
     build_renderer_common(bilateral.get());

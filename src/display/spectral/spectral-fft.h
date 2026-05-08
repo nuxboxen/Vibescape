@@ -28,7 +28,8 @@
 
 namespace Inkscape::Spectral {
 
-enum FFTDirection {
+enum FFTDirection
+{
     kForward = -1,
     kInverse = +1,
 };
@@ -41,19 +42,19 @@ void radix2_fft(double *re, double *im, int N, FFTDirection dir);
 // sin(-2π k/N) for k = 0..N/2-1. Inverse direction reuses the same
 // tables (sign flip on the imaginary lane is handled inside the
 // butterfly).
-void radix2_fft_with_twiddles(double *re, double *im, int N,
-                               const double *twiddleRe,
-                               const double *twiddleIm,
-                               FFTDirection dir);
+void radix2_fft_with_twiddles(double *re, double *im, int N, double const *twiddleRe, double const *twiddleIm,
+                              FFTDirection dir);
 
 // Populate twiddle tables for length N.
 void compute_twiddles(int N, double *twiddleRe, double *twiddleIm);
 
 inline int next_pow2(int x)
 {
-    if (x <= 1) return 1;
+    if (x <= 1)
+        return 1;
     int p = 1;
-    while (p < x) p <<= 1;
+    while (p < x)
+        p <<= 1;
     return p;
 }
 

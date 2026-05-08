@@ -39,13 +39,13 @@ public:
     bool uses_background() const override { return false; }
 
     void set_sigma_spatial(double s) { _sigma_spatial = s; }
-    void set_sigma_range(double s)   { _sigma_range = s; }
+    void set_sigma_range(double s) { _sigma_range = s; }
 
     Glib::ustring name() const override { return Glib::ustring("Spectral Bilateral"); }
 
 private:
     double _sigma_spatial = 4.0;
-    double _sigma_range   = 16.0;
+    double _sigma_range = 16.0;
 };
 
 } // namespace Inkscape::Filters

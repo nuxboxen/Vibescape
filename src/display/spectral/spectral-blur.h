@@ -29,8 +29,7 @@ namespace Inkscape::Spectral {
 // their content the difference is bounded — see the parity test in
 // `testfiles/src/display/spectral_blur_parity_test.cpp` (port of the
 // Skia branch's `SpectralBlurParityTest`).
-void apply_heat_kernel_a8(int W, int H, std::uint8_t *buf,
-                           double sigma_x, double sigma_y);
+void apply_heat_kernel_a8(int W, int H, std::uint8_t *buf, double sigma_x, double sigma_y);
 
 // 4-channel blur on packed BGRA pixels (Cairo's
 // CAIRO_FORMAT_ARGB32 native layout on little-endian).
@@ -42,10 +41,8 @@ void apply_heat_kernel_a8(int W, int H, std::uint8_t *buf,
 // Channel-independent: each of the 4 channels is blurred separately
 // using the same heat kernel. For *joint* similarity (bilateral)
 // see `spectral-bilateral.h` (Tier 3).
-void blur_bgra(int W, int H,
-                const std::uint8_t *src, std::size_t src_stride,
-                std::uint8_t *dst, std::size_t dst_stride,
-                double sigma_x, double sigma_y);
+void blur_bgra(int W, int H, std::uint8_t const *src, std::size_t src_stride, std::uint8_t *dst, std::size_t dst_stride,
+               double sigma_x, double sigma_y);
 
 } // namespace Inkscape::Spectral
 
