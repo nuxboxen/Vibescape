@@ -27,6 +27,7 @@
 #include "display/nr-filter-primitive.h"
 #include "display/nr-filter-slot.h"
 #include "display/nr-filter-units.h"
+#include "display/spectral/spectral-blur.h"
 #include "display/threading.h"
 #include "util/fixed_point.h"
 
@@ -595,6 +596,17 @@ void FilterGaussian::render_cairo(FilterSlot &slot) const
     bool use_IIR_x = deviation_x > 3;
     bool use_IIR_y = deviation_y > 3;
 
+    // Spectral DCT third tier: above some σ cutoff, the heat-kernel
+    // path's flat-in-σ cost beats van-Vliet IIR's per-pixel constant.
+    // Below the cutoff the IIR path remains the canonical implementation.
+    // Cutoff is empirically tuned in SPECTRAL_PROGRESS.md §N (bench).
+    //
+    // The spectral path is *2D* (single DCT round trip on the whole
+    // surface), not per-axis, so when it fires it replaces both
+    // gaussian_pass_*_X and *_Y in one call.
+    constexpr double kSpectralCutoff = 30.0;
+    const bool use_spectral = std::max(deviation_x, deviation_y) > kSpectralCutoff;
+
     // Temporary storage for IIR filter
     // NOTE: This can be eliminated, but it reduces the precision a bit
     std::vector<IIRValue *> tmpdata(threads, nullptr);
@@ -620,19 +632,50 @@ void FilterGaussian::render_cairo(FilterSlot &slot) const
     }
     cairo_surface_flush(downsampled);
 
-    if (scr_len_x > 0) {
-        if (use_IIR_x) {
-            gaussian_pass_IIR(Geom::X, deviation_x, downsampled, downsampled, tmpdata.data(), *pool);
+    if (use_spectral) {
+        // Single 2D pass — heat kernel handles both axes via per-axis
+        // decay tables in apply_lattice_heat_kernel(). No IIR/FIR
+        // per-axis dispatch needed when this tier fires.
+        unsigned char *data = cairo_image_surface_get_data(downsampled);
+        const int w = cairo_image_surface_get_width(downsampled);
+        const int h = cairo_image_surface_get_height(downsampled);
+        const int stride = cairo_image_surface_get_stride(downsampled);
+        if (cairo_image_surface_get_format(downsampled) == CAIRO_FORMAT_A8) {
+            // Pack rows tightly if stride > w (Cairo aligns A8 rows to
+            // 4 bytes), then unpack after.
+            std::vector<unsigned char> packed(static_cast<std::size_t>(w) *
+                                              static_cast<std::size_t>(h));
+            for (int y = 0; y < h; ++y) {
+                std::memcpy(packed.data() + static_cast<std::size_t>(y) * w,
+                            data + y * stride, w);
+            }
+            Inkscape::Spectral::apply_heat_kernel_a8(w, h, packed.data(),
+                                                     deviation_x, deviation_y);
+            for (int y = 0; y < h; ++y) {
+                std::memcpy(data + y * stride,
+                            packed.data() + static_cast<std::size_t>(y) * w, w);
+            }
         } else {
-            gaussian_pass_FIR(Geom::X, deviation_x, downsampled, downsampled, *pool);
+            Inkscape::Spectral::blur_bgra(w, h,
+                                           data, stride,
+                                           data, stride,
+                                           deviation_x, deviation_y);
         }
-    }
+    } else {
+        if (scr_len_x > 0) {
+            if (use_IIR_x) {
+                gaussian_pass_IIR(Geom::X, deviation_x, downsampled, downsampled, tmpdata.data(), *pool);
+            } else {
+                gaussian_pass_FIR(Geom::X, deviation_x, downsampled, downsampled, *pool);
+            }
+        }
 
-    if (scr_len_y > 0) {
-        if (use_IIR_y) {
-            gaussian_pass_IIR(Geom::Y, deviation_y, downsampled, downsampled, tmpdata.data(), *pool);
-        } else {
-            gaussian_pass_FIR(Geom::Y, deviation_y, downsampled, downsampled, *pool);
+        if (scr_len_y > 0) {
+            if (use_IIR_y) {
+                gaussian_pass_IIR(Geom::Y, deviation_y, downsampled, downsampled, tmpdata.data(), *pool);
+            } else {
+                gaussian_pass_FIR(Geom::Y, deviation_y, downsampled, downsampled, *pool);
+            }
         }
     }
 
