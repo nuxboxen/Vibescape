@@ -111,6 +111,7 @@ set(TEST_SOURCES
     object-test
     sp-glyph-kerning-test
     cairo-utils-test
+    spectral-bilateral-test
     spectral-parity-test
     spectral-pipeline-bench
     spectral-substrate-test
