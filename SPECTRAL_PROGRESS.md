@@ -388,3 +388,43 @@ theme-tinted by GTK at GUI display) are abstract iconography
 rather than self-portraits — at 16×16 the actual filter outputs
 don't carry enough resolution to be readable. Files in
 `share/icons/hicolor/symbolic/actions/feSpectral*-icon-symbolic.svg`.
+
+## 7. Breadcrumb — spectral-SVG compression experiment
+
+A speculative research experiment was run during this branch's
+development to test whether the framework's eigenbasis-projection +
+FFT-residual-recovery pattern (originally landed for DE441
+truncation residuals in the mlehaptics ephemerides project) applies
+to *raster image compression* with our lattice-Laplacian eigenbasis
+as the substrate. Short answer: **yes, for the content type SVG
+actually produces** (geometric, piecewise-smooth, sparse
+high-frequency); **no, for natural-image content** (random spectrum,
+no preferred basis).
+
+Findings, method, and follow-on directions documented in:
+
+- `docs/SPECTRAL_SVG_EXPERIMENT.md` — full report, the
+  PSNR-vs-truncation table, interpretation, and concrete next-steps
+  for someone picking the work up.
+- `testfiles/src/spectral-compression-experiment-test.cpp` —
+  reproducible test (`ninja test_spectral-compression-experiment`).
+
+The headline data point: **step-edge residuals are 100% concentrated
+in the top-1% of FFT bins**, recoverable to 630 dB PSNR via a small
+patch — far past machine precision. **Pink-noise residuals are 5-6%
+concentrated** (flat spectrum), unrecoverable. The framework's basis
+is *specifically* good at vector-graphics content and *correctly*
+fails on photo content.
+
+This is **not** part of the Inkscape contribution. The experiment is
+a breadcrumb left for any future contributor (Inkscape maintainers,
+mlehaptics framework researchers, image-compression people)
+exploring whether to build a "spectral-SVG" file format on this
+substrate. Nothing in the rendering pipeline depends on it; if the
+upstream maintainers don't want the experiment, removing
+`docs/SPECTRAL_SVG_EXPERIMENT.md` and the test file is a clean
+revert.
+
+The structural finding is the kind of evidence the
+**Mathematical Provenance Method** (§−1) calls for: a falsifiable
+prediction that survived contact with measurement.

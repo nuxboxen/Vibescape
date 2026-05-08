@@ -112,6 +112,7 @@ set(TEST_SOURCES
     sp-glyph-kerning-test
     cairo-utils-test
     spectral-bilateral-test
+    spectral-compression-experiment-test
     spectral-parity-test
     spectral-pipeline-bench
     spectral-pipeline-determinism-test
