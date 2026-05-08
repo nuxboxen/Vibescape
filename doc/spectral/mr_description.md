@@ -1,3 +1,5 @@
+[Inkscape Developer Documentation](../readme.md) / [Spectral effects](readme.md) /
+
 # Merge request description (draft)
 
 This file holds the prepared description for the upstream merge
@@ -43,17 +45,35 @@ Initially the branch attempted a σ-threshold dispatch in
 `feGaussianBlur` to route large-σ blurs through a spectral path.
 **Bench data falsified the perf claim**: the spectral path is
 22-50× slower than the existing van-Vliet IIR at every production
-σ. That dispatch is disabled
+σ on the test machine. That dispatch is disabled
 (`constexpr bool use_spectral = false`) and the decision recorded
-as `[-]` with full bench numbers in `SPECTRAL_PROGRESS.md` §5.
+as `[-]` with full bench numbers in `progress.md` §5.
 The substrate stays linked because the Tier 3 capability
 primitives use it; the dispatch site is a single line that can
 be removed entirely if reviewers prefer.
 
+**Hardware-dependence caveat (§5.3).** The bench was run on an
+Intel Xeon E5530 (Nehalem, 2009) — SSE4.2 only, no AVX/AVX2/
+AVX-512/FMA. Rebuilding with `-march=native -ffast-math` on the
+same hardware narrowed the ratio from 22-50× to 18-32× (spectral
+auto-vectorizes; van-Vliet IIR's recursive form mostly doesn't).
+Estimated AVX-512 impact: another ~3-4× for spectral, ~1.5-2× for
+IIR; final ratio probably **3-8×, still favoring IIR**. The
+structural floor is the asymptotic difference (van-Vliet O(1)
+per pixel vs spectral O(log N) per pixel) — SIMD shifts the
+constant; the exponent is what wins.
+
+**GPU compute-shader FFT (§5.4).** Recorded as future-work
+breadcrumb. Not feasible for Inkscape in any practical timeframe
+— the renderer is Cairo-only with zero GPU compute infrastructure
+in the codebase. Tractable on the sibling Skia branch (which has
+the substrate); estimated 2-week experiment if a future
+contributor wants to test it.
+
 ### Methodology — Mathematical Provenance Method
 
 This branch is built under a documented protocol called the
-**Mathematical Provenance Method** (`SPECTRAL_PROGRESS.md` §−1).
+**Mathematical Provenance Method** (`progress.md` §−1).
 The protocol exists because LLM-generated framework integrations
 routinely produce vocabulary-match code that uses framework names
 without implementing the framework operators. MPM is six screens
@@ -69,7 +89,7 @@ each commit must pass:
 The Tier 2 dispatch `[-]` is itself an example of MPM working: the
 bench falsified the perf claim and the branch pivoted honestly.
 The diagnostic counterpart of MPM —
-`GEMINI_FAILURE_MODE.md` — characterizes the failure pattern this
+`gemini_failure_mode.md` — characterizes the failure pattern this
 discipline is designed to catch.
 
 ### Math substrate
@@ -111,7 +131,7 @@ Operators in `src/display/spectral/`:
 - **1 bench harness** — IIR vs spectral wall-clock comparison
   (the data behind the Tier 2 `[-]`).
 - **1 experiment** — speculative spectral-SVG compression study,
-  recorded as breadcrumb. See `docs/SPECTRAL_SVG_EXPERIMENT.md`.
+  recorded as breadcrumb. See `svg_compression_experiment.md`.
 
 Total: **35 individual tests + 3 rendering tests + bench harness +
 experiment**, all green in `ctest -R spectral`.
@@ -131,7 +151,7 @@ Three removal granularities depending on reviewer preference:
    `Removal note for upstream maintainers` block describing the
    exact cleanup map.
 3. **Keep everything except the spectral-SVG experiment breadcrumb**
-   — delete `docs/SPECTRAL_SVG_EXPERIMENT.md` and
+   — delete `svg_compression_experiment.md` and
    `testfiles/src/spectral-compression-experiment-test.cpp`.
    Nothing else depends on either. Net change: −2 files, −~750 lines.
 
@@ -183,16 +203,56 @@ Tests:
   testfiles/rendering_tests/expected_rendering/test-spectral-*.png
                                                        (new, 3 golden PNGs)
 
-Documentation:
-  SPECTRAL_PROGRESS.md                                 (new, ~400 lines)
-  SPECTRAL_TODO.md                                     (new, ~150 lines)
-  docs/SPECTRAL_SVG_EXPERIMENT.md                      (new, breadcrumb)
-  docs/spectral-icons/*.png                            (new, embedded in notebook)
-  docs/MR_DESCRIPTION.md                               (this file)
+Documentation (under doc/spectral/, conforming to
+doc/documentation_style.md — `readme.md` index, back-link headers,
+lowercase + underscore filenames):
+  doc/spectral/readme.md                               (index)
+  doc/spectral/progress.md                             (design notebook)
+  doc/spectral/todo.md                                 (tier checklist)
+  doc/spectral/svg_compression_experiment.md           (breadcrumb)
+  doc/spectral/gemini_failure_mode.md                  (MPM diagnostic)
+  doc/spectral/mr_description.md                       (this file)
+  doc/spectral/icons/*.png                             (3 self-portrait PNGs)
+  doc/readme.md                                        (linked spectral/)
   NEWS.md                                              (one section added)
 
 Total: ~50 files. ~5000 lines of code + ~1500 lines of documentation.
 ```
+
+### AI assistance disclosure
+
+In the spirit of full transparency to reviewers: this branch was
+authored with extensive use of **Claude Code** (Anthropic's coding
+assistant, primary model: Claude Opus 4.7). The human contributor
+directed the work, supplied the antikythera-maths framework
+context, made all decisions about scope and methodology, and
+reviewed every commit before it landed. The code was generated
+incrementally — typically: human asks a focused question or
+identifies a problem; AI proposes implementation or analysis;
+human reviews, accepts, modifies, or rejects.
+
+Why this is recorded openly:
+
+1. **Reviewer fairness** — readers should know the author profile
+   when calibrating critique. AI-generated code can fail in
+   characteristic ways (the `gemini_failure_mode.md` document in
+   this notebook is exactly such a characterization). The
+   Mathematical Provenance Method (`progress.md` §−1) was designed
+   in part to catch those failure modes; this branch holds itself
+   to the protocol but reviewers shouldn't have to take that on
+   faith.
+2. **Reproducibility** — the work record (`progress.md`,
+   `todo.md`, the bench data in §5.3, the spectral-SVG experiment
+   report) is structured so a human or another AI could
+   independently verify each claim. No "trust me, the math
+   works" — every operator has parity tests, every
+   design decision has rejection criteria with bench numbers.
+3. **Inkscape's contribution policy** — CONTRIBUTING.md doesn't
+   address AI-assisted contributions explicitly. Disclosing
+   prominently is the conservative reading.
+
+If reviewers prefer different conventions for AI disclosure, the
+contributor will follow whatever guidance Inkscape adopts.
 
 ### How to verify locally
 
@@ -210,8 +270,8 @@ ctest -R 'spectral|render_test-spectral' --test-dir build --output-on-failure
   testfiles/rendering_tests/test-spectral-bilateral.svg
 
 # Read the design rationale
-less SPECTRAL_PROGRESS.md     # leading note has the orientation
-less SPECTRAL_TODO.md         # tier-by-tier completion checklist
+less progress.md     # leading note has the orientation
+less todo.md         # tier-by-tier completion checklist
 ```
 
 ### Reviewers — questions worth asking
@@ -237,7 +297,7 @@ less SPECTRAL_TODO.md         # tier-by-tier completion checklist
    icons by hand.
 
 4. The spectral-SVG compression experiment
-   (`docs/SPECTRAL_SVG_EXPERIMENT.md`) is breadcrumb material for a
+   (`svg_compression_experiment.md`) is breadcrumb material for a
    future research direction. Reviewers can ask for it to be
    dropped (option 3 in the removal map above) without affecting
    any production code.

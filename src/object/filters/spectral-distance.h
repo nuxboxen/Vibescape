@@ -2,7 +2,7 @@
 /** @file
  * SVG <feSpectralDistance> filter primitive (Inkscape extension).
  *
- * Heat-kernel distance field. See SPECTRAL_PROGRESS.md §0 / §5.2 and
+ * Heat-kernel distance field. See doc/spectral/progress.md §0 / §5.2 and
  * src/display/spectral/spectral-distance-field.h for the operator.
  *
  * Attributes:

@@ -32,7 +32,7 @@
  *    and RGBA variants — image-filter natural BC.
  *  - BIP variant from Skia not ported (recorded `[-]` for structural
  *    cross-channel cancellation; see Skia branch
- *    SPECTRAL_PROGRESS §11.2).
+ *    Skia branch's progress notebook §11.2 retry analysis).
  */
 
 #ifndef INKSCAPE_DISPLAY_SPECTRAL_BILATERAL_H

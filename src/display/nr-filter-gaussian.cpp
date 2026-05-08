@@ -601,8 +601,8 @@ void FilterGaussian::render_cairo(FilterSlot &slot) const
 
     // Spectral DCT third tier — *disabled by default* (perf
     // bench shows it is ~25-50× slower than IIR at every σ tested
-    // across all canvas sizes; see SPECTRAL_PROGRESS.md §5 and the
-    // [-] entry in SPECTRAL_TODO.md §2). Kept reachable as
+    // across all canvas sizes; see doc/spectral/progress.md §5 and the
+    // [-] entry in doc/spectral/todo.md §2). Kept reachable as
     // `use_spectral = false` so the substrate stays linked for
     // capability primitives (Tier 3 bilateral / SDF / noise) and so
     // future contributors can experiment with cutoffs if hardware

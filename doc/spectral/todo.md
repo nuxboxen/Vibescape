@@ -1,3 +1,5 @@
+[Inkscape Developer Documentation](../readme.md) / [Spectral effects](readme.md) /
+
 # Spectral effects for Inkscape — TODO
 
 Mirroring the Skia branch's tier structure. The Skia branch demonstrated
@@ -7,7 +9,7 @@ pipeline.
 
 **Checkbox convention:**
 - `[ ]` — not yet attempted
-- `[x]` — done; details in commit history or `SPECTRAL_PROGRESS.md`
+- `[x]` — done; details in commit history or `progress.md`
 - `[-]` — considered and decided against, with reasoning recorded
         inline. Distinguishes "looked at it, no" from "haven't gotten
         to it."
@@ -40,7 +42,7 @@ relicense to GPL-2+ to match Inkscape.
 - [-] **Spectral DCT third tier above some σ cutoff.**
 
       *Tested and rejected for perf reasons.* Full bench results
-      under SPECTRAL_PROGRESS.md §5: spectral path is 22–50× slower
+      under progress.md §5: spectral path is 22–50× slower
       than van-Vliet IIR at every (canvas, σ) combination measured
       across {512², 1024², 2048²} × {8, 16, 32, 64, 128}. No
       crossover exists in the production σ regime; extrapolation
@@ -154,7 +156,7 @@ None tested yet on this branch.)
 - Any modification to `alignment-snapper.cpp`, color-space conversions,
   Quake-style fast-inverse-sqrt, BAM atan2 — none of these are
   spectral methods. The Gemini branch's claims that they were are
-  documented in `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md`.
+  documented in `gemini_failure_mode.md`.
 - `gradient_projection.cpp` and other libcola changes — same reasoning.
 
 ## Polish bucket — pre-MR checklist
@@ -173,12 +175,12 @@ presentation:
       removal map for any subset reviewers don't want.
 - [ ] **Final notebook polish** — read-cold reviewer summary
       similar to the Skia branch's leading note. Most of the
-      content already exists in `SPECTRAL_PROGRESS.md`; the polish
+      content already exists in `progress.md`; the polish
       is making the entry-point obvious.
 
 ## Speculative — the spectral-SVG breadcrumb
 
-Recorded in `docs/SPECTRAL_SVG_EXPERIMENT.md` (commit
+Recorded in `svg_compression_experiment.md` (commit
 `61fa03d6e6`). Out of scope for this branch; left for whoever
-picks it up. See SPECTRAL_PROGRESS §7 for the headline finding
+picks it up. See progress.md §7 for the headline finding
 and pointer.

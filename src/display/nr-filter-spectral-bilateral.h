@@ -9,7 +9,7 @@
  * while smoothing interiors.
  *
  * SVG 1.1 has no native bilateral filter; this is an Inkscape
- * extension. See SPECTRAL_PROGRESS.md §0 / §5.2 and
+ * extension. See doc/spectral/progress.md §0 / §5.2 and
  * src/display/spectral/spectral-bilateral.h.
  *
  * --- Removal note for upstream maintainers ---

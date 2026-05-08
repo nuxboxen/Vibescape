@@ -50,7 +50,7 @@
  *
  * Output. A structured tab-separated report to stderr that the
  * `report-builder` test concatenates into a markdown summary at
- * `docs/SPECTRAL_SVG_EXPERIMENT.md`.
+ * `doc/spectral/svg_compression_experiment.md`.
  */
 
 #include <gtest/gtest.h>

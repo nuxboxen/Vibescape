@@ -1,3 +1,5 @@
+[Inkscape Developer Documentation](../readme.md) / [Spectral effects](readme.md) /
+
 # Spectral effects for Inkscape — progress notebook
 
 > ### Read-cold orientation for Inkscape reviewers
@@ -36,7 +38,7 @@
 > See §−1 for the protocol. The Tier 2 `[-]` decision is itself an
 > example of MPM working: the bench falsified the perf claim and
 > the branch pivoted honestly. The diagnostic counterpart of MPM is
-> `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md`.
+> `gemini_failure_mode.md`.
 >
 > **Reading order.** The notebook is structured for a reviewer who
 > wants to verify the work, not just read about it:
@@ -81,7 +83,7 @@ of a mathematical framework into a codebase implements the
 framework's *operators*, not just its *vocabulary*. The method
 exists because LLM-generated code routinely produces vocabulary
 matches without operator matches — a failure pattern characterized
-in detail in `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md`.
+in detail in `gemini_failure_mode.md`.
 
 The contributor encountered this directly: a prior Gemini-generated
 branch claimed a 3.85× speedup on `14-filters.svg` while in fact
@@ -171,14 +173,34 @@ have a named protocol to follow.
 ## 0. Framework provenance
 
 The mathematical substrate this branch ports comes from the
-mlehaptics / antikythera-maths spectral framework. Three resources
-worth pointing reviewers at:
+mlehaptics / antikythera-maths spectral framework. Four resources
+worth pointing reviewers at, in roughly chronological order of
+the framework's development:
 
 - **Antikythera-maths spectral notebook** —
   https://mlehaptics.readthedocs.io/en/latest/antikythera-maths/ —
   the foundational document. Lattice-Laplacian heat kernel, DCT
   eigenbasis, Phase-9 BIP residue vectors, AcuteCount integer-ALU
-  similarity proxy, FPU-lifted inner product.
+  similarity proxy, FPU-lifted inner product. The mathematical
+  primary objects this Inkscape branch consumes.
+
+- **Doom93 spectral research notebook** —
+  https://mlehaptics.readthedocs.io/en/latest/antikythera-maths/doom_spectral_research_notebook/ —
+  the framework's **first end-to-end primitive replacement
+  process**, applied to the 1993 DOOM engine (id Tech 1). Replaces
+  eight FPU-bound subsystems (Z-axis fiber gates, hitscan
+  raycasting, monster AI awareness, sound diffusion, lighting
+  calculations, collision response, spatial indexing, and
+  kinematics) with graph-Laplacian primitives mapped to discrete
+  sector topologies and hypervector encodings. Established the
+  "Rosetta Stone procedure" for translating legacy FPU subsystems
+  into the spectral graph-theoretic substrate. Methodologically
+  the closest precedent to this Inkscape work: also a
+  "replace existing primitives where they map cleanly; leave them
+  alone where they don't" discipline. The Tier 2 `[-]`
+  decision in §5 (spectral blur loses to van-Vliet IIR) is exactly
+  the kind of "doesn't map cleanly, leave alone" outcome this
+  precedent established as legitimate.
 
 - **Ephemerides spectral research notebook** —
   https://mlehaptics.readthedocs.io/en/latest/antikythera-maths/ephemerides_spectral_research_notebook/ —
@@ -186,9 +208,9 @@ worth pointing reviewers at:
   (52-body solar system, JPL DE441). It does **not** introduce new
   graphics-relevant primitives. It does demonstrate the same
   eigenbasis machinery scaling to a very different domain (orbit
-  prediction, ITN-chain search, body classification). Useful as
-  evidence that the substrate is general-purpose; not a source of
-  new operators for Inkscape.
+  prediction, ITN-chain search, body classification). The
+  FFT-residual-coupling pattern from this notebook is what the
+  spectral-SVG compression breadcrumb in §7 builds on.
 
 - **`ephemerides-spectral` PyPI package** —
   https://pypi.org/project/ephemerides-spectral/ — native-C reference
@@ -218,7 +240,7 @@ claimed a 3.85× speedup on `14-filters.svg`. On inspection:
   legitimate perf work but is not "spectral" — it's just FMA
   vectorization with a relabel.
 
-Full triage in `~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md`. That
+Full triage in `gemini_failure_mode.md`. That
 document characterizes Gemini's failure mode (lexical groundedness
 without operator groundedness) and gives the six screening criteria
 this branch holds itself to.
@@ -314,7 +336,7 @@ metric the spectral blur was supposed to move (large-σ blur cost on
 print-resolution canvases) is *not* moved by this implementation.
 The IIR baseline already minimizes it.
 
-Recorded in `SPECTRAL_TODO.md` §2 as `[-]` — tested and rejected for
+Recorded in `todo.md` §2 as `[-]` — tested and rejected for
 perf reasons, with the bench numbers as the rejection evidence.
 
 The dispatch site in `nr-filter-gaussian.cpp::render_cairo` is
@@ -346,7 +368,7 @@ of this branch.
 ## 4. Self-screening against the Gemini failure pattern
 
 Every commit on this branch must pass the six screens described in
-`~/gitlab/GeminiPlayground/GEMINI_FAILURE_MODE.md`. Reproduced here
+`gemini_failure_mode.md`. Reproduced here
 for convenience:
 
 1. **Bit-equivalence under benchmark.** Spectral output diff'd
@@ -364,7 +386,7 @@ for convenience:
    the σ regime where vanilla IIR wins, not just the regime where
    spectral wins. The crossover is the point of the integration.
 6. **Recorded structural-defect decisions.** Every `[-]` in
-   SPECTRAL_TODO.md (tested-and-rejected) carries an inline reasoning
+   todo.md (tested-and-rejected) carries an inline reasoning
    block, just like the Skia work did.
 
 A commit that doesn't pass these screens does not land.
@@ -380,11 +402,11 @@ Inkscape extensions.
 
 For reviewers reading this notebook outside an Inkscape build,
 PNG renders of the scalable icons are checked into
-`docs/spectral-icons/` for direct viewing:
+`icons/` for direct viewing:
 
 ### feSpectralNoise
 
-![feSpectralNoise icon](docs/spectral-icons/feSpectralNoise.png)
+![feSpectralNoise icon](icons/feSpectralNoise.png)
 
 Pink-noise tile generated by `<feSpectralNoise spectralNoiseProfile="pink"
 seed="3735928559"/>`. The visible spectrum is the same one a user gets
@@ -392,7 +414,7 @@ when they add this primitive to their document.
 
 ### feSpectralBilateral
 
-![feSpectralBilateral icon](docs/spectral-icons/feSpectralBilateral.png)
+![feSpectralBilateral icon](icons/feSpectralBilateral.png)
 
 Top half: a noisy red↔blue colour edge (input). Bottom half: the
 same input passed through `<feSpectralBilateral spectralSigmaSpatial="3"
@@ -402,7 +424,7 @@ directly *demonstrates* what the primitive does.
 
 ### feSpectralDistance
 
-![feSpectralDistance icon](docs/spectral-icons/feSpectralDistance.png)
+![feSpectralDistance icon](icons/feSpectralDistance.png)
 
 A black source disk wrapped in the heat-kernel SDF radial gradient
 produced by `<feSpectralDistance spectralSigmaSpatial="6"
@@ -559,7 +581,7 @@ no preferred basis).
 
 Findings, method, and follow-on directions documented in:
 
-- `docs/SPECTRAL_SVG_EXPERIMENT.md` — full report, the
+- `svg_compression_experiment.md` — full report, the
   PSNR-vs-truncation table, interpretation, and concrete next-steps
   for someone picking the work up.
 - `testfiles/src/spectral-compression-experiment-test.cpp` —
@@ -578,7 +600,7 @@ mlehaptics framework researchers, image-compression people)
 exploring whether to build a "spectral-SVG" file format on this
 substrate. Nothing in the rendering pipeline depends on it; if the
 upstream maintainers don't want the experiment, removing
-`docs/SPECTRAL_SVG_EXPERIMENT.md` and the test file is a clean
+`svg_compression_experiment.md` and the test file is a clean
 revert.
 
 The structural finding is the kind of evidence the

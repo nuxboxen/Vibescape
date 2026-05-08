@@ -18,7 +18,7 @@
  *    σ ∈ {8, 16, 32, 64, 128}.
  *
  * Output goes to stderr and feeds the `kSpectralCutoff` decision in
- * SPECTRAL_PROGRESS.md §N. The crossover σ where spectral_ms >
+ * doc/spectral/progress.md §N. The crossover σ where spectral_ms >
  * iir_ms is the cutoff. Below it, IIR wins; above it, spectral wins.
  */
 

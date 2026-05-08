@@ -12,7 +12,7 @@
  * opaque grayscale RGBA result.
  *
  * SVG 1.1 has no native distance-field primitive; this is an
- * Inkscape extension. See SPECTRAL_PROGRESS.md §0 / §5.2 and
+ * Inkscape extension. See doc/spectral/progress.md §0 / §5.2 and
  * src/display/spectral/spectral-distance-field.h.
  *
  * --- Removal note for upstream maintainers ---

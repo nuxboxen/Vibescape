@@ -25,10 +25,10 @@ Perona-Malik diffusion) is shared across all three primitives.
 Design rationale, math derivations, parity tests against reference
 operators, and a structured screening protocol
 (the "Mathematical Provenance Method") are documented in
-SPECTRAL_PROGRESS.md and SPECTRAL_TODO.md at the repository root.
+doc/spectral/progress.md and doc/spectral/todo.md at the repository root.
 A speculative spectral-SVG compression experiment, included as
 breadcrumb material for future contributors, is in
-docs/SPECTRAL_SVG_EXPERIMENT.md.
+doc/spectral/svg_compression_experiment.md.
 
 ==================================================================
 

@@ -7,7 +7,7 @@
  * caller specify the *power spectrum* P(λ) of the noise directly:
  * white (flat), pink (1/√λ, "natural"), brown (1/λ, blob-like), or
  * blue (√λ, dither-friendly). Built on the spectral substrate
- * (DCT eigenmode framing) — see SPECTRAL_PROGRESS.md §0 and
+ * (DCT eigenmode framing) — see doc/spectral/progress.md §0 and
  * src/display/spectral/spectral-noise.h.
  *
  * --- Removal note for upstream maintainers ---

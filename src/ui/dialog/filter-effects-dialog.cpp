@@ -2830,7 +2830,7 @@ static const std::map<Inkscape::Filters::FilterPrimitiveType, EffectMetadata>& g
         _("Fills the region with graphics from an external file or from another portion of the document.") }},
     { NR_FILTER_TURBULENCE,        { EffectCategory::Generation, "feTurbulence-icon",
         _("Renders Perlin noise, which is useful to generate textures such as clouds, fire, smoke, marble or granite.") }},
-    // -- Inkscape spectral extensions; see SPECTRAL_PROGRESS.md --
+    // -- Inkscape spectral extensions; see doc/spectral/progress.md --
     // Each icon is a self-portrait — the SVG icon uses the primitive
     // it represents, rendered by the primitive itself at icon load.
     { NR_FILTER_SPECTRAL_BILATERAL, { EffectCategory::Effect,     "feSpectralBilateral-icon",
@@ -3242,7 +3242,7 @@ void FilterEffectsDialog::init_settings_widgets()
     _settings->add_spinscale(1, SPAttr::NUMOCTAVES, _("Detail:"), 1, 10, 1, 1, 0);
     _settings->add_spinscale(0, SPAttr::SEED, _("Seed:"), 0, 1000, 1, 1, 0, _("The starting number for the pseudo random number generator."));
 
-    // -- Inkscape spectral extensions; see SPECTRAL_PROGRESS.md --
+    // -- Inkscape spectral extensions; see doc/spectral/progress.md --
     _settings->type(NR_FILTER_SPECTRAL_BILATERAL);
     _settings->add_spinscale(4.0,  SPAttr::SPECTRAL_SIGMA_SPATIAL, _("Spatial σ:"),
         0.5, 20.0, 0.5, 0.1, 1,

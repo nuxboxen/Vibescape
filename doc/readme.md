@@ -11,6 +11,7 @@ For user-facing documentation, please refer to the [Inkscape website](https://in
 - [Compiling Inkscape](./building/readme.md)
 - [Style guide for developer documentation](./documentation_style.md)
 - [Developing Inkscape with Visual Studio Code on Windows](./vscode/readme.md)
+- [Spectral filter primitives — design notebook](./spectral/readme.md)
 
 
 

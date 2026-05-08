@@ -1,3 +1,5 @@
+[Inkscape Developer Documentation](../readme.md) / [Spectral effects](readme.md) /
+
 # Spectral-SVG compression experiment — full report
 
 ## Origin
@@ -23,7 +25,7 @@ If no — i.e., if the residual is roughly flat, noise-like — then our
 eigenbasis offers no advantage over standard 8×8-block DCT (JPEG) and
 the spectral-SVG idea isn't load-bearing.
 
-The Mathematical Provenance Method (`SPECTRAL_PROGRESS.md §−1`) screen
+The Mathematical Provenance Method (`progress.md §−1`) screen
 asks: predict the result, run the test, report what was found. This
 document is that report.
 

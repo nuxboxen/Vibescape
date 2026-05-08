@@ -3,7 +3,7 @@
  * SVG <feSpectralNoise> filter primitive (Inkscape extension).
  *
  * Power-spectrum-controlled synthetic noise as a generator filter
- * primitive — see SPECTRAL_PROGRESS.md §0 and Tier 3.4 for design
+ * primitive — see doc/spectral/progress.md §0 and Tier 3.4 for design
  * rationale. Wraps the substrate
  * `Inkscape::Spectral::noise_generate_a8`.
  *

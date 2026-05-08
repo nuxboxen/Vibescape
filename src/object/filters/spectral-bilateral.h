@@ -3,7 +3,7 @@
  * SVG <feSpectralBilateral> filter primitive (Inkscape extension).
  *
  * Edge-preserving smoothing via Perona-Malik anisotropic diffusion.
- * See SPECTRAL_PROGRESS.md §0 / §5.2 and substrate header
+ * See doc/spectral/progress.md §0 / §5.2 and substrate header
  * src/display/spectral/spectral-bilateral.h for the operator.
  *
  * Attributes:
