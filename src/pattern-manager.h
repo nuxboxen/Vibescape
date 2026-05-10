@@ -54,10 +54,10 @@ public:
     // get pattern image on a checkerboard background for use as a larger preview
     Cairo::RefPtr<Cairo::Surface> get_preview(SPPaintServer* pattern, int width, int height, unsigned int rgba_background, double device_scale);
 
-protected:
-    PatternManager();
-
 private:
+    PatternManager();
+    friend class EnableSingleton;
+
     void init();
     Glib::RefPtr<Gtk::TreeModel> _model;
     std::vector<std::shared_ptr<Category>> _categories;

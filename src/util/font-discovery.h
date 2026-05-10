@@ -45,10 +45,10 @@ public:
 
     sigc::scoped_connection connect_to_fonts(std::function<void (const MessageType&)> fn);
 
-protected:
-    FontDiscovery();
-
 private:
+    FontDiscovery();
+    friend class EnableSingleton;
+
     FontsPayload _fonts;
     sigc::scoped_connection _connection;
     Inkscape::Async::OperationStream<FontsPayload, double, Glib::ustring, std::vector<FontInfo>> _loading;

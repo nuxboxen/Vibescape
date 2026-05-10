@@ -107,11 +107,11 @@ public:
     PangoContext *get_font_context() const { return fontContext; }
     PangoFontDescription *parsePostscriptName(std::string const &name, bool substitute);
 
-protected:
+private:
     FontFactory();
     ~FontFactory();
+    friend class EnableSingleton;
 
-private:
     // Pango data. Backend-specific structures are cast to these opaque types.
     PangoFontMap *fontServer;
     PangoContext *fontContext;

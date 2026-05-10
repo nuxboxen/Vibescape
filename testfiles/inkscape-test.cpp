@@ -21,6 +21,8 @@
 
 int main(int argc, char **argv)
 {
+    Inkscape::Util::Statics statics;
+
     // Opt into handling GSL errors locally, rather than crashing.
     gsl_set_error_handler_off();
 
@@ -34,7 +36,6 @@ int main(int argc, char **argv)
     ::testing::InitGoogleTest(&argc, argv);
     auto ret = RUN_ALL_TESTS();
 
-    Inkscape::Util::StaticsBin::get().destroy();
     return ret;
 }
 

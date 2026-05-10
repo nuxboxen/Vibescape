@@ -1,39 +1,44 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "statics.h"
 
-#include <cassert>
-
 namespace Inkscape::Util {
 
-StaticsBin &StaticsBin::get()
+Statics *Statics::instance = nullptr;
+
+Statics::Statics()
 {
-    static StaticsBin instance;
-    return instance;
+    assert(!instance);
+    instance = this;
 }
 
-void StaticsBin::destroy()
+Statics::~Statics()
 {
-    for (auto n = head; n; n = n->next) {
-        n->destroy();
+    assert(instance);
+    clear_list();
+    instance = nullptr;
+}
+
+void Statics::add_to_list(detail::FuncListItem *holder)
+{
+    holder->next = head;
+    head = holder;
+}
+
+void Statics::clear_list()
+{
+    auto guard = std::unique_lock(lock);
+
+    while (head) {
+        auto n = head;
+        head = head->next;
+
+        guard.unlock();
+
+        // Don't run arbitrary code while holding a lock.
+        n->exec();
+
+        guard.lock();
     }
-}
-
-StaticsBin::~StaticsBin()
-{
-    for (auto n = head; n; n = n->next) {
-        // If this assertion triggers, then destroy() wasn't called close enough to the end of main().
-        assert(!n->active() && "StaticsBin::destroy() must be called before main() exit");
-    }
-}
-
-StaticHolderBase::StaticHolderBase()
-    : StaticHolderBase(StaticsBin::get())
-{}
-
-StaticHolderBase::StaticHolderBase(StaticsBin &bin)
-    : next{bin.head}
-{
-    bin.head = this;
 }
 
 } // namespace Inkscape::Util
