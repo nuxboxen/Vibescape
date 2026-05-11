@@ -1654,7 +1654,7 @@ void InkscapePreferences::initPageUI()
     _misc_recent.init("/options/maxrecentdocuments/value", 0.0, 1000.0, 1.0, 1.0, 1.0, true, false);
 
     auto const reset_recent = Gtk::make_managed<Gtk::Button>(_("Clear list"));
-    reset_recent->signal_clicked().connect(sigc::ptr_fun(Inkscape::IO::resetRecentInkscapeList));
+    reset_recent->signal_clicked().connect([]{ (void)Inkscape::IO::reset_recent_files_list(); });
 
     _page_ui.add_line( false, _("Maximum documents\n in Open _Recent:"), _misc_recent, "",
                               _("Set the maximum length of the Open Recent list in the File menu, or clear the list"), false, reset_recent);
@@ -2593,6 +2593,18 @@ void InkscapePreferences::initPageIO()
     _save_autosave_interval.changed_signal.connect([](double) { Inkscape::AutoSave::restart(); });
 
     this->AddPage(_page_autosave, _("Autosave"), iter_io, PREFS_PAGE_IO_AUTOSAVE);
+
+    // Recent Files Options
+    _recentfiles_shortened_path_separator.init("/options/recentfiles/shortened_path_separator", true);
+    _page_recentfiles.add_line(false, _("Shortened path separator"), _recentfiles_shortened_path_separator, {}, _("Set the separator used in shortened paths"), false);
+
+    _recentfiles_query_timeout_ms_startup.init("/options/recentfiles/query_timeout_ms_startup", 0.0, 100000.0, 5.0, 1.0, 5, true, false);
+    _page_recentfiles.add_line(false, _("Startup query timeout (in milliseconds)"), _recentfiles_query_timeout_ms_startup, {}, _("Change the startup file query cancellation timeout"), false);
+
+    _recentfiles_query_timeout_ms_background.init("/options/recentfiles/query_timeout_ms_background", 0.0, 100000.0, 5.0, 1.0, 5.0, true, false);
+    _page_recentfiles.add_line(false, _("Background query timeout (in milliseconds)"), _recentfiles_query_timeout_ms_background, {}, _("Change the background file query cancellation timeout"), false);
+
+    this->AddPage(_page_recentfiles, _("Recent files"), iter_io, PREFS_PAGE_IO_RECENTFILES);
 
     // No Result
     _page_notfound.add_group_header(_("No matches were found, try another search!"));

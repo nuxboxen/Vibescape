@@ -362,6 +362,10 @@ static char const preferences_skeleton[] =
     </group>
     <group id="forkgradientvectors" value="1"/>
     <group id="autosave" enable="1" interval="10" path="" max="50"/>
+    <group id="recentfiles"
+      shortened_path_separator="  🞂  "
+      query_timeout_ms_startup="5"
+      query_timeout_ms_background="5"/>
     <group id="grids"
       no_emphasize_when_zoomedout="0">
       <group id="xy"

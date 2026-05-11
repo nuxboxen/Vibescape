@@ -49,6 +49,7 @@
 #include "io/dir-util.h"
 #include "io/file.h"
 #include "io/fix-broken-links.h"
+#include "io/recent-files.h"
 #include "io/resource.h"
 #include "io/sys.h"
 #include "layer-manager.h"
@@ -347,8 +348,11 @@ sp_file_save_dialog(Gtk::Window &parentWindow, SPDocument *doc, Inkscape::Extens
      if (file_save(parentWindow, doc, file, extension, true, !is_copy, save_method)) {
 
         if (doc->getDocumentFilename()) {
-            Glib::RefPtr<Gtk::RecentManager> recent = Gtk::RecentManager::get_default();
-            recent->add_item(file->get_uri()); // Gtk4 add_item(file)
+            auto name = doc->getDocumentName() ? std::optional(doc->getDocumentName()) : std::nullopt;
+            Inkscape::IO::add_or_update_recent_file(file->get_uri(), name);
+
+            auto recent_files_list = Inkscape::IO::get_recent_files_list();
+            Inkscape::IO::build_recent_files_menu(Inkscape::IO::recent_files_menu, recent_files_list);
         }
 
         save_path = Glib::path_get_dirname(file->get_path());

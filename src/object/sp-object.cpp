@@ -28,6 +28,7 @@
 #include "color-profile.h"
 #include "document.h"
 #include "io/fix-broken-links.h"
+#include "io/path.h"
 #include "preferences.h"
 #include "style.h"
 #include "live_effects/lpeobject.h"
@@ -1842,8 +1843,8 @@ void SPObject::setExportFilename(Glib::ustring filename)
     const char *doc_filename = document->getDocumentFilename();
     std::string base = Glib::path_get_dirname(doc_filename ? doc_filename : filename.c_str());
 
-    filename = Inkscape::optimizePath(filename, base);
-    repr->setAttributeOrRemoveIfEmpty("inkscape:export-filename", filename.c_str());
+    auto const optimized = Inkscape::IO::optimize_path(filename.raw(), base).first;
+    repr->setAttributeOrRemoveIfEmpty("inkscape:export-filename", std::string_view(optimized).substr(2).data());
 }
 
 Geom::Point SPObject::getExportDpi() const

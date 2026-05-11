@@ -352,7 +352,8 @@ Application::crash_handler (int /*signum*/)
                 fclose (file);
 
                 // Attempt to add the emergency save to the recent files, so users can find it on restart
-                Inkscape::IO::addInkscapeRecentSvg(c, docname, {"Crash"}, document_filename ? document_filename : "");
+                auto original_uri = document_filename ? std::optional(Glib::filename_to_uri(document_filename)) : std::nullopt;
+                Inkscape::IO::add_or_update_recent_file(Glib::filename_to_uri(c), docname, {"Crash"}, original_uri);
             } else {
                 failednames.push_back((doc->getDocumentName()) ? g_strdup(doc->getDocumentName()) : g_strdup (_("Untitled document")));
             }

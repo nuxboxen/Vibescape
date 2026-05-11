@@ -10,11 +10,15 @@
 
 #include "io/file.h"
 
+#include <chrono>
 #include <iostream>
 #include <memory>
+#include <thread>
 #include <unistd.h>
 #include <glibmm/fileutils.h>
+#include <glibmm/main.h>
 #include <glibmm/miscutils.h>
+#include <glibmm/refptr.h>
 #include <giomm/file.h>
 
 #include "document.h"
@@ -140,6 +144,29 @@ std::string find_original_file(Glib::StdStringView const filepath, Glib::StdStri
         return filename;
     }
     return ""; 
+}
+
+Glib::RefPtr<Gio::FileInfo> query_file_info_async(Glib::RefPtr<Gio::File> file, std::string const &attributes, size_t timeout_ms) {
+    auto cancellable = Gio::Cancellable::create();
+    Glib::RefPtr<Gio::FileInfo> file_info = nullptr;
+    file->query_info_async([file, &file_info](Glib::RefPtr<Gio::AsyncResult> const &result) {
+        try {
+            file_info = file->query_info_finish(result);
+        } catch (Glib::Error &ex) {
+            if (ex.code() == Gio::Error::CANCELLED) {
+                std::cerr << "IO::query_file_info_async: Async query cancelled for file \""
+                          << file->get_uri() << "\": Timed out" << std::endl;
+            } else {
+                std::cerr << "IO::query_file_info_async: " << ex.what() << std::endl;
+            }
+        }
+    }, cancellable, attributes);
+    if (timeout_ms > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeout_ms));
+    }
+    while (Glib::MainContext::get_default()->iteration(false));
+    cancellable->cancel();
+    return file_info;
 }
 
 } // namespace Inkscape::IO

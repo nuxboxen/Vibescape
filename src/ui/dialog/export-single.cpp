@@ -29,6 +29,7 @@
 #include "document-undo.h"
 #include "extension/output.h"
 #include "inkscape-window.h"
+#include "io/recent-files.h"
 #include "io/sandbox.h"
 #include "object/sp-page.h"
 #include "object/sp-root.h"
@@ -747,13 +748,6 @@ void SingleExport::onExport()
     }
     // Save the export hints back to the svg document
     if (exportSuccessful) {
-        std::string path = Export::absolutizePath(_document, filepath_native);
-        auto recentmanager = Gtk::RecentManager::get_default();
-        if (recentmanager && Glib::path_is_absolute(path)) {
-            Glib::ustring uri = Glib::filename_to_uri(path);
-            recentmanager->add_item(uri);
-        }
-
         SPObject *target;
         switch (current_key) {
             case SELECTION_CUSTOM:
