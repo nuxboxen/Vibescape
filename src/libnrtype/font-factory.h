@@ -62,9 +62,6 @@ public:
     // Refresh pango font configuration
     void refreshConfig();
 
-    ///< The fontsize used as workaround for hinting.
-    static constexpr double fontSize = 512;
-
     std::vector<std::string> GetAllFontNames();
 
     /// Returns strings to be used in the UI for family and face (or "style" as the column is labeled)

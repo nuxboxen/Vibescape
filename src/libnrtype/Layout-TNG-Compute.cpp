@@ -105,7 +105,7 @@ bool Layout::Calculator::_measureUnbrokenSpan(ParagraphInfo const &para,
     }
 
     // a normal span going with a normal block-progression
-    double font_size_multiplier = span->start.iter_span->font_size / (PANGO_SCALE * _font_factory_size_multiplier);
+    double font_size_multiplier = span->start.iter_span->font_size / PANGO_SCALE;
     double soft_hyphen_glyph_width = 0.0;
     bool soft_hyphen_in_word = false;
     bool is_soft_hyphen = false;
@@ -504,7 +504,7 @@ void Layout::Calculator::_outputLine(ParagraphInfo const &para,
                 InputStreamTextSource const *text_source = static_cast<InputStreamTextSource const *>(_flow._input_stream[unbroken_span.input_index]);
                 Glib::ustring::const_iterator iter_source_text = Glib::ustring::const_iterator(unbroken_span.input_stream_first_character.base() + it_span->start.char_byte) ;
                 unsigned char_index_in_unbroken_span = it_span->start.char_index;
-                double   font_size_multiplier        = new_span.font_size / (PANGO_SCALE * _font_factory_size_multiplier);
+                double   font_size_multiplier        = new_span.font_size / PANGO_SCALE;
                 int      log_cluster_size_glyphs     = 0;   // Number of glyphs in this log_cluster
                 int      log_cluster_size_chars      = 0;   // Number of characters in this log_cluster 
                 unsigned end_byte                    = 0;
@@ -664,7 +664,7 @@ void Layout::Calculator::_outputLine(ParagraphInfo const &para,
                                 new_glyph.y -= delta_y;
 
                                 double shift = 0;
-                                double scale_factor = PANGO_SCALE * _font_factory_size_multiplier;
+                                double scale_factor = PANGO_SCALE;
                                 if (!font->has_vertical()) {
 
                                     // If there are no vertical metrics, glyphs are vertically
@@ -1905,8 +1905,6 @@ bool Layout::Calculator::calculate()
     _flow._clearOutputObjects();
 
     _pango_context = FontFactory::get().get_font_context();
-
-    _font_factory_size_multiplier = FontFactory::get().fontSize;
 
     _block_progression = _flow._blockProgression();
     if( _block_progression == RIGHT_TO_LEFT || _block_progression == LEFT_TO_RIGHT ) {
