@@ -612,12 +612,12 @@ void Script::effect(Inkscape::Extension::Effect *mod, ExecutionEnv *executionEnv
 static size_t get_cmdline_budget()
 {
 #ifdef _WIN32
-    // Windows: Length limit is fixed at 32737
-    // Leave 4096 of overhead for executable and files
-    return 28701; // 32737-4096
+    // Windows: Length limit is fixed at 32767
+    // Leave 4096 of overhead for executable and files (rough overestimate)
+    return 32767 - 4096;
 #else
     // Unix: Length limit is from sysconf
-    // Leave 32K of overhead for executable, files, and environment
+    // Leave 32K of overhead for executable, files, and environment (rough overestimate)
     // Also guard against sysconf failure (-1)
     long const arg_max = sysconf(_SC_ARG_MAX);
     size_t usable = 0;
