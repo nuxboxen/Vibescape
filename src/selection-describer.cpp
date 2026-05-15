@@ -106,10 +106,13 @@ SelectionDescriber::~SelectionDescriber() = default;
 
 void SelectionDescriber::updateMessage(Inkscape::Selection *selection)
 {
-    if (selection->isEmpty()) { // no items
+    // Only look at "items", not just any selected object. SPItems are visual, but non-visual
+    // SPObjects can also be selected (like swatches) and shoudn't be mentioned here.
+    auto const items = selection->items_vector();
+    if (items.empty()) { // no items
         _context.set(Inkscape::NORMAL_MESSAGE, _when_nothing);
     } else {
-        SPItem *item = selection->firstItem();
+        SPItem *item = items.front();
         g_assert(item != nullptr);
         SPObject *layer = selection->desktop()->layerManager().layerForObject(item);
         SPObject *root = selection->desktop()->layerManager().currentRoot();
@@ -172,7 +175,8 @@ void SelectionDescriber::updateMessage(Inkscape::Selection *selection)
         g_free (layer_name);
         g_free (parent_name);
 
-        if (selection->singleItem()) { // one item
+        int objcount = items.size();
+        if (objcount == 1) { // one item
             char *item_desc = item->detailedDescription();
 
             bool isUse = is<SPUse>(item);
@@ -212,8 +216,6 @@ void SelectionDescriber::updateMessage(Inkscape::Selection *selection)
 
             g_free(item_desc);
         } else { // multiple items
-            auto const items = selection->items_vector();
-            int objcount = items.size();
             auto const &[types, num] = collect_terms(items);
 
             gchar *objects_str = g_strdup_printf(ngettext(
