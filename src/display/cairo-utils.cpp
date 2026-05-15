@@ -1304,6 +1304,9 @@ Colors::Color ink_cairo_surface_average_color(cairo_surface_t *surface, cairo_su
 {
     double r, g, b, a = 0.0;
     double count = ink_cairo_surface_average_color_internal(surface, mask, r, g, b, a);
+    if (a == 0.0) {
+        return Colors::Color(Colors::Space::Type::RGB, {0, 0, 0, 0});
+    }
     auto color = Colors::Color(Colors::Space::Type::RGB, {r / a, g / a, b / a, a / count});
     color.normalize();
     return color;
