@@ -9,8 +9,7 @@
 
 #include "fix-broken-links.h"
 
-#include <algorithm>
-#include <set>
+#include <giomm/file.h>
 #include <glibmm/convert.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/i18n.h>
@@ -20,62 +19,14 @@
 
 #include "document-undo.h"
 #include "document.h"
-#include "io/split-path.h"
+#include "io/path.h"
+#include "io/recent-files.h"
 #include "object/sp-object.h"
 #include "ui/icon-names.h"
 #include "xml/href-attribute-helper.h"
 #include "xml/node.h"
 
-namespace Inkscape {
-
-#ifdef _WIN32
-constexpr bool platform_windows = true;
-#else
-constexpr bool platform_windows = false;
-#endif
-
-/**
- * Convert an absolute path into a relative one if possible to do in the given number of parent steps.
- *
- * @arg path - The absolute path to convert
- * @arg base - The base or reference path to be relative to
- * @arg parents - The number of parents or .. segments to allow
- *
- * All input strings must have the same encoding,
- * either UTF8 or platform-native encoding (see Glib::filename_to_utf8).
- * The return value has the same encoding as the input.
- */
-std::string optimizePath(std::string const &path, std::string const &base, unsigned int parents)
-{
-    std::string result = path;
-
-    if (!path.empty() && Glib::path_is_absolute(path)) {
-
-        // Whack the parts into pieces
-        std::vector<std::string> parts = Inkscape::IO::split_path(path).allocate_strings();
-        std::vector<std::string> baseParts = Inkscape::IO::split_path(base).allocate_strings();
-
-        if ( !parts.empty() && !baseParts.empty() && (parts[0] == baseParts[0]) ) {
-            // Both paths have the same root. We can proceed.
-            while ( !parts.empty() && !baseParts.empty() && (parts[0] == baseParts[0]) ) {
-                parts.erase( parts.begin() );
-                baseParts.erase( baseParts.begin() );
-            }
-
-            if (!parts.empty() && baseParts.size() <= parents) {
-                result.clear();
-
-                for ( size_t i = 0; i < baseParts.size(); ++i ) {
-                    parts.insert(parts.begin(), "..");
-                }
-                result = Glib::build_filename( parts );
-            }
-        }
-    }
-
-    return result;
-}
-
+namespace Inkscape::IO {
 
 bool fixBrokenLinks(SPDocument *doc);
     
@@ -95,7 +46,7 @@ static std::vector<Glib::ustring> findBrokenLinks(SPDocument *doc);
  *
  * @return a map of found links.
  */
-static std::map<Glib::ustring, Glib::ustring> locateLinks(Glib::ustring const & docbase, std::vector<Glib::ustring> const & brokenLinks);
+static std::map<Glib::ustring, Glib::ustring> locateLinks(Glib::ustring const & docbase, std::vector<Glib::ustring> const & brokenLinks, std::span<Glib::RefPtr<Gtk::RecentInfo>> recent_files);
 
 
 /**
@@ -113,7 +64,6 @@ static bool extractFilepath(Glib::ustring const &href, std::string &filename);
  */
 static bool reconstructFilepath(Glib::ustring const &href, std::string &filename);
 
-static bool searchUpwards( std::string const &base, std::string const &subpath, std::string &dest );
 
 
 
@@ -204,8 +154,51 @@ static std::vector<Glib::ustring> findBrokenLinks( SPDocument *doc )
     return result;
 }
 
+/* Given a base path and an assumed subpath, returns the longest
+ * combination of their parts that exists on the file system.
+ *
+ * Example:
+ *
+ * Assume /a/d exists on the file system
+ *
+ * Function arguments:
+ *   base = /a/b
+ *   subpath = c/d
+ *
+ * Try /a/b/c/d => doesn't exist
+ * Try /a/b/d   => doesn't exist
+ * Try /a/c/d   => doesn't exist
+ * Try /a/d     => exists, return this path
+ *
+ * If none of the combinations exist, return an empty string
+ */
+std::string search_upwards_and_concat_paths(std::string_view base, std::string_view subpath)
+{
+    Inkscape::IO::PathParts parts = Inkscape::IO::split_path(subpath);
 
-static std::map<Glib::ustring, Glib::ustring> locateLinks(Glib::ustring const & docbase, std::vector<Glib::ustring> const & brokenLinks)
+    if (parts.empty()) {
+        return std::string{};
+    }
+
+    Inkscape::IO::PathParts base_parts = Inkscape::IO::split_path(base);
+
+    for (auto i = base_parts.size(); i > 0; i--) {
+        base_parts.data.resize(base_parts.size() + parts.size());
+        for (auto j = 0; j < parts.size(); j++) {
+            std::copy(parts.data.begin() + j, parts.data.end(), base_parts.data.begin() + i);
+            std::string filepath = base_parts.join();
+            if (Gio::File::create_for_path(filepath)->query_exists()) {
+                return filepath;
+            };
+            base_parts.data.pop_back();
+        }
+        base_parts.data.pop_back();
+    }
+
+    return std::string{};
+}
+
+static std::map<Glib::ustring, Glib::ustring> locateLinks(Glib::ustring const & docbase, std::vector<Glib::ustring> const & brokenLinks, std::span<Glib::RefPtr<Gtk::RecentInfo>> const recent_files)
 {
     std::map<Glib::ustring, Glib::ustring> result;
 
@@ -213,9 +206,7 @@ static std::map<Glib::ustring, Glib::ustring> locateLinks(Glib::ustring const & 
     // Note: we use a vector because we want them to stay in order:
     std::vector<std::string> priorLocations;
 
-    Glib::RefPtr<Gtk::RecentManager> recentMgr = Gtk::RecentManager::get_default();
-    std::vector< Glib::RefPtr<Gtk::RecentInfo> > recentItems = recentMgr->get_items();
-    for (auto & recentItem : recentItems) {
+    for (auto recentItem : recent_files) {
         Glib::ustring uri = recentItem->get_uri();
         auto scheme = Glib::uri_parse_scheme(uri.raw());
         if ( scheme == "file" ) {
@@ -251,21 +242,23 @@ static std::map<Glib::ustring, Glib::ustring> locateLinks(Glib::ustring const & 
 
             // search in parent folders
             if (!exists) {
-                exists = searchUpwards(docbase_native, origPath, filename);
+                filename = search_upwards_and_concat_paths(docbase_native, origPath);
+                exists = !filename.empty();
             }
 
             // Check if the MRU bases point us to it.
             if ( !exists ) {
                 if ( !Glib::path_is_absolute(origPath) ) {
                     for ( std::vector<std::string>::iterator it = priorLocations.begin(); !exists && (it != priorLocations.end()); ++it ) {
-                        exists = searchUpwards(*it, origPath, filename);
+                        filename = search_upwards_and_concat_paths(*it, origPath);
+                        exists = !filename.empty();
                     }
                 }
             }
 
             if ( exists ) {
                 if (Glib::path_is_absolute(filename)) {
-                    filename = optimizePath(filename, docbase_native);
+                    filename = Inkscape::IO::optimize_path(docbase_native, filename).first;
                 }
 
                 bool isAbsolute = Glib::path_is_absolute(filename);
@@ -279,7 +272,7 @@ static std::map<Glib::ustring, Glib::ustring> locateLinks(Glib::ustring const & 
     return result;
 }
 
-bool fixBrokenLinks(SPDocument *doc)
+bool fixBrokenLinks(SPDocument *doc, std::span<Glib::RefPtr<Gtk::RecentInfo>> recent_files)
 {
     bool changed = false;
     if ( doc ) {
@@ -299,7 +292,7 @@ bool fixBrokenLinks(SPDocument *doc)
             base = doc->getDocumentBase();
         }
 
-        std::map<Glib::ustring, Glib::ustring> mapping = locateLinks(base, brokenHrefs);
+        std::map<Glib::ustring, Glib::ustring> mapping = locateLinks(base, brokenHrefs, recent_files);
         for ( std::map<Glib::ustring, Glib::ustring>::iterator it = mapping.begin(); it != mapping.end(); ++it )
         {
             // TODO debug g_message("     [%s] ==> {%s}", it->first.c_str(), it->second.c_str());
@@ -341,37 +334,7 @@ bool fixBrokenLinks(SPDocument *doc)
     return changed;
 }
 
-static bool searchUpwards( std::string const &base, std::string const &subpath, std::string &dest )
-{
-    bool exists = false;
-    // TODO debug g_message("............");
-
-    std::vector<std::string> parts = Inkscape::IO::split_path(subpath).allocate_strings();
-    std::vector<std::string> baseParts = Inkscape::IO::split_path(base).allocate_strings();
-
-    while ( !exists && !baseParts.empty() ) {
-        std::vector<std::string> current;
-        current.insert(current.begin(), parts.begin(), parts.end());
-        // TODO debug g_message("         ---{%s}", Glib::build_filename( baseParts ).c_str());
-        while ( !exists && !current.empty() ) {
-            auto combined = platform_windows ? std::vector<std::string>{} : std::vector<std::string>{"/"};
-            combined.insert( combined.end(), baseParts.begin(), baseParts.end() );
-            combined.insert( combined.end(), current.begin(), current.end() );
-            std::string filepath = Glib::build_filename( combined );
-            exists = Glib::file_test(filepath, Glib::FileTest::EXISTS);
-            // TODO debug g_message("            ...[%s] %s", filepath.c_str(), (exists ? "XXX" : ""));
-            if ( exists ) {
-                dest = filepath;
-            }
-            current.erase( current.begin() );
-        }
-        baseParts.pop_back();
-    }
-
-    return exists;
-}
-
-} // namespace Inkscape
+} // namespace Inkscape::IO
 
 /*
   Local Variables:

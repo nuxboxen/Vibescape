@@ -85,6 +85,7 @@ enum
     PREFS_PAGE_IO_CMS,
     PREFS_PAGE_IO_AUTOSAVE,
     PREFS_PAGE_IO_OPENCLIPART,
+    PREFS_PAGE_IO_RECENTFILES,
     PREFS_PAGE_SYSTEM,
     PREFS_PAGE_BITMAPS,
     PREFS_PAGE_RENDERING,
@@ -189,6 +190,7 @@ protected:
     UI::Widget::DialogPage _page_svgexport;
     UI::Widget::DialogPage _page_cms;
     UI::Widget::DialogPage _page_autosave;
+    UI::Widget::DialogPage _page_recentfiles;
 
     UI::Widget::DialogPage _page_rendering;
     UI::Widget::DialogPage _page_system;
@@ -567,6 +569,11 @@ protected:
     UI::Widget::PrefCheckButton   _svgexport_insert_hatch_polyfill;
     UI::Widget::PrefCheckButton   _svgexport_remove_marker_auto_start_reverse;
     UI::Widget::PrefCheckButton   _svgexport_remove_marker_context_paint;
+
+    // Recent Files page:
+    UI::Widget::PrefEntry         _recentfiles_shortened_path_separator;
+    UI::Widget::PrefSpinButton    _recentfiles_query_timeout_ms_startup;
+    UI::Widget::PrefSpinButton    _recentfiles_query_timeout_ms_background;
     // clang-format on
 
     Gtk::Notebook _kb_notebook;

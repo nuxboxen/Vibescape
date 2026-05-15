@@ -10,78 +10,148 @@
 
 #include "recent-files.h"
 
-#include <algorithm>
 #include <cassert>
-#include <format>
-#include <glibmm/convert.h>
-#include <glibmm/miscutils.h>
+#include <chrono>
+#include <iostream>
+#include <thread>
+#include <ranges>
 
-#include "io/split-path.h"
+#include <boost/algorithm/string/replace.hpp>
+#include <giomm/cancellable.h>
+#include <giomm/file.h>
+#include <giomm/fileinfo.h>
+#include <giomm/menu.h>
+#include <glibmm/convert.h>
+#include <glibmm/i18n.h>
+#include <glibmm/main.h>
+#include <glibmm/miscutils.h>
+#include <gtkmm/recentinfo.h>
+
+#include "io/path.h"
+#include "preferences.h"
 
 namespace Inkscape::IO {
 
-#ifdef _WIN32
-constexpr size_t platform_index = 1;
-#else
-constexpr size_t platform_index = 0;
-#endif
+static Glib::ustring const recent_app_name = "org.inkscape.Inkscape";
 
-static const Glib::ustring recent_app_name = "org.inkscape.Inkscape";
+Glib::RefPtr<Gio::Menu> recent_files_menu;
+std::vector<Glib::RefPtr<Gtk::RecentInfo>> recent_files_list;
+
+bool check_recent_info(Glib::RefPtr<Gtk::RecentInfo> const &recent_info, bool is_autosave)
+{
+    return recent_info->get_mime_type() == "image/svg+xml" and is_autosave == recent_info->has_group("Auto") and
+     (recent_info->has_application(g_get_prgname()) or recent_info->has_application(recent_app_name) or
+      recent_info->has_application("inkscape") or recent_info->has_application("inkscape.exe"));
+}
 
 /**
  * Generate a vector of recently used Inkscape files.
  *
  * @arg max_files - Limits the output to this number of files, zero means no-maximum.
  * @arg is_autosave - Limit the list to just auto save files.
+ * @arg for_startup - Indicates that the function is run to populate the startup menu.
  *
- * @returns a vector of string pairs, a display label and the full uri.
+ * @returns a vector of pointers to recent info structs.
  */
-std::vector<Glib::RefPtr<Gtk::RecentInfo>> getInkscapeRecentFiles(unsigned max_files, bool is_autosave)
+std::vector<Glib::RefPtr<Gtk::RecentInfo>> get_recent_files_list(size_t max_files, bool is_autosave, bool for_startup)
 {
-    std::vector<std::pair<std::string, Glib::ustring>> output;
-
     auto recent_manager = Gtk::RecentManager::get_default();
+
+    if (!recent_manager) {
+        std::cerr << "IO::get_recent_files_list: Failed to get default RecentManager" << std::endl;
+        return {};
+    }
+
     // All recent files, not necessarily inkscape only (std::vector)
     auto recent_files = recent_manager->get_items();
+    std::vector<Glib::RefPtr<Gtk::RecentInfo>> selected_files;
 
-    // Remove non-inkscape files.
-    std::erase_if(recent_files, [is_autosave](auto const &recent_file) -> bool {
-        // Note: Do not check if the file exists, to avoid long delays. See https://gitlab.com/inkscape/inkscape/-/issues/2348.
-        bool valid_file =
-            recent_file->has_application(g_get_prgname())         ||
-            recent_file->has_application(recent_app_name)         ||
-            recent_file->has_application("inkscape")              ||
-            recent_file->has_application("inkscape.exe");
-        valid_file = valid_file && is_autosave == recent_file->has_group("Auto");
-        return !valid_file;
+    auto cancellable = Gio::Cancellable::create();
+
+    auto it = recent_files | std::ranges::views::filter([is_autosave](auto info){
+        return check_recent_info(info, is_autosave);
     });
 
-    // Ensure that display uri's are unique. It is possible that an XBEL file
-    // has multiple entries for the same file as a path can be written in equivalent
-    // ways: i.e. with a ';' or '%3B', or with a drive name of 'c' or 'C' on Windows.
-    // These entries may have the same display uri's. This causes segfaults in
-    // getShortendPathmap().
-    auto sort_comparator_uri =
-        [](auto const a, auto const b) -> bool { return a->get_uri_display() < b->get_uri_display(); };
-    std::sort (recent_files.begin(), recent_files.end(), sort_comparator_uri);
+    // create an async exists query for each file in the filtered iterator
+    for (auto recent_info : it) {
+        auto const file = Gio::File::create_for_uri(recent_info->get_uri());
+        file->query_info_async([file, recent_info, &selected_files](Glib::RefPtr<Gio::AsyncResult> const &result) {
+            try {
+                Glib::RefPtr<Gio::FileInfo> info = file->query_info_finish(result);
+                if (info and info->get_file_type() == Gio::FileType::REGULAR) {
+                    selected_files.push_back(recent_info);
+                }
+            } catch (Glib::Error &ex) {
+                if (ex.code() == Gio::Error::CANCELLED) {
+                    std::cerr << "IO::get_recent_files_list: Async query cancelled for file \""
+                              << file->get_uri() << "\": Timed out" << std::endl;
+                } else {
+                    std::cerr << "IO::get_recent_files_list: " << ex.what() << std::endl;
+                }
+            }
+        }, cancellable, "standard::type");
+    }
 
-    auto unique_comparator_uri =
-        [](auto const a, auto const b) -> bool { return a->get_uri_display() == b->get_uri_display(); };
-    auto it_u = std::unique (recent_files.begin(), recent_files.end(), unique_comparator_uri);
-    recent_files.erase(it_u, recent_files.end());
+    // Wait for async queries
+    auto prefs = Preferences::get();
+    size_t timeout_ms = for_startup ? prefs->getUInt("/options/recentfiles/query_timeout_ms_startup")
+                                    : prefs->getUInt("/options/recentfiles/query_timeout_ms_background");
+
+    if (timeout_ms > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeout_ms));
+    }
+
+    while (Glib::MainContext::get_default()->iteration(false));
+    cancellable->cancel();
 
     // Sort by "last modified" time, which puts the most recently opened files first.
-    std::sort(std::begin(recent_files), std::end(recent_files), [](auto const &a, auto const &b) -> bool {
+    std::sort(std::begin(selected_files), std::end(selected_files), [](auto const &a, auto const &b) -> bool {
         // a should precede b if a->get_modified() is later than b->get_modified()
         return a->get_modified().compare(b->get_modified()) > 0;
     });
 
     // Truncate to user-specified max_files.
-    if (max_files && recent_files.size() > max_files) {
-        recent_files.resize(max_files);
+    if (max_files && selected_files.size() > max_files) {
+        selected_files.resize(max_files);
     }
 
-    return recent_files;
+    return selected_files;
+}
+
+bool build_recent_files_menu(Glib::RefPtr<Gio::Menu> const recent_menu,
+                             std::span<Glib::RefPtr<Gtk::RecentInfo>> const recent_files)
+{
+    if (!recent_menu) {
+        g_warning("IO::build_recent_files menu: No recent recent_menu in menus.ui found.");
+        return false;
+    }
+
+    recent_menu->remove_all();
+
+    if (recent_files.empty()) { // Create a placeholder with a non-existent action
+        auto nothing2c = Gio::MenuItem::create(_("No items found"), "app.nop");
+        recent_menu->append_item(nothing2c);
+        return false;
+    }
+
+    auto max_files = Inkscape::Preferences::get()->getUInt("/options/maxrecentdocuments/value");
+    auto first_n = max_files < recent_files.size() ? recent_files.first(max_files) : recent_files;
+
+    auto recent_paths = get_recent_file_paths(first_n);
+    auto shortened_paths = shorten_recent_file_paths(recent_paths);
+
+    for (auto i = 0; i < first_n.size(); i++) {
+        // Escape underscores to prevent them from being interpreted as accelerator mnemonics
+        boost::algorithm::replace_all(shortened_paths[i], "_", "__");
+        auto item = Gio::MenuItem::create(std::move(shortened_paths[i]), "");
+        auto target = Glib::Variant<Glib::ustring>::create(recent_paths[i]);
+        // note: setting action and target separately rather than using convenience menu method append
+        // since some filename characters can result in invalid "direct action" string
+        item->set_action_and_target(Glib::ustring("app.file-open-window"), target);
+        recent_menu->append_item(item);
+    }
+
+    return true;
 }
 
 /**
@@ -92,46 +162,58 @@ std::vector<Glib::RefPtr<Gtk::RecentInfo>> getInkscapeRecentFiles(unsigned max_f
  * @arg groups   - Optional groups, used for AutoSave and Crash
  * @arg original - The filename to the original document, where available. If used this save is marked as private.
  */
-void addInkscapeRecentSvg(std::string const &filename, std::string const &name, std::vector<Glib::ustring> groups, std::optional<std::string> original)
+bool add_or_update_recent_file(std::string const &uri, std::optional<std::string> const &name,
+                               std::vector<Glib::ustring> const &groups, std::optional<std::string> const &original_uri)
 {
-    auto recentmanager = Gtk::RecentManager::get_default();
-    if (recentmanager && Glib::path_is_absolute(filename)) {
-        Glib::ustring uri = Glib::filename_to_uri(filename);
-        Glib::ustring original_uri = "";
-        if (original && Glib::path_is_absolute(*original)) {
-            original_uri = Glib::filename_to_uri(*original);
-        }
-        recentmanager->add_item(uri, {
-            name,                     // Name
-            original_uri,             // Description used for original filename
-            "image/svg+xml",          // Mime type
-            recent_app_name,          // App name
-            "",                       // Execute
-            groups,    // Groups
-            (bool)original,           // Private if points to another document
+    if (auto recentmanager = Gtk::RecentManager::get_default()) {
+        auto has_original = original_uri.has_value();
+        auto item_name = name.has_value() ? name.value() : Glib::path_get_basename(uri);
+        auto description = has_original ? original_uri.value() : std::string{};
+        bool success = recentmanager->add_item(uri, {
+            item_name,       // Name
+            description,     // Description used for original file uri
+            "image/svg+xml", // Mime type
+            recent_app_name, // App name
+            {},              // Execute
+            groups,          // Groups
+            has_original,    // Private if points to another document
         });
+        if (!success) {
+            std::cerr << "IO::add_recent_file: Failed to add uri \"" << uri << "\"" << std::endl;
+        }
+        return success;
+    } else {
+        std::cerr << "IO::add_recent_file: Failed to get default RecentManager: uri \"" << uri << "\"" << std::endl;
     }
+    return false;
 }
 
 /**
  * Remove a recent file entry, call when deleting files.
  */
-void removeInkscapeRecent(std::string const &filename)
+bool remove_recent_file(std::string const &uri)
 {
     if (auto recentmanager = Gtk::RecentManager::get_default()) {
         try {
-            Glib::ustring uri = Glib::filename_to_uri(filename);
-            recentmanager->remove_item(uri);
-        } catch (Glib::Error const &) { // lookup failed
+            bool success = recentmanager->remove_item(uri);
+            if (!success) {
+                std::cerr << "remove_recent_file: Failed to remove uri \"" << uri << "\"" << std::endl;
+            }
+            return success;
+        } catch (Glib::Error const &ex) { // lookup failed
+            std::cerr << ex.what() << std::endl;
         }
+    } else {
+        std::cerr << "IO::remove_recent_file: Failed to get default RecentManager: uri \"" << uri << "\"" << std::endl;
     }
+    return false;
 }
 
 /**
  * Remove inkscape recent items, but preserve items opened by other programs
  * auto any auto-saves which are considered not user accessable.
  */
-void resetRecentInkscapeList()
+bool reset_recent_files_list()
 {
     if (auto recentmanager = Gtk::RecentManager::get_default()) {
         for (auto info : recentmanager->get_items()) {
@@ -150,20 +232,30 @@ void resetRecentInkscapeList()
                 recentmanager->remove_item(info->get_uri());
             }
         }
+        // clear the recent files list and menu
+        recent_files_list.clear();
+        recent_files_menu->remove_all();
+        auto nothing2c = Gio::MenuItem::create(_("No items found"), "app.nop");
+        recent_files_menu->append_item(nothing2c);
+    } else {
+        std::cerr << "IO::reset_recent_files_list: Failed to get default RecentManager" << std::endl;
     }
+    return false;
 }
 
 /**
  * Get the file recent info for the given path, if there is one.
  */
-Glib::RefPtr<Gtk::RecentInfo> getInkscapeRecent(std::string const &filename)
+Glib::RefPtr<Gtk::RecentInfo> get_recent_file(std::string const &uri)
 {
     if (auto recentmanager = Gtk::RecentManager::get_default()) {
         try {
-            Glib::ustring uri = Glib::filename_to_uri(filename);
             return recentmanager->lookup_item(uri);
-        } catch (Glib::Error const &) { // lookup failed
+        } catch (Glib::Error const &ex) { // lookup failed
+            std::cerr << "IO::get_recent_file: " << ex.what() << std::endl;
         }
+    } else {
+        std::cerr << "IO::get_recent_file: Failed to get default RecentManager" << std::endl;
     }
     return {};
 }
@@ -177,110 +269,49 @@ Glib::RefPtr<Gtk::RecentInfo> getInkscapeRecent(std::string const &filename)
  *            but doesn't have an original filename because it was unsaved. Otherwise the
  *            original filename is provided.
  */
-std::optional<std::string> openAsInkscapeRecentOriginalFile(std::string const &filename)
+std::optional<std::pair<std::string, Glib::RefPtr<Gtk::RecentInfo>>> get_recent_file_group_and_original_info(std::string const &uri)
 {
-    if (auto info = getInkscapeRecent(filename)) {
+    if (auto info = get_recent_file(uri)) {
         if (info->has_group("Auto")) {
-            // Original filename stored in description, see addInkscapeRecentSvg above.
-            return info->get_description();
+            // Original filename stored in description, see add_recent_file above.
+            return std::make_pair("Auto", get_recent_file(info->get_description()));
         }
         if (info->has_group("Crash")) {
-            auto desc = info->get_description();
-            // Crash files are removed from recent-files tracker on opening
-            removeInkscapeRecent(filename);
-            return desc;
+            return std::make_pair("Crash", get_recent_file(info->get_description()));
         }
+    } else {
+        std::cerr << "IO::get_recent_file_group_and_original_info: Unable to retrieve info for uri \"" << uri << "\"" << std::endl;
     }
-    return {};
+    return std::nullopt;
 }
 
-/**
- * Generate the shortened labeles for a list of recently used files.
- * recent_files must not contain entries with duplicate uri display values.
- */
-std::map<Glib::ustring, std::string> getShortenedPathMap(std::vector<Glib::RefPtr<Gtk::RecentInfo>> const &recent_files)
+std::vector<std::string> get_recent_file_paths(std::span<Glib::RefPtr<Gtk::RecentInfo>> const recent_files)
 {
-    // Create a map of path to shortened path, and prefill.
-    std::map<Glib::ustring, std::string> shortened_path_map;
-    std::vector<Glib::RefPtr<Gtk::RecentInfo>> copy = recent_files;
-    for (auto recent_file : copy) {
-        shortened_path_map[recent_file->get_uri_display()] = recent_file->get_display_name();
+    std::vector<std::string> paths;
+    paths.reserve(recent_files.size());
+
+    for (auto recent_file : recent_files) {
+        paths.emplace_back(recent_file->get_uri_display());
     }
 
-    // Look for duplicate short names. These are the only ones that matter here.
-    auto equal_comparator = [](auto const a, auto const b) -> bool { return a->get_display_name() == b->get_display_name(); };
-    auto it = copy.begin();
-
-    while (it != (copy.end() - 1)) {
-        it = std::adjacent_find(it, copy.end(), equal_comparator);
-        if (it != copy.end()) {
-
-            // Found duplicate display name!
-            std::vector<Glib::ustring> display_uris;
-            display_uris.emplace_back(( * it   )->get_uri_display());
-            display_uris.emplace_back(( *(it+1))->get_uri_display());
-
-            std::vector<Inkscape::IO::PathParts> path_parts;
-            path_parts.emplace_back(Inkscape::IO::split_path(display_uris[0].raw()));
-            path_parts.emplace_back(Inkscape::IO::split_path(display_uris[1].raw()));
-
-            // Find first directory difference from root down.
-            auto max_size = std::min(path_parts[0].size(), path_parts[1].size());
-            unsigned i = 0;
-            for (; i < max_size; ++i) {
-                if (path_parts[0][i] != path_parts[1][i]) {
-                    break;
-                }
-            }
-
-            // If no difference, skip. Should not happen, but possible with ill-formed recently-used.xbel.
-            if (i >= max_size) {
-                g_warning("Duplicate paths in recently-used.xbel");
-                ++it;
-                continue;
-            }
-
-            // Override map of path to shortened path.
-            for (int j = 0; j < 2; j++) {
-
-                auto display_uri = display_uris[j]; // We always use display_uri as map index.
-                // Size is always one first element such as '/' or 'C:\' and the last element is the filename
-                auto size = path_parts[j].size();
-
-                if (size <= 3) {
-                    // If file is in root directory or child of root directory, just use display uri.
-                    shortened_path_map[display_uri] = display_uri;
-                } else if (i == size - 1) {
-                    // If difference is at last path part (file name), use that.
-                    shortened_path_map[display_uri] = std::string(path_parts[j].basename());
-                } else if (i == size - 2) {
-
-                    // If difference is last directory level (file name), use that + file name.
-                    shortened_path_map[display_uri] = std::format("..{0}{1}{0}{2}", G_DIR_SEPARATOR,
-                                                                  path_parts[j][size - 2], path_parts[j][size - 1]);
-                } else if (i <= platform_index) {
-                    // parts[j][i] is actually a root folder or drive
-                    shortened_path_map[display_uri] =
-                        std::format("{0}{1}{2}{1}..{1}{3}", path_parts[j].prefix(), G_DIR_SEPARATOR,
-                                    path_parts[j][platform_index], path_parts[j][size - 1]);
-                } else {
-                    shortened_path_map[display_uri] =
-                        std::format("..{0}{1}{0}..{0}{2}", G_DIR_SEPARATOR, path_parts[j][i], path_parts[j][size - 1]);
-                }
-            }
-        } else {
-            // At end!
-            break;
-        }
-
-        // Test next entry.
-        ++it;
-    }
-
-    return shortened_path_map;
+    return paths;
 }
 
-} // namespace Inkscape
+std::vector<std::string> shorten_recent_file_paths(std::span<std::string> const paths)
+{
+    auto const prefs = Preferences::get();
+    auto const sep = prefs->getString("/options/recentfiles/shortened_path_separator", "  🞂  ");
+    std::vector<std::string_view> views;
+    views.reserve(paths.size());
+
+    for (auto const &path : paths) {
+        views.emplace_back(path);
+    }
+
+    return Inkscape::IO::shorten_paths(views, sep.raw());
+}
+
+} // namespace Inkscape::IO
 
 /*
   Local Variables:

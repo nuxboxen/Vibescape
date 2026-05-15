@@ -48,6 +48,7 @@
 #include <thread>
 
 #include <giomm/file.h>
+#include <glibmm/convert.h>
 #include <glibmm/i18n.h>  // Internationalization
 #include <gtkmm/application.h>
 
@@ -172,16 +173,33 @@ std::pair<SPDocument *, bool> InkscapeApplication::document_open(Glib::RefPtr<Gi
 
     // Add/promote recent file; when we call add_item and file is on a recent list already,
     // then apparently only "modified" time changes.
-    auto path = file->get_path();
+    auto uri = file->get_uri();
+    auto name = document->getDocumentName() ? std::optional(document->getDocumentName()) : std::nullopt;
     // Opening crash files or auto-save files, we can link them back using the
     // recent files manager to get the original context for the file.
-    if (auto original = Inkscape::IO::openAsInkscapeRecentOriginalFile(path)) {
-        document->setModifiedSinceSave(true);
-        document->setModifiedSinceAutoSaveFalse(); // don't re-auto-save an unmodified auto-save
-        document->setDocumentFilename(original->empty() ? nullptr : original->c_str());
+    if (auto group_and_original_info = Inkscape::IO::get_recent_file_group_and_original_info(uri)) {
+        auto [group, original_info] = group_and_original_info.value();
+        auto file_created = file->query_info("time::created")->get_creation_date_time();
+        // Async query in case the original file is unavailable
+        auto original_file = Gio::File::create_for_uri(original_info->get_uri());
+        auto original_file_info = Inkscape::IO::query_file_info_async(original_file, "time::modified", 1);
+        // If original file is unavailable, set its modified time to 9999-12-31 23:59:59.999999
+        auto original_modified = original_file_info ? original_file_info->get_modification_date_time() : Glib::DateTime::create_local(9999, 12, 31, 23, 59, 59.999999);	
+        // Open as original file if the auto-save/crash file was created later
+        // than the modification date of the original file. Otherwise open as
+        // the auto-save/crash file to prevent accidental overwriting.
+        if (file_created.compare(original_modified) > 0) {
+            // Open as original file
+            document->setModifiedSinceSave(true);
+            document->setModifiedSinceAutoSaveFalse(); // don't re-auto-save an unmodified auto-save
+            document->setDocumentFilename(original_info->get_uri_display().c_str());
+        } else {
+            // Open as auto-save/crash file
+            document->setDocumentFilename(file->get_path().c_str());
+        }
+        Inkscape::IO::add_or_update_recent_file(uri, name, { group }, original_info->get_uri());
     } else {
-        auto name = document->getDocumentName();
-        Inkscape::IO::addInkscapeRecentSvg(path, name ? name : "");
+        Inkscape::IO::add_or_update_recent_file(uri, name);
     }
 
     return {document_add(std::move(document)), false};
@@ -334,7 +352,7 @@ void InkscapeApplication::document_close(SPDocument *document)
 
 /** Fix up a document if necessary (Only fixes that require GUI). MOVE TO ANOTHER FILE!
  */
-void InkscapeApplication::document_fix(SPDesktop *desktop)
+void InkscapeApplication::document_fix(SPDesktop *desktop, std::span<Glib::RefPtr<Gtk::RecentInfo>> recent_files)
 {
     // Most fixes are handled when document is opened in SPDocument::createDoc().
     // But some require the GUI to be present. These are handled here.
@@ -344,7 +362,7 @@ void InkscapeApplication::document_fix(SPDesktop *desktop)
         auto document = desktop->getDocument();
 
         // Perform a fixup pass for hrefs.
-        if (Inkscape::fixBrokenLinks(document)) {
+        if (Inkscape::IO::fixBrokenLinks(document, recent_files)) {
             desktop->showInfoDialog(_("Broken links have been changed to point to existing files."));
         }
 
@@ -411,8 +429,6 @@ SPDesktop *InkscapeApplication::desktopOpen(SPDocument *document, bool new_windo
 
         win->present();
     }
-
-    document_fix(desktop); // May need flag to prevent this from being called more than once.
 
     return desktop;
 }
@@ -786,15 +802,13 @@ void InkscapeApplication::create_window(Glib::RefPtr<Gio::File> const &file)
     if (file) {
         std::tie(document, cancelled) = document_open(file);
         if (document) {
-            // Remember document so much that we'll add it to recent documents
-            auto docname = document->getDocumentName();
-            Inkscape::IO::addInkscapeRecentSvg(file->get_path(), docname ? docname : "");
-
             auto old_document = _active_document;
             bool replace = old_document && old_document->getVirgin();
 
             desktop = createDesktop(document, replace);
-            document_fix(desktop);
+            auto recent_files_list = Inkscape::IO::get_recent_files_list();
+            document_fix(desktop, recent_files_list);
+            Inkscape::IO::build_recent_files_menu(Inkscape::IO::recent_files_menu, recent_files_list);
         } else if (!cancelled) {
             std::cerr << "InkscapeApplication::create_window: Failed to load: "
                       << file->get_parse_name().raw() << std::endl;
@@ -930,7 +944,10 @@ void InkscapeApplication::process_document(SPDocument *document, std::string out
         shell();
     }
     if (_with_gui && _active_window) {
-        document_fix(_active_desktop);
+        // uses shared recent_files, also used in command palette
+        // set by build_menu in menubar on each file load
+        // this prevents triple duplicated recent files queries
+        document_fix(_active_desktop, Inkscape::IO::recent_files_list);
     }
     // Only if --export-filename, --export-type --export-overwrite, or --export-use-hints are used.
     if (_auto_export) {

@@ -7,17 +7,19 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include <span>
 #include <string>
-#include <vector>
+#include <giomm/file.h>
+#include <gtkmm/recentinfo.h>
 
 class SPDocument;
 
-namespace Inkscape {
+namespace Inkscape::IO {
 
-std::string optimizePath(std::string const &path, std::string const &base, unsigned int parents = 2);
-bool fixBrokenLinks(SPDocument *doc);
+std::string search_upwards_and_concat_paths(std::string_view base, std::string_view subpath);
+bool fixBrokenLinks(SPDocument *doc, std::span<Glib::RefPtr<Gtk::RecentInfo>> recent_files);
 
-}
+} // namespace Inkscape::IO
 
 /*
   Local Variables:

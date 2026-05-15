@@ -11,6 +11,7 @@
 #ifndef INK_FILE_IO_H
 #define INK_FILE_IO_H
 
+#include <giomm/file.h>
 #include <glibmm/refptr.h>
 #include <glibmm/ustring.h>
 #include <string>
@@ -42,6 +43,7 @@ private:
 };
 
 std::string find_original_file(Glib::StdStringView filepath, Glib::StdStringView name);
+Glib::RefPtr<Gio::FileInfo> query_file_info_async(Glib::RefPtr<Gio::File> file, std::string const &attributes, size_t timeout_ms);
 
 } // namespace Inkscape::IO
 

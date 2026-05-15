@@ -81,7 +81,8 @@ set(TEST_SOURCES
     util-uri-test
     drag-and-drop-svgz
     drawing-pattern-test
-    split-path-test
+    io-path-test
+    io-fix-broken-links-test
     attributes-test
     dir-util-test
     sp-item-test

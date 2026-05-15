@@ -29,6 +29,7 @@
 #include "extension/output.h"
 #include "inkscape-window.h"
 #include "io/fix-broken-links.h"
+#include "io/path.h"
 #include "io/sandbox.h"
 #include "io/sys.h"
 #include "layer-manager.h"
@@ -607,7 +608,12 @@ void BatchExport::setBatchPath(std::optional<Glib::RefPtr<Gio::File const>> path
         // Show this path to the user.
         if (const char *doc_filename = _document->getDocumentFilename()) {
             auto doc_path = Glib::path_get_dirname(doc_filename);
-            path_utf8 = Inkscape::optimizePath(path_utf8, doc_path, 2);
+            auto const [optimized, success] = Inkscape::IO::optimize_path(path_utf8.raw(), doc_path, 2);
+            if (success) {
+                path_utf8 = optimized == "." ? Glib::path_get_basename(path_utf8.raw()) : optimized.substr(2);
+            } else {
+                path_utf8 = optimized;
+            }
             path_label = path_utf8;
         }
     }

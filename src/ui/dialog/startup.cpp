@@ -25,6 +25,7 @@
 #include <gtkmm/switch.h>
 #include <gtkmm/windowhandle.h>
 
+#include "document.h"
 #include "inkscape-application.h"
 #include "inkscape-version-info.h"
 #include "inkscape-version.h"
@@ -315,31 +316,24 @@ StartScreen::enlist_recent_files()
 
     auto store = &dynamic_cast<Gtk::ListStore &>(*recentfiles->get_model());
     store->clear();
-    // Now sort the result by visited time
-    store->set_sort_column(cols.col_dt, Gtk::SortType::DESCENDING);
 
     // Open [other]
     Gtk::TreeModel::Row first_row = *(store->append());
     first_row[cols.col_name] = _("Browse for other files...");
-    first_row[cols.col_id] = "";
+    first_row[cols.col_id] = "Find and open a file";
     first_row[cols.col_dt] = std::numeric_limits<gint64>::max();
     recentfiles->get_selection()->select(store->get_path(first_row.get_iter()));
 
-    auto recent_files = Inkscape::IO::getInkscapeRecentFiles();
-    auto shortened_path_map = Inkscape::IO::getShortenedPathMap(recent_files);
+    auto recent_files_list = Inkscape::IO::get_recent_files_list(0, false, true);
+    auto recent_paths = Inkscape::IO::get_recent_file_paths(recent_files_list);
+    auto shortened_paths = Inkscape::IO::shorten_recent_file_paths(recent_paths);
 
-    for (auto const &recent_file : recent_files) {
-        // This uri is a GVFS uri, so parse it with that or it will fail.
-        auto file = Gio::File::create_for_uri(recent_file->get_uri());
-        std::string path = file->get_path();
-        // Note: Do not check if the file exists, to avoid long delays. See https://gitlab.com/inkscape/inkscape/-/issues/2348 .
-        if (!path.empty() && recent_file->get_mime_type() == "image/svg+xml") {
-            Gtk::TreeModel::Row row = *(store->append());
-            row[cols.col_name] = shortened_path_map[recent_file->get_uri_display()];
-            row[cols.col_id] = recent_file->get_uri();
-            row[cols.col_dt] = recent_file->get_modified().to_unix();
-            row[cols.col_crash] = recent_file->has_group("Crash");
-        }
+    for (auto i = 0; i < recent_files_list.size(); i++) {
+        Gtk::TreeModel::Row row = *(store->append());
+        row[cols.col_name] = shortened_paths[i];
+        row[cols.col_id] = recent_paths[i];
+        row[cols.col_dt] = recent_files_list[i]->get_modified().to_unix();
+        row[cols.col_crash] = recent_files_list[i]->has_group("Crash");
     }
 }
 
@@ -396,11 +390,11 @@ StartScreen::load_document()
     if (iter) {
         Gtk::TreeModel::Row row = *iter;
         if (row) {
-            Glib::ustring uri = row[cols.col_id];
+            Glib::ustring path = row[cols.col_id];
             Glib::RefPtr<Gio::File> file;
 
-            if (!uri.empty()) {
-                file = Gio::File::create_for_uri(uri);
+            if (row[cols.col_dt] < std::numeric_limits<gint64>::max()) {
+                file = Gio::File::create_for_path(path);
             } else {
                 // Browse for file instead
                 std::string open_path;

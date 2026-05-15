@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "split-path.h"
+#include "path.h"
 
 #include <algorithm>
 #include <ranges>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace Inkscape::IO {
@@ -427,5 +428,170 @@ PathParts split_path(std::string_view path)
 }
 
 #endif
+
+std::string join_parts_with(std::span<std::string_view const> parts, std::string_view sep)
+{
+    if (parts.empty()) {
+        return std::string{};
+    }
+    if (parts.size() == 1) {
+        return std::string(parts[0]);
+    }
+    size_t size = sep.size() * (parts.size() - 1);
+    for (auto part : parts) {
+        size += part.size();
+    }
+    std::string result;
+    result.reserve(size);
+    result.append(parts[0]);
+    for (auto part : parts.subspan(1)) {
+        result.append(sep);
+        result.append(part);
+    }
+    return result;
+}
+
+std::string PathParts::join_with(std::string_view sep) const
+{
+    return join_parts_with(data, sep);
+}
+
+std::string PathSortEntry::join_with(std::string_view sep) const
+{
+    auto data_parts = offset < parts.size() ? std::span(parts.data).subspan(parts.size() - offset) : std::span(parts.data);
+    return join_parts_with(data_parts, sep);
+}
+
+bool compare_parts_at_offset(PathSortEntry *a, PathSortEntry *b)
+{
+    auto const size_a = a->parts.data.size();
+    auto const size_b = b->parts.data.size();
+    auto const offset_a = a->offset;
+    auto const offset_b = b->offset;
+    if (offset_a > size_a || offset_b > size_b) {
+        return size_a > size_b; // place gaps at the end
+    }
+    return a->parts.data[size_a - offset_a] < b->parts.data[size_b - offset_b];
+}
+
+/*
+    Recursively sort entries lexicographically by their parts.
+    Parts are compared from back to front (basename first).
+*/
+void sort_path_entries(std::span<PathSortEntry*> entries)
+{
+    std::sort(entries.begin(), entries.end(), compare_parts_at_offset);
+    auto start = 0;
+    auto offset = entries[0]->offset;
+    auto sv_start = entries[0]->parts.data[entries[0]->parts.size() - offset];
+    auto i = 1;
+    while (i < entries.size()) {
+        if (offset > entries[i]->parts.size()) { // trailing gaps
+            for (auto n = i; n < entries.size(); n++) {
+                entries[n]->offset++;
+            }
+            break;
+        }
+        auto const sv = entries[i]->parts.data[entries[i]->parts.size() - offset];
+        if (sv_start != sv) {
+            if (start + 1 < i) { // at least 2 entries with same part
+                entries[start]->offset++;
+                sort_path_entries(std::span(entries).subspan(start, i - start));
+            }
+            sv_start = sv;
+            start = i;
+        } else {
+            entries[i]->offset++;
+        }
+        i++;
+    }
+    if (start + 1 < i) {
+        entries[start]->offset++;
+        sort_path_entries(std::span(entries).subspan(start, i - start));
+    }
+}
+
+/*
+    Create shortened display strings for a span of file paths.
+
+    If the input span contains unique normalized file paths,
+    the output vector will contain unique shortened display strings.
+*/
+std::vector<std::string> shorten_paths(std::span<std::string_view const> paths, std::string_view sep)
+{
+    if (paths.empty()) {
+        return {};
+    }
+    std::vector<PathSortEntry> sort_entries;
+    sort_entries.reserve(paths.size());
+    std::vector<PathSortEntry*> ptrs;
+    ptrs.reserve(paths.size());
+    // make sure sort_entries does not expand/reallocate during the next loop
+    // as this will invalidate the stored references in ptrs
+    for (auto path : paths) {
+        sort_entries.emplace_back(Inkscape::IO::split_path(path), 1);
+        ptrs.push_back(&sort_entries.back());
+    }
+    sort_path_entries(ptrs);
+    std::vector<std::string> result;
+    result.reserve(paths.size());
+    for (auto const& entry : sort_entries) {
+        result.emplace_back(entry.join_with(sep));
+    }
+    return result;
+}
+
+/**
+ * Convert an absolute path into a relative one if possible to do in the given number of parent steps.
+ *
+ * @arg path - The absolute path to convert
+ * @arg base - The base or reference absolute path to be relative to
+ * @arg parents - The number of parents or .. segments to allow
+ *
+ * All input strings must have the same encoding,
+ * either UTF8 or platform-native encoding (see Glib::filename_to_utf8).
+ * The return value has the same encoding as the input.
+ */
+std::pair<std::string, bool> optimize_path(std::string_view path, std::string_view base, size_t parents)
+{
+    if (path.empty()) {
+        return std::make_pair(std::string{}, false);
+    }
+    Inkscape::IO::PathParts path_parts = Inkscape::IO::split_path(path);
+    if (path_parts.is_relative()) {
+        return std::make_pair(path_parts.join(), false);
+    }
+    Inkscape::IO::PathParts base_parts = Inkscape::IO::split_path(base);
+    if (base_parts.is_relative()) {
+        return std::make_pair(path_parts.join(), false);
+    }
+    auto const size = std::min(path_parts.size(), base_parts.size());
+    auto count = 0;
+    // count the number of parts in the shared prefix
+    while (count < size && path_parts.data[count] == base_parts.data[count]) {
+        ++count;
+    }
+    if (count == 0) {
+        return std::make_pair(path_parts.join(), false);
+    }
+    // "remove" the shared prefix
+    auto const base_span = std::span(base_parts.data).subspan(count);
+    if (base_span.size() > parents) {
+        return std::make_pair(path_parts.join(), false);
+    }
+    auto const path_span = std::span(path_parts.data).subspan(count);
+    // construct optimized path
+    Inkscape::IO::PathParts p = { .data = {}, .type = Inkscape::IO::PathType::RelativeCWD };
+    for (auto i = 0; i < base_span.size(); ++i) {
+        p.data.emplace_back("..");
+    }
+    p.data.insert(p.data.end(), path_span.begin(), path_span.end());
+    return std::make_pair(p.join(), true);
+}
+
+std::string normalize_path(std::string_view path)
+{
+    return Inkscape::IO::split_path(path).join();
+}
 
 } // namespace Inkscape::IO

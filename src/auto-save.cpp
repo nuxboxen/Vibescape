@@ -17,6 +17,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <glibmm/convert.h>
 #include <glibmm/fileutils.h>
 #include <glibmm/i18n.h> // Internationalization
 #include <glibmm/main.h>
@@ -145,7 +146,7 @@ AutoSave::save()
                             std::cerr << "InkscapeApplication::document_autosave: Failed to unlink file: "
                                       << path << ": " << strerror(errno) << std::endl;
                         } else {
-                            Inkscape::IO::removeInkscapeRecent(path);
+                            Inkscape::IO::remove_recent_file(Glib::filename_to_uri(path));
                         }
                     }
                 }
@@ -165,7 +166,9 @@ AutoSave::save()
                 try {
                     Inkscape::XML::Node *repr = document->getReprRoot();
                     sp_repr_save_stream(repr->document(), file, SP_SVG_NS_URI);
-                    Inkscape::IO::addInkscapeRecentSvg(path, document->getDocumentName() ? document->getDocumentName() : "unnamed", {"Auto"}, document_filename ? document_filename : "");
+                    auto name = document->getDocumentName() ? std::optional(document->getDocumentName()) : std::nullopt;
+                    auto original_uri = document_filename ? std::optional(Glib::filename_to_uri(document_filename)) : std::nullopt;
+                    Inkscape::IO::add_or_update_recent_file(Glib::filename_to_uri(path), name, {"Auto"}, original_uri);
                 } catch (Inkscape::Extension::Output::no_extension_found &e) {
                     errortext = g_strdup(_("Autosave failed! Could not find inkscape extension to save document."));
                 } catch (Inkscape::Extension::Output::save_failed &e) {

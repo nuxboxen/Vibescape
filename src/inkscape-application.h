@@ -18,6 +18,7 @@
 #include <glibmm/refptr.h>
 #include <glibmm/ustring.h>
 #include <gtkmm/application.h>
+#include <gtkmm/recentinfo.h>
 
 #include "actions/actions-effect-data.h"
 #include "actions/actions-extra-data.h"
@@ -106,7 +107,7 @@ public:
     void                  document_close(SPDocument* document);
 
     /* These require a GUI! */
-    void                  document_fix(SPDesktop *desktop);
+    void                  document_fix(SPDesktop *desktop, std::span<Glib::RefPtr<Gtk::RecentInfo>> recent_files);
 
     std::vector<SPDocument *> get_documents();
 

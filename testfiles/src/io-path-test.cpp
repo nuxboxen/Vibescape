@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "io/split-path.h"
+#include "io/path.h"
+
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include <gtest/gtest.h>
 
 namespace Inkscape {
 
-TEST(SplitPathTest, SplitPath)
+TEST(IoPathTest, split_path)
 {
 #ifdef _WIN32
     {
@@ -61,7 +65,7 @@ TEST(SplitPathTest, SplitPath)
     {
         auto path = "\\\\192.168.0.100\\Files\\..\\hello.txt";
         auto parts = Inkscape::IO::split_path(path);
-        EXPECT_EQ(parts.type, Inkscape::IO::UNC);
+        EXPECT_EQ(parts.type, Inkscape::IO::PathType::UNC);
         EXPECT_EQ(parts.data, (std::vector<std::string_view>{"192.168.0.100", "Files", "hello.txt"}));
         EXPECT_EQ(parts.join(), "\\\\192.168.0.100\\Files\\hello.txt");
     }
@@ -130,6 +134,118 @@ TEST(SplitPathTest, SplitPath)
         EXPECT_EQ(parts.join(), "/home/こんにちは/file.svg");
     }
 #endif
+}
+
+TEST(IoPathTest, shorten_paths)
+{
+    {
+        std::vector<std::string_view> paths{};
+        auto shortened_paths = Inkscape::IO::shorten_paths(paths, " > ");
+        EXPECT_EQ(shortened_paths, (std::vector<std::string>{}));
+    }
+    {
+        std::vector<std::string_view> paths{ "/home/user/files/drawing.svg" };
+        auto shortened_paths = Inkscape::IO::shorten_paths(paths, " > ");
+        EXPECT_EQ(shortened_paths, (std::vector<std::string>{ "drawing.svg" }));
+    }
+    {
+        std::vector<std::string_view> paths{
+            "/home/other/files/drawing.svg",
+            "/home/user/stuff/temp/drawing.svg",
+            "/home/user/files/temp/todo/drawing.svg",
+            "/home/user/files/drawing.svg",
+            "/home/user/files/drawing-test.svg",
+            "/tmp/user/files/drawing.svg",
+        };
+        auto shortened_paths = Inkscape::IO::shorten_paths(paths, " > ");
+        EXPECT_EQ(shortened_paths, (std::vector<std::string>{
+            "other > files > drawing.svg",
+            "temp > drawing.svg",
+            "todo > drawing.svg",
+            "home > user > files > drawing.svg",
+            "drawing-test.svg",
+            "tmp > user > files > drawing.svg",
+        }));
+    }
+}
+
+TEST(IoPathTest, optimize_path)
+{
+    {
+        auto path = "";
+        auto base = "/a/e/f";
+        auto [optimized, success] = Inkscape::IO::optimize_path(path, base);
+        EXPECT_EQ(success, false);
+        EXPECT_EQ(optimized, "");
+    }
+    {
+        auto path = "/a/e/f";
+        auto base = "";
+        auto [optimized, success] = Inkscape::IO::optimize_path(path, base);
+        EXPECT_EQ(success, false);
+#ifdef _WIN32
+        EXPECT_EQ(optimized, "\\a\\e\\f");
+#else // no _WIN32
+        EXPECT_EQ(optimized, "/a/e/f");
+#endif
+    }
+    {
+        auto path = "./s/t/w";
+        auto base = "/a/e/f";
+        auto [optimized, success] = Inkscape::IO::optimize_path(path, base);
+        EXPECT_EQ(success, false);
+#ifdef _WIN32
+        EXPECT_EQ(optimized, ".\\s\\t\\w");
+#else // no _WIN32
+        EXPECT_EQ(optimized, "./s/t/w");
+#endif
+    }
+    {
+        auto path = "/s/t/w";
+        auto base = "./a/e/f";
+        auto [optimized, success] = Inkscape::IO::optimize_path(path, base);
+        EXPECT_EQ(success, false);
+#ifdef _WIN32
+        EXPECT_EQ(optimized, "\\s\\t\\w");
+#else // no _WIN32
+        EXPECT_EQ(optimized, "/s/t/w");
+#endif
+    }
+    {
+        auto path = "/a/b/c/d";
+        auto base = "/g/m/n";
+        auto [optimized, success] = Inkscape::IO::optimize_path(path, base);
+        EXPECT_EQ(success, false);
+#ifdef _WIN32
+        EXPECT_EQ(optimized, "\\a\\b\\c\\d");
+#else // no _WIN32
+        EXPECT_EQ(optimized, "/a/b/c/d");
+#endif
+    }
+    {
+        auto path = "/a/b/c/d";
+        auto base = "/a/e/f";
+        auto [optimized, success] = Inkscape::IO::optimize_path(path, base);
+#ifdef _WIN32
+        EXPECT_EQ(success, false);
+        EXPECT_EQ(optimized, "\\a\\b\\c\\d");
+#else // no _WIN32
+        EXPECT_EQ(success, true);
+        EXPECT_EQ(optimized, "./../../b/c/d");
+#endif
+    }
+    {
+        auto path = "C:/a/b/c";
+        auto base = "C:/a/e";
+        auto [optimized, success] = Inkscape::IO::optimize_path(path, base);
+#ifdef _WIN32
+        EXPECT_EQ(success, true);
+        EXPECT_EQ(optimized, ".\\..\\b\\c");
+#else // no _WIN32
+        EXPECT_EQ(success, false);
+        EXPECT_EQ(optimized, "./C:/a/b/c");
+#endif
+    }
 }
 
 } // namespace Inkscape
