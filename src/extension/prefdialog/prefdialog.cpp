@@ -139,7 +139,6 @@ PrefDialog::preview_toggle () {
         if (_exEnv != nullptr) {
             _exEnv->cancel();
             _exEnv->undo();
-            _exEnv->reselect();
 
             _exEnv.reset();
         }
@@ -169,7 +168,6 @@ PrefDialog::param_timer_expire () {
     if (_exEnv != nullptr) {
         _exEnv->cancel();
         _exEnv->undo();
-        _exEnv->reselect();
         _exEnv->run();
     }
 
@@ -191,7 +189,6 @@ PrefDialog::on_response (int signal) {
                 _exEnv->commit();
             } else {
                 _exEnv->undo();
-                _exEnv->reselect();
             }
 
             _exEnv.reset();
