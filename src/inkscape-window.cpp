@@ -127,6 +127,8 @@ InkscapeWindow::InkscapeWindow(SPDesktop *desktop)
     signal_close_request().connect(sigc::mem_fun(*this, &InkscapeWindow::on_close_request), false); // before
     property_default_width ().signal_changed().connect(sigc::mem_fun(*this, &InkscapeWindow::on_size_changed));
     property_default_height().signal_changed().connect(sigc::mem_fun(*this, &InkscapeWindow::on_size_changed));
+    property_maximized().signal_changed().connect(sigc::mem_fun(*this, &InkscapeWindow::on_size_changed));
+    property_fullscreened().signal_changed().connect(sigc::mem_fun(*this, &InkscapeWindow::on_size_changed));
 
     // Show dialogs after the main window, otherwise dialogs may be associated as the main window of the program.
     // Restore short-lived floating dialogs state if this is the first window being opened
