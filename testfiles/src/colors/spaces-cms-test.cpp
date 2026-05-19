@@ -77,6 +77,14 @@ TEST(ColorsSpaceCms, getType)
     EXPECT_EQ(cmyk->getComponentType(), Space::Type::CMYK);
 }
 
+TEST(ColorsSpacesRgb, isDirect)
+{
+    auto cmyk_profile = Inkscape::Colors::CMS::Profile::create_from_uri(cmyk_icc);
+    auto cmyk = std::make_shared<CMS>(cmyk_profile);
+
+    ASSERT_TRUE(std::dynamic_pointer_cast<Space::ProfileSpace<true>>(cmyk));
+}
+
 TEST(ColorsSpacesCms, realColor)
 {
     auto cmyk_profile = Inkscape::Colors::CMS::Profile::create_from_uri(cmyk_icc);
@@ -161,14 +169,14 @@ TEST(ColorsSpacesCms, printColor)
 {
     auto space = CMS(4);
 
-    ASSERT_FALSE(space.isValid());
+    ASSERT_FALSE(space.hasValidCmsProfile());
     EXPECT_EQ(space.toString({}), "");
     EXPECT_EQ(space.toString({1}), "");
     EXPECT_EQ(space.toString({1, 2, 3, 4}), "");
     EXPECT_EQ(space.toString({0, 0.5001, 1, 1, 2, 3, 4}), "#0080ff icc-color(test-profile, 1, 2, 3, 4)");
 
     space = CMS(2);
-    ASSERT_FALSE(space.isValid());
+    ASSERT_FALSE(space.hasValidCmsProfile());
     EXPECT_EQ(space.toString({1}), "");
     EXPECT_EQ(space.toString({0, 0.5001, 1, 1, 2}), "#0080ff icc-color(test-profile, 1, 2)");
     EXPECT_EQ(space.toString({0, 0, 0, 1, 2, 3}), "#000000 icc-color(test-profile, 1, 2)");
@@ -176,7 +184,7 @@ TEST(ColorsSpacesCms, printColor)
     auto srgb = Inkscape::Colors::CMS::Profile::create_srgb();
     space = CMS(srgb);
     space.setIntent(RenderingIntent::AUTO);
-    ASSERT_TRUE(space.isValid());
+    ASSERT_TRUE(space.hasValidCmsProfile());
     EXPECT_EQ(space.toString({1}), "");
     EXPECT_EQ(space.toString({0, 0.5001, 1}), "#0080ff icc-color(sRGB-built-in, 0, 0.5, 1)");
 }

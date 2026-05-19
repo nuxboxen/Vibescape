@@ -15,10 +15,30 @@
 
 namespace Inkscape::Colors::Space {
 
-class XYZ : public AnySpace
+/**
+ * Return the XYZ D65 color profile
+ */
+static std::shared_ptr<Colors::CMS::Profile> const getXYZ65Profile()
+{
+    static std::shared_ptr<Colors::CMS::Profile> xyz_profile = Colors::CMS::Profile::create_xyz65();
+    return xyz_profile;
+}
+
+template <typename T>
+class XYZBase : public ConvertableSpace<T>
 {
 public:
-    XYZ(): AnySpace(Type::XYZ, 3, "XYZ", "XYZ", "color-selector-xyz", true) {
+    XYZBase(Type type, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false)
+        : ConvertableSpace<T>(type, std::move(name), std::move(shortName), std::move(icon), spaceIsUnbounded)
+    {}
+
+    std::shared_ptr<Inkscape::Colors::CMS::Profile> const getProfile() const override { return getXYZ65Profile(); }
+};
+
+class XYZ : public ProfileSpace<true>
+{
+public:
+    XYZ(): ProfileSpace(Type::XYZ, 3, "XYZ", "XYZ", "color-selector-xyz", true) {
         _svgNames.emplace_back("xyz-d65");
         _svgNames.emplace_back("xyz");
         _intent = RenderingIntent::RELATIVE_COLORIMETRIC_NOBPC;
@@ -26,35 +46,22 @@ public:
     }
     ~XYZ() override = default;
 
-    unsigned int getComponentCount() const override { return 3; }
+    std::shared_ptr<Inkscape::Colors::CMS::Profile> const getProfile() const override { return getXYZ65Profile(); }
 
-protected:
-    friend class Inkscape::Colors::Color;
-
-    XYZ(Type type, int components, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false);
-    XYZ(Type type, int components, std::string name, std::string shortName, std::vector<std::string> svgNames, std::string icon, bool spaceIsUnbounded = false);
-
-    std::shared_ptr<Inkscape::Colors::CMS::Profile> const getProfile() const override;
-    std::string toString(std::vector<double> const &values, bool opacity = true) const override { return _toString(values, opacity, false); }
-    std::string _toString(std::vector<double> const &values, bool opacity, bool d50) const;
+    std::string toString(std::vector<double> const &values, bool opacity = true) const override;
 };
 
-class XYZ50 : public XYZ
+class XYZ50 : public ProfileSpace<true>
 {
 public:
-    XYZ50(): XYZ(Type::XYZ50, 3, "XYZ D50", "XYZ D50", "color-selector-xyz", true) {
+    XYZ50(): ProfileSpace(Type::XYZ50, 3, "XYZ D50", "XYZ D50", "color-selector-xyz", true) {
         _svgNames.emplace_back("xyz-d50");
     }
-
     ~XYZ50() override = default;
 
-protected:
-    friend class Inkscape::Colors::Color;
-
-    XYZ50(Type type, int components, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false);
-
     std::shared_ptr<Inkscape::Colors::CMS::Profile> const getProfile() const override;
-    std::string toString(std::vector<double> const &values, bool opacity = true) const override { return _toString(values, opacity, true); }
+
+    std::string toString(std::vector<double> const &values, bool opacity = true) const override;
 };
 
 } // namespace Inkscape::Colors::Space

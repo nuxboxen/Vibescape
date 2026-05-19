@@ -15,18 +15,46 @@
 
 namespace Inkscape::Colors::Space {
 
-class RGB : public AnySpace
+/**
+ * Return the RGB color profile, this is static for all RGB sub-types
+ */
+static std::shared_ptr<Colors::CMS::Profile> const getRGBProfile()
+{
+    static std::shared_ptr<Colors::CMS::Profile> srgb_profile;
+    if (!srgb_profile) {
+        srgb_profile = Colors::CMS::Profile::create_srgb();
+    }
+    return srgb_profile;
+}
+
+template <typename T>
+class RGBBase : public ConvertableSpace<T>
 {
 public:
-    RGB(): AnySpace(Type::RGB, 3, "RGB", "RGB", "color-selector-rgb") {
+    RGBBase(Type type, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false)
+        : ConvertableSpace<T>(type, std::move(name), std::move(shortName), std::move(icon), spaceIsUnbounded)
+    {}
+
+    std::shared_ptr<Colors::CMS::Profile> const getProfile() const override { return getRGBProfile(); }
+};
+
+class RGB : public ProfileSpace<true>
+{
+public:
+    constexpr static int ProfileChannels = 3;
+    constexpr static int OutputChannels = 3;
+
+    RGB(): ProfileSpace(Type::RGB, 3, "RGB", "RGB", "color-selector-rgb") {
         _svgNames.emplace_back("sRGB");
     }
+    // Unique constructor for CSSNAME which is just sRGB with strings
+    RGB(Type type, std::string name, std::string shortName, std::string icon)
+        : ProfileSpace(type, 3, std::move(name), std::move(shortName), std::move(icon))
+    {}
     ~RGB() override = default;
 
-    std::shared_ptr<Colors::CMS::Profile> const getProfile() const override;
-
+    std::shared_ptr<Colors::CMS::Profile> const getProfile() const override { return getRGBProfile(); }
 protected:
-    RGB(Type type, int components, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false);
 
     friend class Inkscape::Colors::Color;
 

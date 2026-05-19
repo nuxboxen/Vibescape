@@ -11,7 +11,6 @@
 
 #include "linear-rgb.h"
 
-#include <cmath>
 
 #include "colors/printer.h"
 
@@ -24,60 +23,6 @@ std::shared_ptr<Inkscape::Colors::CMS::Profile> const LinearRGB::getProfile() co
 {
     static std::shared_ptr<Colors::CMS::Profile> linearrgb_profile = Colors::CMS::Profile::create_linearrgb();
     return linearrgb_profile;
-}
-
-/**
- * Convenience function used for RGB conversions.
- *
- * @param c Value.
- * @return RGB color component.
- */
-double from_linear(double c)
-{
-    if (c <= 0.0031308) {
-        return 12.92 * c;
-    } else {
-        return 1.055 * std::pow(c, 1.0 / 2.4) - 0.055;
-    }
-}
-
-/**
- * Convenience function used for RGB conversions.
- *
- * @param c Value.
- * @return XYZ color component.
- */
-double to_linear(double c)
-{
-    if (c > 0.04045) {
-        return std::pow((c + 0.055) / 1.055, 2.4);
-    } else {
-        return c / 12.92;
-    }
-}
-
-/**
- * Convert a color from the a linear RGB colorspace to the sRGB colorspace.
- *
- * @param in_out[in,out] The linear RGB color converted to a RGB color.
- */
-void LinearRGB::toRGB(std::vector<double> &in_out)
-{
-    in_out[0] = from_linear(in_out[0]);
-    in_out[1] = from_linear(in_out[1]);
-    in_out[2] = from_linear(in_out[2]);
-}
-
-/**
- * Convert from sRGB icc values to linear RGB values
- *
- * @param in_out[in,out] The RGB color converted to a linear RGB color.
- */
-void LinearRGB::fromRGB(std::vector<double> &in_out)
-{
-    in_out[0] = to_linear(in_out[0]);
-    in_out[1] = to_linear(in_out[1]);
-    in_out[2] = to_linear(in_out[2]);
 }
 
 /**

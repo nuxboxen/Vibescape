@@ -69,12 +69,6 @@ INSTANTIATE_TEST_SUITE_P(ColorsSpacesCmyk, normalize, testing::Values(
 ));
 // clang-format on
 
-TEST(ColorsSpacesCmyk, randomConversion)
-{
-    GTEST_SKIP(); // cmyk isn't reflective
-    EXPECT_TRUE(RandomPassthrough(CMYK, RGB, 1));
-}
-
 TEST(ColorsSpacesCmyk, components)
 {
     auto c = Manager::get().find(CMYK)->getComponents();

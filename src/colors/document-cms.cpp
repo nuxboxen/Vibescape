@@ -147,7 +147,7 @@ std::optional<Color> DocumentCMS::parse(std::string const &value) const
         }
         auto space = _spaces.find(cms_name)->second;
 
-        if (!space->isValid()) {
+        if (!space->hasValidCmsProfile()) {
             for (int i = 2; i >= 0; i--) {
                 // Assume RGB fallback data if three doubles. Else black.
                 values.insert(values.begin(), fallback.size() == 3 ? fallback[i] : 0.0);

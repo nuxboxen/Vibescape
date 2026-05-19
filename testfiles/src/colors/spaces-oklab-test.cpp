@@ -52,7 +52,8 @@ INSTANTIATE_TEST_SUITE_P(ColorsSpacesOkLAB, normalize, testing::Values(
 TEST(ColorsSpacesOkLAB, randomConversion)
 {
     // Isolate conversion functions
-    EXPECT_TRUE(RandomPassFunc(Space::OkLab::fromLinearRGB, Space::OkLab::toLinearRGB, 1000));
+    EXPECT_TRUE(RandomPassFunc(Space::OkLab::profileToSpace<double>,
+                               Space::OkLab::spaceToProfile<double>, 1000));
 
     // Full stack conversion
     // EXPECT_TRUE(RandomPassthrough(OKLAB, RGB, 1));

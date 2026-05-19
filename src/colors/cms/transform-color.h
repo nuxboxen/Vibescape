@@ -26,6 +26,14 @@ public:
 
     bool do_transform(std::vector<double> &io) const;
 
+    template <typename In, typename Out>
+    bool do_transform(In const &i, Out &o)
+    {
+        assert(i.size() >= _channels_in && o.size() >= _channels_out);
+        cmsDoTransform(_handle, &i.front(), &o.front(), 1);
+        return true;
+    }
+
 private:
 
     int _channels_in;

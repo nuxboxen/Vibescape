@@ -19,22 +19,6 @@
 namespace Inkscape::Colors::Space {
 
 /**
- * Return the RGB color profile, this is static for all RGB sub-types
- */
-std::shared_ptr<Inkscape::Colors::CMS::Profile> const RGB::getProfile() const
-{
-    static std::shared_ptr<Colors::CMS::Profile> srgb_profile;
-    if (!srgb_profile) {
-        srgb_profile = Colors::CMS::Profile::create_srgb();
-    }
-    return srgb_profile;
-}
-
-RGB::RGB(Type type, int components, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded):
-    AnySpace(type, components, std::move(name), std::move(shortName), std::move(icon), spaceIsUnbounded) {
-}
-
-/**
  * Print the RGB color to a CSS Hex code of 6 or 8 digits.
  *
  * @arg values - A vector of doubles for each channel in the RGB space

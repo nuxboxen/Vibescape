@@ -54,7 +54,8 @@ INSTANTIATE_TEST_SUITE_P(ColorsSpacesLinearRGB, normalize, testing::Values(
 TEST(ColorsSpacesLinearRGB, randomConversion)
 {
     // Using the functions directly
-    EXPECT_TRUE(RandomPassFunc(Space::LinearRGB::fromRGB, Space::LinearRGB::toRGB, 1000));
+    EXPECT_TRUE(RandomPassFunc(Space::LinearRGB::fromRGB<double>,
+                               Space::LinearRGB::toRGB<double>, 1000));
 
     // Using the color conversion stack
     EXPECT_TRUE(RandomPassthrough(linearRGB, RGB, 1000));

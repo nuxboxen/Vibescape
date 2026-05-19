@@ -1,92 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /** @file
  *//*
- * Authors:
- *   2015 Alexei Boronine (original idea, JavaScript implementation)
- *   2015 Roger Tallada (Obj-C implementation)
- *   2017 Martin Mitas (C implementation, based on Obj-C implementation)
- *   2021 Massinissa Derriche (C++ implementation for Inkscape, based on C implementation)
- *   2023 Martin Owens (New Color classes)
- *
  * Copyright (C) 2023 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
 #include "lch.h"
 
-#include <2geom/ray.h>
-
 #include "colors/printer.h"
 
 namespace Inkscape::Colors::Space {
-
-constexpr double LUMA_SCALE = 100;
-constexpr double CHROMA_SCALE = 150;
-constexpr double HUE_SCALE = 360;
-
-/**
- * Changes the values from 0..1, to typical lch scaling used
- * in calculations. L:0..100, C:0..150 H:0..360
- */
-void Lch::scaleUp(std::vector<double> &in_out)
-{
-    in_out[0] = SCALE_UP(in_out[0], 0, LUMA_SCALE);
-    in_out[1] = SCALE_UP(in_out[1], 0, CHROMA_SCALE);
-    in_out[2] = SCALE_UP(in_out[2], 0, HUE_SCALE);
-}
-
-/**
- * Changes the values from typical lch scaling (see above) to
- * values 0..1 used in the color module.
- */
-void Lch::scaleDown(std::vector<double> &in_out)
-{
-    in_out[0] = SCALE_DOWN(in_out[0], 0, LUMA_SCALE);
-    in_out[1] = SCALE_DOWN(in_out[1], 0, CHROMA_SCALE);
-    in_out[2] = SCALE_DOWN(in_out[2], 0, HUE_SCALE);
-}
-
-/**
- * Convert a color from the the LCH colorspace to the Lab colorspace.
- *
- * @param in_out[in,out] The LCH color converted to a Lab color.
- */
-void Lch::toLab(std::vector<double> &in_out)
-{
-    double sinhrad, coshrad;
-    Geom::sincos(Geom::rad_from_deg(in_out[2]), sinhrad, coshrad);
-    double a = coshrad * in_out[1];
-    double b = sinhrad * in_out[1];
-
-    in_out[1] = a;
-    in_out[2] = b;
-}
-
-/**
- * Convert a color from the the Lab colorspace to the LCH colorspace.
- *
- * @param in_out[in,out] The Lab color converted to a LCH color.
- */
-void Lch::fromLab(std::vector<double> &in_out)
-{
-    double l = in_out[0];
-    auto ab = Geom::Point(in_out[1], in_out[2]);
-    double h;
-    double const c = ab.length();
-
-    /* Grays: disambiguate hue */
-    if (c < 0.00000001) {
-        h = 0;
-    } else {
-        h = Geom::deg_from_rad(Geom::atan2(ab));
-        if (h < 0.0) {
-            h += 360.0;
-        }
-    }
-    in_out[0] = l;
-    in_out[1] = c;
-    in_out[2] = h;
-}
 
 /**
  * Print the Lch color to a CSS string.
