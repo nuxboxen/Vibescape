@@ -79,6 +79,16 @@ apt_bundle \
 )
 
 ########################################################################
+# Install our own gschema (to work even on older systems)
+########################################################################
+
+# Without this, we get crashes when some part of GTK expects a setting to exist.
+# The AppRun script will set GSETTINGS_SCHEMA_DIR and/or XDG_DATA_DIRS for us.
+apt_bundle gnome-settings-daemon-common
+mkdir -p ./appdir/usr/share/glib-2.0/schemas/
+cp /usr/share/glib-2.0/schemas/*.gschema.xml ./appdir/usr/share/glib-2.0/schemas/
+
+########################################################################
 # Generate AppImage
 ########################################################################
 
