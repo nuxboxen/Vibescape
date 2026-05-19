@@ -130,11 +130,6 @@ InkscapeWindow::InkscapeWindow(SPDesktop *desktop)
     property_maximized().signal_changed().connect(sigc::mem_fun(*this, &InkscapeWindow::on_size_changed));
     property_fullscreened().signal_changed().connect(sigc::mem_fun(*this, &InkscapeWindow::on_size_changed));
 
-    // Show dialogs after the main window, otherwise dialogs may be associated as the main window of the program.
-    // Restore short-lived floating dialogs state if this is the first window being opened
-    bool include_short_lived = _app->get_number_of_windows() == 1;
-    DialogManager::singleton().restore_dialogs_state(_desktop_widget->getDialogContainer(), include_short_lived);
-
     // ================= Menu icons/tooltips =================
     // Note: The menu is defined at the app level but showing icons/tooltips requires actual widgets and
     // must be done on the window level.
@@ -166,6 +161,12 @@ InkscapeWindow::InkscapeWindow(SPDesktop *desktop)
 void InkscapeWindow::on_realize()
 {
     Gtk::ApplicationWindow::on_realize();
+
+    // Show dialogs after the main window, otherwise dialogs may be associated as the main window of the program
+    // or cause the main window to be presented before its ready.
+    // Restore short-lived floating dialogs state if this is the first window being opened
+    bool include_short_lived = _app->get_number_of_windows() == 1;
+    DialogManager::singleton().restore_dialogs_state(_desktop_widget->getDialogContainer(), include_short_lived);
 
     // Note: Toplevel only becomes non-null after realisation.
     _toplevel_state_connection = get_toplevel()->property_state().signal_changed().connect(
