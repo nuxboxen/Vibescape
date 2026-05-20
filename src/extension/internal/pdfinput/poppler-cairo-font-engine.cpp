@@ -314,7 +314,11 @@ CairoFreeTypeFont *CairoFreeTypeFont::create(GfxFont *gfxFont, XRef *xref, FT_Li
 #else
     GfxFontLoc *fontLoc;
 #endif
+#if POPPLER_CHECK_VERSION(26, 5, 0)
+    const char * const *enc;
+#else
     char **enc;
+#endif
     const char *name;
 #if POPPLER_CHECK_VERSION(25, 7, 0)
     std::unique_ptr<FoFiType1C> ff1c;
@@ -386,7 +390,11 @@ CairoFreeTypeFont *CairoFreeTypeFont::create(GfxFont *gfxFont, XRef *xref, FT_Li
                 goto err2;
             }
 
+#if POPPLER_CHECK_VERSION(26, 5, 0)
+            enc = gfx8bit->getEncoding().data();
+#else
             enc = gfx8bit->getEncoding();
+#endif
 
             codeToGID.resize(256);
             for (i = 0; i < 256; ++i) {
@@ -678,7 +686,7 @@ CairoType3Font *CairoType3Font::create(GfxFont *gfxFont, PDFDoc *doc, CairoFontE
 #endif
 
     std::vector<int> codeToGID;
-    char *name;
+    const char *name;
 
     Dict *charProcs = gfx8bit->getCharProcs();
     Ref ref = *gfxFont->getID();
@@ -695,7 +703,11 @@ CairoType3Font *CairoType3Font::create(GfxFont *gfxFont, PDFDoc *doc, CairoFontE
 
     cairo_font_face_set_user_data(font_face, &type3_font_key, (void *)info, _free_type3_font_info);
 
+#if POPPLER_CHECK_VERSION(26, 5, 0)
+    const char * const *enc = gfx8bit->getEncoding().data();
+#else
     char **enc = gfx8bit->getEncoding();
+#endif
     codeToGID.resize(256);
     for (int i = 0; i < 256; ++i) {
         codeToGID[i] = 0;
