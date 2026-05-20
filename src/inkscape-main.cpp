@@ -94,15 +94,6 @@ static void set_themes_env()
     Glib::setenv("XDG_DATA_DIRS", xdg_data_dirs + G_SEARCHPATH_SEPARATOR_S + inkscape_datadir);
 }
 
-#ifdef _WIN32
-// some win32-specific environment adjustments
-static void set_win32_env()
-{
-    // Restore native titlebars.
-    Glib::setenv("GTK_CSD", "0");
-}
-#endif
-
 /**
  * Convert some legacy 0.92.x command line options to 1.0.x options.
  * @param[in,out] argc The main() argc argument, will be modified
@@ -200,9 +191,6 @@ int main(int argc, char *argv[])
         }
     }
 #elif defined _WIN32
-    // adjust environment
-    set_win32_env();
-
     // temporarily switch console encoding to UTF8 while Inkscape runs
     // as everything else is a mess and it seems to work just fine
     const unsigned int initial_cp = GetConsoleOutputCP();
