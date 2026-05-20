@@ -22,7 +22,7 @@ endif()
 if(WITH_ASAN)
     list(APPEND INKSCAPE_CXX_FLAGS "-fsanitize=address -fno-omit-frame-pointer")
     list(APPEND INKSCAPE_LIBS "-fsanitize=address")
-else()
+elseif(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Undefine first, to suppress 'warning: "_FORTIFY_SOURCE" redefined'
     list(APPEND INKSCAPE_CXX_FLAGS "-U_FORTIFY_SOURCE")
     list(APPEND INKSCAPE_CXX_FLAGS "-D_FORTIFY_SOURCE=2")
