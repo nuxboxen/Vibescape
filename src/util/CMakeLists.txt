@@ -78,6 +78,7 @@ target_sources(inkscape_base PRIVATE
     smart_ptr_keys.h
 	unicode.h
     units.h
+    unsafe-optional.h
     uri.h
     variant-visitor.h
     value-utils.h

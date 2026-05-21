@@ -58,6 +58,9 @@ if (CMAKE_COMPILER_IS_GNUCC)
         list(APPEND INKSCAPE_CXX_FLAGS_DEBUG "-fstack-clash-protection -fcf-protection")
     endif()
 endif()
+if(APPLE)
+    list(APPEND INKSCAPE_CXX_FLAGS "-fexperimental-library") # for jthread, stop_token
+endif()
 
 # Define the flags for profiling if desired:
 if(WITH_PROFILING)

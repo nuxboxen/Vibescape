@@ -2,14 +2,13 @@
 /** @file
  * Static objects with destruction before main() exit.
  */
-#ifndef INKSCAPE_UTIL_STATICS_BIN_H
-#define INKSCAPE_UTIL_STATICS_BIN_H
+#ifndef INKSCAPE_UTIL_STATICS_H
+#define INKSCAPE_UTIL_STATICS_H
 
-#include <optional>
-
-namespace Inkscape::Util {
-
-class StaticHolderBase;
+#include <atomic>
+#include <cassert>
+#include <mutex>
+#include "unsafe-optional.h"
 
 /**
  * The following system provides a way of dealing with statics/singletons with unusual lifetime requirements,
@@ -30,9 +29,12 @@ class StaticHolderBase;
  *        class X : public EnableSingleton<X> { ...
  *
  *    This endows it with a ::get() method that initialises and returns the static instance.
- *
- *    Warning: ::get() is not safe against concurrent initialisation, unlike the idiom above.
- *    So only use it in single-threaded code.
+ *    It is safe against concurrent initialisation, like the idiom above.
+ *    If the class has a private ctor/dtor, then adding
+ * 
+ *        friend class EnableSingleton;
+ * 
+ *    to X will also be necessary.
  *
  *  - To ensure that X is outlived by another singleton Y, pass in the dependency using Depends:
  *
@@ -43,105 +45,71 @@ class StaticHolderBase;
  *    Note: Y will still be lazily-initialised, for startup efficiency. So X's lifetime isn't
  *    necessarily completely contained in Y's lifetime.
  *
- *    Note: As with the above idiom, dependency loops are detected at runtime on glibc.
- *
  *  - To destruct all singletons at any time, call
  *
- *        StaticsBin::get().destroy();
+ *        Statics::destroy();
  *
- *    They will be recreated again if re-accessed. This function should be called at the end of main().
- *    If it isn't, it will be detected at runtime by an assertion in StaticsBin::~StaticsBin().
+ *    They will be recreated again if re-accessed. This is mainly intended for unit testing,
+ *    so that the state of statics can be reset between tests.
  */
 
-/**
- * Maintains the list of statics that need to be destroyed,
- * destroys them, and complains if it's not asked to do so in time.
- */
-class StaticsBin
-{
-public:
-    static StaticsBin &get();
+namespace Inkscape::Util {
 
-    void destroy();
-
-private:
-    ~StaticsBin();
-
-    StaticHolderBase *head = nullptr;
-
-    friend class StaticHolderBase;
-};
-
-class StaticHolderBase
-{
-public:
-    StaticHolderBase(StaticHolderBase const &) = delete;
-    StaticHolderBase &operator=(StaticHolderBase const &) = delete;
-
-protected:
-    StaticHolderBase();
-
-    virtual void destroy() = 0;
-    virtual bool active() const = 0;
-
-private:
-    StaticHolderBase *const next;
-
-    StaticHolderBase(StaticsBin &bin);
-
-    friend StaticsBin;
-};
-
+/// Tag class used to represent a list of dependencies.
 template <typename... Ts>
 struct Depends;
 
-template <typename Deps>
-struct DependencyRegisterer {};
+namespace detail {
 
-template <typename T, typename... Ts>
-struct DependencyRegisterer<Depends<T, Ts...>> : DependencyRegisterer<Depends<Ts...>>
+/// Helper class for unpacking @a Depends.
+template <typename Deps>
+struct ForEachDep;
+
+template <typename... Ts>
+struct ForEachDep<Depends<Ts...>>
 {
-    DependencyRegisterer()
+    template <typename F>
+    ForEachDep(F &&f)
     {
-        T::getStaticHolder();
+        ([&]<typename T> { // for each T in Ts
+            f.template operator()<T>();
+        }.template operator()<Ts>(), ...);
     }
 };
 
-template <typename T, typename Deps = Depends<>>
-class StaticHolder
-    : private DependencyRegisterer<Deps>
-    , private StaticHolderBase
+/// Simple non-owning singly-linked list of callbacks.
+struct FuncListItem
+{
+    virtual void exec() = 0;
+    FuncListItem *next = nullptr;
+};
+
+} // namespace detail
+
+/// Manages the global list of statics.
+class Statics
 {
 public:
-    template <typename... Args>
-    T &get(Args&&... args)
-    {
-        [[unlikely]] if (!opt) {
-            opt.emplace(std::forward<Args>(args)...);
-        }
-        return *opt;
-    }
+    Statics();
+    ~Statics();
 
-protected:
-    void destroy() override
-    {
-        opt.reset();
-    }
-
-    bool active() const override
-    {
-        return opt.has_value();
-    }
+    /// Destroy all active statics. Only to be used for unit testing.
+    static void destroy() { instance->clear_list(); }
 
 private:
-    struct ConstructibleT : std::remove_cv_t<T>
-    {
-        using T::T;
-    };
+    /// Pointer to the global instance which lives on the stack of main().
+    static Statics *instance;
 
-    std::optional<ConstructibleT> opt;
+    std::mutex lock;
+    detail::FuncListItem *head = nullptr;
+
+    void add_to_list(detail::FuncListItem *item);
+    void clear_list();
+
+    template <typename, typename> friend class EnableSingleton;
 };
 
+/// CRTP mixin class used to imbue a class with singleton functionality.
 template <typename T, typename Deps = Depends<>>
 class EnableSingleton
 {
@@ -152,19 +120,91 @@ public:
     template <typename... Args>
     static T &get(Args&&... args)
     {
-        return getStaticHolder().get(std::forward<Args>(args)...);
-    }
+        assert(Statics::instance);
 
-    static StaticHolder<T, Deps> &getStaticHolder()
-    {
-        static StaticHolder<T, Deps> instance;
-        return instance;
+        auto &holder = getholder();
+
+        [[unlikely]] if (!std::atomic_ref(inited).load(std::memory_order_acquire)) {
+            // Create the holders in the correct order under the global lock.
+            {
+                auto guard = std::lock_guard(Statics::instance->lock);
+                ensure_holder();
+            }
+
+            // Create the static instance.
+            std::call_once(holder->once_flag, [&] {
+                new (holder->opt.get_bytes()) T(std::forward<Args>(args)...); // bypass construct() to allow calling private ctors
+                std::atomic_ref(inited).store(true, std::memory_order_release);
+            });
+        }
+
+        return *holder->opt;
     }
 
 protected:
     EnableSingleton() = default;
+
+private:
+    struct Holder : detail::FuncListItem
+    {
+        std::once_flag once_flag;
+        UnsafeOptional<T> opt;
+
+        void exec() override
+        {
+            auto &holder = getholder();
+            if (inited) {
+                holder->opt->~T(); // bypass destruct() to allow calling private dtors
+            }
+            holder.destruct();
+            inited = false;
+            holder_created = false;
+        }
+    };
+
+    inline static bool inited = false; // Protected by std::atomic_ref.
+    inline static bool holder_created = false; // Protected by Statics::lock.
+
+    // inline static UnsafeOptional<Holder> holder;
+    // Above doesn't compile with GCC (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63296).
+    // Use the following workaround:
+    static auto &getholder()
+    {
+        static UnsafeOptional<Holder> holder;
+        return holder;
+    }
+
+    /**
+     * Recursively register our holder and all dependencies' holders.
+     *
+     * The order is such that dependencies' holders are always destroyed
+     * after our holder.
+     *
+     * This function is always called while holding Statics::lock.
+     *
+     * Note that this function does no construction of the actual static
+     * instances held by each holder; they are lazily-initialised.
+     */
+    static void ensure_holder()
+    {
+        if (holder_created) {
+            return;
+        }
+
+        detail::ForEachDep<Deps>([]<typename Dep> {
+            Dep::ensure_holder();
+        });
+
+        auto &holder = getholder();
+        holder.construct();
+        Statics::instance->add_to_list(holder.get());
+
+        holder_created = true;
+    }
+
+    template <typename, typename> friend class EnableSingleton; // to allow recursion of ensure_holder()
 };
 
 } // namespace Inkscape::Util
 
-#endif // INKSCAPE_UTIL_STATICS_BIN_H
+#endif // INKSCAPE_UTIL_STATICS_H

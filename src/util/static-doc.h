@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "document.h"
 #include "libnrtype/font-factory.h"
 #include "statics.h"
 

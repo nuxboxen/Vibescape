@@ -19,13 +19,9 @@ namespace {
 class FontInstanceTest : public ::testing::Test
 {
 protected:
-    FontInstanceTest() : ::testing::Test()
+    FontInstanceTest()
     {
         Glib::init();
-    }
-    ~FontInstanceTest()
-    {
-        Inkscape::Util::StaticsBin::get().destroy();
     }
 
     void SetUp() override {
@@ -35,9 +31,10 @@ protected:
         font = {};
     }
 
+    Inkscape::Util::Statics statics;
     std::shared_ptr<FontInstance> font;
 };
-  
+
 TEST_F(FontInstanceTest, MapUnicodeChar)
 {
     ASSERT_EQ(font->MapUnicodeChar('i'), 76);

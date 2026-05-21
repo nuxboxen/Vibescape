@@ -153,6 +153,7 @@ static void convert_legacy_options(int &argc, char **&argv)
 
 int main(int argc, char *argv[])
 {
+    Inkscape::Util::Statics statics;
     Gtk::Application::wrap_in_search_entry2();
 
 #if !defined(_WIN32)
@@ -206,7 +207,6 @@ int main(int argc, char *argv[])
     auto ret = InkscapeApplication().gio_app()->run(argc, argv);
 
     Inkscape::Preferences::get()->save();
-    Inkscape::Util::StaticsBin::get().destroy();
 
 #ifdef _WIN32
     // switch back to initial console encoding

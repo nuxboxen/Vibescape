@@ -19,17 +19,12 @@ namespace {
 class FontFactoryTest : public ::testing::Test
 {
 protected:
-    FontFactoryTest() : ::testing::Test()
+    FontFactoryTest()
     {
         Glib::init();
     }
-    ~FontFactoryTest()
-    {
-        Inkscape::Util::StaticsBin::get().destroy();
-    }
 
-    void SetUp() override {}
-    void TearDown() override {}
+    Inkscape::Util::Statics statics;
 };
 
 TEST_F(FontFactoryTest, getSingleton)
