@@ -16,6 +16,11 @@ import sys
 
 SYSTEMROOT = os.environ['SYSTEMROOT']
 
+KNOWN_SYSTEM_DLLS = {
+    "dcomp.dll",
+    "d3d11.dll",
+    "dxgi.dll",
+}
 
 class Dependency:
     def __init__(self):
@@ -62,7 +67,7 @@ def get_dependencies(filename, deps):
         # which is indicated by the string '=>' followed by the determined location or 'not found'
         if ('=>' in line):
             (lib, location) = line.lstrip().split(' => ')
-            if lib == "OPENGL32.dll": #ignored since it's a system library but is absent from the CI (no display)
+            if lib == "OPENGL32.dll" or lib.lower() in KNOWN_SYSTEM_DLLS: #ignored since it's a system library but is absent from the CI (no display)
                 skip_indent = indent
                 continue
             elif location == 'not found':

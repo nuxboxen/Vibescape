@@ -21,6 +21,7 @@
 #include <glib/gstdio.h>
 
 #include "desktop.h"
+#include "ui/interface.h"
 #include "selection.h"
 #include "extension/effect.h"
 #include "extension/system.h"
@@ -124,6 +125,10 @@ void ImageMagick::effect(Inkscape::Extension::Effect *module, ExecutionEnv * /*e
     refreshParameters(module);
     ImageMagickDocCache * dc = dynamic_cast<ImageMagickDocCache *>(docCache);
     if (!dc) { // should really never happen
+        return;
+    }
+    if (dc->images.empty()) {
+        sp_ui_error_dialog(_("Select a raster image (&lt;svg:image&gt;) to use this extension."));
         return;
     }
     unsigned constexpr b64_line_length = 76;
