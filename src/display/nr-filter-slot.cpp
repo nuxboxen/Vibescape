@@ -163,7 +163,10 @@ cairo_surface_t *FilterSlot::_get_transformed_background() const
 
     cairo_surface_t *tbg = nullptr;
 
-    if (auto bg = const_cast<FilterSlot *>(this)->getcairo(NR_FILTER_BACKGROUNDIMAGE)) {
+    auto bg_iter = _slots.find(NR_FILTER_BACKGROUNDIMAGE);
+    if (bg_iter != _slots.end()) {
+        auto bg = bg_iter->second;
+
         tbg = cairo_surface_create_similar(
             bg, cairo_surface_get_content(bg),
             _slot_w, _slot_h);
