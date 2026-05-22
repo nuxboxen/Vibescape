@@ -31,8 +31,9 @@ namespace Inkscape::UI::Widget {
 class FontVariationAxis : public Gtk::Box
 {
 public:
-    FontVariationAxis(Glib::ustring name, OTVarAxis const &axis, Glib::ustring label, Glib::ustring tooltip);
+    FontVariationAxis(OTVarAxis const &axis, Glib::ustring tooltip);
     Glib::ustring get_name() { return name; }
+    std::string get_tag()    { return tag; }
     Gtk::Label* get_label()  { return label; }
     double get_value()       { return edit->get_value(); }
     int get_precision()      { return precision; }
@@ -44,6 +45,7 @@ public:
 private:
     // Widgets
     Glib::ustring name;
+    Glib::ustring tag; // Four character OpenType axis tag.
     Gtk::Label* label;
     Gtk::Scale* scale;
     SpinButton* edit = nullptr;
@@ -103,13 +105,13 @@ public:
     int measure_height(int axis_count);
 
 private:
-    void build_ui(const std::map<Glib::ustring, OTVarAxis>& axes);
+    void build_ui(const std::vector<OTVarAxis>& axes);
 
     std::vector<FontVariationAxis*> _axes;
     Glib::RefPtr<Gtk::SizeGroup> _size_group;
     Glib::RefPtr<Gtk::SizeGroup> _size_group_edit;
     sigc::signal<void ()> _signal_changed;
-    std::map<Glib::ustring, OTVarAxis> _open_type_axes;
+    std::vector<OTVarAxis> _ot_axes;
     OperationBlocker _update;
 };
 
