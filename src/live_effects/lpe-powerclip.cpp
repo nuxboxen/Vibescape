@@ -86,7 +86,7 @@ Geom::PathVector sp_get_recursive_pathvector(SPLPEItem *item, Geom::PathVector r
                 if (pathdir == dir && inverse) {
                     path = path.reversed();
                 }
-                res.push_back(path);
+                res.push_back(path * shape->i2dt_affine());
             }
         }
     }
