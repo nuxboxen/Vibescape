@@ -20,3 +20,6 @@
 [submodule "src/3rdparty/libuemf"]
 	path = src/3rdparty/libuemf
 	url = https://gitlab.com/inkscape/devel/libuemf.git
+[submodule "src/3rdparty/FlameGraph"]
+	path = src/3rdparty/FlameGraph
+	url = https://github.com/brendangregg/FlameGraph.git

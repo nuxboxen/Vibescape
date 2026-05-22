@@ -149,7 +149,17 @@ foreach(test_source ${TEST_SOURCES})
     add_executable(${testname} src/${test_source}.cpp)
     target_include_directories(${testname} SYSTEM PRIVATE ${GTEST_INCLUDE_DIRS})
     target_link_libraries(${testname} cpp_test_static_library 2Geom::2geom)
-    add_test(NAME ${testname} COMMAND ${testname})
+    if (WITH_PERFREPORT)
+        add_test(NAME ${testname}
+                COMMAND ${PERF_WRAPPER}
+                ${testname}
+                $<TARGET_FILE:${testname}>
+                ${FLAMEGRAPH_DIR}
+                ${REPORT_DIR}
+        )
+    else ()
+        add_test(NAME ${testname} COMMAND ${testname})
+    endif()
     set_tests_properties(${testname} PROPERTIES ENVIRONMENT "${INKSCAPE_TEST_PROFILE_DIR_ENV}/${testname};${CMAKE_CTEST_ENV}")
     add_dependencies(tests ${testname})
 endforeach()

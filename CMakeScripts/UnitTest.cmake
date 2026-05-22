@@ -3,6 +3,12 @@
 # Setup for unit tests.
 add_custom_target(unit_tests)
 
+if (WITH_PERFREPORT)
+    set(PERF_WRAPPER ${CMAKE_SOURCE_DIR}/testfiles/run_with_perf.sh)
+    set(FLAMEGRAPH_DIR ${CMAKE_SOURCE_DIR}/src/3rdparty/flamegraph)
+    set(REPORT_DIR ${CMAKE_BINARY_DIR}/performance-reports)
+endif()
+
 function(make_target_unit_testable target_name)
     target_compile_definitions(${target_name} PRIVATE "-D_GLIBCXX_ASSERTIONS")
     target_compile_options(${target_name} PRIVATE "-fno-omit-frame-pointer" "-UNDEBUG")
@@ -51,7 +57,17 @@ function(add_unit_test test_name)
     make_target_unit_testable(${test_name})
 
     target_link_libraries(${test_name} GTest::gtest GTest::gmock GTest::gmock_main ${ARG_EXTRA_LIBS})
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    if (WITH_PERFREPORT)
+        add_test(NAME ${test_name}
+                COMMAND ${PERF_WRAPPER}
+                ${test_name}
+                $<TARGET_FILE:${test_name}>
+                ${FLAMEGRAPH_DIR}
+                ${REPORT_DIR}
+        )
+    else ()
+        add_test(NAME ${test_name} COMMAND ${test_name})
+    endif()
     add_dependencies(unit_tests ${test_name} ${ARG_EXTRA_LIBS})
 
     foreach(arg_env ${ARG_ENVIRONMENT})
