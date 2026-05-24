@@ -35,6 +35,7 @@
 #include "ui/builder-utils.h"
 #include "ui/dialog/choose-file-utils.h"
 #include "ui/dialog/choose-file.h"
+#include "ui/interface.h"
 #include "ui/shortcuts.h"
 #include "ui/themes.h"
 #include "ui/util.h"
@@ -184,6 +185,7 @@ StartScreen::StartScreen()
     });
 
     // Setup the lists of items
+    remove_nonexistent_files();
     enlist_recent_files();
     enlist_keys();
     filter_themes(themes);
@@ -342,6 +344,12 @@ StartScreen::enlist_recent_files()
             row[cols.col_crash] = recent_file->has_group("Crash");
         }
     }
+
+}
+
+void StartScreen::remove_nonexistent_files()
+{
+    IO::removeInkscapeRecentNonexistent(this);
 }
 
 /**
@@ -421,9 +429,21 @@ StartScreen::load_document()
                 prefs->setString("/dialogs/open/path", current_folder);
             }
 
-            // Now we have file, open document.
-            if (auto [document, cancelled] = app->document_open(file); !cancelled) {
+            // Try opening the document.
+            auto [document, cancelled] = app->document_open(file);
+            if (document && !cancelled) {
+                // document is loaded, finish up.
                 _finish(document);
+            } else if (!document && !cancelled) {
+                // document does not exist or otherwise cannot be opened
+                auto text = Glib::ustring::compose(_("Cannot open file %1. It may be moved, renamed or removed."), file->get_path());
+                sp_ui_error_dialog(text.c_str());
+
+                // remove from recents
+                Inkscape::IO::removeInkscapeRecent(file->get_path());
+
+                // reload recents
+                enlist_recent_files();
             }
         }
     }

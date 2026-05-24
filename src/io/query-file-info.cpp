@@ -5,6 +5,7 @@
 
 #include "query-file-info.h"
 
+#include <glibmm/uriutils.h>
 #include <iostream>
 #include <unordered_set>
 #include <utility>
@@ -13,18 +14,28 @@ namespace Inkscape::UI {
 
 static std::unordered_set<QueryFileInfo*> pending_operations;
 
-QueryFileInfo::QueryFileInfo(const std::string& path_to_test, std::function<void (Glib::RefPtr<Gio::FileInfo>)> on_result):
-    _on_result(std::move(on_result)) {
+QueryFileInfo::QueryFileInfo(const std::string& path_to_test, std::function<void (Glib::RefPtr<Gio::FileInfo>)> on_result, std::function<void()> on_finalize):
+    _on_result(std::move(on_result)),
+    _on_finalize(std::move(on_finalize)) {
 
-    _file = Gio::File::create_for_path(path_to_test);
-    _operation = Gio::Cancellable::create();
-    _file->query_info_async([this](auto& r) { results_callback(this, r); }, _operation);
-    pending_operations.insert(this);
+    auto scheme = Glib::uri_parse_scheme(path_to_test);
+    if (scheme == "") {
+        _file = Gio::File::create_for_path(path_to_test);
+    } else if (scheme == "file") {
+        _file = Gio::File::create_for_uri(path_to_test);
+    }
+    if (_file) {
+        _operation = Gio::Cancellable::create();
+        _file->query_info_async([this](auto& r) { results_callback(this, r); }, _operation);
+        pending_operations.insert(this);
+    }
 }
 
 QueryFileInfo::~QueryFileInfo() {
-    pending_operations.erase(this);
-    _operation->cancel();
+    if (_file) {
+        pending_operations.erase(this);
+        _operation->cancel();
+    }
 }
 
 void QueryFileInfo::results_callback(QueryFileInfo* self, Glib::RefPtr<Gio::AsyncResult>& result) {
@@ -38,11 +49,12 @@ void QueryFileInfo::results(Glib::RefPtr<Gio::AsyncResult>& result) const {
     try {
         auto info = _file->query_info_finish(result);
         _on_result(info);
+        if (pending_operations.size() <= 1 && _on_finalize) _on_finalize();
     }
     catch (Glib::Error& ex) {
         if (ex.code() == 1) {
             // path points to nonexistent object
-            _on_result({});
+            _on_result(nullptr);
             return;
         }
         std::cerr << "Async file query error: " << ex.what() << ", " << ex.code() << std::endl;

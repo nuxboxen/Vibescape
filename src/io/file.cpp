@@ -14,6 +14,7 @@
 #include <memory>
 #include <unistd.h>
 #include <glibmm/fileutils.h>
+#include <glibmm/i18n.h>
 #include <glibmm/miscutils.h>
 #include <giomm/file.h>
 

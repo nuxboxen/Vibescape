@@ -10,16 +10,19 @@
 
 #include "actions-file.h"
 
-#include <iostream>
+#include <gtkmm/recentmanager.h>
 
 #include <giomm.h>  // Not <gtkmm.h>! To eventually allow a headless version!
 #include <glibmm/i18n.h>
 
 #include "actions-helper.h"
+#include "desktop.h"
 #include "document.h"
 #include "document-undo.h"
 #include "inkscape.h"             // Inkscape::Application
 #include "inkscape-application.h"
+#include "io/recent-files.h"
+#include "ui/interface.h"
 
 
 // Actions for file handling (should be integrated with file dialog).
@@ -30,12 +33,8 @@ file_open(const Glib::VariantBase& value, InkscapeApplication *app)
     Glib::Variant<Glib::ustring> s = Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::ustring> >(value);
 
     Glib::RefPtr<Gio::File> file = Gio::File::create_for_path(s.get());
-    if (!file->query_exists()) {
-        show_output(Glib::ustring("file_open: file '") + s.get().raw() + "' does not exist.");
-        return;
-    }
-    auto document = app->document_open(file).first;
-    if (!document) {
+    auto [document, cancelled] = app->document_open(file);
+    if (!document || cancelled) {
         return;
     }
 
@@ -59,6 +58,12 @@ file_open_with_window(const Glib::VariantBase& value, InkscapeApplication *app)
     Glib::RefPtr<Gio::File> file = Gio::File::create_for_path(s.get());
     if (!file->query_exists()) {
         show_output(Glib::ustring("file_open: file '") + s.get().raw() + "' does not exist.");
+        auto text = Glib::ustring::compose(_("Cannot open file %1. It may be moved, renamed or removed."), s.get());
+        app->get_active_desktop()->showNotice(text, 5000);
+
+        // remove from recents
+        Inkscape::IO::removeInkscapeRecent(s.get());
+        
         return;
     }
     app->create_window(file);
