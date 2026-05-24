@@ -23,6 +23,7 @@
 #include <gtkmm/picture.h>
 #include <gtkmm/settings.h>
 #include <gtkmm/switch.h>
+#include <gtkmm/version.h>
 #include <gtkmm/windowhandle.h>
 
 #include "inkscape-application.h"
@@ -515,9 +516,15 @@ StartScreen::refresh_theme(Glib::ustring theme_name)
 
     auto settings = Gtk::Settings::get_default();
     auto prefs = Inkscape::Preferences::get();
+    auto preferDarkTheme = prefs->getBool("/theme/preferDarkTheme", true);
 
     settings->property_gtk_theme_name() = theme_name;
-    settings->property_gtk_application_prefer_dark_theme() = prefs->getBool("/theme/preferDarkTheme", true);
+#if GTKMM_CHECK_VERSION(4, 20, 0)
+    settings->property_gtk_interface_color_scheme() =
+        preferDarkTheme ? Gtk::InterfaceColorScheme::DARK : Gtk::InterfaceColorScheme::LIGHT;
+#else
+    settings->property_gtk_application_prefer_dark_theme() = preferDarkTheme;
+#endif
     settings->property_gtk_icon_theme_name() = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
 
     if (prefs->getBool("/theme/symbolicIcons", false)) {

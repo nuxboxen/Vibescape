@@ -18,14 +18,15 @@
 #include <glibmm/regex.h>
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/settings.h>
+#include <gtkmm/version.h>
 #include <pangomm/fontdescription.h>
 
 #include "config.h"
 #include "desktop.h"
-#include "inkscape.h"
 #include "inkscape-window.h"
+#include "inkscape.h"
 #include "io/resource.h"
-#include "object/sp-item-group.h"  // set_default_highlight_colors
+#include "object/sp-item-group.h" // set_default_highlight_colors
 #include "svg/css-ostringstream.h"
 #include "ui/dialog/dialog-manager.h"
 #include "ui/dialog/dialog-window.h"
@@ -494,7 +495,13 @@ bool ThemeContext::isCurrentThemeDark(Gtk::Window * const window)
         prefs->getString("/theme/gtkTheme", prefs->getString("/theme/defaultGtkTheme", ""));
 
     if (auto const settings = Gtk::Settings::get_default()) {
-        settings->property_gtk_application_prefer_dark_theme() = prefs->getBool("/theme/preferDarkTheme", false);
+        auto preferDarkTheme = prefs->getBool("/theme/preferDarkTheme", false);
+#if GTKMM_CHECK_VERSION(4, 20, 0)
+        settings->property_gtk_interface_color_scheme() =
+            preferDarkTheme ? Gtk::InterfaceColorScheme::DARK : Gtk::InterfaceColorScheme::LIGHT;
+#else
+        settings->property_gtk_application_prefer_dark_theme() = preferDarkTheme;
+#endif
     }
 
     auto dark = current_theme.find(":dark") != std::string::npos;
