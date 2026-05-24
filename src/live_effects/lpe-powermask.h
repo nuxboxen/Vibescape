@@ -13,7 +13,6 @@
 #include "live_effects/effect.h"
 #include "live_effects/parameter/bool.h"
 #include "live_effects/parameter/colorpicker.h"
-#include "live_effects/parameter/hidden.h"
 
 namespace Inkscape {
 namespace LivePathEffect {
@@ -37,7 +36,6 @@ private:
     Glib::ustring prepare_color_inversion_filter(SPLPEItem const *lpeitem);
     void update_mask_box();
 
-    HiddenParam uri;
     BoolParam invert;
     BoolParam hide_mask;
     BoolParam background;

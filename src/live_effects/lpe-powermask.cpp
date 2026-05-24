@@ -14,16 +14,15 @@
 #include "live_effects/lpeobject.h"
 #include "object/sp-defs.h"
 #include "object/sp-mask.h"
+#include "object/uri.h"
 #include "selection.h"
 #include "svg/svg.h"
-#include "util/uri.h"
 
 namespace Inkscape {
 namespace LivePathEffect {
 
 LPEPowerMask::LPEPowerMask(LivePathEffectObject *lpeobject)
     : Effect(lpeobject)
-    , uri("Store the uri of mask", "", "uri", &wr, this)
     , invert(_("Invert mask"), _("Invert mask"), "invert", &wr, this, true)
     , hide_mask(_("Hide mask"), _("Hide mask"), "hide_mask", &wr, this, false)
     , background(_("Add background to mask"), _("Add background to mask"), "background", &wr, this, true)
@@ -57,7 +56,6 @@ void LPEPowerMask::doOnApply(SPLPEItem const *lpeitem)
 
     // Update the mask uri
     auto const new_uri = "url(#" + new_mask_id + ")";
-    uri.param_setValue(Glib::ustring(extract_uri(new_uri.c_str())), true);
     sp_lpe_item->setAttribute("mask", new_uri);
 }
 
@@ -158,6 +156,9 @@ void sp_remove_powermask(Inkscape::Selection *sel)
 
 bool LPEPowerMask::update_mask_visibility(SPLPEItem const *lpeitem)
 {
+    auto attached_uri = sp_lpe_item->getMaskRef().getURI();
+    auto attached_uri_str = attached_uri ? attached_uri->str() : std::string();
+
     sp_lpe_item->getMaskRef().detach();
 
     // Prepare the bounding box
@@ -171,8 +172,7 @@ bool LPEPowerMask::update_mask_visibility(SPLPEItem const *lpeitem)
     mask_box_path = Geom::Path(bbox_rect);
 
     if (!hide_mask && is_visible) {
-        sp_lpe_item->getMaskRef().try_attach(uri.param_getSVGValue().c_str());
-        return true;
+        return sp_lpe_item->getMaskRef().try_attach(attached_uri_str.c_str());
     }
 
     return false;
