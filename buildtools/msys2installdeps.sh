@@ -123,7 +123,8 @@ $ARCH-python-urllib3
 # install packages for testing Inkscape
 eval pacman -S $PACMAN_OPTIONS \
 $ARCH-ghostscript \
-$ARCH-gtest
+$ARCH-gtest \
+$ARCH-bc
 
 # install Python modules not provided as MSYS2/MinGW packages
 PACKAGES=""

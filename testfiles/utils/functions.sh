@@ -47,6 +47,20 @@ ensure_command()
     command -v $1 >/dev/null 2>&1 || { echo >&2 "Required command '$1' not found. Aborting."; exit 1; }
 }
 
+get_magick()
+{
+    if command -v magick &>/dev/null; then
+        MAGICK=magick
+        COMPARE=compare
+    elif command -v gm &>/dev/null; then
+        MAGICK=gm
+        COMPARE="gm compare"
+    else
+        "Cannot find ImageMagick or GraphicksMagick. Aborting."
+        exit 1
+    fi
+}
+
 export LANG=C # Needed to force . as the decimal separator
 ensure_command "bc"
 

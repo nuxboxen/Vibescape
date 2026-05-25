@@ -61,7 +61,7 @@ TEST(SplitPathTest, SplitPath)
     {
         auto path = "\\\\192.168.0.100\\Files\\..\\hello.txt";
         auto parts = Inkscape::IO::split_path(path);
-        EXPECT_EQ(parts.type, Inkscape::IO::UNC);
+        EXPECT_EQ(parts.type, Inkscape::IO::PathType::UNC);
         EXPECT_EQ(parts.data, (std::vector<std::string_view>{"192.168.0.100", "Files", "hello.txt"}));
         EXPECT_EQ(parts.join(), "\\\\192.168.0.100\\Files\\hello.txt");
     }

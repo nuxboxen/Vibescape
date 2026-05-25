@@ -4,7 +4,7 @@
 MY_LOCATION=$(dirname "$0")
 source "${MY_LOCATION}/../utils/functions.sh"
 
-ensure_command "compare"
+get_magick
 ensure_command "bc"
 
 if [ "$#" -lt 2 ]; then
@@ -21,7 +21,8 @@ TESTNAME="$(basename "$TEST")"
 export LC_NUMERIC=C
 export INKSCAPE_FONTCONFIG="${MY_LOCATION}/fonts/isolated.conf"
 
-if [ "$FUZZ" = "" ]; then
+# Graphicsmagick doesn't have AE metric
+if [[ "$FUZZ" = "" && "$MAGICK" = "magick" ]]; then
     METRIC="AE"
 else
     METRIC="RMSE"
@@ -33,7 +34,7 @@ perform_test()
     local DPI="$2"
     ${INKSCAPE_EXE} --export-png-use-dithering false --export-filename="${TESTNAME}${SUFFIX}.png" -d "$DPI" "${TEST}.svg"
 
-    COMPARE_OUTPUT="$(compare -metric "$METRIC" "${TESTNAME}${SUFFIX}.png" "${EXPECTED}${SUFFIX}.png" "${TESTNAME}-compare${SUFFIX}.png" 2>&1)"
+    COMPARE_OUTPUT="$($COMPARE -metric "$METRIC" "${TESTNAME}${SUFFIX}.png" "${EXPECTED}${SUFFIX}.png" "${TESTNAME}-compare${SUFFIX}.png" 2>&1)"
 
     if [ "$FUZZ" = "" ]; then
         if [ "$COMPARE_OUTPUT" = 0 ] || [ "$COMPARE_OUTPUT" = "0 (0)" ]; then
