@@ -1084,9 +1084,10 @@ void PrefMultiEntry::on_changed()
 }
 
 void PrefColorPicker::init(Glib::ustring const &label, Glib::ustring const &prefs_path,
-                           std::string const &default_color)
+                           std::string const &default_color, bool is_string)
 {
     _prefs_path = prefs_path;
+    if (is_string) {_is_string = is_string;}
     setTitle(label);
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     setColor(prefs->getColor(_prefs_path, default_color));
@@ -1096,7 +1097,11 @@ void PrefColorPicker::on_changed(Inkscape::Colors::Color const &color)
 {
     if (this->get_visible()) { //only take action if the user toggled it
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-        prefs->setColor(_prefs_path, color);
+        if (_is_string) {
+            prefs->setString(_prefs_path, color.toString());
+        } else {
+            prefs->setColor(_prefs_path, color);
+        }
     }
 }
 

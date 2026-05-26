@@ -321,10 +321,11 @@ public:
     ~PrefColorPicker() override = default;;
 
     void init(Glib::ustring const &abel, Glib::ustring const &prefs_path,
-              std::string const &default_color);
+              std::string const &default_color, bool is_string = false);
 
 private:
     Glib::ustring _prefs_path;
+    bool _is_string;
     void on_changed(Inkscape::Colors::Color const &color) override;
 };
 

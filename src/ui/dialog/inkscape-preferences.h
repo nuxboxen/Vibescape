@@ -266,9 +266,32 @@ protected:
     UI::Widget::PrefCheckButton _cp_show_full_action_name;
     UI::Widget::PrefCheckButton _cp_show_untranslated_name;
 
+    /**
+     * Gio::ListStore for canvas options
+     */
+    // struct CanvasColorChoice : Glib::Object {
+    //     Glib::ustring name;
+    //     Glib::ustring label;
+    //     Glib::ustring preview;
+    //     Gdk::RGBA pagecolor;
+    //     bool checkered;
+    //     Gdk::RGBA bordercolor;
+    //     bool shadow;
+    //     Gdk::RGBA deskcolor;
+    // };
+    // Gio::ListStore<CanvasColorChoice> _canvas_preset_color_list;
+
     UI::Widget::PrefCombo _gtk_theme;
     UI::Widget::PrefOpenFolder _sys_user_themes_dir_copy;
     UI::Widget::PrefOpenFolder _sys_user_icons_dir_copy;
+    UI::Widget::PrefCheckButton _canvas_use_custom_colors;
+    Gtk::Box _canvas_colors;
+    UI::Widget::PrefCombo _canvas_preset_colors;
+    Gtk::Box _canvas_custom_colors;
+    UI::Widget::PrefColorPicker _canvas_page_color;
+    UI::Widget::PrefColorPicker _canvas_border_color;
+    UI::Widget::PrefColorPicker _canvas_desk_color;
+    UI::Widget::PrefCheckButton _canvas_checkerboard;
     UI::Widget::PrefCombo _icon_theme;
     UI::Widget::PrefCheckButton _dark_theme;
     UI::Widget::PrefSlider _contrast_theme;
@@ -701,8 +724,10 @@ private:
   void comboThemeChange();
   void contrastThemeChange();
   void preferDarkThemeChange();
+  void toggleCanvasCustomColors();
   void symbolicThemeCheck();
   void toggleSymbolic();
+  void changeCanvasColors();
   void changeIconsColors();
   void resetIconsColors(bool themechange = false);
   void resetIconsColorsWrapper();

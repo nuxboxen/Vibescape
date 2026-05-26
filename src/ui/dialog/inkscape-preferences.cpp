@@ -1189,6 +1189,18 @@ void InkscapePreferences::initPageTools()
 #endif // WITH_LPETOOL
 }
 
+void InkscapePreferences::toggleCanvasCustomColors()
+{
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    if (prefs->getBool("/theme/useCanvasCustomColors", false)) {
+        _canvas_preset_colors.set_visible(false);
+        _canvas_custom_colors.set_visible(true);
+    } else {
+        _canvas_preset_colors.set_visible(true);
+        _canvas_custom_colors.set_visible(false);
+    }
+}
+
 void InkscapePreferences::get_highlight_colors(guint32 &colorsetbase, guint32 &colorsetsuccess,
                                                guint32 &colorsetwarning, guint32 &colorseterror)
 {
@@ -1330,6 +1342,13 @@ void InkscapePreferences::resetIconsColors(bool themechange)
 }
 
 void InkscapePreferences::resetIconsColorsWrapper() { resetIconsColors(false); }
+
+void InkscapePreferences::changeCanvasColors()
+{
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    prefs->setDouble("/template/base/pageopacity", _canvas_page_color.get_current_color().getOpacity());
+    prefs->setDouble("/template/base/borderopacity", _canvas_border_color.get_current_color().getOpacity());
+}
 
 void InkscapePreferences::changeIconsColors()
 {
@@ -1810,6 +1829,38 @@ void InkscapePreferences::initPageUI()
     _dark_theme.get_parent()->set_visible(dark_themes[current_theme]);
 
     _dark_theme.signal_toggled().connect(sigc::mem_fun(*this, &InkscapePreferences::preferDarkThemeChange));
+
+    // Canvas
+    _page_theme.add_group_header(_("Canvas"));
+
+    // initialize canvas colors
+    _canvas_use_custom_colors.init(_("Set custom canvas colors"), "/theme/useCanvasCustomColors", false);
+    _canvas_use_custom_colors.signal_toggled().connect(sigc::mem_fun(*this, &InkscapePreferences::toggleCanvasCustomColors));
+    _page_theme.add_line(false, "", _canvas_use_custom_colors, "", _("Whether to set custom canvas colors instead of using preset colors"));
+
+    _canvas_page_color.init(_("Canvas page color"), "/template/base/pagecolor", "#ffffff00", true);
+    _canvas_border_color.init(_("Canvas border color"), "/template/base/bordercolor", "#999999ff", true);
+    _canvas_desk_color.init(_("Canvas desk color"), "/template/base/deskcolor", "#d1d1d1ff", true);
+    _canvas_checkerboard.init(_("Checkerboard"), "/template/base/pagecheckerboard", false);
+    auto const changeCanvasColor = sigc::hide(sigc::mem_fun(*this, &InkscapePreferences::changeCanvasColors));
+    _canvas_page_color.connectChanged(changeCanvasColor);
+    _canvas_border_color.connectChanged(changeCanvasColor);
+    auto const label_page = Gtk::make_managed<Gtk::Label>(_("Page"));
+    auto const label_border = Gtk::make_managed<Gtk::Label>(_("Border"));
+    auto const label_desk = Gtk::make_managed<Gtk::Label>(_("Desk"));
+    UI::pack_start(_canvas_custom_colors, _canvas_page_color, true, true, 4);
+    UI::pack_start(_canvas_custom_colors, *label_page, true, true, 4);
+    UI::pack_start(_canvas_custom_colors, _canvas_border_color, true, true, 4);
+    UI::pack_start(_canvas_custom_colors, *label_border, true, true, 4);
+    UI::pack_start(_canvas_custom_colors, _canvas_desk_color, true, true, 4);
+    UI::pack_start(_canvas_custom_colors, *label_desk, true, true, 4);
+    UI::pack_start(_canvas_custom_colors, _canvas_checkerboard, true, true, 4);
+    _canvas_colors.append(_canvas_preset_colors);
+    _canvas_colors.append(_canvas_custom_colors);
+    _canvas_colors.set_orientation(Gtk::Orientation::VERTICAL);
+    toggleCanvasCustomColors();
+    changeCanvasColors();
+    _page_theme.add_line(false, _("Default colors:"), _canvas_colors, "", _("Default canvas colors"), false, reset_icon());
 
     // Icons
     _page_theme.add_group_header(_("Icons"));
