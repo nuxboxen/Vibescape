@@ -23,7 +23,7 @@ namespace Inkscape::Extension::Internal::PdfBuilder {
 bool DrawContext::set_shape(SPShape const *shape)
 {
     if (auto rect = cast<SPRect>(shape)) {
-        if (!rect->rx && !rect->ry) {
+        if (!rect->rx && !rect->ry && rect->type == SP_GENERIC_RECT) {
             return set_shape_rectangle(
                 Geom::Rect::from_xywh(rect->x.computed, rect->y.computed, rect->width.computed, rect->height.computed));
         }
