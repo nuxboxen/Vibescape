@@ -159,8 +159,19 @@ ExecutionEnv::cancel () {
 
 void
 ExecutionEnv::undo () {
+    Inkscape::SelectionState selectionState;
+
+    // Undoing can delete paths and thus remove them from the current selection, so we save the
+    // state first, and then restore after the undo.
+    if (_desktop) {
+        selectionState = _desktop->getSelection()->getState();
+    }
+
     DocumentUndo::cancel(document);
-    return;
+
+    if (_desktop) {
+        _desktop->getSelection()->setState(selectionState);
+    }
 }
 
 void
@@ -169,16 +180,6 @@ ExecutionEnv::commit () {
     Effect::set_last_effect(_effect);
     _effect->get_imp()->commitDocument();
     killDocCache();
-    return;
-}
-
-void
-ExecutionEnv::reselect () {
-    if (_desktop && _selectionState) {
-        if (auto selection = _desktop->getSelection()) {
-            selection->setState(*_selectionState);
-        }
-    }
     return;
 }
 
@@ -192,7 +193,7 @@ ExecutionEnv::run () {
         }
         auto selection = _desktop->getSelection();
         // Save selection state
-        _selectionState = std::make_unique<Inkscape::SelectionState>(selection->getState());
+        auto selectionState = selection->getState();
         if (_show_working) {
             _desktop->setWaitingCursor();
         }
@@ -201,8 +202,7 @@ ExecutionEnv::run () {
             _desktop->clearWaitingCursor();
         }
         // Restore selection state
-        selection->setState(*_selectionState);
-        _selectionState.reset();
+        selection->setState(selectionState);
     } else {
         _effect->get_imp()->effect(_effect, this, document);
     }

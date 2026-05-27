@@ -54,9 +54,6 @@ private:
     /** \brief  A document cache if we were passed one. */
     Implementation::ImplementationDocumentCache * _docCache;
 
-    /** \brief  Saved selection state before running the effect. */
-    std::unique_ptr<Inkscape::SelectionState> _selectionState;
-
     /** \brief  The effect that we're executing in this context. */
     Effect * _effect;
 
@@ -92,7 +89,6 @@ public:
     void undo ();
     /** \brief Wait for the effect to complete if it hasn't. */
     bool wait ();
-    void reselect ();
 
     /** \brief Return reference to working dialog (if any) */
     Gtk::Dialog *get_working_dialog () { return _visibleDialog; };
