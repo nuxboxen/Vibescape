@@ -55,6 +55,11 @@ ColorPage::ColorPage(std::shared_ptr<Space::AnySpace> space, std::shared_ptr<Col
         }
     });
 
+    _selected_colors->signal_cleared.connect([this]() {
+        auto scoped = SignalBlocker(_specific_changed_connection);
+        _specific_colors->clear();
+    });
+
     // Control signals when widget isn't mapped (not visible to the user)
     signal_map().connect([this]() {
         _specific_colors->setAll(*_selected_colors);
