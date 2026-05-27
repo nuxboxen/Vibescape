@@ -35,8 +35,6 @@
 */
 std::string sp_relative_path_from_path(std::string const &path, std::string const &base);
 
-char const *sp_extension_from_path(char const *path);
-
 /**
  * Convert a relative path name into absolute. If path is already absolute, does nothing except copying path to result.
  *

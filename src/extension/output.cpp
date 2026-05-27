@@ -264,6 +264,12 @@ Output::add_extension(std::string &filename)
 bool
 Output::can_save_filename(gchar const *filename) const
 {
+    // Ignore raster Outputs, because those are only used as part of the "export-as" pipeline,
+    // not for the "save/save-as" pipeline. Such output extensions don't override save().
+    if (is_raster()) {
+        return false;
+    }
+
     gchar *filenamelower = g_utf8_strdown(filename, -1);
     gchar *extensionlower = g_utf8_strdown(extension, -1);
     bool result = g_str_has_suffix(filenamelower, extensionlower);

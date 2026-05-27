@@ -45,6 +45,22 @@ Glib::ustring get_file_extension(Glib::ustring const &path);
 std::string get_file_extension(std::string const &path);
 void remove_file_extension(std::string &path);
 
+/**
+ * Changes the extension of a filename.
+ *
+ * If the original filename already has this extension, it will not be changed.
+ * If the original filename does not have any extension, the new extension will be appended.
+ *
+ * Examples when trying to swap in ".svg":
+ *   "hello.txt" -> "hello.svg"
+ *   "hello.svg" -> "hello.svg"
+ *   "hello" -> "hello.svg"
+ *
+ * @param path original filename or path, to be modified in-place
+ * @param new_ext the new filename extension suffix (like ".svg")
+ */
+void swap_file_extension(std::string &path, std::string const &new_ext);
+
 } // namespace Inkscape::IO
 
 #endif // SEEN_SYS_H

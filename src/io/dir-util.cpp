@@ -48,23 +48,6 @@ std::string sp_relative_path_from_path( std::string const &path, std::string con
     return result;
 }
 
-char const *sp_extension_from_path(char const *const path)
-{
-	if (path == nullptr) {
-		return nullptr;
-	}
-
-	char const *p = path;
-	while (*p != '\0') p++;
-
-	while ((p >= path) && (*p != G_DIR_SEPARATOR) && (*p != '.')) p--;
-	if (* p != '.') return nullptr;
-	p++;
-
-	return p;
-}
-
-
 /* current == "./", parent == "../" */
 static char const dots[] = {'.', '.', G_DIR_SEPARATOR, '\0'};
 static char const *const parent = dots;

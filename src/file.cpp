@@ -31,6 +31,8 @@
 # include "config.h"  // only include where actually required!
 #endif
 
+#include <libintl.h>
+
 #include <gtkmm.h>
 
 #include "desktop.h"
@@ -46,7 +48,6 @@
 #include "inkscape-application.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
-#include "io/dir-util.h"
 #include "io/file.h"
 #include "io/fix-broken-links.h"
 #include "io/resource.h"
@@ -185,18 +186,13 @@ file_save(Gtk::Window &parentWindow,
         Inkscape::Extension::save(key, doc, file->get_path().c_str(),
                                   checkoverwrite, official,
                                   save_method);
-    } catch (Inkscape::Extension::Output::no_extension_found &e) {
-        const auto text = Glib::ustring::compose(_("No Inkscape extension found to save document (%s).  This may have been caused by an unknown or missing filename extension."), display_name);
-        SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
-        sp_ui_error_dialog(text.c_str());
-        return false;
     } catch (Inkscape::Extension::Output::file_read_only &e) {
-        const auto text = Glib::ustring::compose(_("File %s is write protected. Please remove write protection and try again."), display_name);
+        auto const text = Glib::ustring::sprintf(_("File %s is write protected. Please remove write protection and try again."), display_name);
         SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
         sp_ui_error_dialog(text.c_str());
         return false;
     } catch (Inkscape::Extension::Output::save_failed &e) {
-        const auto text = Glib::ustring::compose(_("File %s could not be saved."), display_name);
+        auto const text = Glib::ustring::sprintf(_("File %s could not be saved."), display_name);
         SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
         sp_ui_error_dialog(text.c_str());
         return false;
@@ -204,14 +200,14 @@ file_save(Gtk::Window &parentWindow,
         SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
         return false;
     } catch (Inkscape::Extension::Output::export_id_not_found &e) {
-        const auto text = Glib::ustring::compose(_("File could not be saved:\nNo object with ID '%s' found."), e.id);
+        auto const text = Glib::ustring::sprintf(_("File could not be saved:\nNo object with ID '%s' found."), e.id);
         SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
         sp_ui_error_dialog(text.c_str());
         return false;
     } catch (Inkscape::Extension::Output::no_overwrite &e) {
         return sp_file_save_dialog(parentWindow, doc, save_method);
     } catch (std::exception &e) {
-        const auto text = Glib::ustring::compose(_("File %s could not be saved.\n\n"
+        auto const text = Glib::ustring::sprintf(_("File %s could not be saved.\n\n"
                                         "The following additional information was returned by the output extension:\n"
                                         "'%s'"), display_name, e.what());
         SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
@@ -219,7 +215,7 @@ file_save(Gtk::Window &parentWindow,
         return false;
     } catch (...) {
         g_critical("Extension '%s' threw an unspecified exception.", key ? key->get_id() : nullptr);
-        const auto text = Glib::ustring::compose(_("File %s could not be saved."), display_name);
+        auto const text = Glib::ustring::sprintf(_("File %s could not be saved."), display_name);
         SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
         sp_ui_error_dialog(text.c_str());
         return false;
@@ -247,6 +243,23 @@ file_save(Gtk::Window &parentWindow,
     }
     SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::NORMAL_MESSAGE, msg.c_str());
     return true;
+}
+
+/**
+ * Returns an output extension suitable for saving (i.e. not a raster extension).
+ */
+Inkscape::Extension::Output *get_output_extension_for_save(std::string filename)
+{
+    Inkscape::Extension::DB::OutputList extension_list;
+    Inkscape::Extension::db.get_output_list(extension_list);
+
+    for (auto omod : extension_list) {
+        if (omod->can_save_filename(filename.c_str())) {
+            return omod;
+        }
+    }
+
+    return nullptr;
 }
 
 /**
@@ -294,6 +307,14 @@ sp_file_save_dialog(Gtk::Window &parentWindow, SPDocument *doc, Inkscape::Extens
         }
     } else {
         save_loc.append(Glib::path_get_basename(doc->getDocumentFilename()));
+
+        // The current document might be named not after an svg - e.g. if we opened a png, the
+        // document is named after the png. But we want to save it as an svg instead.
+        // Or even if the filename is something weird like "my-drawing.blarg" - we don't want to
+        // try to save as a ".blarg" file.
+        // So we'll swap out whatever the current file-ending is and prompt the user to save with
+        // the correct target filename extension.
+        Inkscape::IO::swap_file_extension(save_loc, filename_extension);
     }
 
     // Show the SaveAs dialog.
@@ -324,28 +345,17 @@ sp_file_save_dialog(Gtk::Window &parentWindow, SPDocument *doc, Inkscape::Extens
     }
 
     // Find output module from file extension.
-    auto file_extension = Inkscape::IO::get_file_extension(file->get_path());
+    extension = get_output_extension_for_save(file->get_path());
 
-    Inkscape::Extension::DB::OutputList extension_list;
-    Inkscape::Extension::db.get_output_list(extension_list);
-    bool found = false;
-
-    for (auto omod : extension_list) {
-        if (file_extension == omod->get_extension()) {
-            extension = omod;
-            found = true;
-            break;
-        }
-    }
-
-    if (!found) {
-        std::cerr << "sp_file_save_dialog(): Cannot find output module for file type: "
-                  << file_extension << "!" << std::endl;
+    if (!extension) {
+        auto display_name = file->get_parse_name();
+        auto const text = Glib::ustring::sprintf(_("No Inkscape extension found to save document (%s).  This may have been caused by an unknown or missing filename extension."), display_name);
+        SP_ACTIVE_DESKTOP->messageStack()->flash(Inkscape::ERROR_MESSAGE, _("Document not saved."));
+        sp_ui_error_dialog(text.c_str());
         return false;
     }
 
-     if (file_save(parentWindow, doc, file, extension, true, !is_copy, save_method)) {
-
+    if (file_save(parentWindow, doc, file, extension, true, !is_copy, save_method)) {
         if (doc->getDocumentFilename()) {
             Glib::RefPtr<Gtk::RecentManager> recent = Gtk::RecentManager::get_default();
             recent->add_item(file->get_uri()); // Gtk4 add_item(file)
@@ -367,14 +377,11 @@ bool
 sp_file_save_document(Gtk::Window &parentWindow, SPDocument *doc)
 {
     if (auto path = doc->getDocumentFilename()) {
-        // Try to determine the extension from the filename;
-        // this may not lead to a valid extension,
-        // but this case is caught in the file_save method below
-        // (or rather in Extension::save() further down the line).
-        auto ext = sp_extension_from_path(path);
-        auto file = Gio::File::create_for_path(path);
-        if (file_save(parentWindow, doc, file, Inkscape::Extension::db.get(ext), false, true, Inkscape::Extension::FILE_SAVE_METHOD_SAVE_AS)) {
-            return true;
+        // Determine the extension from the filename, which may not lead to a valid extension.
+        // In which case, we'll fall back to the save-as dialog below.
+        if (auto ext = get_output_extension_for_save(path)) {
+            auto file = Gio::File::create_for_path(path);
+            return file_save(parentWindow, doc, file, ext, false, true, Inkscape::Extension::FILE_SAVE_METHOD_SAVE_AS);
         }
     }
 
@@ -647,7 +654,7 @@ SPObject *file_import(SPDocument *in_doc, std::string const &path, Inkscape::Ext
     if (!doc) {
         // Open failed or canceled
         if (!cancelled) {
-            auto text = Glib::ustring::compose(_("Failed to load the requested file %s"), path);
+            auto text = Glib::ustring::sprintf(_("Failed to load the requested file %s"), path);
             sp_ui_error_dialog(text.c_str());
         }
         return nullptr;
