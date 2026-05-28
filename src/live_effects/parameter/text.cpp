@@ -137,7 +137,7 @@ TextParam::param_newWidget()
     .connect(sigc::bind(sigc::mem_fun(*this, &TextParam::setTextParam),rsu));
     UI::pack_start(*text_container, *rsu, false, false, 2);
     UI::pack_start(*text_container, *set, false, false, 2);
-    text_container->set_halign(Gtk::Align::END);
+    text_container->set_halign(Gtk::Align::START);
     return text_container;
 }
 
