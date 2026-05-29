@@ -1258,6 +1258,14 @@ void InkscapePreferences::get_highlight_colors(Colors::Color &colorsetbase, Colo
     }
 }
 
+bool InkscapePreferences::usingCustomColors()
+{
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    auto const themeiconname = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
+    return !prefs->getBool("/theme/symbolicDefaultBaseColors", true) &&
+           prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidColor();
+}
+
 void InkscapePreferences::resetIconsColors(bool themechange)
 {
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
@@ -1266,23 +1274,31 @@ void InkscapePreferences::resetIconsColors(bool themechange)
 
     if (!prefs->getBool("/theme/symbolicIcons", false)) {
         _symbolic_base_colors.set_sensitive(false);
-        _symbolic_highlight_colors.set_sensitive(false);
-        _symbolic_base_color.set_sensitive(false);
-        _symbolic_success_color.set_sensitive(false);
-        _symbolic_warning_color.set_sensitive(false);
-        _symbolic_error_color.set_sensitive(false);
+        _page_theme.get_child_at(0, _symbolic_base_row)->set_sensitive(false);
+        _page_theme.get_child_at(1, _symbolic_base_row)->set_sensitive(false);
+        _page_theme.get_child_at(0, _symbolic_custom_row)->set_sensitive(false);
+        _page_theme.get_child_at(1, _symbolic_custom_row)->set_sensitive(false);
         return;
     }
 
-    auto doChangeIconsColors = false;
-
-    if (prefs->getBool("/theme/symbolicDefaultBaseColors", true) ||
-        !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidColor()) {
+    if (usingCustomColors()) {
+        _page_theme.get_child_at(0, _symbolic_base_row)->set_sensitive(true);
+        _page_theme.get_child_at(1, _symbolic_base_row)->set_sensitive(true);
+        _page_theme.get_child_at(0, _symbolic_custom_row)->set_sensitive(true);
+        _page_theme.get_child_at(1, _symbolic_custom_row)->set_sensitive(true);
+        _page_theme.get_child_at(0, _symbolic_base_row)->set_visible(true);
+        _page_theme.get_child_at(1, _symbolic_base_row)->set_visible(true);
+        _page_theme.get_child_at(0, _symbolic_custom_row)->set_visible(true);
+        _page_theme.get_child_at(1, _symbolic_custom_row)->set_visible(true);
+    } else {
         auto const display = Gdk::Display::get_default();
         if (INKSCAPE.themecontext->getColorizeProvider()) {
             Gtk::StyleProvider::remove_provider_for_display(display, INKSCAPE.themecontext->getColorizeProvider());
         }
         auto base_color = Colors::Color(to_guint32(_symbolic_base_color.get_color()));
+        auto const success_color = Colors::Color(to_guint32(_symbolic_success_color.get_color()));
+        auto const warning_color = Colors::Color(to_guint32(_symbolic_warning_color.get_color()));
+        auto const error_color   = Colors::Color(to_guint32(_symbolic_error_color  .get_color()));
         // This is a hack to fix a problematic style which isn't updated fast enough on
         // change from dark to bright themes
         if (themechange) {
@@ -1290,49 +1306,22 @@ void InkscapePreferences::resetIconsColors(bool themechange)
         }
         // This colors are set on style.css of inkscape, we copy highlight to not use
         auto colorsetbase = base_color;
-        auto colorsetsuccess = colorsetbase;
-        auto colorsetwarning = colorsetbase;
-        auto colorseterror = colorsetbase;
-        get_highlight_colors(colorsetbase, colorsetsuccess, colorsetwarning, colorseterror);
-        _symbolic_base_color.setColor(colorsetbase);
-        prefs->setColor("/theme/" + themeiconname + "/symbolicBaseColor", colorsetbase);
-        _symbolic_base_color.set_sensitive(false);
-        doChangeIconsColors = true;
-    } else {
-        _symbolic_base_color.set_sensitive(true);
-    }
-
-    if (prefs->getBool("/theme/symbolicDefaultHighColors", true)) {
-        auto const display = Gdk::Display::get_default();
-        if (INKSCAPE.themecontext->getColorizeProvider()) {
-            Gtk::StyleProvider::remove_provider_for_display(display, INKSCAPE.themecontext->getColorizeProvider());
-        }
-        auto const success_color = Colors::Color(to_guint32(_symbolic_success_color.get_color()));
-        auto const warning_color = Colors::Color(to_guint32(_symbolic_warning_color.get_color()));
-        auto const error_color   = Colors::Color(to_guint32(_symbolic_error_color  .get_color()));
-        //we copy base to not use
-        auto colorsetbase = success_color;
         auto colorsetsuccess = success_color;
         auto colorsetwarning = warning_color;
         auto colorseterror = error_color;
         get_highlight_colors(colorsetbase, colorsetsuccess, colorsetwarning, colorseterror);
+        _symbolic_base_color.setColor(colorsetbase);
         _symbolic_success_color.setColor(colorsetsuccess);
         _symbolic_warning_color.setColor(colorsetwarning);
         _symbolic_error_color.setColor(colorseterror);
+        prefs->setColor("/theme/" + themeiconname + "/symbolicBaseColor", colorsetbase);
         prefs->setColor("/theme/" + themeiconname + "/symbolicSuccessColor", colorsetsuccess);
         prefs->setColor("/theme/" + themeiconname + "/symbolicWarningColor", colorsetwarning);
         prefs->setColor("/theme/" + themeiconname + "/symbolicErrorColor", colorseterror);
-        _symbolic_success_color.set_sensitive(false);
-        _symbolic_warning_color.set_sensitive(false);
-        _symbolic_error_color.set_sensitive(false);
-        doChangeIconsColors = true;
-    } else {
-        _symbolic_success_color.set_sensitive(true);
-        _symbolic_warning_color.set_sensitive(true);
-        _symbolic_error_color.set_sensitive(true);
-    }
-
-    if (doChangeIconsColors) {
+        _page_theme.get_child_at(0, _symbolic_base_row)->set_visible(false);
+        _page_theme.get_child_at(1, _symbolic_base_row)->set_visible(false);
+        _page_theme.get_child_at(0, _symbolic_custom_row)->set_visible(false);
+        _page_theme.get_child_at(1, _symbolic_custom_row)->set_visible(false);
         changeIconsColors();
     }
 }
@@ -1389,14 +1378,14 @@ void InkscapePreferences::toggleSymbolic()
             window->remove_css_class("regular");
         }
         _symbolic_base_colors.set_sensitive(true);
-        _symbolic_highlight_colors.set_sensitive(true);
-        Glib::ustring themeiconname = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
-        if (prefs->getBool("/theme/symbolicDefaultHighColors", true) ||
-            prefs->getBool("/theme/symbolicDefaultBaseColors", true) ||
-            !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidColor()) {
-            resetIconsColors();
-        } else {
+        _page_theme.get_child_at(0, _symbolic_base_row)->set_sensitive(true);
+        _page_theme.get_child_at(1, _symbolic_base_row)->set_sensitive(true);
+        _page_theme.get_child_at(0, _symbolic_custom_row)->set_sensitive(true);
+        _page_theme.get_child_at(1, _symbolic_custom_row)->set_sensitive(true);
+        if (usingCustomColors()) {
             changeIconsColors();
+        } else {
+            resetIconsColors();
         }
     } else {
         if (window) {
@@ -1407,8 +1396,7 @@ void InkscapePreferences::toggleSymbolic()
         if (INKSCAPE.themecontext->getColorizeProvider()) {
             Gtk::StyleProvider::remove_provider_for_display(display, INKSCAPE.themecontext->getColorizeProvider());
         }
-        _symbolic_base_colors.set_sensitive(false);
-        _symbolic_highlight_colors.set_sensitive(false);
+        resetIconsColors();
     }
     INKSCAPE.themecontext->getChangeThemeSignal().emit();
     INKSCAPE.themecontext->add_gtk_css(true);
@@ -1418,7 +1406,7 @@ void InkscapePreferences::comboThemeChange()
 {
     //we reset theming on combo change
     _dark_theme.set_active(false);
-    _symbolic_base_colors.set_active(true);
+    _symbolic_base_colors.set_active(false);
     if (_contrast_theme.getSpinButton()->get_value() != 10.0){
         _contrast_theme.getSpinButton()->set_value(10.0);
     } else {
@@ -1464,6 +1452,15 @@ void InkscapePreferences::themeChange(bool contrastslider)
     }
 }
 
+void InkscapePreferences::resetIconsColorsFromTheme()
+{
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    prefs->setBool("/theme/symbolicDefaultBaseColors", true);
+    resetIconsColors(false);
+    _symbolic_base_colors.set_sensitive(true);
+    prefs->setBool("/theme/symbolicDefaultBaseColors", false);
+}
+
 void InkscapePreferences::preferDarkThemeChange()
 {
     Gtk::Window *window = SP_ACTIVE_DESKTOP->getInkscapeWindow();
@@ -1475,11 +1472,8 @@ void InkscapePreferences::preferDarkThemeChange()
         INKSCAPE.themecontext->getChangeThemeSignal().emit();
         INKSCAPE.themecontext->add_gtk_css(true);
         // we avoid switched base colors
-        if (!_symbolic_base_colors.get_active()) {
-            prefs->setBool("/theme/symbolicDefaultBaseColors", true);
-            resetIconsColors(false);
-            _symbolic_base_colors.set_sensitive(true);
-            prefs->setBool("/theme/symbolicDefaultBaseColors", false);
+        if (_symbolic_base_colors.get_active()) {
+            resetIconsColorsFromTheme();
         } else {
             resetIconsColors(toggled);
         }
@@ -1526,24 +1520,24 @@ void InkscapePreferences::symbolicThemeCheck()
             _symbolic_icons.set_active(false);
             _symbolic_icons.get_parent()->set_visible(false);
             _symbolic_base_colors.get_parent()->set_visible(false);
-            _symbolic_highlight_colors.get_parent()->set_visible(false);
-            _symbolic_base_color.get_parent()->get_parent()->set_visible(false);
-            _symbolic_success_color.get_parent()->get_parent()->set_visible(false);
+            _page_theme.get_child_at(0, _symbolic_base_row)->set_visible(false);
+            _page_theme.get_child_at(1, _symbolic_base_row)->set_visible(false);
+            _page_theme.get_child_at(0, _symbolic_custom_row)->set_visible(false);
+            _page_theme.get_child_at(1, _symbolic_custom_row)->set_visible(false);
         } else {
             _symbolic_icons.get_parent()->set_visible(true);
             _symbolic_base_colors.get_parent()->set_visible(true);
-            _symbolic_highlight_colors.get_parent()->set_visible(true);
-            _symbolic_base_color.get_parent()->get_parent()->set_visible(true);
-            _symbolic_success_color.get_parent()->get_parent()->set_visible(true);
+            _page_theme.get_child_at(0, _symbolic_base_row)->set_visible(true);
+            _page_theme.get_child_at(1, _symbolic_base_row)->set_visible(true);
+            _page_theme.get_child_at(0, _symbolic_custom_row)->set_visible(true);
+            _page_theme.get_child_at(1, _symbolic_custom_row)->set_visible(true);
         }
     }
     if (symbolic) {
-        if (prefs->getBool("/theme/symbolicDefaultHighColors", true) ||
-            prefs->getBool("/theme/symbolicDefaultBaseColors", true) ||
-            !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidColor()) {
-            resetIconsColors();
-        } else {
+        if (usingCustomColors()) {
             changeIconsColors();
+        } else {
+            resetIconsColors();
         }
         auto colorsetbase = prefs->getColor("/theme/" + themeiconname + "/symbolicBaseColor", "#2E3436ff");
         auto colorsetsuccess = prefs->getColor("/theme/" + themeiconname + "/symbolicSuccessColor", "#4AD589ff");
@@ -1868,12 +1862,9 @@ void InkscapePreferences::initPageUI()
     _symbolic_icons.init(_("Use symbolic icons"), "/theme/symbolicIcons", false);
     _symbolic_icons.signal_toggled().connect(sigc::mem_fun(*this, &InkscapePreferences::toggleSymbolic));
     _page_theme.add_line(true, "", _symbolic_icons, "", "", true);
-    _symbolic_base_colors.init(_("Use default base color for icons"), "/theme/symbolicDefaultBaseColors", true);
+    _symbolic_base_colors.init(_("Change icon colors"), "/theme/symbolicDefaultBaseColors", true, true);
     _symbolic_base_colors.signal_toggled().connect(sigc::mem_fun(*this, &InkscapePreferences::resetIconsColorsWrapper));
     _page_theme.add_line(true, "", _symbolic_base_colors, "", "", true);
-    _symbolic_highlight_colors.init(_("Use default highlight colors for icons"), "/theme/symbolicDefaultHighColors", true);
-    _symbolic_highlight_colors.signal_toggled().connect(sigc::mem_fun(*this, &InkscapePreferences::resetIconsColorsWrapper));
-    _page_theme.add_line(true, "", _symbolic_highlight_colors, "", "", true);
     _symbolic_base_color.init(_("Color for symbolic icons:"), "/theme/" + themeiconname + "/symbolicBaseColor",
                               "#2E3436ff");
     _symbolic_success_color.init(_("Color for symbolic success icons:"),
@@ -1897,15 +1888,17 @@ void InkscapePreferences::initPageUI()
     _symbolic_error_color.connectChanged  (changeIconsColor);
     auto const icon_buttons = Gtk::make_managed<Gtk::Box>();
     UI::pack_start(*icon_buttons, _symbolic_base_color, true, true, 4);
-    _page_theme.add_line(false, "", *icon_buttons, _("Icon color base"),
-                         _("Base color for icons"), false);
+    _symbolic_base_row = _page_theme.add_line(true, _("Base color"), *icon_buttons, "",
+                                              _("Base color for icons"), false);
+    _page_theme.get_child_at(0, _symbolic_base_row)->set_margin_start(37); // to align past checkbox
     auto const icon_buttons_hight = Gtk::make_managed<Gtk::Box>();
     UI::pack_start(*icon_buttons_hight, _symbolic_success_color, true, true, 4);
     UI::pack_start(*icon_buttons_hight, _symbolic_warning_color, true, true, 4);
     UI::pack_start(*icon_buttons_hight, _symbolic_error_color, true, true, 4);
-    _page_theme.add_line(false, "", *icon_buttons_hight, _("Icon color highlights"),
-                         _("Highlight colors supported by some symbolic icon themes"),
-                         false);
+    _symbolic_custom_row = _page_theme.add_line(true, _("Custom colors"), *icon_buttons_hight, "",
+                                                _("Highlight colors supported by some symbolic icon themes"),
+                                                false);
+    _page_theme.get_child_at(0, _symbolic_custom_row)->set_margin_start(37); // to align past checkbox
     auto const icon_buttons_def = Gtk::make_managed<Gtk::Box>();
     resetIconsColors();
     changeIconsColors();

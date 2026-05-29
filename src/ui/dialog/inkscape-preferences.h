@@ -277,8 +277,9 @@ protected:
     UI::Widget::PrefCheckButton _compact_colorselector;
     UI::Widget::PrefCheckButton _symbolic_icons;
     UI::Widget::PrefCheckButton _symbolic_base_colors;
-    UI::Widget::PrefCheckButton _symbolic_highlight_colors;
+    int                         _symbolic_base_row;
     UI::Widget::PrefColorPicker _symbolic_base_color;
+    int                         _symbolic_custom_row;
     UI::Widget::PrefColorPicker _symbolic_warning_color;
     UI::Widget::PrefColorPicker _symbolic_error_color;
     UI::Widget::PrefColorPicker _symbolic_success_color;
@@ -703,7 +704,9 @@ private:
   void preferDarkThemeChange();
   void symbolicThemeCheck();
   void toggleSymbolic();
+  bool usingCustomColors();
   void changeIconsColors();
+  void resetIconsColorsFromTheme();
   void resetIconsColors(bool themechange = false);
   void resetIconsColorsWrapper();
   void get_highlight_colors(Colors::Color &colorsetbase, Colors::Color &colorsetsuccess,

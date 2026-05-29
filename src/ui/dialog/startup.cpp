@@ -587,11 +587,9 @@ StartScreen::theme_changed()
         // Symbolic icon colours
         if (!Colors::Color::parse((Glib::ustring)row[cols.base])) {
             prefs->setBool("/theme/symbolicDefaultBaseColors", true);
-            prefs->setBool("/theme/symbolicDefaultHighColors", true);
         } else {
             Glib::ustring prefix = "/theme/" + icons;
             prefs->setBool("/theme/symbolicDefaultBaseColors", false);
-            prefs->setBool("/theme/symbolicDefaultHighColors", false);
             auto base_column = is_dark ? cols.base_dark : cols.base;
             auto black = Colors::Color(0, false);
             auto base_color = Colors::Color::parse((Glib::ustring)row[base_column]).value_or(black);

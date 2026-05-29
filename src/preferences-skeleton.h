@@ -537,8 +537,7 @@ static char const preferences_skeleton[] =
      preferDarkTheme="1"
      darkTheme="1"
      symbolicIcons="1"
-     symbolicDefaultBaseColors="1"
-     symbolicDefaultHighColors="0"/>
+     symbolicDefaultBaseColors="1"/>
 </inkscape>
 )=====";
 
