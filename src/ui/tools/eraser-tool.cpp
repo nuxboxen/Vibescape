@@ -100,7 +100,7 @@ EraserTool::EraserTool(SPDesktop *desktop)
     //TODO not sure why get 0.01 if slider width == 0, maybe a double/int problem
 
     _mode_int.min = 0;
-    _mode_int.max = 2;
+    _mode_int.max = 3;
     _updateMode();
     _mode_int.action = [this]() { _updateMode(); };
 
@@ -1180,14 +1180,14 @@ std::vector<EraseTarget> EraserTool::_findItemsToErase()
             // Erase all candidates (or only selected if selection is non-empty)
             if (selection->isEmpty()) {
                 for (auto *candidate : candidates) {
-                    if (candidate != _acid) {
+                    if (candidate != _acid && cast<SPPath>(candidate)) {
                         allowed.emplace_back(candidate, false);
                     }
                 }
             } else {
                 for (auto *selected : selection->items()) {
                     for (auto *candidate : candidates) {
-                        if (selected == candidate) {
+                        if (selected == candidate && cast<SPPath>(candidate)) {
                             allowed.emplace_back(candidate, true);
                         }
                     }
@@ -1416,74 +1416,71 @@ void EraserTool::_drawTemporaryBox()
  *        removing the portions that fall within the eraser stroke width.
  *        This is the "true path eraser" mode for open stroked paths.
  */
+
 void EraserTool::_pathSplitErase(SPItem *item)
 {
     using namespace Geom;
 
     auto *path = cast<SPPath>(item);
-    if (!path) {
-        return;
-    }
+    if (!path) return;
 
     auto const &curve = path->curve();
-    if (!curve) {
-        return;
-    }
+    if (!curve) return;
+    if (accumulated.is_empty()) return;
 
-    if (accumulated.is_empty()) {
-        return;
-    }
-
-    // Eraser shape in document coordinates
     PathVector eraser_pv = accumulated.get_pathvector() * _desktop->dt2doc();
-
-    // Target path in document coordinates
     Affine item_transform = item->i2doc_affine();
     PathVector target_pv = curve->get_pathvector() * item_transform;
+
+    if (target_pv.empty()) return;
+
+    // Test if a point is inside the eraser shape using winding number
+    auto is_inside_eraser = [&](Point const &pt) -> bool {
+        for (auto const &ep : eraser_pv) {
+            if (ep.winding(pt) != 0) return true;
+        }
+        return false;
+    };
+
+    // Safely get a point on a path at a PathTime, clamped to valid range
+    auto safe_point_at = [&](Path const &p, PathTime const &pt) -> Point {
+        if (p.empty()) return Point(0, 0);
+        size_t ci = std::min(pt.curve_index, p.size() - 1);
+        double t = std::max(0.0, std::min(pt.t, 1.0));
+        return p.pointAt(PathTime(ci, t));
+    };
 
     PathVector result_pv;
 
     for (auto const &target_path : target_pv) {
+        size_t path_size = target_path.size();
+        if (path_size == 0) continue;
 
-        // Collect all PathTime values where target intersects any eraser sub-path
+        // Collect intersection PathTimes with all eraser sub-paths
         std::vector<PathTime> hit_times;
-
         for (auto const &eraser_path : eraser_pv) {
-            auto intersections = target_path.intersect(eraser_path);
-            for (auto const &ix : intersections) {
-                // ix.first is PathTime on target_path
-                // Filter out hits very near the endpoints
+            auto ixs = target_path.intersect(eraser_path);
+            for (auto const &ix : ixs) {
                 PathTime pt = ix.first;
-                // Convert to a rough scalar for endpoint filtering
-                double approx_t = (pt.curve_index + pt.t) / (double)target_path.size();
-                if (approx_t > 1e-4 && approx_t < 1.0 - 1e-4) {
+                // Skip intersections extremely close to endpoints
+                double approx_t = (pt.curve_index + pt.t) / (double)path_size;
+                if (approx_t > 1e-3 && approx_t < 1.0 - 1e-3) {
                     hit_times.push_back(pt);
                 }
             }
         }
 
-        // Helper: test if a point is inside the eraser shape
-        auto is_inside_eraser = [&](Point const &pt) -> bool {
-            int wind = 0;
-            for (auto const &ep : eraser_pv) {
-                wind += ep.winding(pt);
-            }
-            return wind != 0;
-        };
-
         if (hit_times.empty()) {
-            // No intersections — whole path either fully inside or fully outside
-            Point test_pt = target_path.pointAt(PathTime(0, 0.5));
+            // No crossings — keep whole path if outside eraser
+            Point test_pt = safe_point_at(target_path, PathTime(0, 0.5));
             if (!is_inside_eraser(test_pt)) {
                 result_pv.push_back(target_path);
             }
             continue;
         }
 
-        // Sort PathTimes along the path
+        // Sort and deduplicate
         std::sort(hit_times.begin(), hit_times.end());
-
-        // Remove near-duplicates
         hit_times.erase(
             std::unique(hit_times.begin(), hit_times.end(),
                 [](PathTime const &a, PathTime const &b) {
@@ -1492,60 +1489,58 @@ void EraserTool::_pathSplitErase(SPItem *item)
                 }),
             hit_times.end());
 
-        // Build list of split points: start, all hits, end
-        PathTime path_start(0, 0.0);
-        PathTime path_end(target_path.size() - 1, 1.0);
-
+        // Build split list with sentinels at start and end
+        // Use 0.001 and 0.999 instead of exactly 0.0 and 1.0 to avoid
+        // degenerate portion() calls at exact endpoints
         std::vector<PathTime> splits;
-        splits.push_back(path_start);
+        splits.emplace_back(0, 0.001);
         for (auto const &pt : hit_times) {
             splits.push_back(pt);
         }
-        splits.push_back(path_end);
+        splits.emplace_back(path_size - 1, 0.999);
 
-        // Walk each segment between split points
         for (size_t i = 0; i + 1 < splits.size(); ++i) {
             PathTime t0 = splits[i];
             PathTime t1 = splits[i + 1];
 
-            // Sample multiple points along this segment to test inside/outside.
-            // A single midpoint can land inside the eraser even when most of the
-            // segment is outside (e.g. when the eraser clips a corner).
-            // We use a point very close to t0 and a point very close to t1,
-            // and consider the segment "outside" if EITHER endpoint is outside.
-            // This correctly handles the case where the eraser only clips one end.
-            auto advance_time = [&](PathTime t, double delta) -> PathTime {
-                double new_t = t.t + delta;
-                size_t curve_idx = t.curve_index;
-                if (new_t >= 1.0 && curve_idx + 1 < target_path.size()) {
-                    curve_idx++;
-                    new_t = 0.01;
-                }
-                return PathTime(curve_idx, std::min(new_t, 0.999));
-            };
+            // Skip degenerate segments
+            if (t0.curve_index == t1.curve_index && t1.t - t0.t < 1e-4) continue;
+            if (t1 < t0) continue;
 
-            PathTime near_t0 = advance_time(t0, 0.05);
-            PathTime near_t1 = PathTime(t1.curve_index, std::max(t1.t - 0.05, 0.001));
+            // Test two points: just inside t0 and just inside t1
+            // Use 10% into the segment from each end
+            double span = (t1.curve_index - t0.curve_index) + (t1.t - t0.t);
+            double offset = std::min(0.1, span * 0.1);
 
-            Point pt_near_t0 = target_path.pointAt(near_t0);
-            Point pt_near_t1 = target_path.pointAt(near_t1);
+            double tt0 = t0.t + offset;
+            size_t ci0 = t0.curve_index;
+            if (tt0 >= 1.0 && ci0 + 1 < path_size) { ci0++; tt0 = 0.1; }
+            tt0 = std::min(tt0, 0.999);
 
-            // Keep segment if either end is outside the eraser
-            bool keep = !is_inside_eraser(pt_near_t0) || !is_inside_eraser(pt_near_t1);
-            Point mid_pt = pt_near_t0; // used only for the original check below
-        
+            double tt1 = t1.t - offset;
+            size_t ci1 = t1.curve_index;
+            if (tt1 <= 0.0 && ci1 > 0) { ci1--; tt1 = 0.9; }
+            tt1 = std::max(tt1, 0.001);
 
-            if (keep) {
-                Path segment = target_path.portion(t0, t1);
-                segment.close(false);
-                if (!segment.empty()) {
-                    result_pv.push_back(segment);
+            Point pt0 = safe_point_at(target_path, PathTime(ci0, tt0));
+            Point pt1 = safe_point_at(target_path, PathTime(ci1, tt1));
+
+            // Keep if either end is outside eraser
+            if (!is_inside_eraser(pt0) || !is_inside_eraser(pt1)) {
+                try {
+                    Path segment = target_path.portion(t0, t1);
+                    segment.close(false);
+                    if (!segment.empty()) {
+                        result_pv.push_back(segment);
+                    }
+                } catch (...) {
+                    // If portion() fails for any reason, keep the original
+                    result_pv.push_back(target_path);
                 }
             }
         }
     }
 
-    // Transform result back to item local space
     result_pv *= item_transform.inverse();
 
     if (result_pv.empty()) {
