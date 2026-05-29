@@ -706,8 +706,8 @@ private:
   void changeIconsColors();
   void resetIconsColors(bool themechange = false);
   void resetIconsColorsWrapper();
-  void get_highlight_colors(guint32 &colorsetbase, guint32 &colorsetsuccess, guint32 &colorsetwarning,
-                            guint32 &colorseterror);
+  void get_highlight_colors(Colors::Color &colorsetbase, Colors::Color &colorsetsuccess,
+                            Colors::Color &colorsetwarning, Colors::Color &colorseterror);
 
   std::map<Glib::ustring, bool> dark_themes;
   bool _init;

@@ -53,11 +53,8 @@ void ColorTagRenderer::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapsho
     if (_property_hover.get_value()) {
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
         Glib::ustring themeiconname = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
-        guint32 colorsetbase = prefs->getUInt("/theme/" + themeiconname + "/symbolicBaseColor", 0x2E3436ff);
-        double r = ((colorsetbase >> 24) & 0xFF) / 255.0;
-        double g = ((colorsetbase >> 16) & 0xFF) / 255.0;
-        double b = ((colorsetbase >> 8) & 0xFF) / 255.0;
-        cr->set_source_rgba(r, g, b, 0.6);
+        auto colorsetbase = prefs->getColor("/theme/" + themeiconname + "/symbolicBaseColor", "#2E3436");
+        cr->set_source_rgba(colorsetbase[0], colorsetbase[1], colorsetbase[2], 0.6);
         cr->rectangle(background_area.get_x() + 0.5, background_area.get_y() + 0.5, background_area.get_width() - 1.0, background_area.get_height() - 1.0);
         cr->set_line_width(1.0);
         cr->stroke();

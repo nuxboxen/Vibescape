@@ -255,7 +255,6 @@ std::vector<GskColorStop> create_cubic_gradient(
 
 // If on Windows, get the native window & set it to DWMA_USE_IMMERSIVE_DARK_MODE
 void set_dark_titlebar(Glib::RefPtr<Gdk::Surface> const &surface, bool is_dark);
-unsigned int get_color_value(const Glib::ustring color);
 
 // Parse string that can contain floating point numbers and round them to given precision;
 // Used on path data ("d" attribute).

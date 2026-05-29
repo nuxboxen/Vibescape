@@ -1189,8 +1189,8 @@ void InkscapePreferences::initPageTools()
 #endif // WITH_LPETOOL
 }
 
-void InkscapePreferences::get_highlight_colors(guint32 &colorsetbase, guint32 &colorsetsuccess,
-                                               guint32 &colorsetwarning, guint32 &colorseterror)
+void InkscapePreferences::get_highlight_colors(Colors::Color &colorsetbase, Colors::Color &colorsetsuccess,
+                                               Colors::Color &colorsetwarning, Colors::Color &colorseterror)
 {
     using namespace Inkscape::IO::Resource;
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
@@ -1212,7 +1212,9 @@ void InkscapePreferences::get_highlight_colors(guint32 &colorsetbase, guint32 &c
             size_t endposin = result.find(";");
             result = result.substr(startposin + 5, endposin - (startposin + 5));
             Util::trim(result);
-            colorsetbase = to_guint32(Gdk::RGBA(result));
+            if (auto color = Colors::Color::parse(result)) {
+                colorsetbase = color.value();
+            }
         }
         content.erase(0, endpos + 1);
         startpos = content.find(prefix + ".success");
@@ -1223,7 +1225,9 @@ void InkscapePreferences::get_highlight_colors(guint32 &colorsetbase, guint32 &c
             size_t endposin = result.find(";");
             result = result.substr(startposin + 5, endposin - (startposin + 5));
             Util::trim(result);
-            colorsetsuccess = to_guint32(Gdk::RGBA(result));
+            if (auto color = Colors::Color::parse(result)) {
+                colorsetsuccess = color.value();
+            }
         }
         content.erase(0, endpos + 1);
         startpos = content.find(prefix + ".warning");
@@ -1234,7 +1238,9 @@ void InkscapePreferences::get_highlight_colors(guint32 &colorsetbase, guint32 &c
             size_t endposin = result.find(";");
             result = result.substr(startposin + 5, endposin - (startposin + 5));
             Util::trim(result);
-            colorsetwarning = to_guint32(Gdk::RGBA(result));
+            if (auto color = Colors::Color::parse(result)) {
+                colorsetwarning = color.value();
+            }
         }
         content.erase(0, endpos + 1);
         startpos = content.find(prefix + ".error");
@@ -1245,7 +1251,9 @@ void InkscapePreferences::get_highlight_colors(guint32 &colorsetbase, guint32 &c
             size_t endposin = result.find(";");
             result = result.substr(startposin + 5, endposin - (startposin + 5));
             Util::trim(result);
-            colorseterror = to_guint32(Gdk::RGBA(result));
+            if (auto color = Colors::Color::parse(result)) {
+                colorseterror = color.value();
+            }
         }
     }
 }
@@ -1269,25 +1277,25 @@ void InkscapePreferences::resetIconsColors(bool themechange)
     auto doChangeIconsColors = false;
 
     if (prefs->getBool("/theme/symbolicDefaultBaseColors", true) ||
-        !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidUInt()) {
+        !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidColor()) {
         auto const display = Gdk::Display::get_default();
         if (INKSCAPE.themecontext->getColorizeProvider()) {
             Gtk::StyleProvider::remove_provider_for_display(display, INKSCAPE.themecontext->getColorizeProvider());
         }
-        auto base_color = _symbolic_base_color.get_color();
+        auto base_color = Colors::Color(to_guint32(_symbolic_base_color.get_color()));
         // This is a hack to fix a problematic style which isn't updated fast enough on
         // change from dark to bright themes
         if (themechange) {
-            base_color = to_rgba(_symbolic_base_color.get_current_color().toRGBA());
+            base_color = _symbolic_base_color.get_current_color();
         }
         // This colors are set on style.css of inkscape, we copy highlight to not use
-        guint32 colorsetbase = to_guint32(base_color);
-        guint32 colorsetsuccess = colorsetbase;
-        guint32 colorsetwarning = colorsetbase;
-        guint32 colorseterror = colorsetbase;
+        auto colorsetbase = base_color;
+        auto colorsetsuccess = colorsetbase;
+        auto colorsetwarning = colorsetbase;
+        auto colorseterror = colorsetbase;
         get_highlight_colors(colorsetbase, colorsetsuccess, colorsetwarning, colorseterror);
-        _symbolic_base_color.setColor(Colors::Color(colorsetbase));
-        prefs->setUInt("/theme/" + themeiconname + "/symbolicBaseColor", colorsetbase);
+        _symbolic_base_color.setColor(colorsetbase);
+        prefs->setColor("/theme/" + themeiconname + "/symbolicBaseColor", colorsetbase);
         _symbolic_base_color.set_sensitive(false);
         doChangeIconsColors = true;
     } else {
@@ -1299,21 +1307,21 @@ void InkscapePreferences::resetIconsColors(bool themechange)
         if (INKSCAPE.themecontext->getColorizeProvider()) {
             Gtk::StyleProvider::remove_provider_for_display(display, INKSCAPE.themecontext->getColorizeProvider());
         }
-        auto const success_color = _symbolic_success_color.get_color();
-        auto const warning_color = _symbolic_warning_color.get_color();
-        auto const error_color   = _symbolic_error_color  .get_color();
+        auto const success_color = Colors::Color(to_guint32(_symbolic_success_color.get_color()));
+        auto const warning_color = Colors::Color(to_guint32(_symbolic_warning_color.get_color()));
+        auto const error_color   = Colors::Color(to_guint32(_symbolic_error_color  .get_color()));
         //we copy base to not use
-        guint32 colorsetbase = to_guint32(success_color);
-        guint32 colorsetsuccess = to_guint32(success_color);
-        guint32 colorsetwarning = to_guint32(warning_color);
-        guint32 colorseterror = to_guint32(error_color);
+        auto colorsetbase = success_color;
+        auto colorsetsuccess = success_color;
+        auto colorsetwarning = warning_color;
+        auto colorseterror = error_color;
         get_highlight_colors(colorsetbase, colorsetsuccess, colorsetwarning, colorseterror);
-        _symbolic_success_color.setColor(Colors::Color(colorsetsuccess));
-        _symbolic_warning_color.setColor(Colors::Color(colorsetwarning));
-        _symbolic_error_color.setColor(Colors::Color(colorseterror));
-        prefs->setUInt("/theme/" + themeiconname + "/symbolicSuccessColor", colorsetsuccess);
-        prefs->setUInt("/theme/" + themeiconname + "/symbolicWarningColor", colorsetwarning);
-        prefs->setUInt("/theme/" + themeiconname + "/symbolicErrorColor", colorseterror);
+        _symbolic_success_color.setColor(colorsetsuccess);
+        _symbolic_warning_color.setColor(colorsetwarning);
+        _symbolic_error_color.setColor(colorseterror);
+        prefs->setColor("/theme/" + themeiconname + "/symbolicSuccessColor", colorsetsuccess);
+        prefs->setColor("/theme/" + themeiconname + "/symbolicWarningColor", colorsetwarning);
+        prefs->setColor("/theme/" + themeiconname + "/symbolicErrorColor", colorseterror);
         _symbolic_success_color.set_sensitive(false);
         _symbolic_warning_color.set_sensitive(false);
         _symbolic_error_color.set_sensitive(false);
@@ -1335,14 +1343,14 @@ void InkscapePreferences::changeIconsColors()
 {
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     Glib::ustring themeiconname = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
-    guint32 colorsetbase = prefs->getUInt("/theme/" + themeiconname + "/symbolicBaseColor", 0x2E3436ff);
-    guint32 colorsetsuccess = prefs->getUInt("/theme/" + themeiconname + "/symbolicSuccessColor", 0x4AD589ff);
-    guint32 colorsetwarning = prefs->getUInt("/theme/" + themeiconname + "/symbolicWarningColor", 0xF57900ff);
-    guint32 colorseterror = prefs->getUInt("/theme/" + themeiconname + "/symbolicErrorColor", 0xCC0000ff);
-    _symbolic_base_color.setColor(Colors::Color(colorsetbase));
-    _symbolic_success_color.setColor(Colors::Color(colorsetsuccess));
-    _symbolic_warning_color.setColor(Colors::Color(colorsetwarning));
-    _symbolic_error_color.setColor(Colors::Color(colorseterror));
+    auto colorsetbase = prefs->getColor("/theme/" + themeiconname + "/symbolicBaseColor", "#2E3436");
+    auto colorsetsuccess = prefs->getColor("/theme/" + themeiconname + "/symbolicSuccessColor", "#4AD589");
+    auto colorsetwarning = prefs->getColor("/theme/" + themeiconname + "/symbolicWarningColor", "#F57900");
+    auto colorseterror = prefs->getColor("/theme/" + themeiconname + "/symbolicErrorColor", "#CC0000");
+    _symbolic_base_color.setColor(colorsetbase);
+    _symbolic_success_color.setColor(colorsetsuccess);
+    _symbolic_warning_color.setColor(colorsetwarning);
+    _symbolic_error_color.setColor(colorseterror);
 
     auto const &colorize_provider = INKSCAPE.themecontext->getColorizeProvider();
     if (!colorize_provider) return;
@@ -1367,6 +1375,8 @@ void InkscapePreferences::changeIconsColors()
 
     Gtk::StyleProvider::add_provider_for_display(display, colorize_provider,
                                                  GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    INKSCAPE.themecontext->getChangeThemeSignal().emit();
+    INKSCAPE.themecontext->add_gtk_css(true);
 }
 
 void InkscapePreferences::toggleSymbolic()
@@ -1381,8 +1391,9 @@ void InkscapePreferences::toggleSymbolic()
         _symbolic_base_colors.set_sensitive(true);
         _symbolic_highlight_colors.set_sensitive(true);
         Glib::ustring themeiconname = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
-        if (prefs->getBool("/theme/symbolicDefaultColors", true) ||
-            !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidUInt()) {
+        if (prefs->getBool("/theme/symbolicDefaultHighColors", true) ||
+            prefs->getBool("/theme/symbolicDefaultBaseColors", true) ||
+            !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidColor()) {
             resetIconsColors();
         } else {
             changeIconsColors();
@@ -1529,7 +1540,7 @@ void InkscapePreferences::symbolicThemeCheck()
     if (symbolic) {
         if (prefs->getBool("/theme/symbolicDefaultHighColors", true) ||
             prefs->getBool("/theme/symbolicDefaultBaseColors", true) ||
-            !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidUInt()) {
+            !prefs->getEntry("/theme/" + themeiconname + "/symbolicBaseColor").isValidColor()) {
             resetIconsColors();
         } else {
             changeIconsColors();

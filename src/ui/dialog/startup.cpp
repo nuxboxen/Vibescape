@@ -585,21 +585,23 @@ StartScreen::theme_changed()
         prefs->setBool("/theme/preferDarkTheme", is_dark);
         prefs->setBool("/theme/darkTheme", is_dark);
         // Symbolic icon colours
-        if (get_color_value(row[cols.base]) == 0) {
+        if (!Colors::Color::parse((Glib::ustring)row[cols.base])) {
             prefs->setBool("/theme/symbolicDefaultBaseColors", true);
             prefs->setBool("/theme/symbolicDefaultHighColors", true);
         } else {
             Glib::ustring prefix = "/theme/" + icons;
             prefs->setBool("/theme/symbolicDefaultBaseColors", false);
             prefs->setBool("/theme/symbolicDefaultHighColors", false);
-            if (is_dark) {
-                prefs->setUInt(prefix + "/symbolicBaseColor", get_color_value(row[cols.base_dark]));
-            } else {
-                prefs->setUInt(prefix + "/symbolicBaseColor", get_color_value(row[cols.base]));
-            }
-            prefs->setUInt(prefix + "/symbolicSuccessColor", get_color_value(row[cols.success]));
-            prefs->setUInt(prefix + "/symbolicWarningColor", get_color_value(row[cols.warn]));
-            prefs->setUInt(prefix + "/symbolicErrorColor", get_color_value(row[cols.error]));
+            auto base_column = is_dark ? cols.base_dark : cols.base;
+            auto black = Colors::Color(0, false);
+            auto base_color = Colors::Color::parse((Glib::ustring)row[base_column]).value_or(black);
+            auto success_color = Colors::Color::parse((Glib::ustring)row[cols.success]).value_or(black);
+            auto warn_color = Colors::Color::parse((Glib::ustring)row[cols.warn]).value_or(black);
+            auto error_color = Colors::Color::parse((Glib::ustring)row[cols.error]).value_or(black);
+            prefs->setColor(prefix + "/symbolicBaseColor", base_color);
+            prefs->setColor(prefix + "/symbolicSuccessColor", success_color);
+            prefs->setColor(prefix + "/symbolicWarningColor", warn_color);
+            prefs->setColor(prefix + "/symbolicErrorColor", error_color);
         }
 
         refresh_theme(prefs->getString("/theme/gtkTheme", prefs->getString("/theme/defaultGtkTheme", "")));
