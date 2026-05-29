@@ -1508,19 +1508,34 @@ void EraserTool::_pathSplitErase(SPItem *item)
             PathTime t0 = splits[i];
             PathTime t1 = splits[i + 1];
 
-            // Get midpoint of this segment to test inside/outside
-            // Use pointAt with the average PathTime approximation
-            PathTime mid_time;
-            if (t0.curve_index == t1.curve_index) {
-                mid_time = PathTime(t0.curve_index, (t0.t + t1.t) / 2.0);
-            } else {
-                // spans multiple curves — use midpoint curve
-                size_t mid_curve = (t0.curve_index + t1.curve_index) / 2;
-                mid_time = PathTime(mid_curve, 0.5);
-            }
-            Point mid_pt = target_path.pointAt(mid_time);
+            // Sample multiple points along this segment to test inside/outside.
+            // A single midpoint can land inside the eraser even when most of the
+            // segment is outside (e.g. when the eraser clips a corner).
+            // We use a point very close to t0 and a point very close to t1,
+            // and consider the segment "outside" if EITHER endpoint is outside.
+            // This correctly handles the case where the eraser only clips one end.
+            auto advance_time = [&](PathTime t, double delta) -> PathTime {
+                double new_t = t.t + delta;
+                size_t curve_idx = t.curve_index;
+                if (new_t >= 1.0 && curve_idx + 1 < target_path.size()) {
+                    curve_idx++;
+                    new_t = 0.01;
+                }
+                return PathTime(curve_idx, std::min(new_t, 0.999));
+            };
 
-            if (!is_inside_eraser(mid_pt)) {
+            PathTime near_t0 = advance_time(t0, 0.05);
+            PathTime near_t1 = PathTime(t1.curve_index, std::max(t1.t - 0.05, 0.001));
+
+            Point pt_near_t0 = target_path.pointAt(near_t0);
+            Point pt_near_t1 = target_path.pointAt(near_t1);
+
+            // Keep segment if either end is outside the eraser
+            bool keep = !is_inside_eraser(pt_near_t0) || !is_inside_eraser(pt_near_t1);
+            Point mid_pt = pt_near_t0; // used only for the original check below
+        
+
+            if (keep) {
                 Path segment = target_path.portion(t0, t1);
                 segment.close(false);
                 if (!segment.empty()) {
