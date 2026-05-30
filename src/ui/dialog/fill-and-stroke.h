@@ -84,6 +84,7 @@ private:
     std::unique_ptr<UI::Widget::PaintSwitch> _fill_switch;
     std::unique_ptr<UI::Widget::PaintSwitch> _stroke_switch;
     UI::Widget::StrokeStyle *strokeStyleWdgt = nullptr;
+    std::vector<Gtk::Label*> _tab_labels;
 
     sigc::scoped_connection _switch_page_conn;
 };

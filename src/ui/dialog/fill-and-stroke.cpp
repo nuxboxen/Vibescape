@@ -460,14 +460,14 @@ void FillAndStroke::_onSwitchPage(Gtk::Widget * page, guint pagenum)
     npage = pagenum;
     _updateFromSelection();
 
-    if (_recolor_btn.get_parent()) {
-        _recolor_btn.unparent();
-    }
-
-    if (npage == 0 && _fill_switch) {
-        _fill_switch->append(_recolor_btn);
-    } else if (npage == 1 && _stroke_switch) {
-        _stroke_switch->append(_recolor_btn);
+    for (size_t i = 0; i < _tab_labels.size(); i++) {
+        if (auto label = _tab_labels[i]) {
+            if (i == pagenum) {
+                label->set_ellipsize(Pango::EllipsizeMode::NONE);
+            } else {
+                label->set_ellipsize(Pango::EllipsizeMode::END);
+            }
+        }
     }
 
     if (page->is_visible()) {
@@ -560,7 +560,13 @@ FillAndStroke::_createPageTabLabel(const Glib::ustring& label, const char *label
     _tab_label_box->append(*img);
 
     auto const _tab_label = Gtk::make_managed<Gtk::Label>(label, true);
+    _tab_label->set_ellipsize(Pango::EllipsizeMode::END); 
+    _tab_label->set_lines(1);
+    _tab_labels.push_back(_tab_label);
     _tab_label_box->append(*_tab_label);
+
+    _tab_label_box->set_hexpand(true);
+    _tab_label_box->set_tooltip_text(_tab_label->get_text());
 
     return *_tab_label_box;
 }
