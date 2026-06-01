@@ -1404,8 +1404,12 @@ const std::vector<double>& sp_style_get_default_font_size_list(int unit) {
 void
 sp_style_set_property_url (SPObject *item, gchar const *property, SPObject *linked, bool recursive)
 {
-    Inkscape::XML::Node *repr = item->getRepr();
+    sp_style_set_property_url_on_repr(item->getRepr(), property, linked, recursive);
+}
 
+void
+sp_style_set_property_url_on_repr(Inkscape::XML::Node *repr, gchar const *property, SPObject *linked, bool recursive)
+{
     if (repr == nullptr) return;
 
     SPCSSAttr *css = sp_repr_css_attr_new();

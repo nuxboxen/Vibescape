@@ -15,7 +15,7 @@
 class SPDocument;
 class SPObject;
 
-void prevent_id_clashes(SPDocument *imported_doc, SPDocument *current_doc, bool from_clipboard = false);
+void prevent_id_clashes(SPDocument *imported_doc, SPDocument *current_doc);
 void rename_id(SPObject *elem, Glib::ustring const &newname);
 void change_def_references(SPObject *replace_obj, SPObject *with_obj);
 Glib::ustring generate_similar_unique_id(SPDocument *document, Glib::ustring const &base_name);

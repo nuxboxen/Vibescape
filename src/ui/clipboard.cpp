@@ -913,6 +913,10 @@ bool ClipboardManagerImpl::pastePathEffect(ObjectSet *set)
             char const *effectstack = clipnode->attribute("inkscape:path-effect");
             if ( effectstack ) {
                 set->document()->importDefs(tempdoc.get());
+
+                // importing defs can adjust node names, so grab the current names again
+                effectstack = clipnode->attribute("inkscape:path-effect");
+
                 // make sure all selected items are converted to paths first (i.e. rectangles)
                 set->toLPEItems();
                 auto itemlist= set->items();
@@ -1589,7 +1593,7 @@ void ClipboardManagerImpl::_applyPathEffect(SPItem *item, char const *effectstac
         std::string href;
         while (std::getline(iss, href, ';'))
         {
-            SPObject *obj = sp_uri_reference_resolve(_clipboardSPDoc.get(), href.c_str());
+            SPObject *obj = sp_uri_reference_resolve(item->document, href.c_str());
             if (!obj) {
                 return;
             }

@@ -378,6 +378,7 @@ SPCSSAttr *sp_css_attr_scale(SPCSSAttr *css, double ex);
 void sp_style_unset_property_attrs(SPObject *o);
 
 void sp_style_set_property_url (SPObject *item, char const *property, SPObject *linked, bool recursive);
+void sp_style_set_property_url_on_repr(Inkscape::XML::Node *node, char const *property, SPObject *linked, bool recursive);
 
 void css_quote( Glib::ustring &val );   // Add quotes around CSS values
 void css_unquote( Glib::ustring &val ); // Remove quotes from CSS values (style-internal.cpp, xml/repr-css.cpp)

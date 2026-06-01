@@ -518,7 +518,7 @@ void SPDocument::import(SPDocument &input_doc, Inkscape::XML::Node *parent, Inks
                         ImportRoot rootMode, ImportLayersMode layerMode)
 {
     auto &output_doc = *this;
-    prevent_id_clashes(&input_doc, &output_doc, true);
+    prevent_id_clashes(&input_doc, &output_doc);
     Inkscape::XML::rebase_hrefs(&input_doc, output_doc.getDocumentBase(), false);
     sp_file_fix_lpe(&input_doc);
     output_doc.importDefs(&input_doc);
