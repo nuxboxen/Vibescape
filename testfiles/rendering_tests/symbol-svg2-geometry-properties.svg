@@ -17,7 +17,7 @@
   <svg id="mySvgShifted" x="15" y="20" width="10" height="10" viewBox="0 0 2 2">
     <rect width="2" height="2" style="fill:cyan" />
   </svg>
-  <image id="myImg" width="10" height="10" preserveAspectRatio="none"
+  <image id="myImg" width="10" height="10" preserveAspectRatio="none" style="image-rendering:pixelated"
     xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFc
       SJAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jn
       m+48GgAAAA1JREFUCJlj+F+v9R8ABtECqHp0jnoAAAAASUVORK5CYII=">

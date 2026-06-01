@@ -23,6 +23,7 @@ namespace Inkscape {
 DrawingImage::DrawingImage(Drawing &drawing)
     : DrawingItem(drawing)
     , style_image_rendering(SP_CSS_IMAGE_RENDERING_AUTO)
+    , _extend(CAIRO_EXTEND_NONE) // NONE prevents artifacts in surrounding empty space
 {
 }
 
@@ -54,6 +55,14 @@ void DrawingImage::setClipbox(Geom::Rect const &box)
 {
     defer([=, this] {
         _clipbox = box;
+        _markForUpdate(STATE_ALL, false);
+    });
+}
+
+void DrawingImage::setExtend(cairo_extend_t extend)
+{
+    defer([=, this] {
+        _extend = extend;
         _markForUpdate(STATE_ALL, false);
     });
 }
@@ -121,7 +130,7 @@ unsigned DrawingImage::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::
         // benefits of const for the rest of our code. The underlying object is guaranteed to be non-const, so this is well-defined.
         // It is also thread-safe to modify the refcount in this way, since Cairo uses atomics internally.
         dc.setSource(const_cast<cairo_surface_t*>(_pixbuf->getSurfaceRaw()), 0, 0);
-        dc.patternSetExtend(CAIRO_EXTEND_PAD);
+        dc.patternSetExtend(_extend);
 
         // See: http://www.w3.org/TR/SVG/painting.html#ImageRenderingProperty
         //      https://drafts.csswg.org/css-images-3/#the-image-rendering
