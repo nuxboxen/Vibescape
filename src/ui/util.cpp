@@ -279,19 +279,6 @@ void close_parent_popover(Gtk::Widget &widget)
 
 } // namespace Inkscape::UI
 
-/**
- * Color is store as a string in the form #RRGGBBAA, '0' means "unset"
- *
- * @param color - The string color from glade.
- */
-unsigned int get_color_value(const Glib::ustring color)
-{
-    Gdk::RGBA gdk_color = Gdk::RGBA(color);
-    return SP_RGBA32_F_COMPOSE(gdk_color.get_red(), gdk_color.get_green(),
-                               gdk_color.get_blue(), gdk_color.get_alpha());
-}
-
-
 Gdk::RGBA mix_colors(const Gdk::RGBA& a, const Gdk::RGBA& b, float ratio) {
     auto lerp = [](double v0, double v1, double t){ return (1.0 - t) * v0 + t * v1; };
     Gdk::RGBA result;

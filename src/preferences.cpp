@@ -457,6 +457,13 @@ void Preferences::setColor(Glib::ustring const &pref_path, Colors::Color const &
     _setRawValue(pref_path, color.toString());
 }
 
+void Preferences::setColor(Glib::ustring const &pref_path, Glib::ustring const &value)
+{
+    if (auto color = Colors::Color::parse(value)) {
+        setColor(pref_path, color.value());
+    }
+}
+
 /**
  * Set a string attribute of a preference.
  *
@@ -896,7 +903,7 @@ bool Preferences::Entry::isValidColor() const
         return false;
     }
 
-    return Colors::Color::parse(_value.value().raw()).has_value();
+    return Colors::Color::parse(_value.value().raw()).has_value() || isValidUInt();
 }
 
 // The Entry::get* methods convert the preference string from the XML file back to the original value.
@@ -934,6 +941,10 @@ Colors::Color Preferences::Entry::getColor(std::string const &def) const
         // (exemplary Inkscape startup: 40 calls to getColor vs. 10k calls to getBool())
         if (auto res = Colors::Color::parse(_value.value().raw())) {
             return *res;
+        } else if (isValidUInt()) {
+            // Support historical uint values that are now read as colors (some icon theme colors
+            // at least have transitioned from rgba uints to color strings)
+            return Colors::Color(getUInt());
         }
     }
     if (auto res = Colors::Color::parse(def)) {

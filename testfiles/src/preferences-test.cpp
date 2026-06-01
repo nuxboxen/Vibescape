@@ -152,6 +152,16 @@ TEST_F(PreferencesTest, testColor)
     const auto blue = Inkscape::Colors::Color::parse("blue").value();
     prefs->setColor("/test/colorvalue", blue);
     ASSERT_EQ(prefs->getColor("/test/colorvalue", "green"), blue);
+
+    const auto red = Inkscape::Colors::Color::parse("red").value();
+    prefs->setColor("/test/colorvalue", "red");
+    ASSERT_EQ(prefs->getColor("/test/colorvalue", "green"), red);
+}
+
+TEST_F(PreferencesTest, testColorReadsUint)
+{
+    prefs->setUInt("/test/colorvalue", 2882400153);
+    ASSERT_EQ(prefs->getColor("/test/colorvalue", "green").toString(), "#abcdef99");
 }
 
 TEST_F(PreferencesTest, testColorDefaultReturn)
@@ -212,8 +222,10 @@ TEST_F(PreferencesTest, testIsValidColor)
     ASSERT_TRUE(prefs->getEntry("/test/colorvalue").isValidColor());
     prefs->setString("/test/colorvalue", "#2E3436ff");
     ASSERT_TRUE(prefs->getEntry("/test/colorvalue").isValidColor());
+    prefs->setString("/test/colorvalue", "2882400153");
+    ASSERT_TRUE(prefs->getEntry("/test/colorvalue").isValidColor());
 
-    prefs->setString("/test/colorvalue", "22px");
+    prefs->setString("/test/colorvalue", "pixels");
     ASSERT_FALSE(prefs->getEntry("/test/colorvalue").isValidColor());
 }
 

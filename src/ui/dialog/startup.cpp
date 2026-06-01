@@ -585,21 +585,16 @@ StartScreen::theme_changed()
         prefs->setBool("/theme/preferDarkTheme", is_dark);
         prefs->setBool("/theme/darkTheme", is_dark);
         // Symbolic icon colours
-        if (get_color_value(row[cols.base]) == 0) {
+        if (!Colors::Color::parse((Glib::ustring)row[cols.base])) {
             prefs->setBool("/theme/symbolicDefaultBaseColors", true);
-            prefs->setBool("/theme/symbolicDefaultHighColors", true);
         } else {
             Glib::ustring prefix = "/theme/" + icons;
             prefs->setBool("/theme/symbolicDefaultBaseColors", false);
-            prefs->setBool("/theme/symbolicDefaultHighColors", false);
-            if (is_dark) {
-                prefs->setUInt(prefix + "/symbolicBaseColor", get_color_value(row[cols.base_dark]));
-            } else {
-                prefs->setUInt(prefix + "/symbolicBaseColor", get_color_value(row[cols.base]));
-            }
-            prefs->setUInt(prefix + "/symbolicSuccessColor", get_color_value(row[cols.success]));
-            prefs->setUInt(prefix + "/symbolicWarningColor", get_color_value(row[cols.warn]));
-            prefs->setUInt(prefix + "/symbolicErrorColor", get_color_value(row[cols.error]));
+            auto base_column = is_dark ? cols.base_dark : cols.base;
+            prefs->setColor(prefix + "/symbolicBaseColor", row[base_column]);
+            prefs->setColor(prefix + "/symbolicSuccessColor", row[cols.success]);
+            prefs->setColor(prefix + "/symbolicWarningColor", row[cols.warn]);
+            prefs->setColor(prefix + "/symbolicErrorColor", row[cols.error]);
         }
 
         refresh_theme(prefs->getString("/theme/gtkTheme", prefs->getString("/theme/defaultGtkTheme", "")));
