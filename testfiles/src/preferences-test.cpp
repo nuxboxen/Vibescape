@@ -152,6 +152,10 @@ TEST_F(PreferencesTest, testColor)
     const auto blue = Inkscape::Colors::Color::parse("blue").value();
     prefs->setColor("/test/colorvalue", blue);
     ASSERT_EQ(prefs->getColor("/test/colorvalue", "green"), blue);
+
+    const auto red = Inkscape::Colors::Color::parse("red").value();
+    prefs->setColor("/test/colorvalue", "red");
+    ASSERT_EQ(prefs->getColor("/test/colorvalue", "green"), red);
 }
 
 TEST_F(PreferencesTest, testColorReadsUint)

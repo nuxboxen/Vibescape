@@ -614,6 +614,11 @@ public:
     void setColor(Glib::ustring const &pref_path, Colors::Color const &color);
 
     /**
+     * Set an RGBA color value from a string (if it can be parsed as a color).
+     */
+    void setColor(Glib::ustring const &pref_path, Glib::ustring const &value);
+
+    /**
      * Set a CSS style.
      */
     void setStyle(Glib::ustring const &pref_path, SPCSSAttr *style);

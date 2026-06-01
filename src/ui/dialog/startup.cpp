@@ -591,15 +591,10 @@ StartScreen::theme_changed()
             Glib::ustring prefix = "/theme/" + icons;
             prefs->setBool("/theme/symbolicDefaultBaseColors", false);
             auto base_column = is_dark ? cols.base_dark : cols.base;
-            auto black = Colors::Color(0, false);
-            auto base_color = Colors::Color::parse((Glib::ustring)row[base_column]).value_or(black);
-            auto success_color = Colors::Color::parse((Glib::ustring)row[cols.success]).value_or(black);
-            auto warn_color = Colors::Color::parse((Glib::ustring)row[cols.warn]).value_or(black);
-            auto error_color = Colors::Color::parse((Glib::ustring)row[cols.error]).value_or(black);
-            prefs->setColor(prefix + "/symbolicBaseColor", base_color);
-            prefs->setColor(prefix + "/symbolicSuccessColor", success_color);
-            prefs->setColor(prefix + "/symbolicWarningColor", warn_color);
-            prefs->setColor(prefix + "/symbolicErrorColor", error_color);
+            prefs->setColor(prefix + "/symbolicBaseColor", row[base_column]);
+            prefs->setColor(prefix + "/symbolicSuccessColor", row[cols.success]);
+            prefs->setColor(prefix + "/symbolicWarningColor", row[cols.warn]);
+            prefs->setColor(prefix + "/symbolicErrorColor", row[cols.error]);
         }
 
         refresh_theme(prefs->getString("/theme/gtkTheme", prefs->getString("/theme/defaultGtkTheme", "")));

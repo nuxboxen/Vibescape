@@ -457,6 +457,13 @@ void Preferences::setColor(Glib::ustring const &pref_path, Colors::Color const &
     _setRawValue(pref_path, color.toString());
 }
 
+void Preferences::setColor(Glib::ustring const &pref_path, Glib::ustring const &value)
+{
+    if (auto color = Colors::Color::parse(value)) {
+        setColor(pref_path, color.value());
+    }
+}
+
 /**
  * Set a string attribute of a preference.
  *
