@@ -786,10 +786,6 @@ void InkscapeApplication::create_window(Glib::RefPtr<Gio::File> const &file)
     if (file) {
         std::tie(document, cancelled) = document_open(file);
         if (document) {
-            // Remember document so much that we'll add it to recent documents
-            auto docname = document->getDocumentName();
-            Inkscape::IO::addInkscapeRecentSvg(file->get_path(), docname ? docname : "");
-
             auto old_document = _active_document;
             bool replace = old_document && old_document->getVirgin();
 
