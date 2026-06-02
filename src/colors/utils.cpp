@@ -67,11 +67,13 @@ std::vector<double> rgba_to_values(uint32_t rgba, bool opacity)
  * Output the RGBA value as a #RRGGBB hex color, if alpha is true
  * then the output will be #RRGGBBAA instead.
  */
-std::string rgba_to_hex(uint32_t value, bool alpha)
+std::string rgba_to_hex(uint32_t value, bool alpha, bool uppercase)
 {
     std::ostringstream oo;
     oo.imbue(std::locale("C"));
-    oo << "#" << std::setfill('0') << std::setw(alpha ? 8 : 6) << std::hex << (alpha ? value : value >> 8);
+    oo << "#" << std::setfill('0') << std::setw(alpha ? 8 : 6)
+       << std::hex << (uppercase ? std::uppercase : std::nouppercase)
+       << (alpha ? value : value >> 8);
     return oo.str();
 }
 

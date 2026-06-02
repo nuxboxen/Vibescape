@@ -84,7 +84,7 @@ class Color;
 
 uint32_t hex_to_rgba(std::string const &value);
 std::vector<double> rgba_to_values(uint32_t rgba, bool opacity);
-std::string rgba_to_hex(uint32_t value, bool alpha = false);
+std::string rgba_to_hex(uint32_t value, bool alpha = false, bool uppercase = false);
 std::string color_to_id(std::optional<Color> const &color);
 std::string desc_to_id(std::string const &desc);
 
