@@ -308,7 +308,9 @@ void load_gimp_palette(PaletteFileData& palette, std::string const &path)
             auto color = Color(space, data);
             color.setName(match.fetch(4));
 
-            if (!color.getName().empty()) {
+            if (color.getName().empty()) {
+                color.setName(rgba_to_hex(color.toRGBA(), false, true));
+            } else {
                 // Translate the name if present.
                 color.setName(g_dpgettext2(nullptr, "Palette", color.getName().c_str()));
             }
