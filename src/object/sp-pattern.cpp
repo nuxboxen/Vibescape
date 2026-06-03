@@ -32,6 +32,7 @@
 
 #include "display/cairo-utils.h"
 #include "display/drawing-context.h"
+#include "display/drawing-image.h"
 #include "display/drawing-surface.h"
 #include "display/drawing.h"
 #include "display/drawing-group.h"
@@ -406,6 +407,11 @@ void SPPattern::attach_view(Inkscape::DrawingPattern *di, unsigned key)
         if (auto child = cast<SPItem>(&c)) {
             auto item = child->invoke_show(di->drawing(), key, SP_ITEM_SHOW_DISPLAY);
             di->appendChild(item);
+
+            if (auto image = cast<Inkscape::DrawingImage>(item)) {
+                // Avoid gaps between pattern images
+                image->setExtend(CAIRO_EXTEND_PAD);
+            }
         }
     }
 }
