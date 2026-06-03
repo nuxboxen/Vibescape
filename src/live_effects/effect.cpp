@@ -1511,6 +1511,13 @@ void Effect::doOnRemove_impl(SPLPEItem const* lpeitem)
             sp_lpe_item = nullptr;
         }
     }
+
+    if (!keep_paths) {
+        for (auto satellite : effect_get_satellites()) {
+            satellite->deleteObject();
+        }
+    }
+
     doOnRemove(sp_lpe_item);
     getLPEObj()->deleted = true;
 }
