@@ -71,6 +71,9 @@ file_new(const Glib::VariantBase& value, InkscapeApplication *app)
     Glib::Variant<Glib::ustring> s = Glib::VariantBase::cast_dynamic<Glib::Variant<Glib::ustring> >(value);
 
     auto document = app->document_new(s.get());
+    if (!document) {
+        return;
+    }
 
     app->set_active_document(document);
     app->set_active_selection(document->getSelection());
