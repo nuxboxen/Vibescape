@@ -42,6 +42,10 @@ namespace Inkscape::UI::Tools {
 
 ArcTool::ArcTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/shapes/arc", "arc.svg")
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_trans_confine(Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE))
+    , mod_trans_increment(Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT))
+    , mod_trans_off_center(Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER))
 {
     Inkscape::Selection *selection = desktop->getSelection();
 
@@ -170,7 +174,7 @@ bool ArcTool::root_handler(CanvasEvent const &event)
                     finishItem();
                 } else if (item_to_select) {
                     // no dragging, select clicked item if any
-                    if (event.modifiers & GDK_SHIFT_MASK) {
+                    if (mod_select_add_to->active(event.modifiers)) {
                         selection->toggle(item_to_select);
                     } else if (!selection->includes(item_to_select)) {
                         selection->set(item_to_select);
@@ -187,23 +191,21 @@ bool ArcTool::root_handler(CanvasEvent const &event)
             ungrabCanvasEvents();
         },
         [&] (KeyPressEvent const &event) {
-            switch (get_latin_keyval(event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt (at least on my machine)
-                case GDK_KEY_Meta_R:
-                    if (!dragging) {
-                        sp_event_show_modifier_tip(defaultMessageContext(), event,
-                                                   _("<b>Ctrl</b>: make circle or integer-ratio ellipse, snap arc/segment angle"),
-                                                   _("<b>Shift</b>: draw around the starting point"),
-                                                   _("<b>Alt</b>: snap ellipse to mouse pointer"));
-                    }
-                    break;
+            auto keyval = get_latin_keyval(event);
 
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                if (!dragging) {
+                    Modifiers::responsive_tooltip_with_labels(
+                        defaultMessageContext(), event, 3,
+                        Modifiers::Type::TRANS_CONFINE,
+                        _("Make circle or integer-ratio ellipse, snap arc/segment angle"),
+                        Modifiers::Type::TRANS_INCREMENT, _("Snap ellipse to mouse pointer"),
+                        Modifiers::Type::TRANS_OFF_CENTER, _("Draw around the starting point")
+                    );
+                }
+            }
+
+            switch (keyval) {
                 case GDK_KEY_Escape:
                     if (dragging) {
                         dragging = false;
@@ -239,20 +241,10 @@ bool ArcTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (KeyReleaseEvent const &event) {
-            switch (event.keyval) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt
-                case GDK_KEY_Meta_R:
-                    defaultMessageContext()->clear();
-                    break;
+            auto keyval = get_latin_keyval (event);
 
-                default:
-                    break;
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                defaultMessageContext()->clear();
             }
         },
         [&] (CanvasEvent const &event) {}
@@ -283,10 +275,10 @@ void ArcTool::drag(Geom::Point const &pt, unsigned state)
         this->arc->updateRepr();
     }
 
-    auto confine = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE)->active(state);
+    auto confine = mod_trans_confine->active(state);
     // Third is weirdly wrong, surely incrememnts should do something else.
-    auto circle_edge = Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT)->active(state);
-    auto off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER)->active(state);
+    auto circle_edge = mod_trans_increment->active(state);
+    auto off_center = mod_trans_off_center->active(state);
 
     Geom::Rect r = Inkscape::snap_rectangular_box(_desktop, arc.get(), pt, this->center, state);
 
@@ -332,7 +324,7 @@ void ArcTool::drag(Geom::Point const &pt, unsigned state)
     Glib::ustring xs = rdimx_q.string(_desktop->getNamedView()->display_units);
     Glib::ustring ys = rdimy_q.string(_desktop->getNamedView()->display_units);
 
-    if (state & GDK_CONTROL_MASK) {
+    if (confine) {
         int ratio_x, ratio_y;
         bool is_golden_ratio = false;
 
@@ -354,21 +346,25 @@ void ArcTool::drag(Geom::Point const &pt, unsigned state)
 
         if (!is_golden_ratio) {
             this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                    _("<b>Ellipse</b>: %s &#215; %s (constrained to ratio %d:%d); with <b>Shift</b> to draw around the starting point"),
-                    xs.c_str(), ys.c_str(), ratio_x, ratio_y);
+                    _("<b>Ellipse</b>: %s &#215; %s (constrained to ratio %d:%d); with <b>%s</b> to draw around the starting point"),
+                    xs.c_str(), ys.c_str(), ratio_x, ratio_y,
+                    mod_trans_off_center->get_label().c_str());
         } else {
             if (ratio_y == 1) {
                 this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                        _("<b>Ellipse</b>: %s &#215; %s (constrained to golden ratio 1.618 : 1); with <b>Shift</b> to draw around the starting point"),
-                        xs.c_str(), ys.c_str());
+                        _("<b>Ellipse</b>: %s &#215; %s (constrained to golden ratio 1.618 : 1); with <b>%s</b> to draw around the starting point"),
+                        xs.c_str(), ys.c_str(), mod_trans_off_center->get_label().c_str());
             } else {
                 this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                        _("<b>Ellipse</b>: %s &#215; %s (constrained to golden ratio 1 : 1.618); with <b>Shift</b> to draw around the starting point"),
-                        xs.c_str(), ys.c_str());
+                        _("<b>Ellipse</b>: %s &#215; %s (constrained to golden ratio 1 : 1.618); with <b>%s</b> to draw around the starting point"),
+                        xs.c_str(), ys.c_str(), mod_trans_off_center->get_label().c_str());
             }
         }
     } else {
-        this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE, _("<b>Ellipse</b>: %s &#215; %s; with <b>Ctrl</b> to make circle, integer-ratio, or golden-ratio ellipse; with <b>Shift</b> to draw around the starting point"), xs.c_str(), ys.c_str());
+        this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
+                _("<b>Ellipse</b>: %s &#215; %s; with <b>%s</b> to make circle, integer-ratio, or golden-ratio ellipse; with <b>%s</b> to draw around the starting point"),
+                xs.c_str(), ys.c_str(), mod_trans_confine->get_label().c_str(),
+                mod_trans_off_center->get_label().c_str());
     }
 }
 

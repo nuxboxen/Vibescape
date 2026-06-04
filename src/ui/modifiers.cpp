@@ -111,6 +111,7 @@ Modifier::Container &Modifier::_modifiers()
         make_modifier("trans-snapping", _("No Transform Snapping"), _("Disable snapping when transforming object."), SHIFT, TRANSFORM, DRAG),
     // Center handle click: seltrans.cpp:734 SHIFT
     // Align handle click: seltrans.cpp:1365 SHIFT
+
         make_modifier("bool-shift", _("Switch mode"), _("Change shape builder mode temporarily by holding a modifier key."), SHIFT, BOOLEANS_TOOL, DRAG),
 
         make_modifier("node-grow-linear", _("Linear node selection"), _("Select the next nodes with scroll wheel or keyboard"), CTRL, NODE_TOOL, SCROLL),
@@ -280,47 +281,87 @@ unsigned long calculate_weight(KeyMask mask)
     return bit_mask.count();
 }
 
-/**
- * Set the responsive tooltip for this tool, given the selected types.
- *
- * @param message_context - The desktop's message context for showing tooltips
- * @param event - The current event status (which keys are pressed)
- * @param num_args - Number of Modifier::Type arguments to follow.
- * @param ... - One or more Modifier::Type arguments.
- */
-void responsive_tooltip(MessageContext *message_context, KeyEvent const &event, int num_args, ...)
+static void responsive_tooltip_from_list(MessageContext *message_context, KeyEvent const &event,
+                                         std::vector<std::pair<Modifier *, std::string>> mods)
 {
     std::string ctrl_msg = "<b>Ctrl</b>: ";
     std::string shift_msg = "<b>Shift</b>: ";
     std::string alt_msg = "<b>Alt</b>: ";
 
     // NOTE: This will hide any keys changed to SUPER or multiple keys such as CTRL+SHIFT
-    va_list args;
-    va_start(args, num_args);
-    for(int i = 0; i < num_args; i++) {
-        auto modifier = Modifier::get(va_arg(args, Type));
-        auto name = std::string(_(modifier->get_name()));
-        switch (modifier->get_and_mask()) {
+    for (const auto& mod : mods) {
+        switch (mod.first->get_and_mask()) {
             case CTRL:
-                ctrl_msg += name + ", ";
+                ctrl_msg += mod.second + ", ";
                 break;
             case SHIFT:
-                shift_msg += name + ", ";
+                shift_msg += mod.second + ", ";
                 break;
             case ALT:
-                alt_msg += name + ", ";
+                alt_msg += mod.second + ", ";
                 break;
             default:
-                g_warning("Unhandled responsivle tooltip: %s", name.c_str());
+                g_warning("Unhandled responsive tooltip: %s", mod.second.c_str());
         }
     }
-    va_end(args);
     ctrl_msg.erase(ctrl_msg.size() - 2);
     shift_msg.erase(shift_msg.size() - 2);
     alt_msg.erase(alt_msg.size() - 2);
 
     UI::Tools::sp_event_show_modifier_tip(message_context, event,
         ctrl_msg.c_str(), shift_msg.c_str(), alt_msg.c_str());
+}
+
+/**
+ * Set the responsive tooltip for this tool, given the selected types.
+ *
+ * @param message_context - The desktop's message context for showing tooltips
+ * @param event - The current event status (which keys are pressed)
+ * @param num_types - Number of Modifier::Type arguments to follow.
+ * @param ... - One or more Modifier::Type arguments.
+ */
+void responsive_tooltip(MessageContext *message_context, KeyEvent const &event, int num_types, ...)
+{
+    std::vector<std::pair<Modifier *, std::string>> mods;
+
+    va_list args;
+    va_start(args, num_types);
+    for(int i = 0; i < num_types; i++) {
+        auto modifier = Modifier::get(va_arg(args, Type));
+        mods.push_back(std::pair(modifier, modifier->get_name()));
+    }
+    va_end(args);
+
+    responsive_tooltip_from_list(message_context, event, mods);
+}
+
+/**
+ * Set the responsive tooltip for this tool, given the selected types and labels.
+ *
+ * @note: This is designed for a better UX (arc tool can say "makes circles or ellipses" rather
+ *        than the generic "keep aspect ratio") but should not be used to force the same modifier
+ *        action to be shared when it is conceptually a different action. Be willing to make new
+ *        actions with their own labels and shortcut preference.
+ *
+ * @param message_context - The desktop's message context for showing tooltips
+ * @param event - The current event status (which keys are pressed)
+ * @param num_types - Number of Modifier::Type arguments to follow.
+ * @param ... - One or more Modifier::Type arguments, each followed by a gchar* label.
+ */
+void responsive_tooltip_with_labels(MessageContext *message_context, KeyEvent const &event, int num_types, ...)
+{
+    std::vector<std::pair<Modifier *, std::string>> mods;
+
+    va_list args;
+    va_start(args, num_types);
+    for(int i = 0; i < num_types; i++) {
+        auto modifier = Modifier::get(va_arg(args, Type));
+        auto label = va_arg(args, gchar const *);
+        mods.push_back(std::pair(modifier, label));
+    }
+    va_end(args);
+
+    responsive_tooltip_from_list(message_context, event, mods);
 }
 
 /**
@@ -342,6 +383,18 @@ int add_keyval(int state, int keyval, bool release)
             state |= it->second;
     }
     return state;
+}
+
+/**
+ * Checks if a GDK keyval is a modifier press/release (like CTRL, ALT, SUPER, etc).
+ *
+ * @param keyval - The GDK keyval from a key press/release event
+ *
+ * @return whether the keyval is a modifier
+ */
+bool keyval_is_a_modifier(int keyval)
+{
+    return keyval & ALL_MODS;
 }
 
 } // namespace Inkscape::Modifiers

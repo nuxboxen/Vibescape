@@ -18,6 +18,7 @@
 
 #include "ui/tools/tool-base.h"
 #include "object/weakptr.h"
+#include "ui/modifiers.h"
 
 class SPItem;
 class SPGenericEllipse;
@@ -40,6 +41,11 @@ private:
     Geom::Point center;
 
     sigc::connection sel_changed_connection;
+
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_trans_confine;
+    Modifiers::Modifier *mod_trans_increment;
+    Modifiers::Modifier *mod_trans_off_center;
 
     void selection_changed(Selection *selection);
 

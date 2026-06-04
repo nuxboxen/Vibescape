@@ -57,7 +57,7 @@ enum class Type {
     CANVAS_ZOOM,          // Zoom in and out {CTRL+SCROLL}
     CANVAS_ROTATE,        // Rotate CW and CCW {CTRL+SHIFT+SCROLL}
 
-    // Select tool (minus transform)
+    // Select tool (minus transform; some of these are used in other tools)
     SELECT_ADD_TO,        // Add selection {SHIFT+CLICK}
     SELECT_IN_GROUPS,     // Select within groups {CTRL+CLICK}
     SELECT_TOUCH_PATH,    // Draw band to select {ALT+DRAG+Nothing selected}
@@ -77,6 +77,7 @@ enum class Type {
     TRANS_SNAPPING,       // Disable snapping while transforming {HANDLE+SHIFT}
 
     BOOL_SHIFT,           // Shift the shape builder into its alternative mode.
+
     NODE_GROW_LINEAR,     // Scroll wheel selection of nodes
     NODE_INVERT,          // Select nodes outside of the selection box
     NODE_REMOVE_FROM,     // Remove selected nodes from selection
@@ -88,10 +89,18 @@ enum class Type {
 std::string   generate_label(KeyMask mask, std::string sep = "+");
 unsigned long calculate_weight(KeyMask mask);
 
-// Generate a responsivle tooltip set
-void responsive_tooltip(MessageContext *message_context, KeyEvent const &event, int num_args, ...);
+// Generate a responsive tooltip set
+void responsive_tooltip(MessageContext *message_context, KeyEvent const &event, int num_types, ...);
+
+// Generate a responsive tooltip set, but with custom labels for actions.
+// NOTE: This is designed for a better UX (arc tool can say "makes circles or ellipses" rather than
+//  the generic "keep aspect ratio") but should not be used to force the same modifier action to be
+//  shared when it is conceptually a different action. Be willing to make new actions with their
+//  own labels and shortcut preference.
+void responsive_tooltip_with_labels(MessageContext *message_context, KeyEvent const &event, int num_types, ...);
 
 int add_keyval(int state, int keyval, bool release = false);
+bool keyval_is_a_modifier(int keyval);
 
 /**
  * A class to represent ways functionality is driven by shift modifiers

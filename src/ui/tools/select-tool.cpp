@@ -156,18 +156,6 @@ bool SelectTool::sp_select_context_abort() {
         return false;
 }
 
-static bool
-key_is_a_modifier (guint key) {
-    return (key == GDK_KEY_Alt_L     ||
-            key == GDK_KEY_Alt_R     ||
-            key == GDK_KEY_Control_L ||
-            key == GDK_KEY_Control_R ||
-            key == GDK_KEY_Shift_L   ||
-            key == GDK_KEY_Shift_R   ||
-            key == GDK_KEY_Meta_L    ||  // Meta is when you press Shift+Alt (at least on my machine)
-            key == GDK_KEY_Meta_R);
-}
-
 static void
 sp_select_context_up_one_layer(SPDesktop *desktop)
 {
@@ -866,7 +854,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                 return;
             }
 
-            if (!key_is_a_modifier (keyval)) {
+            if (!Modifiers::keyval_is_a_modifier(keyval)) {
                 defaultMessageContext()->clear();
             } else if (grabbed || _seltrans->isGrabbed()) {
                 if (auto rubberband = Inkscape::Rubberband::get(_desktop); rubberband->isStarted()) {
@@ -1028,7 +1016,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
         [&] (KeyReleaseEvent const &event) {
             auto keyval = get_latin_keyval(event);
 
-            if (key_is_a_modifier (keyval)) {
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
                 defaultMessageContext()->clear();
             }
 
