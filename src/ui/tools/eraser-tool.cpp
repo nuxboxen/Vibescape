@@ -843,7 +843,10 @@ bool EraserTool::_performEraseOperation(std::vector<EraseTarget> const &items_to
     } else if (mode == EraserToolMode::PATH_SPLIT) {
         for (auto const &target : items_to_erase) {
             if (target.item) {
-                _pathSplitErase(target.item);
+                auto survivors = _pathSplitErase(target.item);
+                if (store_survivors && target.was_selected) {
+                    _survivors.insert(_survivors.end(), survivors.begin(), survivors.end());
+                }
             }
         }
         return true;
@@ -1417,16 +1420,16 @@ void EraserTool::_drawTemporaryBox()
  *        This is the "true path eraser" mode for open stroked paths.
  */
 
-void EraserTool::_pathSplitErase(SPItem *item)
+std::vector<SPItem *> EraserTool::_pathSplitErase(SPItem *item)
 {
     using namespace Geom;
 
     auto *path = cast<SPPath>(item);
-    if (!path) return;
+    if (!path) return {};
 
     auto const &curve = path->curve();
-    if (!curve) return;
-    if (accumulated.is_empty()) return;
+    if (!curve) return {};
+    if (accumulated.is_empty()) return {};
 
     PathVector eraser_pv = accumulated.get_pathvector() * _desktop->dt2doc();
     Affine item_transform = item->i2doc_affine();
@@ -1545,9 +1548,11 @@ void EraserTool::_pathSplitErase(SPItem *item)
 
     if (result_pv.empty()) {
         item->deleteObject(true);
+        return {};
     } else {
         path->setCurve(SPCurve(result_pv));
         item->updateRepr();
+        return {item};
     }
 }
 

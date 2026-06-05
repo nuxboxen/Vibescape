@@ -113,7 +113,7 @@ private:
     void _clearCurrent();
     void _clearStatusBar();
     void _clipErase(SPItem *item) const;
-    void _pathSplitErase(SPItem *item);
+    std::vector<SPItem *> _pathSplitErase(SPItem *item);
     void _completeBezier(double tolerance_sq, bool releasing);
     bool _cutErase(EraseTarget target, bool store_survivers);
     bool _doWork();
