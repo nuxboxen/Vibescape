@@ -265,12 +265,11 @@ void FontSelector::update_font()
     // Copy font-lister style list to private list store, searching for match.
     Gtk::TreeModel::iterator match;
     auto local_style_list_store = Gtk::ListStore::create(font_lister->font_style_list);
-    // std::cout << "  Searching for:    " << style << std::endl;
+
     for (auto const &s : *styles) {
         auto srow = *local_style_list_store->append();
         srow[font_lister->font_style_list.cssStyle] = s.css_name;
         srow[font_lister->font_style_list.displayStyle] = s.display_name;
-        // std::cout << "  Matching against: " << s.css_name << "  (" << s.display_name << ")" << std::endl;
         if (style == s.css_name) {
             match = srow.get_iter();
         }

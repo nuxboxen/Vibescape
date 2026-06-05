@@ -393,9 +393,7 @@ void readOpenTypeFvarNamedInstances(hb_font_t* hb_font, std::map<Glib::ustring, 
 
         Glib::ustring pango_string;
         for (auto [tag, value] : axes) {
-            pango_string += tag;
-            pango_string += "=";
-            pango_string += std::to_string(value);
+            pango_string += tag + "=" + std::to_string(value);
             // Remove trailing zeros and decimal point
             pango_string = pango_string.substr(0, pango_string.find_last_not_of('0') + 1);
             if (pango_string.find('.') == pango_string.size() - 1) {

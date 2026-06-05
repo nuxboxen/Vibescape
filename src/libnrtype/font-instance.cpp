@@ -183,6 +183,7 @@ void FontInstance::release()
     g_object_unref(p_font);
 }
 
+// Compose an OpenType font tag from a string.
 uint32_t compose_tag(Glib::ustring tag_name) {
     if (tag_name.size() != 4) {
         std::cerr << "compose_tag: '" << tag_name << "' not four characters!" << std::endl;
