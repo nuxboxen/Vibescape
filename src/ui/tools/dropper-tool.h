@@ -14,6 +14,7 @@
  */
 
 #include "display/control/canvas-item-ptr.h"
+#include "ui/modifiers.h"
 #include "ui/tools/tool-base.h"
 
 namespace Inkscape { class CanvasItemBpath; }
@@ -47,6 +48,11 @@ private:
     double radius = 0.0;                       ///< Size of region under dragging mode
     CanvasItemPtr<CanvasItemBpath> area;       ///< Circle depicting region's borders in dragging mode
     Geom::Point centre;                        ///< Center of region in dragging mode
+
+    Modifiers::Modifier *mod_dropper_dropping;
+    Modifiers::Modifier *mod_dropper_invert;
+    Modifiers::Modifier *mod_dropper_stroke;
+    Modifiers::Modifier *mod_select_force_drag;
 };
 
 } // namespace Inkscape::UI::Tools

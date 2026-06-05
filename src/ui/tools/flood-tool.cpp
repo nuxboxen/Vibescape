@@ -83,6 +83,9 @@ std::vector<char const *> const FloodTool::gap_list = {
 
 FloodTool::FloodTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/paintbucket", "flood.svg")
+    , mod_flood_item(Modifiers::Modifier::get(Modifiers::Type::FLOOD_ITEM))
+    , mod_flood_touch_fill(Modifiers::Modifier::get(Modifiers::Type::FLOOD_TOUCH_FILL))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
 {
     // TODO: Why does the flood tool use a hardcoded tolerance instead of a pref?
     tolerance = 4;
@@ -1010,7 +1013,7 @@ bool FloodTool::item_handler(SPItem *item, CanvasEvent const &event)
 
     inspect_event(event,
     [&] (ButtonPressEvent const &event) {
-        if (event.num_press == 1 && event.button == 1 && event.modifiers & GDK_CONTROL_MASK) {
+        if (event.num_press == 1 && event.button == 1 && mod_flood_item->active(event.modifiers)) {
             auto const button_w = event.pos;
 
             auto item = sp_event_context_find_item(_desktop, button_w, true, true);
@@ -1034,7 +1037,7 @@ bool FloodTool::root_handler(CanvasEvent const &event)
 
     inspect_event(event,
     [&] (ButtonPressEvent const &event) {
-        if (event.num_press == 1 && event.button == 1 && !(event.modifiers & GDK_CONTROL_MASK)) {
+        if (event.num_press == 1 && event.button == 1 && !mod_flood_item->active(event.modifiers)) {
             if (have_viable_layer(_desktop, defaultMessageContext())) {
                 // save drag origin
                 saveDragOrigin(event.pos);
@@ -1060,7 +1063,9 @@ bool FloodTool::root_handler(CanvasEvent const &event)
 
             if (Rubberband::get(_desktop)->isStarted()) {
                 Rubberband::get(_desktop)->move(p);
-                defaultMessageContext()->set(NORMAL_MESSAGE, _("<b>Draw over</b> areas to add to fill, hold <b>Alt</b> for touch fill"));
+                defaultMessageContext()->setF(NORMAL_MESSAGE,
+                                              _("<b>Draw over</b> areas to add to fill, hold <b>%s</b> for touch fill"),
+                                              mod_flood_touch_fill->get_label().c_str());
                 gobble_motion_events(GDK_BUTTON1_MASK);
             }
         }
@@ -1073,7 +1078,7 @@ bool FloodTool::root_handler(CanvasEvent const &event)
             if (r->isStarted()) {
                 dragging = false;
                 bool is_point_fill = within_tolerance;
-                bool is_touch_fill = event.modifiers & GDK_ALT_MASK;
+                bool is_touch_fill = mod_flood_touch_fill->active(event.modifiers);
 
                 // It's possible for the user to sneakily change the tool while the
                 // Gtk main loop has control, so we save the current desktop address:
@@ -1081,7 +1086,7 @@ bool FloodTool::root_handler(CanvasEvent const &event)
 
                 current_desktop->setWaitingCursor();
                 sp_flood_do_flood_fill(current_desktop, event.pos,
-                                       event.modifiers & GDK_SHIFT_MASK,
+                                       mod_select_add_to->active(event.modifiers),
                                        is_point_fill, is_touch_fill);
                 current_desktop->clearWaitingCursor();
                 r->stop();

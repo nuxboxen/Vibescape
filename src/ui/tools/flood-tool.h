@@ -12,6 +12,7 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include "ui/modifiers.h"
 #include "ui/tools/tool-base.h"
 
 namespace Inkscape { class Selection; }
@@ -38,7 +39,11 @@ public:
 
 private:
     void selection_changed(Selection *selection);
-  void finishItem();
+    void finishItem();
+
+    Modifiers::Modifier *mod_flood_item;
+    Modifiers::Modifier *mod_flood_touch_fill;
+    Modifiers::Modifier *mod_select_add_to;
 };
 
 enum PaintBucketChannels

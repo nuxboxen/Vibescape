@@ -45,6 +45,10 @@ enum PickMode
 
 DropperTool::DropperTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/dropper", "dropper-pick-fill.svg")
+    , mod_dropper_dropping(Modifiers::Modifier::get(Modifiers::Type::DROPPER_DROPPING))
+    , mod_dropper_invert(Modifiers::Modifier::get(Modifiers::Type::DROPPER_INVERT))
+    , mod_dropper_stroke(Modifiers::Modifier::get(Modifiers::Type::DROPPER_STROKE))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
 {
     area = make_canvasitem<CanvasItemBpath>(desktop->getCanvasControls());
     area->set_stroke(0x0000007f);
@@ -107,9 +111,9 @@ bool DropperTool::root_handler(CanvasEvent const &event)
 
     // Decide first what kind of 'mode' we're in.
     auto modifiers = event.modifiersAfter();
-    stroke   = modifiers & GDK_SHIFT_MASK;
-    dropping = modifiers & GDK_CONTROL_MASK; // Even on macOS.
-    invert   = modifiers & GDK_ALT_MASK;
+    stroke   = mod_dropper_stroke->active(modifiers);
+    dropping = mod_dropper_dropping->active(modifiers);
+    invert   = mod_dropper_invert->active(modifiers);
 
     // Get color from selected object
     // Only if dropping mode enabled and object's color is set.
@@ -243,7 +247,8 @@ bool DropperTool::root_handler(CanvasEvent const &event)
             if (dropping) {
                 auto const button_w = event.pos;
                 // Remember clicked item, disregarding groups, honoring Alt.
-                item_to_select = sp_event_context_find_item(_desktop, button_w, event.modifiers & GDK_ALT_MASK, true);
+                auto force_drag = mod_select_force_drag->active(event.modifiers);
+                item_to_select = sp_event_context_find_item(_desktop, button_w, force_drag, true);
 
                 // Change selected object to object under cursor.
                 if (item_to_select) {
@@ -318,7 +323,10 @@ bool DropperTool::root_handler(CanvasEvent const &event)
         // where the color is picked, to show in the statusbar
         auto where = dragging ? g_strdup_printf(_(", averaged with radius %d"), (int)radius) : g_strdup_printf("%s", _(" under cursor"));
         // message, to show in the statusbar
-        auto message = dragging ? _("<b>Release mouse</b> to set color.") : _("<b>Click</b> to set fill, <b>Shift+click</b> to set stroke; <b>drag</b> to average color in area; with <b>Alt</b> to pick inverse color; <b>Ctrl+C</b> to copy the color under mouse to clipboard");
+        auto message = dragging ? _("<b>Release mouse</b> to set color.") :
+                                  g_strdup_printf(_("<b>Click</b> to set fill, <b>%s+Click</b> to set stroke; <b>drag</b> to average color in area; with <b>%s</b> to pick inverse color; <b>Ctrl+C</b> to copy the color under mouse to clipboard"),
+                                                  mod_dropper_stroke->get_label().c_str(),
+                                                  mod_dropper_invert->get_label().c_str());
 
         defaultMessageContext()->setF(
             Inkscape::NORMAL_MESSAGE,

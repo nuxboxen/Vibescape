@@ -143,6 +143,8 @@ static bool connector_within_tolerance = false;*/
 
 ConnectorTool::ConnectorTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/connector", "connector.svg")
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
     , state {SP_CONNECTOR_CONTEXT_IDLE}
 {
     this->selection = desktop->getSelection();
@@ -345,9 +347,11 @@ bool ConnectorTool::item_handler(SPItem *item, CanvasEvent const &event)
             }
 
             // find out clicked item, honoring Alt
-            auto const item = sp_event_context_find_item(_desktop, event.pos, event.modifiers & GDK_ALT_MASK, false);
+            auto const item = sp_event_context_find_item(_desktop, event.pos,
+                                                         mod_select_force_drag->active(event.modifiers),
+                                                         false);
 
-            if (event.modifiers & GDK_SHIFT_MASK) {
+            if (mod_select_add_to->active(event.modifiers)) {
                 this->selection->toggle(item);
             } else {
                 this->selection->set(item);

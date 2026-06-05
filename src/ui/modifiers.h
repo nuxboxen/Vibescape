@@ -37,7 +37,8 @@ enum Key : KeyMask {
 // Triggers used for collision warnings, two tools are using the same trigger
 enum Triggers : Trigger {
     NO_CATEGORY, CANVAS, SELECT, MOVE, TRANSFORM,
-    NODE_TOOL, BOOLEANS_TOOL,
+    NODE_TOOL, BOOLEANS_TOOL, BOX3D_TOOL, CALLI_TOOL,
+    DROPPER_TOOL, FLOOD_TOOL,
     // Action taken to trigger this modifier, starts at
     // bit 6 so categories and triggers can be combined.
     CLICK = 32,
@@ -77,6 +78,20 @@ enum class Type {
     TRANS_SNAPPING,       // Disable snapping while transforming {HANDLE+SHIFT}
 
     BOOL_SHIFT,           // Shift the shape builder into its alternative mode.
+
+    BOX3D_EXTRUDE_ONE,    // Extrudes a box along a single dimension {DRAG+SHIFT}
+    BOX3D_EXTRUDE_TWO,    // Do not constrain extrusion to perspective line {DRAG+CTRL} while extruding
+
+    CALLI_HATCHING,       // Use a guide path {DRAG+CTRL}
+    CALLI_SUBTRACT,       // Subtract the drawn path {DRAG+ALT}
+    CALLI_UNIONIZE,       // Add in the drawn path {DRAG+SHIFT}
+
+    DROPPER_DROPPING,     // Reverse the direction of drop - from selected object to hover object {CLICK+CTRL}
+    DROPPER_INVERT,       // Invert the color {CLICK+ALT}
+    DROPPER_STROKE,       // Apply to stroke, not fill {CLICK+SHIFT}
+
+    FLOOD_ITEM,           // Applies style to fill+stroke of target item {CLICK+CTRL}
+    FLOOD_TOUCH_FILL,     // Flood only the first point of contact during drag {DRAG+ALT}
 
     NODE_GROW_LINEAR,     // Scroll wheel selection of nodes
     NODE_INVERT,          // Select nodes outside of the selection box

@@ -40,6 +40,11 @@ namespace Inkscape::UI::Tools {
 
 Box3dTool::Box3dTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/shapes/3dbox", "box.svg")
+    , mod_box3d_extrude_one(Modifiers::Modifier::get(Modifiers::Type::BOX3D_EXTRUDE_ONE))
+    , mod_box3d_extrude_two(Modifiers::Modifier::get(Modifiers::Type::BOX3D_EXTRUDE_TWO))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
+    , mod_select_in_groups(Modifiers::Modifier::get(Modifiers::Type::SELECT_IN_GROUPS))
 {
     shape_editor = new ShapeEditor(_desktop);
 
@@ -144,7 +149,9 @@ bool Box3dTool::root_handler(CanvasEvent const &event)
             saveDragOrigin(button_w);
 
             // remember clicked box3d, *not* disregarding groups (since a 3D box is a group), honoring Alt
-            item_to_select = sp_event_context_find_item(_desktop, button_w, event.modifiers & GDK_ALT_MASK, event.modifiers & GDK_CONTROL_MASK);
+            item_to_select = sp_event_context_find_item(_desktop, button_w,
+                                                        mod_select_force_drag->active(event.modifiers),
+                                                        mod_select_in_groups->active(event.modifiers));
 
             dragging = true;
 
@@ -193,12 +200,10 @@ bool Box3dTool::root_handler(CanvasEvent const &event)
             auto &m = _desktop->getNamedView()->snap_manager;
             m.setup(_desktop, true, box3d.get());
             m.freeSnapReturnByRef(motion_dt, Inkscape::SNAPSOURCE_NODE_HANDLE);
-            ctrl_dragged  = event.modifiers & GDK_CONTROL_MASK;
 
-            if (event.modifiers & GDK_SHIFT_MASK && box3d) {
-                // once shift is pressed, set extruded
-                extruded = true;
-            }
+            two_dimension_dragged = box3d && mod_box3d_extrude_two->active(event.modifiers);
+            extruded = box3d && (mod_box3d_extrude_one->active(event.modifiers) ||
+                                 mod_box3d_extrude_two->active(event.modifiers));
 
             if (!extruded) {
                 drag_ptB = motion_dt;
@@ -211,7 +216,7 @@ bool Box3dTool::root_handler(CanvasEvent const &event)
             } else {
                 // Without Ctrl, motion of the extruded corner is constrained to the
                 // perspective line from drag_ptB to vanishing point Y.
-                if (!ctrl_dragged) {
+                if (!two_dimension_dragged) {
                     // snapping
                     auto pline = Box3D::PerspectiveLine(drag_ptB, Proj::Z, document->getCurrentPersp3D());
                     drag_ptC = pline.closest_to(motion_dt);
@@ -264,7 +269,7 @@ bool Box3dTool::root_handler(CanvasEvent const &event)
                 finishItem(); // .. but finishItem() will be called from the destructor too and shall NOT fire such signals!
             } else if (item_to_select) {
                 // no dragging, select clicked box3d if any
-                if (event.modifiers & GDK_SHIFT_MASK) {
+                if (mod_select_add_to->active(event.modifiers)) {
                     selection->toggle(item_to_select);
                 } else {
                     selection->set(item_to_select);
@@ -472,13 +477,15 @@ void Box3dTool::drag()
     box3d->position_set();
 
     // status text
-    message_context->setF(Inkscape::NORMAL_MESSAGE, "%s", _("<b>3D Box</b>; with <b>Shift</b> to extrude along the Z axis"));
+    message_context->setF(Inkscape::NORMAL_MESSAGE,
+                          _("<b>3D Box</b>; with <b>%s</b> to extrude along the Z axis"),
+                          mod_box3d_extrude_one->get_label().c_str());
 }
 
 void Box3dTool::finishItem()
 {
     message_context->clear();
-    ctrl_dragged = false;
+    two_dimension_dragged = false;
     extruded = false;
 
     if (box3d) {

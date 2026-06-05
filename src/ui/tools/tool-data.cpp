@@ -3,6 +3,9 @@
 
 #include <glibmm/i18n.h>
 #include "ui/dialog/inkscape-preferences.h"
+#include "ui/modifiers.h"
+
+namespace Modifiers = Inkscape::Modifiers;
 
 std::map<Glib::ustring, ToolData> const &get_tool_data()
 {
@@ -54,17 +57,22 @@ std::map<Glib::ustring, Glib::ustring> const &get_tool_msg()
         {"Marker",       _("<b>Click</b> a shape to start editing its markers. <b>Drag controls</b> to change orientation, scale, and position.")                                                                                 },
         {"Pencil",       _("<b>Drag</b> to create a freehand line. <b>Shift</b> appends to selected path, <b>Alt</b> activates sketch mode.")                                                                                     },
         {"Pen",          _("<b>Click</b> or <b>click and drag</b> to start a path; with <b>Shift</b> to append to selected path. <b>Ctrl+click</b> to create single dots (straight line modes only).")                            },
-        {"Calligraphic", _("<b>Drag</b> to draw a calligraphic stroke; with <b>Ctrl</b> to track a guide path. <b>Arrow keys</b> adjust width (left/right) and angle (up/down).")                                                 },
+        {"Calligraphic", Glib::ustring::compose(_("<b>Drag</b> to draw a calligraphic stroke; with <b>%1</b> to track a guide path. <b>Arrow keys</b> adjust width (left/right) and angle (up/down)."),
+                                                Modifiers::Modifier::get(Modifiers::Type::CALLI_HATCHING)->get_label())},
         {"Text",         _("<b>Click</b> to select or create text, <b>drag</b> to create flowed text; then type.")                                                                                                                },
         {"Gradient",     _("<b>Drag</b> or <b>double click</b> to create a gradient on selected objects, <b>drag handles</b> to adjust gradients.")                                                                               },
         {"Mesh",         _("<b>Drag</b> or <b>double click</b> to create a mesh on selected objects, <b>drag handles</b> to adjust meshes.")                                                                                      },
         {"Zoom",         _("<b>Click</b> or <b>drag around an area</b> to zoom in, <b>Shift+click</b> to zoom out.")                                                                                                              },
         {"Measure",      _("<b>Drag</b> to measure the dimensions of objects.  Press <b>Alt+C</b> to copy the length to the clipboard.")                                                                                          },
-        {"Dropper",      _("<b>Click</b> to set fill, <b>Shift+click</b> to set stroke; <b>drag</b> to average color in area; with <b>Alt</b> to pick inverse color; <b>Ctrl+C</b> to copy the color under mouse to clipboard")   },
+        {"Dropper",      Glib::ustring::compose(_("<b>Click</b> to set fill, <b>%1+Click</b> to set stroke; <b>drag</b> to average color in area; with <b>%2</b> to pick inverse color; <b>Ctrl+C</b> to copy the color under mouse to clipboard"),
+                                                Modifiers::Modifier::get(Modifiers::Type::DROPPER_STROKE)->get_label(),
+                                                Modifiers::Modifier::get(Modifiers::Type::DROPPER_INVERT)->get_label())},
         {"Tweak",        _("To tweak a path by pushing, select it and drag over it.")                                                                                                                                             },
         {"Spray",        _("<b>Drag</b>, <b>click</b> or <b>click and scroll</b> to spray the selected objects.")                                                                                                                 },
         {"Connector",    _("<b>Click and drag</b> between shapes to create a connector.")                                                                                                                                         },
-        {"PaintBucket",  _("<b>Click</b> to paint a bounded area, <b>Shift+click</b> to union the new fill with the current selection, <b>Ctrl+click</b> to change the clicked object's fill and stroke to the current setting.") },
+        {"PaintBucket",  Glib::ustring::compose(_("<b>Click</b> to paint a bounded area, <b>%1+Click</b> to union the new fill with the current selection, <b>%2+Click</b> to change the clicked object's fill and stroke to the current setting."),
+                                                Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO)->get_label(),
+                                                Modifiers::Modifier::get(Modifiers::Type::FLOOD_ITEM)->get_label())},
         {"Eraser",       _("<b>Drag</b> to erase.")                                                                                                                                                                               },
         {"LPETool",      _("Choose a subtool from the toolbar")                                                                                                                                                                   },
         {"Pages",        _("Create and manage pages.")},

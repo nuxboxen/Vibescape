@@ -46,6 +46,16 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"trans-off-center", Type::TRANS_OFF_CENTER},
         {"trans-snapping", Type::TRANS_SNAPPING},
         {"bool-shift", Type::BOOL_SHIFT},
+        {"box3d-extrude-one", Type::BOX3D_EXTRUDE_ONE},
+        {"box3d-extrude-two", Type::BOX3D_EXTRUDE_TWO},
+        {"calligraphic-hatching", Type::CALLI_HATCHING},
+        {"calligraphic-subtract", Type::CALLI_SUBTRACT},
+        {"calligraphic-unionize", Type::CALLI_UNIONIZE},
+        {"dropper-dropping", Type::DROPPER_DROPPING},
+        {"dropper-invert", Type::DROPPER_INVERT},
+        {"dropper-stroke", Type::DROPPER_STROKE},
+        {"flood-item", Type::FLOOD_ITEM},
+        {"flood-touch-fill", Type::FLOOD_TOUCH_FILL},
         {"node-grow-linear", Type::NODE_GROW_LINEAR},
         {"node-invert", Type::NODE_INVERT},
         {"node-remove-from", Type::NODE_REMOVE_FROM},
@@ -114,6 +124,20 @@ Modifier::Container &Modifier::_modifiers()
 
         make_modifier("bool-shift", _("Switch mode"), _("Change shape builder mode temporarily by holding a modifier key."), SHIFT, BOOLEANS_TOOL, DRAG),
 
+        make_modifier("box3d-extrude-one", _("Extrude along the Z axis"), _("Extends the 3D box in one dimension only."), SHIFT, BOX3D_TOOL, DRAG),
+        make_modifier("box3d-extrude-two", _("Extrude along the Y and Z axes"), _("Extends the 3D box in two dimensions."), SHIFT | CTRL, BOX3D_TOOL, DRAG),
+
+        make_modifier("calligraphic-hatching", _("Use a guide path"), _("Use a selected path as a guide."), CTRL, CALLI_TOOL, DRAG),
+        make_modifier("calligraphic-subtract", _("Subtract the drawn stroke"), _("Subtracts the drawn stroke from the selection."), ALT, CALLI_TOOL, DRAG),
+        make_modifier("calligraphic-unionize", _("Add in the drawn stroke"), _("Adds the drawn stroke into the selection."), SHIFT, CALLI_TOOL, DRAG),
+
+        make_modifier("dropper-dropping", _("Reverse direction of drop"), _("Drop onto the hovered item from the selected item, instead of the other way around."), CTRL, DROPPER_TOOL, CLICK),
+        make_modifier("dropper-invert", _("Invert the color"), _("Invert the chosen color when applying it."), ALT, DROPPER_TOOL, CLICK),
+        make_modifier("dropper-stroke", _("Apply color to stroke"), _("Apply the chosen color to the stroke, not the fill."), SHIFT, DROPPER_TOOL, CLICK),
+
+        make_modifier("flood-item", _("Apply style to item"), _("Apply the chosen color to the stroke and fill of an item."), CTRL, FLOOD_TOOL, CLICK),
+        make_modifier("flood-touch-fill", _("Replace only the first color in drag"), _("Replace only the initial color from drag throughout the drag."), ALT, FLOOD_TOOL, DRAG),
+
         make_modifier("node-grow-linear", _("Linear node selection"), _("Select the next nodes with scroll wheel or keyboard"), CTRL, NODE_TOOL, SCROLL),
         make_modifier("node-invert", _("Inverted node selection"), _("Select nodes outside the selection area"), CTRL, NODE_TOOL, DRAG),
         make_modifier("node-remove-from", _("Remove nodes from selection"), _("Remove selected nodes from the selection"), SHIFT | CTRL, NODE_TOOL, DRAG),
@@ -132,6 +156,10 @@ Modifier::CategoryNames const &Modifier::_category_names()
         {TRANSFORM, _("Transformations")},
         {NODE_TOOL, _("Node Tool")},
         {BOOLEANS_TOOL, _("Shape Builder")},
+        {BOX3D_TOOL, _("3D Box Tool")},
+        {CALLI_TOOL, _("Calligraphy Tool")},
+        {DROPPER_TOOL, _("Dropper Tool")},
+        {FLOOD_TOOL, _("Paint Bucket Tool")},
     };
     return static_category_names;
 }
