@@ -1183,14 +1183,14 @@ std::vector<EraseTarget> EraserTool::_findItemsToErase()
             // Erase all candidates (or only selected if selection is non-empty)
             if (selection->isEmpty()) {
                 for (auto *candidate : candidates) {
-                    if (candidate != _acid && cast<SPPath>(candidate)) {
+                    if (candidate != _acid && (cast<SPPath>(candidate) || cast<SPShape>(candidate))) {
                         allowed.emplace_back(candidate, false);
                     }
                 }
             } else {
                 for (auto *selected : selection->items()) {
                     for (auto *candidate : candidates) {
-                        if (selected == candidate && cast<SPPath>(candidate)) {
+                        if (selected == candidate && (cast<SPPath>(candidate) || cast<SPShape>(candidate))) {
                             allowed.emplace_back(candidate, true);
                         }
                     }
@@ -1425,7 +1425,18 @@ std::vector<SPItem *> EraserTool::_pathSplitErase(SPItem *item)
     using namespace Geom;
 
     auto *path = cast<SPPath>(item);
-    if (!path) return {};
+    if (!path) {
+        // Attempt to convert non-path shapes (rects, ellipses, etc.) to path
+        Inkscape::XML::Node *new_repr = sp_selected_item_to_curved_repr(item, 0);
+        if (!new_repr) return {};
+        item->getRepr()->parent()->appendChild(new_repr);
+        item->deleteObject(true);
+        SPObject *new_obj = _desktop->getDocument()->getObjectByRepr(new_repr);
+        Inkscape::GC::release(new_repr);
+        path = cast<SPPath>(new_obj);
+        if (!path) return {};
+        item = cast<SPItem>(path);
+    };
 
     auto const &curve = path->curve();
     if (!curve) return {};
