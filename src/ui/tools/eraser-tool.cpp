@@ -844,8 +844,8 @@ bool EraserTool::_performEraseOperation(std::vector<EraseTarget> const &items_to
         for (auto const &target : items_to_erase) {
             if (target.item) {
                 auto survivors = _pathSplitErase(target.item);
-                if (store_survivors && target.was_selected) {
-                    _survivors.insert(_survivors.end(), survivors.begin(), survivors.end());
+                if (store_survivers && target.was_selected) {
+                    _survivers.insert(_survivers.end(), survivors.begin(), survivors.end());
                 }
             }
         }
@@ -1435,7 +1435,7 @@ std::vector<SPItem *> EraserTool::_pathSplitErase(SPItem *item)
     Affine item_transform = item->i2doc_affine();
     PathVector target_pv = curve->get_pathvector() * item_transform;
 
-    if (target_pv.empty()) return;
+    if (target_pv.empty()) return {};
 
     // Test if a point is inside the eraser shape using winding number
     auto is_inside_eraser = [&](Point const &pt) -> bool {
