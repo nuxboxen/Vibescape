@@ -1508,9 +1508,7 @@ bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
     auto increments = Modifiers::Modifier::get(Modifiers::Type::MOVE_INCREMENT)->active(state);
     auto no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(state);
     auto confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(state);
-    auto force_drag = Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG);
-    auto dup_drag = Modifiers::Modifier::get(Modifiers::Type::SELECT_DUPLICATE);
-    increments = increments && !(force_drag && force_drag->active(state)) && !(dup_drag && dup_drag->active(state));
+    increments = increments;
 
     if (confine) {
         if (fabs(dxy[Geom::X]) > fabs(dxy[Geom::Y])) {

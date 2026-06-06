@@ -113,7 +113,7 @@ Modifier::Container &Modifier::_modifiers()
 
     // Transform handle modifiers (applies to multiple tools)
         make_modifier("move-confine", _("Move one axis only"), _("When dragging items, confine to either x or y axis"), CTRL, MOVE, DRAG),
-        make_modifier("move-increment", _("Move in increments"), _("Move the objects by set increments when dragging"), ALT, MOVE, DRAG),
+        make_modifier("move-increment", _("Move in increments"), _("Move the objects by increments of grid pitch when dragging"), NEVER, MOVE, DRAG),
         make_modifier("move-snapping", _("No Move Snapping"), _("Disable snapping when moving objects"), SHIFT, MOVE, DRAG),
         make_modifier("trans-confine", _("Keep aspect ratio"), _("When resizing objects, confine the aspect ratio"), CTRL, TRANSFORM, DRAG),
         make_modifier("trans-increment", _("Transform in increments"), _("Scale, rotate or skew by set increments"), ALT, TRANSFORM, DRAG),

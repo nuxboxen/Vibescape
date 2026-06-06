@@ -36,12 +36,11 @@ override) the bindings in the main default.xml.
   <modifier action="select-in-groups" modifiers="Ctrl"/>
   <modifier action="select-touch-path" modifiers="Alt"/>
   <modifier action="select-always-box" modifiers="Shift"/>
-  <modifier action="select-remove-from" modifiers="Ctrl"/>
+  <modifier action="select-remove-from" modifiers="Shift,Ctrl"/>
   <modifier action="select-force-drag" modifiers="Alt"/>
   <modifier action="select-cycle" modifiers="Alt"/>
 
   <modifier action="move-confine" modifiers="Ctrl"/>
-  <modifier action="move-increment" modifiers="Alt"/>
   <modifier action="move-snapping" />
   
   <modifier action="trans-confine" modifiers="Ctrl"/>

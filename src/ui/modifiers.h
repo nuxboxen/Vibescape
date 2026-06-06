@@ -70,7 +70,7 @@ enum class Type {
 
     // Transform handles (applies to multiple tools)
     MOVE_CONFINE,         // Limit dragging to X OR Y only {DRAG+CTRL}
-    MOVE_INCREMENT,       // Move objects by fixed amounts {DRAG+ALT}
+    MOVE_INCREMENT,       // Move in increments of grid pitch (preserves distances w.r.t grid) {DRAG+ALT} unassigned by default
     MOVE_SNAPPING,        // Disable snapping while moving {DRAG+SHIFT}
     TRANS_CONFINE,        // Confine resize aspect ratio {HANDLE+CTRL}
     TRANS_INCREMENT,      // Scale/Rotate/skew by fixed ratio angles {HANDLE+ALT}
