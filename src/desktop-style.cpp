@@ -242,11 +242,6 @@ sp_desktop_set_style(Inkscape::ObjectSet *set, SPDesktop *desktop, SPCSSAttr *cs
 
 // 3. If nobody has intercepted the signal, apply the style to the selection
     if (!intercepted) {
-        // If we have an event context, update its cursor (TODO: it could be neater to do this with the signal sent above, but what if the signal gets intercepted?)
-        if (auto const tool = desktop->getTool()) {
-            tool->use_tool_cursor();
-        }
-
         // Remove text attributes if not text...
         // Do this once in case a zillion objects are selected.
         SPCSSAttr *css_no_text = sp_repr_css_attr_new();

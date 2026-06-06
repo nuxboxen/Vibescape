@@ -56,9 +56,6 @@ constexpr int timeout_click = 500;
 constexpr int timeout_repeat = 50;
 constexpr int icon_margin = 2;
 
-static Glib::RefPtr<Gdk::Cursor> g_resizing_cursor;
-static Glib::RefPtr<Gdk::Cursor> g_text_cursor;
-
 void InkSpinButton::construct() {
     set_name("InkSpinButton");
 
@@ -138,12 +135,6 @@ void InkSpinButton::construct() {
     _motion->signal_leave().connect(sigc::mem_fun(*this, &InkSpinButton::on_motion_leave));
     add_controller(_motion);
 
-    // This is a mouse movement. Sets cursor.
-    _motion_value = Gtk::EventControllerMotion::create();
-    _motion_value->signal_enter().connect(sigc::mem_fun(*this, &InkSpinButton::on_motion_enter_value));
-    _motion_value->signal_leave().connect(sigc::mem_fun(*this, &InkSpinButton::on_motion_leave_value));
-    _value.add_controller(_motion_value);
-
     // This is mouse drag movement. Changes value.
     _drag_value = Gtk::GestureDrag::create();
     _drag_value->signal_begin().connect( Controller::use_state([this](auto&, auto&& ...args) { return on_drag_begin_value(args...); }, *_drag_value));
@@ -153,6 +144,7 @@ void InkSpinButton::construct() {
     // limit drag messages to our button only, so they are not handled by anything else
     _drag_value->set_propagation_limit(Gtk::PropagationLimit::SAME_NATIVE);
     _value.add_controller(_drag_value);
+    _value.set_cursor("text");
 
     // Changes value.
     _scroll = Gtk::EventControllerScroll::create();
@@ -664,30 +656,6 @@ void InkSpinButton::on_motion_leave() {
     }
 }
 
-// ---------------  MOTION VALUE  ---------------
-
-void InkSpinButton::on_motion_enter_value(double x, double y) {
-    _old_cursor = get_cursor();
-    if (!g_resizing_cursor) {
-        g_resizing_cursor = Gdk::Cursor::create(Glib::ustring("ew-resize"));
-        g_text_cursor = Gdk::Cursor::create(Glib::ustring("text"));
-    }
-    // if dragging/scrolling adjustment is enabled, show the appropriate cursor
-    if (_drag_full_travel > 0) {
-        _current_cursor = g_resizing_cursor;
-        set_cursor(_current_cursor);
-    }
-    else {
-        _current_cursor = g_text_cursor;
-        set_cursor(_current_cursor);
-    }
-}
-
-void InkSpinButton::on_motion_leave_value() {
-    _current_cursor = _old_cursor;
-    set_cursor(_current_cursor);
-}
-
 // ---------------   DRAG VALUE  ----------------
 
 static double get_accel_factor(Gdk::ModifierType state) {
@@ -702,6 +670,7 @@ static double get_accel_factor(Gdk::ModifierType state) {
 }
 
 Gtk::EventSequenceState InkSpinButton::on_drag_begin_value(Gdk::EventSequence* sequence) {
+    _value.set_cursor("col-resize");
     _initial_value = _adjustment->get_value();
     _drag_value->get_point(sequence, _drag_start.x,_drag_start.y);
     return Gtk::EventSequenceState::CLAIMED;
@@ -744,6 +713,7 @@ Gtk::EventSequenceState InkSpinButton::on_drag_end_value(Gdk::EventSequence* seq
         enter_edit();
     }
     _drag.started = false;
+    _value.set_cursor("text");
     return Gtk::EventSequenceState::CLAIMED;
 }
 
@@ -840,7 +810,6 @@ void InkSpinButton::on_scroll_begin() {
     if (_drag_full_travel <= 0) return;
 
     _scroll_counter = 0;
-    set_cursor("none");
 }
 
 bool InkSpinButton::on_scroll(double dx, double dy) {
@@ -874,7 +843,6 @@ void InkSpinButton::on_scroll_end() {
     if (_drag_full_travel <= 0) return;
 
     _scroll_counter = 0;
-    set_cursor(_current_cursor);
 }
 
 void InkSpinButton::set_value(double new_value) {
