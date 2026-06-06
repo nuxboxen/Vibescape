@@ -1546,18 +1546,18 @@ Shape::Booleen (Shape * a, Shape * b, BooleanOp mod,int cutPathID)
 
   if ( mod == bool_op_cut ) {
     AssembleAretes (fill_justDont);
-    // dupliquer les aretes de la coupure
+    // duplicate the edges of the cut
     int i=numberOfEdges()-1;
     for (;i>=0;i--) {
       if ( ebData[i].pathID == cutPathID ) {
-        // on duplique
+        // we duplicate
         int nEd=AddEdge(getEdge(i).en,getEdge(i).st);
         ebData[nEd].pathID=cutPathID;
         ebData[nEd].pieceID=ebData[i].pieceID;
         ebData[nEd].tSt=ebData[i].tEn;
         ebData[nEd].tEn=ebData[i].tSt;
         eData[nEd].weight=eData[i].weight;
-        // lui donner les firstlinkedpoitn si besoin
+        // give it the firstlinkedpoints if needed
         if ( getEdge(i).en >= getEdge(i).st ) {
           int cp = swsData[i].firstLinkedPoint;
           while (cp >= 0) {
@@ -1654,11 +1654,11 @@ Shape::Booleen (Shape * a, Shape * b, BooleanOp mod,int cutPathID)
 	    }
     }
   } else if ( mod == bool_op_cut ) {
-    // inverser les aretes de la coupe au besoin
+    // reverse the cutting edges if necessary
     for (int i=0;i<numberOfEdges();i++) {
       if ( getEdge(i).st < 0 || getEdge(i).en < 0 ) {
         if ( i < numberOfEdges()-1 ) {
-          // decaler les askForWinding
+          // shift the askForWinding
           int cp = swsData[numberOfEdges()-1].firstLinkedPoint;
           while (cp >= 0) {
             pData[cp].askForWindingB = i;
@@ -1667,7 +1667,6 @@ Shape::Booleen (Shape * a, Shape * b, BooleanOp mod,int cutPathID)
         }
         SwapEdges(i,numberOfEdges()-1);
         SubEdge(numberOfEdges()-1);
-//        SubEdge(i);
         i--;
       } else if ( ebData[i].pathID == cutPathID ) {
         swdData[i].leW=swdData[i].leW%2;
@@ -2591,14 +2590,13 @@ Shape::GetWindings (bool brutal)
               outsideW = Winding (fi);
             }
           }
-					// TODO: Look at this piece
           if ( getPoint(fi).totalDegree() == 1 ) {
             if ( fi == getEdge(startBord).en ) {
               if ( eData[startBord].weight == 0 ) {
-                // on se contente d'inverser
+                // we simply reverse
                 Inverse(startBord);
               } else {
-                // on passe le askForWinding (sinon ca va rester startBord)
+                // we pass the askForWinding (otherwise it will remain startBord)
                 pData[getEdge(startBord).st].askForWindingB=pData[getEdge(startBord).en].askForWindingB;
               }
             }
@@ -2611,7 +2609,7 @@ Shape::GetWindings (bool brutal)
     if (startBord >= 0)
     {
 			// now start from this edge
-      // parcours en profondeur pour mettre les leF et riF a leurs valeurs
+      // in-depth exploration to put the leF and riF at their values
       swdData[startBord].misc = 1;
 			// setting the winding numbers for this edge
 			// one question I had was, would these values for the first edge will always be valid?
@@ -2621,7 +2619,6 @@ Shape::GetWindings (bool brutal)
       // point, I think these will always be correct values.
       swdData[startBord].leW = outsideW;
       swdData[startBord].riW = outsideW - eData[startBord].weight;
-//    if ( doDebug ) printf("part de %d\n",startBord);
       // curBord is the current edge that we are at
       int curBord = startBord;
       // curDir is the direction, true means we are going in the direction of the edge vector, false means
@@ -2641,7 +2638,6 @@ Shape::GetWindings (bool brutal)
 
         // start finding the next edge to move to
         int nb = curBord;
-//        if ( doDebug ) printf("de curBord= %d avec leF= %d et riF= %d  -> ",curBord,swdData[curBord].leW,swdData[curBord].riW);
         do
         {
           int nnb = -1;
@@ -2683,7 +2679,6 @@ Shape::GetWindings (bool brutal)
           else // if curDir is false, we were going against edge, so get the end point (going backwards)
             oPt = getEdge(curBord).en;
           curBord = swdData[curBord].precParc; // make current edge the previous one in traversal (back tracking)
-//    if ( doDebug ) printf("retour vers %d\n",curBord);
           if (curBord < 0) // if no edge to go back to, break
             break;
           if (oPt == getEdge(curBord).en) // if this new "current edge" ends at that point, curDir should be true, since we ideally have to go forward
@@ -2713,7 +2708,7 @@ Shape::GetWindings (bool brutal)
           swdData[curBord].suivParc = nb;
           // this edge becomes current edge now
           curBord = nb;
-//		  if ( doDebug ) printf("suite %d\n",curBord);
+
           // set direction depending on how this edge is oriented
           if (cPt == getEdge(nb).en)
             curDir = false;
@@ -2722,11 +2717,10 @@ Shape::GetWindings (bool brutal)
         }
       }
       while (true /*swdData[curBord].precParc >= 0 */ );
-      // fin du cas non-oriente
+      // end of the unoriented case
     }
   }
   while (lastPtUsed < numberOfPoints());
-//      fflush(stdout);
 }
 
 bool
