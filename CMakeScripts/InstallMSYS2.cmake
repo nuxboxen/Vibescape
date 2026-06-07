@@ -201,9 +201,6 @@ if(WIN32)
     install(FILES ${MAGICK_LIBS} DESTINATION bin)
   endif()
 
-  if(WITH_CAPYPDF)
-    install(FILES ${CAPY_PREFIX}/bin/libcapypdf-0.dll DESTINATION bin)
-  endif()
   # Install hicolor/index.theme to avoid bug 1635207
   install(FILES
     ${MINGW_PATH}/share/icons/hicolor/index.theme

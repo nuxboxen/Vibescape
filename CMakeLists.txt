@@ -95,11 +95,7 @@ option(WITH_PROFILING "Turn on profiling" OFF) # Set to true if compiler/linker 
 option(BUILD_SHARED_LIBS "Compile libraries as shared and not static" ON)
 
 option(WITH_POPPLER "Compile with support of libpoppler" ON)
-if(APPLE)
-    option(WITH_CAPYPDF "Compile with support of libcapypdf" OFF)
-else()
-    option(WITH_CAPYPDF "Compile with support of libcapypdf" ON)
-endif()
+option(WITH_CAPYPDF "Compile with support of libcapypdf" ON)
 option(ENABLE_POPPLER_CAIRO "Compile with support of libpoppler-cairo for rendering PDF preview (depends on WITH_POPPLER)" ON)
 option(WITH_IMAGE_MAGICK "Compile with support of ImageMagick for raster extensions and image import resolution (requires ImageMagick 6; set to OFF if you prefer GraphicsMagick)" ON)
 option(WITH_GRAPHICS_MAGICK "Compile with support of GraphicsMagick for raster extensions and image import resolution" ON)

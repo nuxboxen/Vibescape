@@ -328,12 +328,6 @@ endif()
 set_target_properties(inkscape_base PROPERTIES SOVERSION "${INKSCAPE_VERSION_MAJOR}.${INKSCAPE_VERSION_MINOR}.${INKSCAPE_VERSION_PATCH}.0")
 set_target_properties(inkscape_base PROPERTIES INSTALL_RPATH "${LIBINKSCAPE_INSTALL_RPATH}")
 
-if(WITH_CAPYPDF)
-  if(TARGET capypdf)
-    add_dependencies(inkscape_base capypdf)
-  endif()
-endif()
-
 # Link the inkscape_base library against all external dependencies
 target_link_libraries(inkscape_base
     PRIVATE
