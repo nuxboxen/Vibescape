@@ -60,7 +60,7 @@ InkFileExportCmd::InkFileExportCmd()
     , export_ignore_filters(false)
     , export_text_to_path(false)
     , export_ps_level(3)
-    , export_pdf_level("1.7")
+    , export_pdf_level("2.0")
     , export_latex(false)
     , export_id_only(false)
     , export_background_opacity(-1) // default is unset != actively set to 0
@@ -897,7 +897,7 @@ int InkFileExportCmd::do_export_ps_pdf(SPDocument *doc, std::string const &filen
                     extension.set_param_optiongroup(pdfver_param_name, version_gui_string.c_str());
                     set_export_pdf_version_fail = false;
                 } else {
-                    g_warning("Desired PDF export version \"%s\" not supported! Hint: input one of the versions found in the pdf export dialog e.g. \"1.4\".",
+                    g_warning("Desired PDF export version \"%s\" not supported! Hint: input one of the versions found in the pdf export dialog e.g. \"2.0\".",
                               export_pdf_level.c_str());
                 }
             } catch (...) {

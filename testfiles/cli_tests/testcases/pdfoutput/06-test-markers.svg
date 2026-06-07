@@ -5,10 +5,11 @@
    width="100mm"
    height="100mm"
    viewBox="0 0 100 100"
-   version="1.1"
+   version="2.0"
    id="svg1"
-   inkscape:version="1.5-dev (68979e4b1e, 2025-04-16, custom)"
+   inkscape:version="1.5-dev (48684a88ca, 2026-06-07, custom)"
    sodipodi:docname="06-test-markers.svg"
+   standalone="no"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -25,12 +26,12 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="1.4142136"
-     inkscape:cx="1177.6863"
-     inkscape:cy="213.19269"
-     inkscape:window-width="2560"
-     inkscape:window-height="1408"
+     inkscape:cx="2933.4324"
+     inkscape:cy="189.15106"
+     inkscape:window-width="1920"
+     inkscape:window-height="1168"
      inkscape:window-maximized="1"
-     inkscape:current-layer="continuous-markers"
+     inkscape:current-layer="g4-7"
      showgrid="false" />
   <defs
      id="defs1">
@@ -518,11 +519,77 @@
        inkscape:label="Marker Clones 4"
        inkscape:margin="10"
        inkscape:bleed="0" />
+    <view
+       viewBox="770 0 100 100"
+       id="view1"
+       inkscape:margin="10"
+       inkscape:bleed="0"
+       inkscape:label="Inherited Styles" />
+    <marker
+       id="MyMarker"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerUnits="strokeWidth">
+      <circle
+         id="MyCircle"
+         cx="5"
+         cy="5"
+         r="3"
+         style="fill:context-stroke;stroke:context-fill" />
+    </marker>
+    <marker
+       id="MyMarker2"
+       viewBox="0 0 10 10"
+       refX="5"
+       refY="5"
+       markerUnits="strokeWidth">
+      <g
+         style="fill:context-stroke;stroke:context-fill"
+         id="g1-6">
+        <circle
+           id="circle1"
+           cx="5"
+           cy="5"
+           r="3" />
+      </g>
+    </marker>
+    <path
+       id="MyPath"
+       d="M 10,10 40,10 40,40 10,40 z" />
   </defs>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1">
+    <g
+       id="inherited-styles"
+       transform="matrix(0.9145009,0,0,0.93306669,774.6434,4.3021328)"
+       style="stroke-width:0.629376">
+      <g
+         style="fill:green;stroke:purple;stroke-width:2.5175;marker:url(#MyMarker)"
+         id="g4-7">
+        <use
+           href="#MyPath"
+           id="use1"
+           style="stroke-width:2.5175" />
+        <use
+           href="#MyPath"
+           style="fill:blue;stroke-width:2.5175"
+           transform="translate(50)"
+           id="use2" />
+        <use
+           href="#MyPath"
+           style="stroke:blue;stroke-width:2.5175"
+           transform="translate(-0.06793534,47.242508)"
+           id="use3" />
+        <use
+           href="#MyPath"
+           style="fill:orange;stroke-width:2.5175;marker:url(#MyMarker)"
+           transform="translate(49.932065,47.242508)"
+           id="use4" />
+      </g>
+    </g>
     <path
        style="fill:#ffcc00;fill-rule:evenodd;stroke:#669900;stroke-width:4.5;stroke-linejoin:round;stroke-dasharray:none;marker-start:url(#ColoredSquare);marker-mid:url(#marker15);marker-end:url(#marker16);paint-order:normal"
        d="m 10,31.304547 40,0.0475 h 39.999999"
