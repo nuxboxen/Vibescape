@@ -2250,7 +2250,44 @@ SPIFilter::equals(const SPIBase& rhs) const {
     }
 }
 
+// SPIMarker ------------------------------------------------------------
 
+void SPIMarker::read(gchar const *str)
+{
+    SPIString::read(str);
+
+    if (strneq(str, "url", 3)) {
+        auto uri = extract_uri(str);
+        if (uri.empty()) {
+            std::cerr << "SPIMarker::read: url is empty or invalid" << std::endl;
+            return;
+        } else if (!style) {
+            std::cerr << "SPIMarker::read: url with empty SPStyle pointer" << std::endl;
+            return;
+        }
+
+        auto target = style->object ? style->object : (SPObject*)style->document;
+        if (!target) {
+            std::cerr << "SPIMarker::read: style without object or document" << std::endl;
+            return;
+        }
+
+        href = std::make_shared<SPMarkerReference>(target);
+        try {
+            href->attach(Inkscape::URI(uri.c_str()));
+        } catch (Inkscape::BadURIException &e) {
+            std::cerr << "SPIMarker::read: " << e.what() << std::endl;
+            href.reset();
+        }
+    }
+}
+
+void
+SPIMarker::clear()
+{
+    SPIBase::clear();
+    href.reset();
+}
 
 // SPIDashArray ---------------------------------------------------------
 

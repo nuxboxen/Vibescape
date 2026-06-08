@@ -25,9 +25,9 @@
 #include "attributes.h"
 #include "style-enums.h"
 
-#include "object/sp-marker-loc.h"
 #include "object/sp-filter.h"
 #include "object/sp-filter-reference.h"
+#include "object/sp-marker.h"
 #include "object/sp-paint-server-reference.h"
 #include "object/sp-shape-reference.h"
 
@@ -958,7 +958,18 @@ public:
     SPFilterReference *href = nullptr;
 };
 
+/// Marker type internal to SPStyle
+class SPIMarker : public SPIString
+{
+public:
+    SPIMarker() : SPIString() {}
+    SPIMarker(const SPIMarker &) = delete; // Copying causes problems with hrefs.
+    void read(gchar const *str) override;
+    void clear() override;
 
+private:
+    std::shared_ptr<SPMarkerReference> href;
+};
 
 enum {
     SP_FONT_SIZE_LITERAL,

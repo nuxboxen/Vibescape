@@ -263,11 +263,11 @@ public:
     T<SPAttr::STROKE_EXTENSIONS, SPIStrokeExtensions> stroke_extensions;
 
     /** Marker list */
-    T<SPAttr::MARKER, SPIString> marker;
-    T<SPAttr::MARKER_START, SPIString> marker_start;
-    T<SPAttr::MARKER_MID, SPIString> marker_mid;
-    T<SPAttr::MARKER_END, SPIString> marker_end;
-    SPIString* marker_ptrs[SP_MARKER_LOC_QTY];
+    T<SPAttr::MARKER, SPIMarker> marker;
+    T<SPAttr::MARKER_START, SPIMarker> marker_start;
+    T<SPAttr::MARKER_MID, SPIMarker> marker_mid;
+    T<SPAttr::MARKER_END, SPIMarker> marker_end;
+    SPIMarker* marker_ptrs[SP_MARKER_LOC_QTY];
 
     /* Filter effects ------------------------ */
 

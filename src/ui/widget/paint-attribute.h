@@ -57,7 +57,7 @@ public:
 private:
     void set_paint(const SPObject* object, bool fill);
     //
-    void update_markers(SPIString* markers[], SPObject* object);
+    void update_markers(SPIMarker* markers[], SPObject* object);
     // show/hide stroke widgets
     void show_stroke(bool show);
     void update_stroke(SPItem* item);

@@ -365,10 +365,10 @@ SPStyle::SPStyle(SPDocument *document_in, SPObject *object_in) :
 
     stroke_extensions(      ),
 
-    marker(                 ),  // SPIString
-    marker_start(           ),  // SPIString
-    marker_mid(             ),  // SPIString
-    marker_end(             ),  // SPIString
+    marker(                 ),  // SPIMarker
+    marker_start(           ),  // SPIMarker
+    marker_mid(             ),  // SPIMarker
+    marker_end(             ),  // SPIMarker
 
     // Filter properties
     filter(),
@@ -453,6 +453,12 @@ SPStyle::SPStyle(SPDocument *document_in, SPObject *object_in) :
     filter.setStylePointer( this );
     shape_inside.setStylePointer( this );
     shape_subtract.setStylePointer( this );
+
+    // Markers need style pointer to be connecting to references in the style
+    marker.setStylePointer(this);
+    marker_start.setStylePointer(this);
+    marker_mid.setStylePointer(this);
+    marker_end.setStylePointer(this);
 
     // Used to iterate over markers
     marker_ptrs[SP_MARKER_LOC]       = &marker;

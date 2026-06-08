@@ -86,6 +86,7 @@ public:
 
 
 class SPMarkerReference : public Inkscape::URIReference {
+public:
 	SPMarkerReference(SPObject *obj) : URIReference(obj) {}
 	SPMarker *getObject() const {
 		return static_cast<SPMarker *>(URIReference::getObject());
