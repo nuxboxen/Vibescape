@@ -41,6 +41,10 @@ public:
         LAST_UNIT = PERCENT
     };
 
+    SVGLength(std::string const &v) {
+        read(v.c_str());
+    }
+
     // The object's value is valid / exists in SVG.
     bool _set;
 

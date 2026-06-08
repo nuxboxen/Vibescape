@@ -2,16 +2,13 @@
 /**
  * @file
  * Canvas item belonging to an SVG drawing element.
- *//*
- * Authors:
- *   Krzysztof Kosiński <tweenk.pl@gmail.com>
  *
- * Copyright (C) 2011 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#ifndef INKSCAPE_DISPLAY_DRAWING_ITEM_H
-#define INKSCAPE_DISPLAY_DRAWING_ITEM_H
+#ifndef INKSCAPE_RENDERER_DRAWING_ITEM_H
+#define INKSCAPE_RENDERER_DRAWING_ITEM_H
 
 #include <cstdint>
 #include <exception>
@@ -20,67 +17,34 @@
 #include <optional>
 #include <type_traits>
 #include <utility>
-#include <boost/intrusive/list.hpp>
-#include <boost/intrusive/set.hpp>
-#include <boost/operators.hpp>
 #include <2geom/affine.h>
 #include <2geom/rect.h>
 #include <sigc++/signal.h>
 #include <sigc++/connection.h>
 
-#include "colors/color.h"
 #include "style-enums.h"
-#include "tags.h"
+
+#include "drawing-item-tags.h"
+#include "drawing-options.h"
+#include "drawing.h"
 
 namespace Glib { class ustring; }
 
-class SPStyle;
 class SPItem;
 
-namespace Inkscape {
+namespace Inkscape::Renderer {
 
+class Context;
 class Drawing;
-class DrawingCache;
 class DrawingItem;
 class DrawingPattern;
-class DrawingContext;
 
-namespace Filters { class Filter; }
-
-enum class Antialiasing : unsigned char
-{
-    None, Fast, Good, Best
-};
-
-struct RenderContext
-{
-    Colors::Color outline_color;
-    std::optional<Antialiasing> antialiasing_override;
-    bool dithering = false;
-};
+namespace DrawingFilter { class Filter; }
 
 struct UpdateContext
 {
     Geom::Affine ctm;
 };
-
-struct CacheData;
-
-struct CacheRecord : boost::totally_ordered<CacheRecord>
-{
-    bool operator<(CacheRecord const &other) const { return score < other.score; }
-    bool operator==(CacheRecord const &other) const { return score == other.score; }
-    operator DrawingItem*() const { return item; }
-    double score;
-    size_t cache_size;
-    DrawingItem *item;
-
-    using SetHook = boost::intrusive::set_member_hook<>;
-    SetHook _cache_hook;
-};
-using CacheSet = boost::intrusive::multiset<
-    CacheRecord, boost::intrusive::member_hook<CacheRecord, CacheRecord::SetHook, &CacheRecord::_cache_hook>,
-    boost::intrusive::compare<std::greater<CacheRecord>>>;
 
 struct InvalidItemException : std::exception
 {
@@ -99,17 +63,6 @@ public:
         RENDER_OUTLINE           = 1 << 3,
         RENDER_NO_FILTERS        = 1 << 4,
         RENDER_VISIBLE_HAIRLINES = 1 << 5
-    };
-    enum StateFlags
-    {
-        STATE_NONE       = 0,
-        STATE_BBOX       = 1 << 0, // bounding boxes are up-to-date
-        STATE_CACHE      = 1 << 1, // cache extents and clean area are up-to-date
-        STATE_PICK       = 1 << 2, // can process pick requests
-        STATE_RENDER     = 1 << 3, // can be rendered
-        STATE_BACKGROUND = 1 << 4, // filter background data is up to date
-        STATE_ALL        = (1 << 5) - 1,
-        STATE_TOTAL_INV  = 1 << 5, // used as a reset flag only
     };
     enum PickFlags
     {
@@ -145,8 +98,27 @@ public:
     bool sensitive() const { return _sensitive; }
     void setSensitive(bool sensitive);
 
-    virtual void setStyle(SPStyle const *style, SPStyle const *context_style = nullptr);
-    virtual void setChildrenStyle(SPStyle const *context_style);
+    template <typename StyleSource>
+    void setStyle(StyleSource const *style, StyleSource const *context_style = nullptr)
+    {
+        defer([this, nrstyle = DrawingStyle(style, context_style)] () mutable {
+            _nrstyle = std::move(nrstyle);
+        });
+    }
+
+    // Recursively update context styles in all children
+    template <typename StyleSource>
+    void setChildrenStyle(StyleSource const *style) {
+        defer([this, style] () mutable {
+            _nrstyle.set_context_style(style);
+        });
+        for (auto &i : _children) {
+            i.setChildrenStyle(style);
+        }
+    }
+
+    DrawingStyle _nrstyle;
+
     void setOpacity(float opacity);
     void setOpacityOverride(std::optional<double> opacity);
     void setAntialiasing(Antialiasing antialias);
@@ -159,7 +131,7 @@ public:
     void setStrokePattern(DrawingPattern *pattern);
     void setZOrder(unsigned zorder);
     void setItemBounds(Geom::OptRect const &bounds);
-    void setFilterRenderer(std::unique_ptr<Filters::Filter> renderer);
+    void setFilterRenderer(std::unique_ptr<DrawingFilter::Filter> renderer);
 
     void setKey(unsigned key) { _key = key; }
     unsigned key() const { return _key; }
@@ -167,9 +139,9 @@ public:
     SPItem *getItem() const { return _item; } // SPItem
 
     void update(Geom::IntRect const &area = Geom::IntRect::infinite(), UpdateContext const &ctx = UpdateContext(), unsigned flags = STATE_ALL, unsigned reset = 0);
-    unsigned render(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags = 0, DrawingItem const *stop_at = nullptr) const;
-    unsigned render(DrawingContext &dc, Geom::IntRect const &area, unsigned flags = 0) const;
-    void clip(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const;
+    unsigned render(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags = 0, DrawingItem const *stop_at = nullptr) const;
+    unsigned render(Context &dc, Geom::IntRect const &area, unsigned flags = 0) const;
+    void clip(Context &dc, DrawingOptions &rc, Geom::IntRect const &area) const;
     DrawingItem *pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags = 0);
 
     Glib::ustring name() const; // For debugging
@@ -197,7 +169,7 @@ protected:
         RENDER_STOP = 1
     };
     virtual ~DrawingItem(); // Private to prevent deletion of items that are still in use by a snapshot.
-    void _renderOutline(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags) const;
+    void _renderOutline(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags) const;
     void _markForUpdate(unsigned state, bool propagate);
     void _markForRendering();
     void _invalidateFilterBackground(Geom::IntRect const &area);
@@ -205,8 +177,8 @@ protected:
     Geom::OptIntRect _cacheRect() const;
     void _setCached(bool cached, bool persistent = false);
     virtual unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) { return 0; }
-    virtual unsigned _renderItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const { return RENDER_OK; }
-    virtual void _clipItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const {}
+    virtual unsigned _renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const { return RENDER_OK; }
+    virtual void _clipItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &area) const {}
     virtual DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) { return nullptr; }
     virtual bool _canClip() const { return false; }
     virtual void _dropPatternCache() {}
@@ -226,8 +198,6 @@ protected:
     // Todo: Try to get rid of all of these variables, moving them into the object tree.
     unsigned _key; ///< Auxiliary key used by the object tree for showing clips/masks/patterns.
     SPItem *_item; ///< Used to associate DrawingItems with SPItems that created them
-    SPStyle const *_style; // Not used by DrawingGlyphs
-    SPStyle const *_context_style; // Used for 'context-fill', 'context-stroke'
 
     float _opacity;
     std::optional<double> _opacity_override;
@@ -243,7 +213,7 @@ protected:
     DrawingItem *_mask;
     DrawingPattern *_fill_pattern;
     DrawingPattern *_stroke_pattern;
-    std::unique_ptr<Inkscape::Filters::Filter> _filter;
+    std::unique_ptr<DrawingFilter::Filter> _filter;
     std::unique_ptr<CacheData> _cache;
     int _update_complexity = 0;
     bool _contains_unisolated_blend : 1;
@@ -251,14 +221,9 @@ protected:
     CacheSet::iterator _cache_iterator;
     CacheRecord _cache_record;
 
-    bool style_vector_effect_size   : 1;
-    bool style_vector_effect_rotate : 1;
-    bool style_vector_effect_fixed  : 1;
-
     unsigned _state : 8;
     unsigned _propagate_state : 8;
     ChildType _child_type : 3;
-    unsigned _background_new : 1; ///< Whether enable-background: new is set for this element
     unsigned _background_accumulate : 1; ///< Whether this element accumulates background
                                          ///  (has any ancestor with enable-background: new)
     unsigned _visible : 1;
@@ -285,15 +250,12 @@ protected:
     friend class Drawing;
 };
 
-/// Apply antialias setting to Cairo.
-void apply_antialias(DrawingContext &dc, Antialiasing antialias);
-
 /// Propagate element's shape rendering attribute into internal anti-aliasing setting of DrawingItem.
 void propagate_antialias(SPShapeRendering shape_rendering, DrawingItem &item);
 
 } // namespace Inkscape
 
-#endif // INKSCAPE_DISPLAY_DRAWING_ITEM_H
+#endif // INKSCAPE_RENDERER_DRAWING_ITEM_H
 
 /*
   Local Variables:

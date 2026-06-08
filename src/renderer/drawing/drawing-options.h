@@ -2,8 +2,8 @@
 /**
  * @file
  * DrawingOptions for drawing objects
- *//*
- * Copyright (C) 2011-2026 Authors
+ *
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 

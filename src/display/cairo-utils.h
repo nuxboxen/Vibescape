@@ -56,6 +56,7 @@ public:
     cairo_surface_t *getSurfaceRaw();
     cairo_surface_t *getSurfaceRaw() const;
     Cairo::RefPtr<Cairo::Surface> getSurface();
+    Cairo::RefPtr<Cairo::Surface> getSurface() const;
 
     int width() const;
     int height() const;

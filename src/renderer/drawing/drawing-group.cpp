@@ -2,23 +2,21 @@
 /**
  * @file
  * Group belonging to an SVG drawing element.
- *//*
- * Authors:
- *   Krzysztof Kosiński <tweenk.pl@gmail.com>
  *
- * Copyright (C) 2011 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
 #include "drawing-group.h"
-#include "cairo-utils.h"
-#include "drawing-context.h"
-#include "drawing-surface.h"
-#include "drawing-text.h"
-#include "drawing.h"
-#include "style.h"
 
-namespace Inkscape {
+#include "renderer/context.h"
+#include "renderer/surface.h"
+
+#include "drawing.h"
+#include "drawing-text.h"
+#include "drawing-style.h"
+
+namespace Inkscape::Renderer {
 
 DrawingGroup::DrawingGroup(Drawing &drawing)
     : DrawingItem(drawing) {}
@@ -74,7 +72,7 @@ unsigned DrawingGroup::_updateItem(Geom::IntRect const &area, UpdateContext cons
     return STATE_ALL;
 }
 
-unsigned DrawingGroup::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const
+unsigned DrawingGroup::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const
 {
     if (!stop_at) {
         // normal rendering
@@ -99,7 +97,7 @@ unsigned DrawingGroup::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::
     return RENDER_OK;
 }
 
-void DrawingGroup::_clipItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const
+void DrawingGroup::_clipItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &area) const
 {
     for (auto &i : _children) {
         i.clip(dc, rc, area);

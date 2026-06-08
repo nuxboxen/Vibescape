@@ -1,30 +1,30 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(drawing_unit_SRC
-        drawing/drawing.cpp
-        drawing/drawing-group.cpp
-        drawing/drawing-image.cpp
-        drawing/drawing-item.cpp
-        drawing/drawing-paintserver.cpp
-        drawing/drawing-pattern.cpp
-        drawing/drawing-shape.cpp
-        drawing/drawing-style.cpp
-        drawing/drawing-text.cpp
+        drawing.cpp
+        drawing-group.cpp
+        drawing-image.cpp
+        drawing-item.cpp
+        drawing-paintserver.cpp
+        drawing-pattern.cpp
+        drawing-shape.cpp
+        drawing-style.cpp
+        drawing-text.cpp
 
         # -------
-        drawing/drawing.h
-        drawing/drawing-group.h
-        drawing/drawing-image.h
-        drawing/drawing-item.h
-        drawing/drawing-paintserver.h
-        drawing/drawing-pattern.h
-        drawing/drawing-shape.h
-        drawing/drawing-style.h
-        drawing/drawing-text.h
+        drawing.h
+        drawing-group.h
+        drawing-image.h
+        drawing-item.h
+        drawing-paintserver.h
+        drawing-pattern.h
+        drawing-shape.h
+        drawing-style.h
+        drawing-text.h
 )
 
 function(get_drawing_unit_lib)
-    list(TRANSFORM drawing_unit_SRC PREPEND "renderer/")
+    list(TRANSFORM drawing_unit_SRC PREPEND "renderer/drawing/")
     list(PREPEND drawing_unit_SRC
          "util/funclog.cpp"
          "util/pool.cpp"

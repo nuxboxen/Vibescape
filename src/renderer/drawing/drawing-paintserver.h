@@ -1,35 +1,32 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifndef INKSCAPE_DISPLAY_DRAWING_PAINT_SERVER_H
-#define INKSCAPE_DISPLAY_DRAWING_PAINT_SERVER_H
 /**
  * @file
  * Representation of paint servers used when rendering.
- */
-/*
- * Author: PBS <pbs3141@gmail.com>
- * Copyright (C) 2022 Authors
+ *
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#ifndef INKSCAPE_RENDERER_DRAWING_PAINT_SERVER_H
+#define INKSCAPE_RENDERER_DRAWING_PAINT_SERVER_H
+
 #include <array>
 #include <vector>
-#include <cairo.h>
 #include <2geom/rect.h>
 #include <2geom/affine.h>
+
+#include "colors/forward.h"
 #include "object/sp-paint-server-data.h"
 
-class SPGradient;
-class SPPaintServer;
+namespace Inkscape::Renderer {
 
-namespace Inkscape {
-namespace Colors {
-class Color;
-}
+class Context;
+class Pattern;
 
 /**
  * A DrawingPaintServer is a lightweight copy of the resources needed to paint using a paint server.
  *
- * It is built by an SPPaintServer, stored in the DrawingItem tree, and used when rendering.
+ * It is built by create_drawing_paintserver, stored in the DrawingItem tree, and used when rendering.
  *
  * The pattern information is stored in a rendering-backend agnostic way, and the object remains
  * valid even after the original SPPaintServer is modified or destroyed.
@@ -40,12 +37,12 @@ public:
     virtual ~DrawingPaintServer() = 0;
 
     /// Produce a pattern that can be used for painting with Cairo.
-    virtual cairo_pattern_t *create_pattern(cairo_t *ct, Geom::OptRect const &bbox, double opacity) const = 0;
+    virtual std::shared_ptr<Pattern> create_pattern(Context *, Geom::OptRect const &bbox, double opacity) const = 0;
 
     /// Return whether this paint server could benefit from dithering.
     virtual bool ditherable() const { return false; }
 
-    /// Return whether create_pattern() uses its cairo_t argument. Such pattern cannot be cached, but recreated each time.
+    /// Return whether create_pattern() uses its DrawingContext argument. Such pattern cannot be cached, but recreated each time.
     /// Fixme: The only reson this exists is to work around https://gitlab.freedesktop.org/cairo/cairo/-/issues/146.
     virtual bool uses_cairo_ctx() const { return false; }
 };
@@ -59,10 +56,18 @@ class DrawingSolidColor final
 {
 public:
     DrawingSolidColor(Colors::Color color);
-    cairo_pattern_t *create_pattern(cairo_t *, Geom::OptRect const &, double opacity) const override;
+    std::shared_ptr<Pattern> create_pattern(Context *, Geom::OptRect const &, double opacity) const override;
 
 private:
     Colors::Color color;
+};
+
+class DrawingPatternFlag final : public DrawingPaintServer
+{
+    std::shared_ptr<Pattern> create_pattern(Context *, Geom::OptRect const &, double opacity) const override
+    {
+        return {}; // Handled outside, todo, fix me.
+    }
 };
 
 /**
@@ -72,19 +77,20 @@ class DrawingGradient
     : public DrawingPaintServer
 {
 protected:
-    DrawingGradient(SPGradientSpread spread, SPGradientUnits units, Geom::Affine const &transform)
+    DrawingGradient(SPGradientSpread spread, SPGradientUnits units, Geom::Affine const &transform, std::vector<SPGradientStop> stops = {})
         : spread(spread)
         , units(units)
-        , transform(transform) {}
+        , transform(transform)
+        , stops(stops)
+    {}
 
     bool ditherable() const override { return true; }
-
-    /// Perform some common initialization steps on the given Cairo pattern.
-    void common_setup(cairo_pattern_t *pat, Geom::OptRect const &bbox, double opacity) const;
+    void _create_pattern(Renderer::Pattern &gradient, Geom::OptRect const &bbox, double opacity) const;
 
     SPGradientSpread spread;
     SPGradientUnits units;
     Geom::Affine transform;
+    std::vector<SPGradientStop> stops;
 };
 
 /**
@@ -96,18 +102,16 @@ class DrawingLinearGradient final
 public:
     DrawingLinearGradient(SPGradientSpread spread, SPGradientUnits units, Geom::Affine const &transform,
                           SPGradientVector const *vector)
-        : DrawingGradient(spread, units, transform)
-        , x1(vector->geom[0])
-        , y1(vector->geom[1])
-        , x2(vector->geom[2])
-        , y2(vector->geom[3])
-        , stops(vector->stops) {}
+        : DrawingGradient(spread, units, transform, vector ? vector->stops : std::vector<SPGradientStop>())
+        , x1(vector && vector->geom.size() == 4 ? vector->geom[0] : 0.0)
+        , y1(vector && vector->geom.size() == 4 ? vector->geom[1] : 0.0)
+        , x2(vector && vector->geom.size() == 4 ? vector->geom[2] : 1.0)
+        , y2(vector && vector->geom.size() == 4 ? vector->geom[3] : 1.0)
+    {}
 
-    cairo_pattern_t *create_pattern(cairo_t*, Geom::OptRect const &bbox, double opacity) const override;
-
+    std::shared_ptr<Pattern> create_pattern(Context *, Geom::OptRect const &bbox, double opacity) const override;
 private:
     float x1, y1, x2, y2;
-    std::vector<SPGradientStop> stops;
 };
 
 /**
@@ -119,22 +123,21 @@ class DrawingRadialGradient final
 public:
     DrawingRadialGradient(SPGradientSpread spread, SPGradientUnits units, Geom::Affine const &transform,
                           SPGradientVector const *vector)
-        : DrawingGradient(spread, units, transform)
+        : DrawingGradient(spread, units, transform, vector->stops)
         , cx(vector->geom[0])
         , cy(vector->geom[1])
         , r(vector->geom[2])
         , fx(vector->geom[3])
         , fy(vector->geom[4])
         , fr(vector->geom[5])
-        , stops(vector->stops) {}
+    {}
 
-    cairo_pattern_t *create_pattern(cairo_t *ct, Geom::OptRect const &bbox, double opacity) const override;
+    std::shared_ptr<Pattern> create_pattern(Context *ct, Geom::OptRect const &bbox, double opacity) const override;
 
     bool uses_cairo_ctx() const override { return true; }
 
 private:
     float cx, cy, r, fx, fy, fr;
-    std::vector<SPGradientStop> stops;
 };
 
 /**
@@ -151,7 +154,7 @@ public:
         , cols(mesh->cols)
         , patchdata(mesh->patches) {}
 
-    cairo_pattern_t *create_pattern(cairo_t*, Geom::OptRect const &bbox, double opacity) const override;
+    std::shared_ptr<Pattern> create_pattern(Context*, Geom::OptRect const &bbox, double opacity) const override;
 
 private:
     int rows;
@@ -159,11 +162,30 @@ private:
     std::vector<std::vector<SPGradientPatch>> patchdata;
 };
 
-std::unique_ptr<Inkscape::DrawingPaintServer> create_drawing_paintserver(SPPaintServer *ps);
+template <typename PaintSource>
+std::unique_ptr<DrawingPaintServer> create_drawing_paintserver(PaintSource *ps)
+{
+    if (!ps || !ps->isValid()) {
+        return {};
+    }
+    switch (ps->getPaintType()) {
+        case PaintServerType::SOLID_COLOR:
+            return std::make_unique<DrawingSolidColor>(ps->getSolidColor());
+        case PaintServerType::GROUP_PATTERN:
+            return std::make_unique<DrawingPatternFlag>();
+        case PaintServerType::LINEAR_GRADIENT:
+            return std::make_unique<DrawingLinearGradient>(ps->getSpread(), ps->getUnits(), ps->getGradientTransform(), ps->getGradientVector());
+        case PaintServerType::RADIAL_GRADIENT:
+            return std::make_unique<DrawingRadialGradient>(ps->getSpread(), ps->getUnits(), ps->getGradientTransform(), ps->getGradientVector());
+        case PaintServerType::MESH_GRADIENT:
+            return std::make_unique<DrawingMeshGradient>(ps->getSpread(), ps->getUnits(), ps->getGradientTransform(), ps->getGradientMesh());
+    }
+    return {}; 
+}
 
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
-#endif // INKSCAPE_DISPLAY_DRAWING_PAINT_SERVER_H
+#endif // INKSCAPE_RENDERER_DRAWING_PAINT_SERVER_H
 /*
   Local Variables:
   mode:c++

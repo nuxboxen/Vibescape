@@ -2,35 +2,31 @@
 /**
  * @file
  * Bitmap image belonging to an SVG drawing.
- *//*
- * Authors:
- *   Krzysztof Kosiński <tweenk.pl@gmail.com>
  *
- * Copyright (C) 2011 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
 #include <2geom/bezier-curve.h>
 
-#include "drawing.h"
-#include "drawing-context.h"
-#include "drawing-image.h"
-#include "cairo-utils.h"
-#include "cairo-templates.h"
+#include "renderer/context.h"
+#include "renderer/pixel-filters/average-color.h"
 
-namespace Inkscape {
+#include "drawing.h"
+#include "drawing-image.h"
+
+namespace Inkscape::Renderer {
 
 DrawingImage::DrawingImage(Drawing &drawing)
     : DrawingItem(drawing)
-    , style_image_rendering(SP_CSS_IMAGE_RENDERING_AUTO)
-    , _extend(CAIRO_EXTEND_NONE) // NONE prevents artifacts in surrounding empty space
+    , _extend(Cairo::Pattern::Extend::NONE) // NONE prevents artifacts in surrounding empty space
 {
 }
 
-void DrawingImage::setPixbuf(std::shared_ptr<Inkscape::Pixbuf const> pixbuf)
+void DrawingImage::setImage(std::shared_ptr<Surface const> image)
 {
-    defer([this, pixbuf = std::move(pixbuf)] () mutable {
-        _pixbuf = std::move(pixbuf);
+    defer([this, image = std::move(image)] () mutable {
+        _image = std::move(image);
         _markForUpdate(STATE_ALL, false);
     });
 }
@@ -59,7 +55,7 @@ void DrawingImage::setClipbox(Geom::Rect const &box)
     });
 }
 
-void DrawingImage::setExtend(cairo_extend_t extend)
+void DrawingImage::setExtend(Cairo::Pattern::Extend extend)
 {
     defer([=, this] {
         _extend = extend;
@@ -67,40 +63,26 @@ void DrawingImage::setExtend(cairo_extend_t extend)
     });
 }
 
+Geom::Rect DrawingImage::imageBounds() const
+{
+    auto wh = Geom::Point(_image->dimensions()) * Geom::Scale(_scale);
+    return Geom::Rect(_origin, _origin+wh);
+}
+
 Geom::Rect DrawingImage::bounds() const
 {
-    if (!_pixbuf) return _clipbox;
+    if (!_image) return _clipbox;
 
-    double pw = _pixbuf->width();
-    double ph = _pixbuf->height();
-    double vw = pw * _scale[Geom::X];
-    double vh = ph * _scale[Geom::Y];
-    Geom::Point wh(vw, vh);
-    Geom::Rect view(_origin, _origin+wh);
-    Geom::OptRect res = _clipbox & view;
+    Geom::OptRect res = _clipbox & imageBounds();
     Geom::Rect ret = res ? *res : _clipbox;
 
     return ret;
 }
 
-void DrawingImage::setStyle(SPStyle const *style, SPStyle const *context_style)
-{
-    DrawingItem::setStyle(style, context_style);
-
-    auto image_rendering = SP_CSS_IMAGE_RENDERING_AUTO;
-    if (_style) {
-        image_rendering = _style->image_rendering.computed;
-    }
-
-    defer([=, this] {
-        style_image_rendering = image_rendering;
-    });
-}
-
 unsigned DrawingImage::_updateItem(Geom::IntRect const &, UpdateContext const &, unsigned, unsigned)
 {
     // Calculate bbox
-    if (_pixbuf) {
+    if (_image) {
         Geom::Rect r = bounds() * _ctm;
         _bbox = r.roundOutwards();
     } else {
@@ -110,49 +92,26 @@ unsigned DrawingImage::_updateItem(Geom::IntRect const &, UpdateContext const &,
     return STATE_ALL;
 }
 
-unsigned DrawingImage::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &/*area*/, unsigned flags, DrawingItem const */*stop_at*/) const
+unsigned DrawingImage::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &/*area*/, unsigned flags, DrawingItem const */*stop_at*/) const
 {
     bool const outline = (flags & RENDER_OUTLINE) && !_drawing.imageOutlineMode();
 
     if (!outline) {
-        if (!_pixbuf) return RENDER_OK;
+        if (!_image) return RENDER_OK;
         if (_scale.vector().x() * _scale.vector().y() == 0.0) return RENDER_OK;
 
-        Inkscape::DrawingContext::Save save(dc);
+        Context::Save save(dc);
         dc.transform(_ctm);
         dc.newPath();
         dc.rectangle(_clipbox);
         dc.clip();
 
-        dc.translate(_origin);
+        dc.translate(Geom::Translate(_origin));
         dc.scale(_scale);
-        // const_cast required since Cairo needs to modify the internal refcount variable, but we do not want to give up the
-        // benefits of const for the rest of our code. The underlying object is guaranteed to be non-const, so this is well-defined.
-        // It is also thread-safe to modify the refcount in this way, since Cairo uses atomics internally.
-        dc.setSource(const_cast<cairo_surface_t*>(_pixbuf->getSurfaceRaw()), 0, 0);
-        dc.patternSetExtend(_extend);
 
-        // See: http://www.w3.org/TR/SVG/painting.html#ImageRenderingProperty
-        //      https://drafts.csswg.org/css-images-3/#the-image-rendering
-        //      style.h/style.cpp, cairo-render-context.cpp
-        //
-        // CSS 3 defines:
-        //   'optimizeSpeed' as alias for "pixelated"
-        //   'optimizeQuality' as alias for "smooth"
-        switch (style_image_rendering) {
-            case SP_CSS_IMAGE_RENDERING_OPTIMIZESPEED:
-            case SP_CSS_IMAGE_RENDERING_PIXELATED:
-            // we don't have an implementation for crisp-edges, but it should *not* smooth or blur
-            case SP_CSS_IMAGE_RENDERING_CRISPEDGES:
-                dc.patternSetFilter( CAIRO_FILTER_NEAREST );
-                break;
-            case SP_CSS_IMAGE_RENDERING_AUTO:
-            case SP_CSS_IMAGE_RENDERING_OPTIMIZEQUALITY:
-            default:
-                // In recent Cairo, BEST used Lanczos3, which is prohibitively slow
-                dc.patternSetFilter( CAIRO_FILTER_GOOD );
-                break;
-        }
+        dc.setSource(*_image, 0, 0, _nrstyle.image_rendering, _extend);
+        //_image->write_to_png("/tmp/rendering-image");
+        //dc.getSurface()->write_to_png("/tmp/rendered-image");
 
         // Handle an exceptional case where the greyscale color mode needs to be applied per-image.
         bool const greyscale_exception = (flags & RENDER_OUTLINE) && _drawing.colorMode() == ColorMode::GRAYSCALE;
@@ -163,7 +122,7 @@ unsigned DrawingImage::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::
         dc.paint();
 
         if (greyscale_exception) {
-            ink_cairo_surface_filter(dc.rawTarget(), dc.rawTarget(), _drawing.grayscaleMatrix());
+            // TODO dc.filter(_drawing.grayscaleMatrix());
             dc.popGroupToSource();
             dc.paint();
         }
@@ -172,7 +131,7 @@ unsigned DrawingImage::_renderItem(DrawingContext &dc, RenderContext &rc, Geom::
 
         auto rgba = Colors::Color(_drawing.imageOutlineColor());
 
-        {   Inkscape::DrawingContext::Save save(dc);
+        {   Context::Save save(dc);
             dc.transform(_ctm);
             dc.newPath();
 
@@ -211,7 +170,7 @@ static double distance_to_segment(Geom::Point const &p, Geom::Point const &a1, G
 
 DrawingItem *DrawingImage::_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
-    if (!_pixbuf) return nullptr;
+    if (!_image) return nullptr;
 
     bool outline = (flags & PICK_OUTLINE) && !_drawing.imageOutlineMode();
 
@@ -231,38 +190,17 @@ DrawingItem *DrawingImage::_pickItem(Geom::Point const &p, double delta, Geom::O
         return nullptr;
 
     } else {
-        auto pixels = _pixbuf->pixels();
-        int width = _pixbuf->width();
-        int height = _pixbuf->height();
-        size_t rowstride = _pixbuf->rowstride();
-
         Geom::Point tp = p * _ctm.inverse();
-        Geom::Rect r = bounds();
+        Geom::Rect img_box = imageBounds();
+        Geom::Rect px_box = Geom::Rect({0,0}, _image->dimensions());
+        Geom::IntPoint px = (tp * Geom::Scale(img_box.dimensions()).inverse() * Geom::Scale(px_box.dimensions())).floor();
 
-        if (!r.contains(tp))
+        if (!bounds().contains(tp) || !px_box.contains(px))
             return nullptr;
 
-        double vw = width * _scale[Geom::X];
-        double vh = height * _scale[Geom::Y];
-        int ix = floor((tp[Geom::X] - _origin[Geom::X]) / vw * width);
-        int iy = floor((tp[Geom::Y] - _origin[Geom::Y]) / vh * height);
-
-        if ((ix < 0) || (iy < 0) || (ix >= width) || (iy >= height))
-            return nullptr;
-
-        auto pix_ptr = pixels + iy * rowstride + ix * 4;
-        // pick if the image is less than 99% transparent
-        guint32 alpha = 0;
-        if (_pixbuf->pixelFormat() == Inkscape::Pixbuf::PF_CAIRO) {
-            guint32 px = *reinterpret_cast<guint32 const *>(pix_ptr);
-            alpha = (px & 0xff000000) >> 24;
-        } else if (_pixbuf->pixelFormat() == Inkscape::Pixbuf::PF_GDK) {
-            alpha = pix_ptr[3];
-        } else {
-            throw std::runtime_error("Unrecognized pixel format");
-        }
-        float alpha_f = (alpha / 255.0f) * _opacity;
-        return alpha_f > 0.01 ? this : nullptr;
+        // Get the pixel color at this coordinate
+        auto color = _image->run_pixel_filter(PixelFilter::PickColor(px[Geom::X], px[Geom::Y]));
+        return color.back() > 0.01 ? this : nullptr;
     }
 }
 

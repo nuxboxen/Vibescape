@@ -37,6 +37,7 @@
 
 #include "ui/interface.h"
 #include <glibmm/convert.h>
+#include <glibmm/miscutils.h>
 
 /* This is an example of how to use libpng to read and write PNG files.
  * The file libpng.txt is much more verbose then this.  If you have not
@@ -445,7 +446,7 @@ ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
     ebp.background = bgcolor;
 
     /* Create new drawing */
-    Inkscape::Drawing drawing;
+    Inkscape::Drawing drawing(Glib::getenv("RENDER_CODE") == "true");
     unsigned const dkey = SPItem::display_key_new(1);
     drawing.setRoot(doc->getRoot()->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY));
     drawing.root()->setTransform(affine);

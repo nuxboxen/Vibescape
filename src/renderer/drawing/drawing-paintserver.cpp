@@ -1,86 +1,55 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
+/**
+ * @file
+ * Drawing paintserver turning svg fills into cairo paints
+ *
+ * Copyright (C) 2026 Authors
+ * Released under GNU GPL v2+, read the file 'COPYING' for more information.
+ */
+
 #include "drawing-paintserver.h"
 
 #include <utility>
 
-#include "cairo-utils.h"
 #include "colors/color.h"
-#include "object/sp-paint-server.h"
 
-namespace Inkscape {
+#include "renderer/context.h"
+#include "renderer/context-pattern.h"
 
-std::unique_ptr<Inkscape::DrawingPaintServer> create_drawing_paintserver(SPPaintServer *ps)
-{
-    switch (ps->getPaintType()) {
-        case PaintServerType::SOLID_COLOR:
-            return std::make_unique<Inkscape::DrawingSolidColor>(ps->getSolidColor());
-            break;
-        case PaintServerType::LINEAR_GRADIENT:
-            return std::make_unique<Inkscape::DrawingLinearGradient>(ps->getSpread(), ps->getUnits(), ps->getGradientTransform(), ps->getGradientVector());
-            break;
-        case PaintServerType::RADIAL_GRADIENT:
-            return std::make_unique<Inkscape::DrawingRadialGradient>(ps->getSpread(), ps->getUnits(), ps->getGradientTransform(), ps->getGradientVector());
-            break;
-        case PaintServerType::MESH_GRADIENT:
-            return std::make_unique<Inkscape::DrawingMeshGradient>(ps->getSpread(), ps->getUnits(), ps->getGradientTransform(), ps->getGradientMesh());
-            break;
-    }
-    return {};
-}
+namespace Inkscape::Renderer {
 
 DrawingPaintServer::~DrawingPaintServer() = default;
 
 DrawingSolidColor::DrawingSolidColor(Colors::Color color)
     : color(std::move(color)) {}
 
-cairo_pattern_t *DrawingSolidColor::create_pattern(cairo_t *, Geom::OptRect const &, double opacity) const
+std::shared_ptr<Pattern> DrawingSolidColor::create_pattern(Context *ct, Geom::OptRect const &, double opacity) const
 {
-    return ink_cairo_pattern_create(color.withOpacity(opacity));
+    return std::make_shared<SolidColorPattern>(*color.withOpacity(opacity).converted(ct->getColorSpace()));
 }
 
-void DrawingGradient::common_setup(cairo_pattern_t *pat, Geom::OptRect const &bbox, double opacity) const
+void DrawingGradient::_create_pattern(Renderer::Pattern &gradient, Geom::OptRect const &bbox, double opacity) const
 {
-    // set spread type
-    switch (spread) {
-        case SP_GRADIENT_SPREAD_REFLECT:
-            cairo_pattern_set_extend(pat, CAIRO_EXTEND_REFLECT);
-            break;
-        case SP_GRADIENT_SPREAD_REPEAT:
-            cairo_pattern_set_extend(pat, CAIRO_EXTEND_REPEAT);
-            break;
-        case SP_GRADIENT_SPREAD_PAD:
-        default:
-            cairo_pattern_set_extend(pat, CAIRO_EXTEND_PAD);
-            break;
-    }
-
-    // set pattern transform matrix
-    auto gs2user = transform;
-    if (units == SP_GRADIENT_UNITS_OBJECTBOUNDINGBOX && bbox) {
-        auto bbox2user = Geom::Affine(bbox->width(), 0, 0, bbox->height(), bbox->left(), bbox->top());
-        gs2user *= bbox2user;
-    }
-    ink_cairo_pattern_set_matrix(pat, gs2user.inverse());
-}
-
-cairo_pattern_t *DrawingLinearGradient::create_pattern(cairo_t *, Geom::OptRect const &bbox, double opacity) const
-{
-    auto pat = cairo_pattern_create_linear(x1, y1, x2, y2);
-
-    common_setup(pat, bbox, opacity);
+    gradient.setExtend(spread);
+    gradient.setMatrix(transform, units == SP_GRADIENT_UNITS_OBJECTBOUNDINGBOX ? bbox : Geom::OptRect());
 
     // add stops
     for (auto &stop : stops) {
         // multiply stop opacity by paint opacity
         if (stop.color.has_value()) {
-            ink_cairo_pattern_add_color_stop(pat, stop.offset, stop.color->withOpacity(opacity));
+            gradient.addColorStop(stop.offset, stop.color->withOpacity(opacity));
         }
     }
+}
 
+std::shared_ptr<Pattern> DrawingLinearGradient::create_pattern(Context *ct, Geom::OptRect const &bbox, double opacity) const
+{
+    auto pat = std::make_shared<LinearGradientPattern>(ct->getColorSpace(), x1, y1, x2, y2);
+    _create_pattern(*pat, bbox, opacity);
     return pat;
 }
 
-cairo_pattern_t *DrawingRadialGradient::create_pattern(cairo_t *ct, Geom::OptRect const &bbox, double opacity) const
+std::shared_ptr<Pattern> DrawingRadialGradient::create_pattern(Context *ct, Geom::OptRect const &bbox, double opacity) const
 {
     Geom::Point focus(fx, fy);
     Geom::Point center(cx, cy);
@@ -88,7 +57,7 @@ cairo_pattern_t *DrawingRadialGradient::create_pattern(cairo_t *ct, Geom::OptRec
     double radius = r;
     double focusr = fr;
     double scale = 1.0;
-    double tolerance = cairo_get_tolerance(ct);
+    double tolerance = ct->get_tolerance();
 
     Geom::Affine gs2user = transform;
 
@@ -107,16 +76,15 @@ cairo_pattern_t *DrawingRadialGradient::create_pattern(cairo_t *ct, Geom::OptRec
     r_user *= gs2user.withoutTranslation();
     fr_user *= gs2user.withoutTranslation();
 
-    double dx = d_user.x(), dy = d_user.y();
-    cairo_user_to_device_distance(ct, &dx, &dy);
+    auto d_device = ct->user_to_device_distance(d_user);
 
     // compute the tolerance distance in user space
     // create a vector with the same direction as the transformed d,
     // with the length equal to tolerance
-    double dl = hypot(dx, dy);
-    double tx = tolerance * dx / dl, ty = tolerance * dy / dl;
-    cairo_device_to_user_distance(ct, &tx, &ty);
-    double tolerance_user = hypot(tx, ty);
+    double dl = d_device.length();
+    auto t_device = Geom::Point(tolerance * d_device.x() / dl,
+                                tolerance * d_device.y() / dl);
+    auto tolerance_user = ct->device_to_user_distance(t_device).length();
 
     if (d_user.length() + tolerance_user > r_user.length()) {
         scale = r_user.length() / d_user.length();
@@ -125,35 +93,26 @@ cairo_pattern_t *DrawingRadialGradient::create_pattern(cairo_t *ct, Geom::OptRec
         scale *= 1.0 - 2.0 * tolerance / dl;
     }
 
-    auto pat = cairo_pattern_create_radial(scale * d.x() + center.x(), scale * d.y() + center.y(), focusr, center.x(), center.y(), radius);
-
-    common_setup(pat, bbox, opacity);
-
-    // add stops
-    for (auto &stop : stops) {
-        // multiply stop opacity by paint opacity
-        if (stop.color.has_value()) {
-            ink_cairo_pattern_add_color_stop(pat, stop.offset, *stop.color, opacity);
-        }
-    }
-
+    auto pat = std::make_shared<RadialGradientPattern>(ct->getColorSpace(), scale * d.x() + center.x(), scale * d.y() + center.y(), focusr, center.x(), center.y(), radius);
+    _create_pattern(*pat, bbox, opacity);
     return pat;
 }
 
-cairo_pattern_t *DrawingMeshGradient::create_pattern(cairo_t *, Geom::OptRect const &bbox, double opacity) const
+std::shared_ptr<Pattern> DrawingMeshGradient::create_pattern(Context *ct, Geom::OptRect const &bbox, double opacity) const
 {
 #ifdef MESH_DEBUG
     std::cout << "sp_meshgradient_create_pattern: " << bbox << " " << opacity << std::endl;
 #endif
 
-    auto pat = cairo_pattern_create_mesh();
+    auto pat = std::make_shared<MeshGradientPattern>(ct->getColorSpace());
+    _create_pattern(*pat, bbox, opacity);
 
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
+    for (int i = 0; i < rows && i < (int)patchdata.size(); i++) {
+        for (int j = 0; j < cols && j < (int)patchdata[i].size(); j++) {
             auto &data = patchdata[i][j];
 
-            cairo_mesh_pattern_begin_patch(pat);
-            cairo_mesh_pattern_move_to(pat, data.points[0][0].x(), data.points[0][0].y());
+            pat->beginPatch();
+            pat->moveTo(data.points[0][0]);
 
             for (int k = 0; k < 4; k++) {
                 switch (data.pathtype[k]) {
@@ -161,13 +120,11 @@ cairo_pattern_t *DrawingMeshGradient::create_pattern(cairo_t *, Geom::OptRect co
                 case 'L':
                 case 'z':
                 case 'Z':
-                    cairo_mesh_pattern_line_to(pat, data.points[k][3].x(), data.points[k][3].y());
+                    pat->lineTo(data.points[k][3]);
                     break;
                 case 'c':
                 case 'C':
-                    cairo_mesh_pattern_curve_to(pat, data.points[k][1].x(), data.points[k][1].y(),
-                            data.points[k][2].x(), data.points[k][2].y(),
-                            data.points[k][3].x(), data.points[k][3].y());
+                    pat->curveTo(data.points[k][1], data.points[k][2], data.points[k][3]);
                     break;
                 default:
                     // Shouldn't happen
@@ -175,31 +132,21 @@ cairo_pattern_t *DrawingMeshGradient::create_pattern(cairo_t *, Geom::OptRect co
                 }
 
                 if (data.tensorIsSet[k]) {
-                    Geom::Point t = data.tensorpoints[k];
-                    cairo_mesh_pattern_set_control_point(pat, k, t.x(), t.y());
+                    pat->setControlPoint(k, data.tensorpoints[k]);
                 }
 
                 if (data.color[k]) {
-                    ink_cairo_mesh_pattern_set_corner_color(pat, k, data.color[k]->withOpacity(opacity));
+                    pat->setCornerColor(k, data.color[k]->withOpacity(opacity));
                 } else {
                     std::cerr << "Bad mesh color at pos " << k << "\n";
                     static auto const black = *Colors::Color::parse("black");
-                    ink_cairo_mesh_pattern_set_corner_color(pat, k, black.withOpacity(opacity));
+                    pat->setCornerColor(k, black.withOpacity(opacity));
                 }
             }
 
-            cairo_mesh_pattern_end_patch(pat);
+            pat->endPatch();
         }
     }
-
-    // set pattern transform matrix
-    Geom::Affine gs2user = transform;
-    if (units == SP_GRADIENT_UNITS_OBJECTBOUNDINGBOX && bbox) {
-        Geom::Affine bbox2user(bbox->width(), 0, 0, bbox->height(), bbox->left(), bbox->top());
-        gs2user *= bbox2user;
-    }
-    ink_cairo_pattern_set_matrix(pat, gs2user.inverse());
-
     return pat;
 }
 

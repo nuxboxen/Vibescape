@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
- /*
- * Authors: see git history
+/**
+ * @file
+ * Enums for rendering content
  *
- * Copyright (C) 2011 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
@@ -10,6 +11,19 @@
 #define SEEN_INKSCAPE_RENDERER_ENUMS_H
 
 namespace Inkscape::Renderer {
+
+enum StateFlags
+{
+    STATE_NONE       = 0,
+    STATE_BBOX       = 1 << 0, // bounding boxes are up-to-date
+    STATE_CACHE      = 1 << 1, // cache extents and clean area are up-to-date
+    STATE_PICK       = 1 << 2, // can process pick requests
+    STATE_RENDER     = 1 << 3, // can be rendered
+    STATE_BACKGROUND = 1 << 4, // filter background data is up to date
+    STATE_ALL        = (1 << 5) - 1,
+    STATE_TOTAL_INV  = 1 << 5, // used as a reset flag only
+};
+
 
 enum class RenderMode {
     NORMAL,

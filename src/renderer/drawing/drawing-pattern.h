@@ -1,25 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /**
  * @file
- * Canvas belonging to SVG pattern.
- *//*
- * Authors:
- *   Tomasz Boczkowski <penginsbacon@gmail.com>
+ * Drawing functionality belonging to SVG pattern.
  *
- * Copyright (C) 2014 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#ifndef INKSCAPE_DISPLAY_DRAWING_PATTERN_H
-#define INKSCAPE_DISPLAY_DRAWING_PATTERN_H
+#ifndef INKSCAPE_RENDERER_DRAWING_PATTERN_H
+#define INKSCAPE_RENDERER_DRAWING_PATTERN_H
 
 #include <mutex>
-#include <cairomm/surface.h>
 #include "drawing-group.h"
 
-using cairo_pattern_t = struct _cairo_pattern;
+namespace Inkscape::Renderer {
 
-namespace Inkscape {
+class Pattern;
+class Surface;
 
 /**
  * @brief Drawing tree node used for rendering paints.
@@ -60,7 +57,7 @@ public:
      *
      * Returns cairo_pattern_t structure that can be set as source surface.
      */
-    cairo_pattern_t *renderPattern(RenderContext &rc, Geom::IntRect const &area, float opacity, int device_scale) const;
+    std::shared_ptr<Pattern> renderPattern(DrawingOptions &rc, Geom::IntRect const &area, std::shared_ptr<Colors::Space::AnySpace> const color_space, float opacity) const;
 
 protected:
     ~DrawingPattern() override = default;
@@ -81,22 +78,22 @@ protected:
     // Set on update.
     Geom::IntPoint _pattern_resolution;
 
-    struct Surface
+    struct PatternSurface
     {
-        Surface(Geom::IntRect const &rect, int device_scale);
+        PatternSurface(Geom::IntRect const &rect, int device_scale, std::shared_ptr<Colors::Space::AnySpace>);
         Geom::IntRect rect;
-        Cairo::RefPtr<Cairo::ImageSurface> surface;
+        std::shared_ptr<Surface> surface;
     };
 
     mutable std::mutex mutables;
 
     // Parts of the pattern tile that have been rendered. Read/written on render, cleared on update.
-    mutable std::vector<Surface> surfaces;
+    mutable std::vector<PatternSurface> surfaces;
 };
 
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
-#endif // INKSCAPE_DISPLAY_DRAWING_PATTERN_H
+#endif // INKSCAPE_RENDERER_DRAWING_PATTERN_H
 
 /*
   Local Variables:

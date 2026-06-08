@@ -2,44 +2,30 @@
 /**
  * @file
  * Canvas item belonging to an SVG drawing element.
- *//*
- * Authors:
- *   Krzysztof Kosiński <tweenk.pl@gmail.com>
  *
- * Copyright (C) 2011 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
 #include <climits>
 
-#include "display/drawing-context.h"
-#include "display/drawing-group.h"
-#include "display/drawing-item.h"
-#include "display/drawing-pattern.h"
-#include "display/drawing-surface.h"
-#include "display/drawing-text.h"
-#include "display/drawing.h"
+#include "colors/manager.h"
+#include "colors/spaces/base.h"
 
-#include "display/cairo-utils.h"
-#include "display/cairo-templates.h"
+#include "renderer/context.h"
+#include "renderer/drawing-filters/filter.h"
+#include "renderer/drawing-filters/primitive.h"
+#include "renderer/surface.h"
+#include "renderer/surface-cache.h"
 
-#include "display/control/canvas-item-drawing.h"
-#include "ui/widget/canvas.h" // Mark area for redrawing.
+#include "drawing.h"
+#include "drawing-group.h"
+#include "drawing-item.h"
+#include "drawing-pattern.h"
+#include "drawing-style.h"
+#include "drawing-text.h"
 
-#include "nr-filter.h"
-#include "style.h"
-
-#include "object/sp-item.h"
-
-static constexpr auto CACHE_SCORE_THRESHOLD = 50000.0; ///< Do not consider objects for caching below this score.
-
-namespace Inkscape {
-
-struct CacheData
-{
-    mutable std::mutex mutables;
-    mutable std::optional<DrawingCache> surface;
-};
+namespace Inkscape::Renderer {
 
 /**
  * @class DrawingItem
@@ -65,12 +51,7 @@ DrawingItem::DrawingItem(Drawing &drawing)
     : _drawing(drawing)
     , _parent(nullptr)
     , _key(0)
-    , _style(nullptr)
-    , _context_style(nullptr)
     , _contains_unisolated_blend(false)
-    , style_vector_effect_size(false)
-    , style_vector_effect_rotate(false)
-    , style_vector_effect_fixed(false)
     , _opacity(1.0)
     , _clip(nullptr)
     , _mask(nullptr)
@@ -79,7 +60,6 @@ DrawingItem::DrawingItem(Drawing &drawing)
     , _item(nullptr)
     , _state(0)
     , _child_type(ChildType::ORPHAN)
-    , _background_new(0)
     , _background_accumulate(0)
     , _visible(true)
     , _sensitive(true)
@@ -283,65 +263,6 @@ void DrawingItem::_setCached(bool cached, bool persistent)
     }
 }
 
-/**
- * Process information related to the new style.
- *
- * Note: _style is not used by DrawingGlyphs which uses its parent style.
- */
-void DrawingItem::setStyle(SPStyle const *style, SPStyle const *context_style)
-{
-    // Ok to not defer setting the style pointer, because the pointer itself is only read by SPObject-side code.
-    _style = style;
-    if (context_style) {
-        _context_style = context_style;
-    } else if (_parent) {
-        _context_style = _parent->_context_style;
-    }
-
-    // Copy required information out of style.
-    bool background_new = false;
-    bool vector_effect_size   = false;
-    bool vector_effect_rotate = false;
-    bool vector_effect_fixed  = false;
-    if (style) {
-        background_new = style->enable_background.set && style->enable_background.value == SP_CSS_BACKGROUND_NEW;
-        vector_effect_size   = _style->vector_effect.size;
-        vector_effect_rotate = _style->vector_effect.rotate;
-        vector_effect_fixed  = _style->vector_effect.fixed;
-    }
-
-    // Defer setting the style information on the DrawingItem.
-    defer([=, this] {
-        _markForRendering();
-
-        if (background_new != _background_new) {
-            _background_new = background_new;
-            _markForUpdate(STATE_BACKGROUND, true);
-        }
-
-        style_vector_effect_size   = vector_effect_size;
-        style_vector_effect_rotate = vector_effect_rotate;
-        style_vector_effect_fixed  = vector_effect_fixed;
-
-        _markForUpdate(STATE_ALL, false);
-    });
-}
-
-/**
- * Recursively update children style.
- * The purpose of this call is to update fill and stroke for markers that have elements with
- * fill/stroke property values of 'context-fill' or 'context-stroke'. Marker styling is not
- * updated like other 'clones' as marker instances are not included the SP object tree.
- * Note: this is a virtual function.
- */
-void DrawingItem::setChildrenStyle(SPStyle const *context_style)
-{
-    _context_style = context_style;
-    for (auto &i : _children) {
-        i.setChildrenStyle(context_style);
-    }
-}
-
 void DrawingItem::setClip(DrawingItem *item)
 {
     if (item) {
@@ -429,7 +350,7 @@ void DrawingItem::setItemBounds(Geom::OptRect const &bounds)
     });
 }
 
-void DrawingItem::setFilterRenderer(std::unique_ptr<Filters::Filter> filter)
+void DrawingItem::setFilterRenderer(std::unique_ptr<DrawingFilter::Filter> filter)
 {
     defer([=, this, filter = std::move(filter)] () mutable {
         _filter = std::move(filter);
@@ -490,7 +411,7 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
 
     // this needs to be called before we recurse into children
     if (to_update & STATE_BACKGROUND) {
-        _background_accumulate = _background_new;
+        _background_accumulate = _nrstyle.background_new;
         if (_child_type == ChildType::NORMAL && _parent->_background_accumulate)
             _background_accumulate = true;
     }
@@ -501,11 +422,11 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
     }
 
     // Vector effects
-    if (style_vector_effect_fixed) {
+    if (_nrstyle.vector_effect_fixed) {
         child_ctx.ctm.setTranslation(Geom::Point(0, 0));
     }
 
-    if (style_vector_effect_size) {
+    if (_nrstyle.vector_effect_size) {
         double value = child_ctx.ctm.descrim();
         if (value > 0.0) {
             child_ctx.ctm[0] /= value;
@@ -515,7 +436,7 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
         }
     }
 
-    if (style_vector_effect_rotate) {
+    if (_nrstyle.vector_effect_rotate) {
         double value = child_ctx.ctm.descrim();
         child_ctx.ctm[0] = value;
         child_ctx.ctm[1] = 0.0;
@@ -678,31 +599,17 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
     }
 }
 
-struct MaskLuminanceToAlpha
-{
-    guint32 operator()(guint32 in)
-    {
-        guint r = 0, g = 0, b = 0;
-        Display::ExtractRGB32(in, r, g, b);
-        // the operation of unpremul -> luminance-to-alpha -> multiply by alpha
-        // is equivalent to luminance-to-alpha on premultiplied color values
-        // original computation in double: r*0.2125 + g*0.7154 + b*0.0721
-        guint32 ao = r*109 + g*366 + b*37; // coeffs add up to 512
-        return ((ao + 256) << 15) & 0xff000000; // equivalent to ((ao + 256) / 512) << 24
-    }
-};
-
 /**
  * Rasterize items.
  * This method submits the drawing operations required to draw this item
- * to the supplied DrawingContext, restricting drawing the specified area.
+ * to the supplied Context, restricting drawing the specified area.
  *
  * This method does some common tasks and calls the item-specific rendering
  * function, _renderItem(), to render e.g. paths or bitmaps.
  *
  * @param flags Rendering options. This deals mainly with cache control.
  */
-unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const
+unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const
 {
     bool const outline = flags & RENDER_OUTLINE;
     bool const render_filters = !(flags & RENDER_NO_FILTERS);
@@ -740,7 +647,7 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
         iarea = _cacheRect();
         if (!iarea) {
             iarea = carea;
-            _filter->area_enlarge(*iarea, this);
+            _filter->area_enlarge(*iarea, ctm());
             iarea.intersectWith(_drawbox);
         }
     }
@@ -751,7 +658,13 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     }
 
     // Device scale for HiDPI screens (typically 1 or 2)
-    int const device_scale = dc.surface()->device_scale();
+    int const device_scale = rc.device_scale;
+
+    // When this happens, we want to enforce the use of RGB so the results can
+    // be combined correctly. Use of INT8 surface can only combine with other INT8 surfaces
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto interp_space = _nrstyle.color_interpolation;
+    auto target_space = (!interp_space && dc.getColorSpace()) ? srgb : interp_space;
 
     std::unique_lock<std::mutex> lock;
 
@@ -760,14 +673,15 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
         lock = std::unique_lock(_cache->mutables);
 
         if (_cache->surface) {
-            if (_cache->surface->device_scale() != device_scale) {
+            if (_cache->surface->getDeviceScale() != device_scale) {
                 _cache->surface->markDirty();
             }
             _cache->surface->prepare();
-            dc.setOperator(ink_css_blend_to_cairo_operator(_blend_mode));
+            dc.setOperator(_blend_mode);
             _cache->surface->paintFromCache(dc, carea, forcecache);
+            // carea contains everything still dirty, and being empty means it's a perfect cache
             if (!carea) {
-                dc.setSource(0, 0, 0, 0);
+                dc.resetSource(0);
                 return RENDER_OK;
             }
         } else {
@@ -777,7 +691,7 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
             Geom::OptIntRect cl = _cacheRect();
             if (!cl)
                 cl = carea;
-            _cache->surface.emplace(*cl, device_scale);
+            // TODO _cache->surface = std::make_shared<SurfaceCache>(*cl, device_scale, target_space);
         }
 
         if (!forcecache) {
@@ -786,6 +700,7 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     } else {
         // if our caching was turned off after the last update, it was already deleted in setCached()
     }
+
 
     // determine whether this shape needs intermediate rendering.
     bool const greyscale = _drawing.colorMode() == ColorMode::GRAYSCALE && !(flags & RENDER_OUTLINE);
@@ -798,7 +713,9 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
         || _blend_mode != SP_CSS_BLEND_NORMAL     // 5. it has blend mode
         || _isolation == SP_CSS_ISOLATION_ISOLATE // 6. it is isolated
         || (_child_type == ChildType::ROOT && isolate_root) // 7. it is the root and needs isolation
-        || (bool)_cache;                          // 8. it is to be cached
+        || (dc.getColorSpace() != target_space)   // 9. different rendering color spaces
+        || (bool)_cache                           // 8. it is to be cached
+        ;
 
     auto antialias = rc.antialiasing_override.value_or(_antialias);
 
@@ -820,14 +737,20 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     // element
 
     if ((flags & RENDER_FILTER_BACKGROUND) || !needs_intermediate_rendering) {
-        dc.setOperator(ink_css_blend_to_cairo_operator(SP_CSS_BLEND_NORMAL));
-        apply_antialias(dc, antialias);
-        return _renderItem(dc, rc, *carea, flags & ~RENDER_FILTER_BACKGROUND, stop_at);
+        Context ict(dc);
+        ict.rectangle(*carea);
+        ict.clip(); // Do not paint outside the requested area
+        ict.set_operator(Cairo::Context::Operator::OVER);
+        ict.setAntialiasing(antialias);
+        return _renderItem(ict, rc, *carea, flags & ~RENDER_FILTER_BACKGROUND, stop_at);
     }
 
-    DrawingSurface intermediate(*carea, device_scale);
-    DrawingContext ict(intermediate);
-    cairo_set_antialias(ict.raw(), cairo_get_antialias(dc.raw())); // propagate antialias setting
+    unsigned render_result = RENDER_OK;
+
+    auto intermediate = std::make_shared<Surface>(carea->dimensions(), device_scale, target_space);
+{
+    Context ict(intermediate, carea->dimensions());
+    ict.set_antialias(dc.get_antialias()); // propagate antialias setting
 
     // This path fails for patterns/hatches when stepping the pattern to handle overflows.
     // The offsets are applied to drawing context (dc) but they are not copied to the
@@ -839,76 +762,81 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     // For the moment we disable caching for patterns,
     //   see https://gitlab.com/inkscape/inkscape/-/issues/309
 
-    unsigned render_result = RENDER_OK;
-
     // 1. Render clipping path with alpha = opacity.
-    ict.setSource(0,0,0, getOpacity());
+    ict.resetSource(getOpacity());
     // Since clip can be combined with opacity, the result could be incorrect
     // for overlapping clip children. To fix this we use the SOURCE operator
     // instead of the default OVER.
-    ict.setOperator(CAIRO_OPERATOR_SOURCE);
+    ict.set_operator(Cairo::Context::Operator::SOURCE);
     ict.paint();
     if (_clip) {
         ict.pushGroup();
         _clip->clip(ict, rc, *carea);
         ict.popGroupToSource();
-        ict.setOperator(CAIRO_OPERATOR_IN);
+        ict.set_operator(Cairo::Context::Operator::IN);
         ict.paint();
     }
-    ict.setOperator(CAIRO_OPERATOR_OVER); // reset back to default
+    ict.set_operator(Cairo::Context::Operator::OVER); // reset back to default
 
     // 2. Render the mask if present and compose it with the clipping path + opacity.
     if (_mask) {
         ict.pushGroup();
         _mask->render(ict, rc, *carea, flags);
 
-        cairo_surface_t *mask_s = ict.rawTarget();
         // Convert mask's luminance to alpha
-        ink_cairo_surface_filter(mask_s, mask_s, MaskLuminanceToAlpha());
+        // TODO: ict.filter(MaskLuminanceToAlpha());
         ict.popGroupToSource();
-        ict.setOperator(CAIRO_OPERATOR_IN);
+        ict.set_operator(Cairo::Context::Operator::IN);
         ict.paint();
-        ict.setOperator(CAIRO_OPERATOR_OVER);
+        ict.set_operator(Cairo::Context::Operator::OVER);
     }
 
     // 3. Render object itself
     ict.pushGroup();
-    apply_antialias(ict, antialias);
+    ict.setAntialiasing(antialias);
     render_result = _renderItem(ict, rc, *carea, flags, stop_at);
-
-    // 4. Apply filter.
-    if (_filter && render_filters) {
-        bool rendered = false;
-        if (_filter->uses_background() && _background_accumulate) {
-            auto bg_root = this;
-            for (; bg_root; bg_root = bg_root->_parent) {
-                if (bg_root->_background_new || bg_root->_filter) break;
-            }
-            if (bg_root) {
-                DrawingSurface bg(*carea, device_scale);
-                DrawingContext bgdc(bg);
-                bg_root->render(bgdc, rc, *carea, flags | RENDER_FILTER_BACKGROUND, this);
-                _filter->render(this, ict, &bg, rc);
-                rendered = true;
-            }
-        }
-        if (!rendered) {
-            _filter->render(this, ict, nullptr, rc);
-        }
-        // Note that because the object was rendered to a group,
-        // the internals of the filter need to use cairo_get_group_target()
-        // instead of cairo_get_target().
-    }
-
-    // 4b. Apply greyscale rendering mode, if root node.
-    if (greyscale && _child_type == ChildType::ROOT) {
-        ink_cairo_surface_filter(ict.rawTarget(), ict.rawTarget(), _drawing.grayscaleMatrix());
-    }
 
     // 5. Render object inside the composited mask + clip
     ict.popGroupToSource();
-    ict.setOperator(CAIRO_OPERATOR_IN);
+    ict.set_operator(Cairo::Context::Operator::IN);
     ict.paint();
+
+    // 4. Apply filter.
+    if (_filter && render_filters) {
+        std::shared_ptr<Surface> bg;
+        if ((
+                 _filter->uses_input(DrawingFilter::SLOT_BACKGROUND_IMAGE)
+              || _filter->uses_input(DrawingFilter::SLOT_BACKGROUND_ALPHA)
+            ) && _background_accumulate) {
+            auto bg_root = this;
+            for (; bg_root; bg_root = bg_root->_parent) {
+                if (bg_root->_nrstyle.background_new || bg_root->_filter) break;
+            }
+            if (bg_root) {
+                bg = std::make_shared<Surface>(carea->dimensions(), device_scale, target_space);
+                Context bgdc(bg);
+                bg_root->render(bgdc, rc, *carea, flags | RENDER_FILTER_BACKGROUND, this);
+            }
+        }
+        _filter->render(*carea, ctm(), itemBounds(), ict.getSurface(), bg, rc);
+    } else {
+        std::cout << "4. No filter\n";
+    }
+
+}
+
+    // Both may ne null, not not either, see above where a null target_space is
+    // converted to sRGB when the dc has a non-null color space set.
+    if (target_space != dc.getColorSpace()) {
+        if (target_space->getComponentCount() == dc.getColorSpace()->getComponentCount()) {
+            intermediate->convertToColorSpace(dc.getColorSpace());
+        } else {
+            // Makes another copy, so not good.
+            intermediate = intermediate->convertedToColorSpace(dc.getColorSpace());
+        }
+    }
+    //static int c = 0;
+    //intermediate->write_to_png("/tmp/p/int-color-" + std::to_string(c++) + "-");
 
     // 6. Paint the completed rendering onto the base context (or into cache)
     if (_cache && !(flags & RENDER_BYPASS_CACHE)) {
@@ -918,21 +846,25 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
         assert(lock);
         assert(_cache->surface);
 
-        auto cachect = DrawingContext(*_cache->surface);
+        auto cachect = Context(_cache->surface);
         cachect.rectangle(*carea);
-        cachect.setOperator(CAIRO_OPERATOR_SOURCE);
-        cachect.setSource(&intermediate);
+        cachect.set_operator(Cairo::Context::Operator::SOURCE);
+        cachect.setSource(*intermediate);
         cachect.fill();
         _cache->surface->markClean(*carea);
     }
 
-    dc.rectangle(*carea);
-    dc.setSource(&intermediate);
+    dc.save(); // Prevent Translate from accumulating
+    dc.translate(Geom::Translate(carea->min()));
+    dc.rectangle(Geom::Rect::from_xywh({0, 0}, carea->dimensions()));
+    dc.setSource(*intermediate);
 
     // 7. Render blend mode
-    dc.setOperator(ink_css_blend_to_cairo_operator(_blend_mode));
+    dc.setOperator(_blend_mode);
     dc.fill();
-    dc.setSource(0,0,0,0);
+    dc.resetSource(0);
+    dc.restore();
+
     // Web isolation only works if parent doesn't have transform
 
     // the call above is to clear a ref on the intermediate surface held by dc
@@ -943,9 +875,9 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
 /**
  * A stand alone render, ignoring all other objects in the document.
  */
-unsigned DrawingItem::render(DrawingContext &dc, Geom::IntRect const &area, unsigned flags) const
+unsigned DrawingItem::render(Context &dc, Geom::IntRect const &area, unsigned flags) const
 {
-    auto rc = RenderContext{
+    auto rc = DrawingOptions{
         .outline_color = _drawing.outlineColor(),
         .antialiasing_override = _drawing._antialiasing_override,
         .dithering = _drawing._use_dithering
@@ -953,7 +885,7 @@ unsigned DrawingItem::render(DrawingContext &dc, Geom::IntRect const &area, unsi
     return render(dc, rc, area, flags);
 }
 
-void DrawingItem::_renderOutline(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags) const
+void DrawingItem::_renderOutline(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags) const
 {
     // intersect with bbox rather than drawbox, as we want to render things outside
     // of the clipping path as well
@@ -987,14 +919,14 @@ void DrawingItem::_renderOutline(DrawingContext &dc, RenderContext &rc, Geom::In
  * the result of this call using the IN operator. See the implementation
  * of render() for details.
  */
-void DrawingItem::clip(DrawingContext &dc, Inkscape::RenderContext &rc, Geom::IntRect const &area) const
+void DrawingItem::clip(Context &dc, DrawingOptions &rc, Geom::IntRect const &area) const
 {
     // don't bother if the object does not implement clipping (e.g. DrawingImage)
     if (!_canClip()) return;
     if (!_visible) return;
     if (!area.intersects(_bbox)) return;
 
-    dc.setSource(0,0,0,1);
+    dc.resetSource(1);
     dc.pushGroup();
     // rasterize the clipping path
     _clipItem(dc, rc, area);
@@ -1005,13 +937,13 @@ void DrawingItem::clip(DrawingContext &dc, Inkscape::RenderContext &rc, Geom::In
         dc.pushGroup();
         _clip->clip(dc, rc, area);
         dc.popGroupToSource();
-        dc.setOperator(CAIRO_OPERATOR_IN);
+        dc.set_operator(Cairo::Context::Operator::IN);
         dc.paint();
     }
     dc.popGroupToSource();
-    dc.setOperator(CAIRO_OPERATOR_OVER);
+    dc.set_operator(Cairo::Context::Operator::OVER);
     dc.paint();
-    dc.setSource(0,0,0,0);
+    dc.resetSource(0);
 }
 
 /**
@@ -1075,20 +1007,8 @@ DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, Geom::OptIntR
     return nullptr;
 }
 
-// For debugging
-Glib::ustring DrawingItem::name() const
-{
-    if (_item) {
-        if (_item->getId())
-            return _item->getId();
-        else
-            return "No object id";
-    } else {
-        return "No associated object";
-    }
-}
-
 // For debugging: Print drawing tree structure.
+/*
 void DrawingItem::recursivePrintTree(unsigned level) const
 {
     if (level == 0) {
@@ -1103,6 +1023,7 @@ void DrawingItem::recursivePrintTree(unsigned level) const
         i.recursivePrintTree(level + 1);
     }
 }
+*/
 
 /**
  * Marks the current visual bounding box of the item for redrawing.
@@ -1121,7 +1042,7 @@ void DrawingItem::_markForRendering()
 
     for (auto i = this; i; i = i->_parent) {
         if (i != this && i->_filter) {
-            i->_filter->area_enlarge(*dirty, i);
+            i->_filter->area_enlarge(*dirty, i->ctm());
         }
         if (i->_cache && i->_cache->surface) {
             i->_cache->surface->markDirty(*dirty);
@@ -1143,7 +1064,9 @@ void DrawingItem::_invalidateFilterBackground(Geom::IntRect const &area)
 {
     if (!_drawbox.intersects(area)) return;
 
-    if (_cache && _cache->surface && _filter && _filter->uses_background()) {
+    if (_cache && _cache->surface && _filter && (
+                _filter->uses_input(DrawingFilter::SLOT_BACKGROUND_IMAGE)
+             || _filter->uses_input(DrawingFilter::SLOT_BACKGROUND_ALPHA))) {
         _cache->surface->markDirty(area);
     }
 
@@ -1208,7 +1131,7 @@ double DrawingItem::_cacheScore()
         Geom::IntRect ref_area = Geom::IntRect::from_xywh(0, 0, 16, 16);
         Geom::IntRect test_area = ref_area;
         Geom::IntRect limit_area(0, INT_MIN, 16, INT_MAX);
-        _filter->area_enlarge(test_area, this);
+        _filter->area_enlarge(test_area, ctm());
         // area_enlarge never shrinks the rect, so the result of intersection below must be non-empty
         score *= (double)(test_area & limit_area)->area() / ref_area.area();
     }
@@ -1227,26 +1150,6 @@ double DrawingItem::_cacheScore()
 Geom::OptIntRect DrawingItem::_cacheRect() const
 {
     return _drawbox & _drawing.cacheLimit();
-}
-
-void apply_antialias(DrawingContext &dc, Antialiasing antialias)
-{
-    switch (antialias) {
-        case Antialiasing::None:
-            cairo_set_antialias(dc.raw(), CAIRO_ANTIALIAS_NONE);
-            break;
-        case Antialiasing::Fast:
-            cairo_set_antialias(dc.raw(), CAIRO_ANTIALIAS_FAST);
-            break;
-        case Antialiasing::Good:
-            cairo_set_antialias(dc.raw(), CAIRO_ANTIALIAS_GOOD);
-            break;
-        case Antialiasing::Best:
-            cairo_set_antialias(dc.raw(), CAIRO_ANTIALIAS_BEST);
-            break;
-        default:
-            g_assert_not_reached();
-    }
 }
 
 void propagate_antialias(SPShapeRendering shape_rendering, DrawingItem &item)

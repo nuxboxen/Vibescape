@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-#ifndef INKSCAPE_DISPLAY_DRAWINGITEM_PTR_H
-#define INKSCAPE_DISPLAY_DRAWINGITEM_PTR_H
+/**
+ * @file
+ * Smart pointers for drawing item objects for memory management.
+ *
+ * Copyright (C) 2025 Authors
+ * Released under GNU GPL v2+, read the file 'COPYING' for more information.
+ */
+#ifndef INKSCAPE_RENDERER_DRAWING_ITEM_PTR_H
+#define INKSCAPE_RENDERER_DRAWING_ITEM_PTR_H
 
 #include <memory>
 #include <type_traits>
 
-namespace Inkscape { class DrawingItem; }
+namespace Inkscape::Renderer { class DrawingItem; }
 
 /**
  * Deleter object which calls the unlink() method of DrawingItem to schedule deferred destruction.
@@ -15,7 +22,7 @@ struct UnlinkDeleter
     template <typename T>
     void operator()(T *t)
     {
-        static_assert(std::is_base_of_v<Inkscape::DrawingItem, T>);
+        static_assert(std::is_base_of_v<Inkscape::Renderer::DrawingItem, T>);
         t->unlink();
     }
 };
@@ -38,4 +45,4 @@ auto make_drawingitem(Args&&... args)
     return DrawingItemPtr<T>(new T(std::forward<Args>(args)...));
 };
 
-#endif // INKSCAPE_DISPLAY_DRAWINGITEM_PTR_H
+#endif // INKSCAPE_RENDERER_DRAWING_ITEM_PTR_H

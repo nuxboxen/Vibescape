@@ -530,6 +530,10 @@ Cairo::RefPtr<Cairo::Surface> Pixbuf::getSurface()
 {
     return Cairo::RefPtr<Cairo::Surface>(new Cairo::Surface(getSurfaceRaw(), false));
 }
+Cairo::RefPtr<Cairo::Surface> Pixbuf::getSurface() const
+{
+    return Cairo::RefPtr<Cairo::Surface>(new Cairo::Surface(getSurfaceRaw(), false));
+}
 
 /** Retrieves the original compressed data for the surface, if any.
  * The returned data belongs to the object and should not be freed. */

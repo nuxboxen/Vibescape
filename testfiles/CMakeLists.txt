@@ -95,6 +95,7 @@ set(TEST_SOURCES
     path-reverse-lpe-test
     preferences-test
     rebase-hrefs-test
+    renderer/drawing-svg-renderer-test
     stream-test
     style-elem-test
     style-internal-test
@@ -226,13 +227,12 @@ add_unit_tests(TEST_SOURCES
                             "renderer/pixel-filter-*-test.cpp"
                             "renderer/surface-filter-*-test.cpp"
                             "renderer/surface-test.cpp"
-                    EXTRA_LIBS renderer_unit_lib)
+                    EXTRA_LIBS renderer_unit_lib colors_unit_lib)
 
 include("${CMAKE_SOURCE_DIR}/src/renderer/drawing-filters/CMakeUnit.txt")
 get_drawing_filters_unit_lib()
 add_unit_tests(TEST_SOURCES "renderer/drawing-filter-*-test.cpp"
-                    SOURCES "mocks/util-units-filename.cpp"
-                    EXTRA_LIBS drawing_filters_unit_lib)
+                    EXTRA_LIBS renderer_unit_lib drawing_filters_unit_lib colors_unit_lib)
 
 include("${CMAKE_SOURCE_DIR}/src/renderer/drawing/CMakeUnit.txt")
 get_drawing_unit_lib()
@@ -241,8 +241,7 @@ add_unit_tests(TEST_SOURCES
                             "renderer/drawing-style-test.cpp"
                             "renderer/drawing-test-basics.cpp"
                             "renderer/drawing-tests/*.cpp"
-                    SOURCES "mocks/util-units-filename.cpp"
-                    EXTRA_LIBS drawing_unit_lib)
+                    EXTRA_LIBS renderer_unit_lib drawing_filters_unit_lib drawing_unit_lib colors_unit_lib libnrtype_unit_lib JPEG::JPEG)
 
 add_unit_test(css-syntactic-decomposition-test TEST_SOURCE "css-syntactic-decomposition-test.cpp"
                                                    SOURCES "css/syntactic-decomposition.cpp"

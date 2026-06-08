@@ -8,14 +8,20 @@
  */
 
 #include "util/units.h"
+#ifndef UNIT_TEST
 #include "io/resource.h"
+#endif
 
 namespace Inkscape::Util {
 
 std::string UnitTable::getUnitsFilename()
 {
+#ifdef UNIT_TEST
+    return INKSCAPE_SHARE_DIR "/ui/units.xml";
+#else
     using namespace Inkscape::IO::Resource;
     return get_filename(UIS, "units.xml", false, true);
+#endif
 }
 
 } // namespace Inkscape::Util

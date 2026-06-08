@@ -2,12 +2,8 @@
 /**
  * @file
  * SVG drawing for display.
- *//*
- * Authors:
- *   Krzysztof Kosiński <tweenk.pl@gmail.com>
- *   Johan Engelen <j.b.c.engelen@alumnus.utwente.nl>
  *
- * Copyright (C) 2011-2012 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
@@ -19,6 +15,7 @@
 #include "colors/manager.h"
 
 #include "renderer/context.h"
+#include "renderer/drawing/drawing-item.h"
 #include "renderer/pixel-filters/average-color.h"
 #include "renderer/surface.h"
 #include "renderer/threading.h"
@@ -65,7 +62,7 @@ void Drawing::setRenderMode(RenderMode mode)
         if (mode == _rendermode) return;
         _root->_markForRendering();
         _rendermode = mode;
-        _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+        _root->_markForUpdate(STATE_ALL, true);
         _clearCache();
     });
 }
@@ -86,7 +83,7 @@ void Drawing::setOutlineOverlay(bool outlineoverlay)
     defer([=, this] {
         if (outlineoverlay == _outlineoverlay) return;
         _outlineoverlay = outlineoverlay;
-        _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+        _root->_markForUpdate(STATE_ALL, true);
     });
 }
 
@@ -145,7 +142,7 @@ void Drawing::setFilterQuality(DrawingFilter::Quality quality)
     defer([=, this] {
         _filter_quality = quality;
         if (!(_rendermode == RenderMode::OUTLINE || _rendermode == RenderMode::NO_FILTERS)) {
-            _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+            _root->_markForUpdate(STATE_ALL, true);
             _clearCache();
         }
     });
@@ -157,7 +154,7 @@ void Drawing::setBlurQuality(DrawingFilter::BlurQuality quality)
         _blur_quality = quality;
         if (!(_rendermode == RenderMode::OUTLINE || _rendermode == RenderMode::NO_FILTERS)) {
             if (_root) {
-                _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+                _root->_markForUpdate(STATE_ALL, true);
             }
             _clearCache();
         }
@@ -170,7 +167,7 @@ void Drawing::setDithering(bool use_dithering)
         _use_dithering = use_dithering;
         #if CAIRO_VERSION >= CAIRO_VERSION_ENCODE(1, 18, 0)
         if (_rendermode != RenderMode::OUTLINE) {
-            _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+            _root->_markForUpdate(STATE_ALL, true);
             _clearCache();
         }
         #endif
@@ -191,7 +188,7 @@ void Drawing::setCacheLimit(Geom::OptIntRect const &rect)
         _cache_limit = rect;
         /*
         for (auto item : _cached_items) {
-            item->_markForUpdate(DrawingItem::STATE_CACHE, false);
+            item->_markForUpdate(STATE_CACHE, false);
         }
         */
     });
@@ -210,7 +207,7 @@ void Drawing::setAntialiasingOverride(std::optional<Antialiasing> antialiasing_o
 {
     defer([=, this] {
         _antialiasing_override = antialiasing_override;
-        _root->_markForUpdate(DrawingItem::STATE_ALL, true);
+        _root->_markForUpdate(STATE_ALL, true);
         _clearCache();
     });
 }
@@ -225,7 +222,7 @@ void Drawing::update(Geom::IntRect const &area, Geom::Affine const &affine, unsi
     if (_root) {
         _root->update(area, { affine }, flags, reset);
     }
-    if (flags & DrawingItem::STATE_CACHE) {
+    if (flags & STATE_CACHE) {
         // Process the updated cache scores.
         _pickItemsForCaching();
     }
@@ -241,7 +238,7 @@ void Drawing::render(Context &dc, Geom::IntRect const &area, unsigned flags) con
     };
     flags |= rendermode_to_renderflags(_rendermode);
 
-    dc.setAntialias(_antialiasing_override.value_or(Antialiasing(_root->_antialias)));
+    dc.setAntialiasing(_antialiasing_override.value_or(Antialiasing(_root->_antialias)));
     if (_clip) {
         dc.save();
         dc.path(*_clip * _root->_ctm);
@@ -321,7 +318,7 @@ Colors::Color Drawing::averageColor(Geom::IntRect const &area) const
     // TODO: Replace color_space with target color space useful for this average
     auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
     auto surface = std::make_shared<Surface>(area.dimensions(), 1, color_space);
-    auto dc = Context(surface, area);
+    auto dc = Context(surface, area.min());
     render(dc, area);
     return Colors::Color(color_space, surface->run_pixel_filter(PixelFilter::AverageColor()));
 }
@@ -345,20 +342,20 @@ Colors::Color Drawing::averageColor(Geom::PathVector const &path, bool evenodd) 
     // Build a mask of pixels to ignore
     auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
     auto mask = std::make_shared<Surface>(Geom::IntPoint(width, height), 1, alpha);
-    auto dc_mask = Context(mask, *area * affine);
+    auto dc_mask = Context(mask, (*area * affine).roundInwards()->min());
     dc_mask.scale(affine);
 
-    dc_mask.setFillRule(evenodd ? Cairo::Context::FillRule::EVEN_ODD : Cairo::Context::FillRule::WINDING);
+    dc_mask.set_fill_rule(evenodd ? Cairo::Context::FillRule::EVEN_ODD : Cairo::Context::FillRule::WINDING);
     dc_mask.path(path);
     dc_mask.clip();
     dc_mask.resetSource(1.0);
-    dc_mask.setOperator(Cairo::Context::Operator::SOURCE);
+    dc_mask.set_operator(Cairo::Context::Operator::SOURCE);
     dc_mask.paint();
 
     // Render the output, no need to clip as the mask will say what values to use
     auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
     auto image = std::make_shared<Surface>(Geom::IntPoint(width, height), 1, color_space);
-    auto dc = Context(image, *area * affine);
+    auto dc = Context(image, (*area * affine).roundInwards()->min());
     dc.scale(affine);
     render(dc, area->roundOutwards());
     return Colors::Color(color_space, image->run_pixel_filter(PixelFilter::AverageColor(), *mask));

@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /**
  * @file
- * SVG drawing for display.
- *//*
- * Authors:
- *   Krzysztof Kosiński <tweenk.pl@gmail.com>
+ * SVG drawing for rendering
  *
- * Copyright (C) 2011 Authors
+ * Copyright (C) 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
@@ -26,8 +23,9 @@
 #include "colors/color.h"
 #include "util/funclog.h"
 
+#include "drawing-style.h"
+#include "drawing-cache.h"
 #include "renderer/drawing/enums.h"
-#include "drawing-item.h"
 
 namespace Inkscape::Renderer {
 
@@ -48,7 +46,7 @@ public:
     void setRenderMode(RenderMode);
     void setColorMode(ColorMode);
     void setOutlineOverlay(bool);
-    void setGrayscaleMatrix(double[20]);
+    void setGrayscaleMatrix(double[20]) {} // Remove me
     void setOutlineColor(Colors::Color);
     void setClipOutlineColor(Colors::Color);
     void setMaskOutlineColor(Colors::Color);
@@ -79,7 +77,7 @@ public:
     Geom::OptIntRect const &cacheLimit() const { return _cache_limit; }
 
     void update(Geom::IntRect const &area = Geom::IntRect::infinite(), Geom::Affine const &affine = Geom::identity(),
-                unsigned flags = DrawingItem::STATE_ALL, unsigned reset = 0);
+                unsigned flags = STATE_ALL, unsigned reset = 0);
     void render(Context &dc, Geom::IntRect const &area, unsigned flags = 0) const;
     DrawingItem *pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags);
 
