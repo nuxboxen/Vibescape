@@ -113,8 +113,8 @@ struct OpHistoryEntry {
 class PdfParser {
 public:
 
-  // Constructor for regular output.
-    PdfParser(std::shared_ptr<PDFDoc> pdf_doc, SvgBuilder *builderA, Page *page, _POPPLER_CONST PDFRectangle *cropBox);
+    // Constructor for regular output.
+    PdfParser(std::shared_ptr<PDFDoc> pdf_doc, SvgBuilder *builderA, Page *page, const std::optional<PDFRectangle> &cropBox);
     // Constructor for a sub-page object.
     PdfParser(XRef *xrefA, SvgBuilder *builderA, Dict *resDict, _POPPLER_CONST PDFRectangle *box);
 

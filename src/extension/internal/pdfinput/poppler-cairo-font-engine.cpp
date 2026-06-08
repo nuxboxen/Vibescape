@@ -713,7 +713,7 @@ CairoType3Font *CairoType3Font::create(GfxFont *gfxFont, PDFDoc *doc, CairoFontE
         codeToGID[i] = 0;
         if (charProcs && (name = enc[i])) {
             for (int j = 0; j < charProcs->getLength(); j++) {
-                if (strcmp(name, charProcs->getKey(j)) == 0) {
+                if (std::string(charProcs->getKey(j)).compare(name) == 0) {
                     codeToGID[i] = j;
                 }
             }
