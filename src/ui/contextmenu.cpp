@@ -182,6 +182,7 @@ ContextMenu::ContextMenu(SPDesktop *desktop, SPObject *object, std::vector<SPIte
 
         gmenu_section = Gio::Menu::create();
         AppendItemFromAction(gmenu_section, "doc.page-new", _("_New Page"), "pages-add");
+        AppendItemFromAction(gmenu_section, "doc.page-duplicate", _("Duplicate Page"), "pages-duplicate");
         gmenu->append_section(gmenu_section);
 
         gmenu_section = Gio::Menu::create();

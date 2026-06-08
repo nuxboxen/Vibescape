@@ -93,6 +93,7 @@ public:
     SPPage *newPage(Geom::Rect rect, bool first_page = false);
     SPPage *newDesktopPage(Geom::Rect rect, bool first_page = false);
     SPPage *newDocumentPage(Geom::Rect rect, bool first_page = false);
+    SPPage *duplicatePage();
     void deletePage(SPPage *page, bool contents = false);
     void deletePage(bool contents = false);
     void resizePage(double width, double height);
