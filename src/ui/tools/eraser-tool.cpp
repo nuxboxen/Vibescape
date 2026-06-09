@@ -630,6 +630,17 @@ bool EraserTool::_doWork()
 
     std::vector<EraseTarget> to_erase = _findItemsToErase();
 
+    // In PATH_SPLIT mode, any selected item not touched by the eraser should stay selected
+    if (mode == EraserToolMode::PATH_SPLIT && was_selection) {
+        for (auto *selected : selection->items()) {
+            bool in_to_erase = std::any_of(to_erase.begin(), to_erase.end(),
+                [selected](EraseTarget const &t) { return t.item == selected; });
+            if (!in_to_erase) {
+                _survivers.push_back(selected);
+            }
+        }
+    }
+
     bool work_done = false;
     if (!to_erase.empty()) {
         selection->clear();
