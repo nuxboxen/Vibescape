@@ -162,6 +162,8 @@ public:
     void on_unit_changed();
 
 protected:
+    double convertValue(double old_value, Inkscape::Util::Unit const &old_unit, Inkscape::Util::Unit const &new_unit);
+
     UnitMenu  *_unit_menu;
 
     double _hundred_percent; // the length that corresponds to 100%, in px, for %-to/from-absolute conversions

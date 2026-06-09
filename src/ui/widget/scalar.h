@@ -31,6 +31,11 @@ class SpinButton;
 class Scalar : public Labelled
 {
 public:
+    // An arbitrary but plausible suggestion for min/max ranges. Not automatically applied,
+    // but rather is available for code to reference if they want a range but aren't picky.
+    static constexpr double COMMON_MIN = -1e6;
+    static constexpr double COMMON_MAX = 1e6;
+
     /**
      * Construct a Scalar Widget.
      *

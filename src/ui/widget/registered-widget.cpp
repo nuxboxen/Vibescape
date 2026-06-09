@@ -260,7 +260,7 @@ RegisteredScalarUnit::RegisteredScalarUnit(Glib::ustring const &label, Glib::ust
 
     setProgrammatically = false;
 
-    initScalar(-1e6, 1e6);
+    initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setUnit(rum.getUnitMenu()->getUnitAbbr());
     setDigits(2);
     _um = rum.getUnitMenu();
@@ -323,7 +323,7 @@ RegisteredScalar::RegisteredScalar(Glib::ustring const &label, Glib::ustring con
     init_parent(key, wr, repr_in, doc_in);
 
     setProgrammatically = false;
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_changed_connection = signal_value_changed().connect(sigc::mem_fun(*this, &RegisteredScalar::on_value_changed));
@@ -478,7 +478,7 @@ RegisteredInteger::RegisteredInteger(Glib::ustring const &label, Glib::ustring c
 {
     init_parent(key, wr, repr_in, doc_in);
 
-    setRange(0, 1e6);
+    setRange(0, Scalar::COMMON_MAX);
     setDigits(0);
     setIncrements(1, 10);
 
@@ -518,7 +518,7 @@ RegisteredTransformedPoint::RegisteredTransformedPoint(Glib::ustring const &labe
 {
     init_parent(key, wr, repr_in, doc_in);
 
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_x_changed_connection = signal_x_value_changed().connect(sigc::mem_fun(*this, &RegisteredTransformedPoint::on_value_changed));
@@ -580,7 +580,7 @@ RegisteredVector::RegisteredVector(Glib::ustring const &label, Glib::ustring con
 {
     init_parent(key, wr, repr_in, doc_in);
 
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_x_changed_connection = signal_x_value_changed().connect(sigc::mem_fun(*this, &RegisteredVector::on_value_changed));
@@ -659,7 +659,7 @@ RegisteredRandom::RegisteredRandom(Glib::ustring const &label, Glib::ustring con
     init_parent(key, wr, repr_in, doc_in);
 
     setProgrammatically = false;
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_changed_connection = signal_value_changed().connect(sigc::mem_fun(*this, &RegisteredRandom::on_value_changed));
