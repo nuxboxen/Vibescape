@@ -320,6 +320,13 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
         if (!is_bend && previous_shape_type == BEND_CLIPBOARD && shape == BEND_CLIPBOARD) {
             return;
         }
+
+        // Save original item and swap in the bend_item as the target for our various effects if we
+        // are in bend mode, since the bend_item will end up being the user visible object and we
+        // want to make sure it gains the new effects.
+        SPItem *orig_item = item;
+        item = is_bend ? bend_item : item;
+
         bool shape_applied = false;
         bool simplify = prefs->getInt(dc->getPrefsPath() + "/simplify", 0);
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
@@ -422,7 +429,7 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
             }
             case BEND_CLIPBOARD:
             {
-                gchar const *svgd = item->getRepr()->attribute("d");
+                gchar const *svgd = orig_item->getRepr()->attribute("d");
                 if(bend_item && (is<SPShape>(bend_item) || is<SPGroup>(bend_item))){
                     // If item is a SPRect, convert it to path first:
                     if (is<SPRect>(bend_item) ) {
@@ -436,7 +443,7 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
                             }
                         }
                     }
-                    bend_item->moveTo(item,false);
+                    bend_item->moveTo(orig_item, false);
                     bend_item->transform.setTranslation(Geom::Point());
                     spdc_apply_bend_shape(svgd, dc, bend_item);
                     dc->selection->add(bend_item);
@@ -460,13 +467,13 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
                     }
                 } else {
                     if(bend_item != nullptr && bend_item->getRepr() != nullptr){
-                        gchar const *svgd = item->getRepr()->attribute("d");
+                        gchar const *svgd = orig_item->getRepr()->attribute("d");
                         dc->selection->add(bend_item);
                         dc->selection->duplicate();
                         dc->selection->remove(bend_item);
                         bend_item = dc->selection->singleItem();
                         if(bend_item){
-                            bend_item->moveTo(item,false);
+                            bend_item->moveTo(orig_item, false);
                             Geom::Coord expansion_X = bend_item->transform.expansionX();
                             Geom::Coord expansion_Y = bend_item->transform.expansionY();
                             bend_item->transform = Geom::Affine(1,0,0,1,0,0);
