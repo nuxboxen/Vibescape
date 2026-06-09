@@ -19,6 +19,7 @@
 #include "libnrtype/Layout-TNG.h"
 #include "libnrtype/font-instance.h"
 #include "style.h"
+#include "style-text.h"
 
 namespace Inkscape::Extension::Internal::PdfBuilder {
 
@@ -56,15 +57,15 @@ std::optional<double> TextContext::get_softmask(double opacity) const
  */
 bool TextContext::set_text_style(std::shared_ptr<FontInstance> const &font, SPStyle *style)
 {
-    auto font_filename = font->GetFilename();
-    if (font_filename != last_font) {
-        if (auto font_id = _doc.get_font(font_filename, style->font_variation_settings)) {
+    if (auto ret = _doc.get_font(font, style->font_variation_settings)) {
+        auto &[key, font_id] = *ret;
+        if (key != last_font) {
             // Transformation has consumed the font size
-            _tx.cmd_Tf(*font_id, 1); // style->font_size.computed);
-            last_font = font_filename;
-        } else {
-            return false;
+            _tx.cmd_Tf(font_id, 1); // style->font_size.computed);
+            last_font = key;
         }
+    } else {
+        return false;
     }
     if (style->letter_spacing.set && style->letter_spacing.computed != last_letter_spacing) {
         _tx.cmd_Tc(style->letter_spacing.computed / 1000);

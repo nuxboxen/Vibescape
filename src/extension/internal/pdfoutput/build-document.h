@@ -22,6 +22,7 @@
 #include "remember-styles.h"
 #include "style-enums.h"
 
+class FontInstance;
 class SPIPaint;
 class SPAnchor;
 class SPItem;
@@ -119,7 +120,7 @@ public:
     std::optional<CapyPDF_GraphicsStateId> get_group_graphics_state(SPStyle const *style,
                                                                     std::optional<CapyPDF_TransparencyGroupId> sm);
     std::optional<CapyPDF_GraphicsStateId> get_shape_graphics_state(SPStyle const *style);
-    std::optional<CapyPDF_FontId> get_font(std::string const &filename, SPIFontVariationSettings &var);
+    std::optional<std::pair<std::string, CapyPDF_FontId>> get_font(std::shared_ptr<FontInstance> font, SPIFontVariationSettings &var);
 
     std::optional<capypdf::Color> get_paint(SPIPaint const &paint, SPStyle const *context_style,
                                             std::optional<double> opacity);
