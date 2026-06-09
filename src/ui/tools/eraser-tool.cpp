@@ -1425,18 +1425,7 @@ std::vector<SPItem *> EraserTool::_pathSplitErase(SPItem *item)
     using namespace Geom;
 
     auto *path = cast<SPPath>(item);
-    if (!path) {
-        // Attempt to convert non-path shapes (rects, ellipses, etc.) to path
-        Inkscape::XML::Node *new_repr = sp_selected_item_to_curved_repr(item, 0);
-        if (!new_repr) return {};
-        item->getRepr()->parent()->appendChild(new_repr);
-        item->deleteObject(true);
-        SPObject *new_obj = _desktop->getDocument()->getObjectByRepr(new_repr);
-        Inkscape::GC::release(new_repr);
-        path = cast<SPPath>(new_obj);
-        if (!path) return {};
-        item = cast<SPItem>(path);
-    };
+    if (!path) return {};
 
     auto const &curve = path->curve();
     if (!curve) return {};
