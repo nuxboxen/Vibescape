@@ -1640,55 +1640,27 @@ auto paint_to_item(const PaintKey& paint) {
 
 } // namespace
 
+// Note: This text panel used to have a fair amount of incomplete extra UI options. Text properties
+//  like font scaling, line height, styles, etc. But the UI never got properly hooked up to code
+//  and so it was removed. If you want to expand the features of the Text panel, you might be able
+//  to find some useful code in https://gitlab.com/inkscape/inkscape/-/merge_requests/7946
 class TextPanel : public details::AttributesPanel {
 public:
-    TextPanel(Glib::RefPtr<Gtk::Builder> builder) :
-        _font_size(get_widget<Widget::InkSpinButton>(builder, "text-font-scale")) {
-
-        // TODO - text panel
-        // add all fill paints widgets:
-        // _fill_paint.set_hexpand();
-        // _grid.add_row(_("Fills"), &_fill_paint);
-
+    TextPanel(Glib::RefPtr<Gtk::Builder> builder) {
         add_object_label();
         add_size_properties();
         _grid.add_gap();
         // add F&S for the main text element
         add_fill_and_stroke();
-        get_widget<Gtk::Box>(builder, "text-font-scale-box").append(_font_size_scale);
-        _font_size_scale.set_max_block_count(1);
-        _font_size_scale.set_hexpand();
-        _font_size_scale.set_adjustment(_font_size.get_adjustment());
-        add_header(_("Text"));
-        Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "text-main"), _grid);
-        _section_toggle = _grid.add_section(_("Typography"));
-        _section_widgets = Widget::reparent_properties(get_widget<Gtk::Grid>(builder, "text-secondary"), _grid);
         _grid.add_section_divider();
         add_filters(false);
-        add_lpes();
         add_name_properties();
         add_interactivity_properties();
-
-        _section_toggle->signal_clicked().connect([this] {
-            bool show = !_section_props_visibility;
-            show_section_properties(show);
-            Preferences::get()->setBool(_section_props_visibility.observed_path, show);
-        });
-        show_section_properties(_section_props_visibility);
-        _section_props_visibility.action = [this] {
-            show_section_properties(_section_props_visibility);
-        };
     }
 
 private:
-    void show_section_properties(bool expand) {
-        _section_widgets.set_visible(expand);
-        _grid.open_section(_section_toggle, expand);
-    }
-
     void update(SPObject* object) override {
         auto text = cast<SPText>(object);
-        _current_item = text;
         if (text) {
             // set title; there are various "text" types
             //todo: is text-in-a-shape a flow text?
@@ -1699,74 +1671,7 @@ private:
                 _title += C_("<text> on path", "on path");
             }
         }
-
-        auto spans = get_subselection();
-        // all paints:
-        // auto fills = spans.empty() ? collect_paints(text) : collect_paints(spans);
-        // update_paints(fills);
     }
-
-    void subselection_changed(const std::vector<SPItem*>& items) override {
-        auto spans = get_subselection();
-    }
-
-    std::set<PaintKey> collect_paints(SPText* text) {
-        if (!text) return {};
-
-        std::set<PaintKey> fills; // fill paints
-        for (auto obj : text) {
-            if (obj == _current_item) continue;
-
-            if (auto item = cast<SPItem>(obj)) {
-                auto fill = item->style->getFillOrStroke(true);
-                fills.insert(get_paint(fill));
-            }
-        }
-        return fills;
-    }
-
-    std::set<PaintKey> collect_paints(const std::vector<SPItem*>& spans) {
-        std::set<PaintKey> fills; // fill paints
-        for (auto item : spans) {
-            if (item == _current_item) continue;
-
-            auto fill = item->style->getFillOrStroke(true);
-            fills.insert(get_paint(fill));
-        }
-        return fills;
-    }
-
-    void update_paints(const std::set<PaintKey>& fills) {
-        if (fills.size() <= 1) {
-            // hide fill paints
-            //todo
-            _fill_paint.update_store(0, {});
-        }
-        else {
-            auto it = fills.begin();
-            _fill_paint.update_store(fills.size(), [&](auto index) {
-                return paint_to_item(*it++);
-            });
-        }
-    }
-
-    std::vector<SPItem*> get_subselection() {
-        if (!_desktop) return {};
-
-        if (auto tool = dynamic_cast<Tools::TextTool*>(_desktop->getTool())) {
-            return tool->get_subselection(false);
-        }
-
-        return {};
-    }
-
-    Widget::ScaleBar _font_size_scale;
-    Widget::InkSpinButton& _font_size;
-    SPText* _current_item = nullptr;
-    Gtk::Button* _section_toggle;
-    Widget::WidgetGroup _section_widgets;
-    GridViewList _fill_paint{GridViewList::ColorCompact};
-    Pref<bool> _section_props_visibility = {details::dlg_pref_path + "/options/show_typography_section"};
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -2521,13 +2426,9 @@ std::unique_ptr<details::AttributesPanel> ObjectAttributes::create_panel(int key
         case tag_of<SPPolyLine>: return std::make_unique<PolylinePanel>(_builder);
         case tag_of<SPPolygon>:  return std::make_unique<PolygonPanel>(_builder);
         case tag_of<SPGroup>:    return std::make_unique<GroupPanel>(_builder);
+        case tag_of<SPText>:     return std::make_unique<TextPanel>(_builder);
         case tag_of<SPUse>:      return std::make_unique<ClonePanel>(_builder);
     }
-
-    //TODO: those panels are not ready yet
-if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
-        if (key == tag_of<SPText>) return std::make_unique<TextPanel>(_builder); //todo: tref, tspan, textpath, flowtext?
-}
 
     return {};
 }
