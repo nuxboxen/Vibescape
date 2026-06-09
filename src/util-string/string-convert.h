@@ -2,26 +2,23 @@
 //
 // String conversion routines
 
-#ifndef STRINGCONVERT_H
-#define STRINGCONVERT_H
+#ifndef INKSCAPE_UTIL_STRING_STRING_CONVERT_H
+#define INKSCAPE_UTIL_STRING_STRING_CONVERT_H
 
 #include <string>
-#include <glib.h>
+#include <cstdint>
 
 namespace Inkscape {
 
 // Convert UTF8-encoded string to wide-character string
-std::wstring utf8_to_wstring(const std::string& str);
+std::wstring utf8_to_wstring(std::string const &str);
 
-// Convert nul-terminated wide string to UTF9-encoded string
-std::string wstring_to_utf8(const wchar_t* wstr);
-
-// Convert string of 'count' Unicode chars into UTF8-encoded string
-std::string wstring_to_utf8(const gunichar* wstr, unsigned int count);
+// Convert null-terminated wide string to UTF8-encoded string
+std::string wstring_to_utf8(wchar_t const *wstr);
 
 // Convert single Unicode character into UTF8-encoded string
-std::string unicode_char_to_utf8(unsigned int unicode);
+std::string unicode_char_to_utf8(uint32_t unicode);
 
-} // Inkscape
+} // namespace Inkscape
 
-#endif //STRINGCONVERT_H
+#endif // INKSCAPE_UTIL_STRING_STRING_CONVERT_H

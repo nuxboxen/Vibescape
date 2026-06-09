@@ -9,8 +9,7 @@
 
 #include "completion-popup.h"
 #include "ui/builder-utils.h"
-#include <locale>
-#include <codecvt>
+#include "util-string/string-convert.h"
 
 namespace Inkscape::UI::Widget {
 
@@ -109,9 +108,7 @@ bool CompletionPopup::onPopoverKeyPressed(unsigned keyval, unsigned /*keycode*/,
     if (!std::isalpha(ucode) && keyval != GDK_KEY_minus) {
         return false;
     }
-    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv1;
-    std::string charutf = conv1.to_bytes(ucode);
-    _menu_search += charutf;
+    _menu_search += unicode_char_to_utf8(ucode);
     _popover_menu.activate(_menu_search);
     return true;
 }
