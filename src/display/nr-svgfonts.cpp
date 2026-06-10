@@ -14,6 +14,7 @@
 
 #include "nr-svgfonts.h"
 
+#include <glib.h>
 #include <vector>
 #include <cairo.h>
 #include <2geom/pathvector.h>
@@ -44,13 +45,6 @@
 
 static cairo_user_data_key_t key;
 
-static cairo_status_t font_init_cb (cairo_scaled_font_t  *scaled_font,
-                                    cairo_t * /*cairo*/, cairo_font_extents_t *metrics){
-    cairo_font_face_t* face = cairo_scaled_font_get_font_face(scaled_font);
-    SvgFont* instance = static_cast<SvgFont*>(cairo_font_face_get_user_data(face, &key));
-    return instance->scaled_font_init(scaled_font, metrics);
-}
-
 static cairo_status_t font_text_to_glyphs_cb ( cairo_scaled_font_t  *scaled_font,
                                                const char           *utf8,
                                                int                  utf8_len,
@@ -75,7 +69,6 @@ static cairo_status_t font_render_glyph_cb (cairo_scaled_font_t  *scaled_font,
 
 UserFont::UserFont(SvgFont* instance){
     this->face = cairo_user_font_face_create ();
-    cairo_user_font_face_set_init_func          (this->face, font_init_cb);
     cairo_user_font_face_set_render_glyph_func  (this->face, font_render_glyph_cb);
     cairo_user_font_face_set_text_to_glyphs_func(this->face, font_text_to_glyphs_cb);
 
@@ -89,16 +82,6 @@ SvgFont::SvgFont(SPFont* spfont){
     this->font = spfont;
     this->missingglyph = nullptr;
     this->userfont = nullptr;
-}
-
-cairo_status_t
-SvgFont::scaled_font_init (cairo_scaled_font_t  */*scaled_font*/,
-                           cairo_font_extents_t */*metrics*/)
-{
-//TODO
-//  metrics->ascent  = .75;
-//  metrics->descent = .25;
-  return CAIRO_STATUS_SUCCESS;
 }
 
 unsigned int size_of_substring(const char* substring, gchar* str){
@@ -153,8 +136,8 @@ SvgFont::scaled_font_text_to_glyphs (cairo_scaled_font_t  */*scaled_font*/,
                                      int                  /*utf8_len*/,
                                      cairo_glyph_t        **glyphs,
                                      int                  *num_glyphs,
-                                     cairo_text_cluster_t **/*clusters*/,
-                                     int                  */*num_clusters*/,
+                                     cairo_text_cluster_t **clusters,
+                                     int                  *num_clusters,
                                      cairo_text_cluster_flags_t */*flags*/)
 {
     //This function receives a text string to be rendered. It then defines what is the sequence of glyphs that
@@ -163,50 +146,81 @@ SvgFont::scaled_font_text_to_glyphs (cairo_scaled_font_t  */*scaled_font*/,
     //It also determines the usage of the missing-glyph in portions of the string that does not match any of the declared glyphs.
 
     unsigned long i;
-    int count = 0;
+    int glyph_count = 0;
+    int cluster_count = 0;
     gchar* _utf8 = (gchar*) utf8;
-    unsigned int len;
 
-    bool missing;
-    //First we find out what's the number of glyphs needed.
-    while(g_utf8_get_char(_utf8)){
-        missing = true;
-        for (i=0; i < (unsigned long) this->glyphs.size(); i++){
-            if ( (len = size_of_substring(this->glyphs[i]->unicode.c_str(), _utf8)) ){
-                //TODO: store this cluster
-                _utf8+=len;
-                count++;
-                missing=false;
+    bool found_glyphs;
+
+    // First we determine the number of glyphs and clusters needed.
+    while (g_utf8_get_char(_utf8)) {
+        found_glyphs = false;
+
+        for (i = 0; i < (unsigned long)this->glyphs.size(); i++) {
+            if (unsigned int len = size_of_substring(this->glyphs[i]->unicode.c_str(), _utf8)) {
+                _utf8 += len;
+                glyph_count++;
+
+                found_glyphs = true;
                 break;
             }
         }
-        if (missing){
-            //TODO: store this cluster
-            _utf8++;
-            count++;
+
+        if (!found_glyphs) {
+            if (this->missingglyph != NULL) {
+                glyph_count++;
+            }
+
+            _utf8 = g_utf8_next_char(_utf8);
         }
+
+        cluster_count++;
     }
 
+    // We use that info to allocate memory for glyphs and clusters.
+    if (*num_glyphs < glyph_count) {
+        *glyphs = cairo_glyph_allocate(glyph_count);
+    }
 
-    //We use that info to allocate memory for the glyphs
-    *glyphs = (cairo_glyph_t*) malloc(count*sizeof(cairo_glyph_t));
+    *num_glyphs = glyph_count;
+
+    if (clusters != NULL) {
+        if (*num_clusters < cluster_count) {
+            *clusters = cairo_text_cluster_allocate(cluster_count);
+        }
+
+        *num_clusters = cluster_count;
+    }
 
     char* previous_unicode = nullptr; //This is used for kerning
     gchar* previous_glyph_name = nullptr; //This is used for kerning
 
-    count=0;
+    unsigned int cur_glyph = 0;
+    unsigned int cur_cluster = 0;
     double x=0, y=0;//These vars store the position of the glyph within the rendered string
     bool is_horizontal_text = true; //TODO
     _utf8 = (char*) utf8;
 
     double font_height = units_per_em();
-    while(g_utf8_get_char(_utf8)){
-        len = 0;
-        for (i=0; i < (unsigned long) this->glyphs.size(); i++){
+    while (gunichar ch = g_utf8_get_char(_utf8)) {
+        if (clusters != NULL) {
+            // Initialize the cluster of glyphs representing this character.
+            // g_unichar_to_utf8() returns the size of the given character.
+            (*clusters)[cur_cluster].num_bytes = g_unichar_to_utf8(ch, NULL);
+
+            // Adjusted below as needed for the number of glyphs in the cluster.
+            (*clusters)[cur_cluster].num_glyphs = 0;
+        }
+
+        bool found_glyphs = false;
+
+        for (i = 0; i < (unsigned long)this->glyphs.size(); i++){
             //check whether is there a glyph declared on the SVG document
             // that matches with the text string in its current position
-            if ( (len = size_of_substring(this->glyphs[i]->unicode.c_str(), _utf8)) ){
-                for(auto& node: font->children) {
+            if (unsigned int len = size_of_substring(this->glyphs[i]->unicode.c_str(), _utf8)) {
+                found_glyphs = true;
+
+                for (auto &node : font->children) {
                     if (!previous_unicode) {
                         break;
                     }
@@ -222,11 +236,12 @@ SvgFont::scaled_font_text_to_glyphs (cairo_scaled_font_t  */*scaled_font*/,
                         y -= (vkern->k / font_height);
                     }
                 }
+
                 previous_unicode = const_cast<char*>(this->glyphs[i]->unicode.c_str());//used for kerning checking
                 previous_glyph_name = const_cast<char*>(this->glyphs[i]->glyph_name.c_str());//used for kerning checking
-                (*glyphs)[count].index = i;
-                (*glyphs)[count].x = x;
-                (*glyphs)[count++].y = y;
+                (*glyphs)[cur_glyph].index = i;
+                (*glyphs)[cur_glyph].x = x;
+                (*glyphs)[cur_glyph++].y = y;
 
                 //advance glyph coordinates:
                 if (is_horizontal_text) {
@@ -238,25 +253,43 @@ SvgFont::scaled_font_text_to_glyphs (cairo_scaled_font_t  */*scaled_font*/,
                 } else {
                     y+=(this->font->vert_adv_y/font_height);
                 }
-                _utf8+=len; //advance 'len' bytes in our string pointer
-                //continue;
-                goto raptorz;
+
+                if (clusters != NULL) {
+                    (*clusters)[cur_cluster].num_glyphs++;
+                }
+
+                _utf8 += len; // advance 'len' bytes in our string pointer
+
+                break;
             }
         }
-    raptorz:
-        if (len==0){
-            (*glyphs)[count].index = i;
-            (*glyphs)[count].x = x;
-            (*glyphs)[count++].y = y;
 
-            //advance glyph coordinates:
-            if (is_horizontal_text) x+=(this->font->horiz_adv_x/font_height);//TODO: use here the height of the font
-            else y+=(this->font->vert_adv_y/font_height);//TODO: use here the "height" of the font
+        if (!found_glyphs) {
+            if (this->missingglyph != NULL) {
+                (*glyphs)[cur_glyph].index = i;
+                (*glyphs)[cur_glyph].x = x;
+                (*glyphs)[cur_glyph++].y = y;
+
+                if (clusters != NULL) {
+                    (*clusters)[cur_cluster].num_glyphs = 1;
+                }
+
+                // advance glyph coordinates:
+                if (is_horizontal_text) {
+                    // TODO: use here the height of the font
+                    x += this->font->horiz_adv_x / font_height;
+                } else {
+                    // TODO: use here the "height" of the font
+                    y += this->font->vert_adv_y / font_height;
+                }
+            }
 
             _utf8 = g_utf8_next_char(_utf8); //advance 1 char in our string pointer
         }
+
+        cur_cluster++;
     }
-    *num_glyphs = count;
+
     return CAIRO_STATUS_SUCCESS;
 }
 
@@ -335,7 +368,7 @@ SvgFont::scaled_font_render_glyph (cairo_scaled_font_t  */*scaled_font*/,
     // or using the d attribute of a glyph node.
     // pathv stores the path description from the d attribute:
     Geom::PathVector pathv;
-    
+
     auto glyphNode = cast<SPGlyph>(node);
     if (glyphNode && glyphNode->d) {
         pathv = sp_svg_read_pathv(glyphNode->d);
@@ -397,8 +430,10 @@ SvgFont::get_font_face(){
                 missingglyph = missing;
             }
         }
+
         this->userfont = new UserFont(this);
     }
+
     return this->userfont->face;
 }
 
@@ -421,7 +456,7 @@ double SvgFont::units_per_em() {
     }
     return units_per_em;
 }
-    
+
 /*
   Local Variables:
   mode:c++

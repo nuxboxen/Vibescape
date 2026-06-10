@@ -79,7 +79,7 @@ void SvgFontDrawingArea::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
         cr->paint();
         cr->restore();
         return;
-    } 
+    }
     cr->set_font_face( Cairo::RefPtr<Cairo::FontFace>(new Cairo::FontFace(_svgfont->get_font_face(), false /* does not have reference */)) );
     cr->set_font_size (_y-20);
     cr->move_to (10, 10);
@@ -108,7 +108,7 @@ void SvgGlyphRenderer::snapshot_vfunc(
     Glib::ustring glyph = _property_glyph.get_value();
     Cairo::TextExtents ext;
     cr->get_text_extents(glyph, ext);
-    cr->move_to(cell_area.get_x() + (cell_area.get_width() - ext.width) / 2, cell_area.get_y() + (cell_area.get_height() + ext.height) / 2);
+    cr->move_to(cell_area.get_x() + (cell_area.get_width() - ext.width) / 2, cell_area.get_y() + (cell_area.get_height() - ext.height) / 2);
 
     auto const selected = (flags & Gtk::CellRendererState::SELECTED) != Gtk::CellRendererState{};
     Gdk::RGBA fg;
@@ -652,7 +652,7 @@ void SvgFontsDialog::update_global_settings_tab(){
 void SvgFontsDialog::font_selected(SvgFont* svgfont, SPFont* spfont) {
     // in update
     auto scoped(_update.block());
-    
+
     first_glyph.update(spfont);
     second_glyph.update(spfont);
     kerning_preview.set_svgfont(svgfont);
@@ -1590,7 +1590,7 @@ void SvgFontsDialog::add_kerning_pair() {
             return false; // continue
         });
     }
-    
+
     DocumentUndo::done(getDocument(), RC_("Undo", "Add kerning pair"), Glib::ustring{});
 }
 
@@ -1786,7 +1786,7 @@ SvgFontsDialog::~SvgFontsDialog() = default;
 void SvgFontsDialog::documentReplaced()
 {
     _defs_observer_connection.disconnect();
-    
+
     if (auto document = getDocument()) {
         _defs_observer.set(document->getDefs());
         _defs_observer_connection = _defs_observer.signal_changed().connect([this](auto, auto){ update_fonts(false); });
