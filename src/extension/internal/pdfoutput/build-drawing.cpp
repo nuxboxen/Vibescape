@@ -83,7 +83,12 @@ void DrawContext::paint_item(SPItem const *item, Geom::Affine const &tr, SPStyle
         return;
     }
 
-    auto style_map = _doc.paint_memory().get_ifset(item->style);
+    // Normally groups inherit from their parent, PDF and SVG are the same. But markers don't exist
+    // in PDF land, so their special style handling which does NOT inherit must be a special case.
+    auto style_map = is<SPMarker>(item)
+        ? _doc.paint_memory().get_changes(item->style)
+        : _doc.paint_memory().get_ifset(item->style);
+
     auto style_scope = _doc.paint_memory().remember(style_map);
     auto resolution = item->isFiltered() ? _doc.get_filter_resolution() : 0;
 
@@ -272,7 +277,7 @@ void DrawContext::paint_shape(SPShape const *shape, SPStyle const *context_style
                 }
                 break;
             case PAINT_MARKERS:
-                // Markers can still be visible is no_stroke is true
+                // Markers can still be visible if no_stroke is true
                 for (auto [loc, marker, tr] : shape->get_markers()) {
                     // Isolate each marker render
                     if (auto item_id = _doc.item_to_transparency_group(marker, style, _soft_mask)) {

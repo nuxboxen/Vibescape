@@ -315,7 +315,7 @@ std::vector<std::vector<Glib::ustring>> hint_data_output =
     {"app.export-ignore-filters",     N_("Enter 1/0 for Yes/No to export ignoring filters")              },
     {"app.export-text-to-path",       N_("Enter 1/0 for Yes/No to convert text to path on export")       },
     {"app.export-ps-level",           N_("Enter integer number 2 or 3 for PS Level")                     },
-    {"app.export-pdf-version",        N_("Enter string for PDF Version, e.g. 1.4 or 1.5")                },
+    {"app.export-pdf-version",        N_("Enter string for PDF Version, e.g. 2.0")                       },
     {"app.export-page",               N_("Enter string for page numbers e.g. '1', '1-3' or '2,4'")       },
     {"app.export-latex",              N_("Enter 1/0 for Yes/No to export to PDF and LaTeX")              },
     {"app.export-use-hints",          N_("Enter 1/0 for Yes/No to use export hints from document")       },
