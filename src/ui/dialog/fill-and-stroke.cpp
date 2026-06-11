@@ -433,16 +433,26 @@ void FillAndStroke::desktopReplaced()
 
     if (_fill_switch) {
         _fill_switch->set_desktop(getDesktop());
-        _fill_switch->set_document(getDesktop() ? getDesktop()->getDocument() : nullptr);
     }
     if (_stroke_switch) {
         _stroke_switch->set_desktop(getDesktop());
-        _stroke_switch->set_document(getDesktop() ? getDesktop()->getDocument() : nullptr);
     }
     if (strokeStyleWdgt) {
         strokeStyleWdgt->setDesktop(getDesktop());
     }
     _subject.setDesktop(getDesktop());
+
+    documentReplaced();
+}
+
+void FillAndStroke::documentReplaced()
+{
+    if (_fill_switch) {
+        _fill_switch->set_document(getDesktop() ? getDesktop()->getDocument() : nullptr);
+    }
+    if (_stroke_switch) {
+        _stroke_switch->set_document(getDesktop() ? getDesktop()->getDocument() : nullptr);
+    }
 }
 
 void FillAndStroke::_onSwitchPage(Gtk::Widget * page, guint pagenum)

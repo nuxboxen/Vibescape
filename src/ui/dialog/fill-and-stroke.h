@@ -44,6 +44,7 @@ public:
     ~FillAndStroke() final;
 
     void desktopReplaced() final;
+    void documentReplaced() final;
 
     void showPageFill();
     void showPageStrokePaint();
