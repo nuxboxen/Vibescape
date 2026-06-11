@@ -165,8 +165,8 @@ static char const preamble[] =
 "%% Alternatively, one can specify\n"
 "%%   \\graphicspath{{<path to file>/}}\n"
 "%% \n"
-"%% For more information, please see info/svg-inkscape on CTAN:\n"
-"%%   http://tug.ctan.org/tex-archive/info/svg-inkscape\n"
+"%% For more information, please see svg-inkscape on CTAN:\n"
+"%%   https://ctan.org/pkg/svg-inkscape\n"
 "%%\n"
 "\\begingroup%\n"
 "  \\makeatletter%\n"
@@ -271,7 +271,7 @@ void LaTeXTextRenderer::sp_text_render(SPText *textobj)
         g_warning("LaTeXTextRenderer::sp_text_render: baselineAnchorPoint unset, text position will be wrong. Please report the issue.");
     }
 
-    Inkscape::Colors::Color color(0x0);
+    Inkscape::Colors::Color color(0xff); // default to full opacity black
     if (style->fill.set && style->fill.isColor()) {
         color = style->fill.getColor();
         color.addOpacity(style->fill_opacity.as_double());
