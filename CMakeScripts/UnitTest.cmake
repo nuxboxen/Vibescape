@@ -4,7 +4,7 @@
 add_custom_target(unit_tests)
 
 function(make_target_unit_testable target_name)
-    target_compile_definitions(${target_name} PRIVATE "-D_GLIBCXX_ASSERTIONS")
+    target_compile_definitions(${target_name} PRIVATE "-D_GLIBCXX_ASSERTIONS" "-DINKSCAPE_UNIT_TEST")
     target_compile_options(${target_name} PRIVATE "-fno-omit-frame-pointer" "-UNDEBUG")
     if(TESTS_WITH_ASAN)
         target_compile_options(${target_name} PRIVATE "-fsanitize=address")

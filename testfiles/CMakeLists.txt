@@ -91,7 +91,6 @@ set(TEST_SOURCES
     object-set-test
     object-style-test
     page-management
-    path-boolop-test
     path-reverse-lpe-test
     preferences-test
     rebase-hrefs-test
@@ -180,10 +179,10 @@ add_unit_tests(TEST_SOURCES "svg-length-test.cpp"
                             "svg/svg-length.cpp"
                             "svg/stringstream.cpp"
                             "svg/strip-trailing-zeros.cpp"
+                            "util/numeric/precision.cpp"
                             "util/units.cpp"
                             # MOCK object files to unitise these tests
                             "mocks/util-units-filename.cpp"
-                            "mocks/util-numeric-precision.cpp"
                     EXTRA_LIBS GLibmm::GLibmm 2Geom::2geom)
 
 include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
@@ -227,6 +226,11 @@ add_unit_tests(TEST_SOURCES "colors/cms-profile-test.cpp"
                             "colors/spaces-xyz-test.cpp"
                             "colors/utils-test.cpp"
                  EXTRA_LIBS colors_unit_lib)
+
+include("${CMAKE_SOURCE_DIR}/src/path/CMakeUnit.txt")
+get_path_unit_lib()
+add_unit_tests(TEST_SOURCES "path/path-boolop-test.cpp"
+                 EXTRA_LIBS path_unit_lib)
 
 add_unit_test(css-syntactic-decomposition-test TEST_SOURCE "css-syntactic-decomposition-test.cpp"
                                                    SOURCES "css/syntactic-decomposition.cpp"

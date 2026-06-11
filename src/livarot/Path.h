@@ -437,13 +437,13 @@ public:
   // last control point before the command i (i included)
   // used when dealing with quadratic bezier spline, cause these can contain arbitrarily many commands
   const Geom::Point PrevPoint (const int i) const;
-  
+
   // dash the polyline
   // the result is stored in the polyline, so you lose the original. make a copy before if needed
   void  DashPolyline(float head,float tail,float body,int nbD, const float dashs[],bool stPlain,float stOffset);
 
-  void  DashPolylineFromStyle(SPStyle *style, float scale, float min_len);
-  
+  void  DashPolyline(std::vector<double> array_values, double offset, float scale, float min_len);
+
   //utilitaire pour inkscape
 
   /**

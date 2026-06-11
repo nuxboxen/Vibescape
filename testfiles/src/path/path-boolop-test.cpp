@@ -1,28 +1,50 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include <gtest/gtest.h>
+
+#include <2geom/pathvector.h>
+#include <2geom/svg-path-parser.h>
 #include <2geom/svg-path-writer.h>
+
 #include "path/path-boolop.h"
-#include "svg/svg.h"
+
+// This functionality is duplicated from svg/svg-path.cpp, which ultimately
+// pulls in preferences. We avoid this by not writing the path on exception.
+Geom::PathVector read_pathv(const char *str)
+{
+    Geom::PathVector pathv;
+    if (!str) {
+        return pathv; // return empty pathvector when str == NULL
+    }
+
+    Geom::PathBuilder builder(pathv);
+    Geom::SVGPathParser parser(builder);
+    parser.setZSnapThreshold(Geom::EPSILON);
+
+    parser.parse(str);
+
+    return pathv;
+}
 
 class PathBoolopTest : public ::testing::Test
 {
 public:
-    Geom::PathVector const rectangle_bigger = sp_svg_read_pathv("M 0,0 L 0,2 L 2,2 L 2,0 z");
-    Geom::PathVector const rectangle_smaller = sp_svg_read_pathv("M 0.5,0.5 L 0.5,1.5 L 1.5,1.5 L 1.5,0.5 z");
-    Geom::PathVector const rectangle_outside = sp_svg_read_pathv("M 0,1.5 L 0.5,1.5 L 0.5,2.5 L 0,2.5 z");
-    Geom::PathVector const reference_union = sp_svg_read_pathv("M 0,0 L 0,1.5 L 0,2 L 0,2.5 L 0.5,2.5 L 0.5,2 L 2,2 L 2,0 L 0,0 z");
-    Geom::PathVector const empty = sp_svg_read_pathv("");
+    Geom::PathVector const rectangle_bigger = read_pathv("M 0,0 L 0,2 L 2,2 L 2,0 z");
+    Geom::PathVector const rectangle_smaller = read_pathv("M 0.5,0.5 L 0.5,1.5 L 1.5,1.5 L 1.5,0.5 z");
+    Geom::PathVector const rectangle_outside = read_pathv("M 0,1.5 L 0.5,1.5 L 0.5,2.5 L 0,2.5 z");
+    Geom::PathVector const reference_union =
+        read_pathv("M 0,0 L 0,1.5 L 0,2 L 0,2.5 L 0.5,2.5 L 0.5,2 L 2,2 L 2,0 L 0,0 z");
+    Geom::PathVector const empty = read_pathv("");
 
     // shapes to test fill rules
-    Geom::PathVector const star = sp_svg_read_pathv("M 0,10 20,0 15,25 5,0 25,15 z");
+    Geom::PathVector const star = read_pathv("M 0,10 20,0 15,25 5,0 25,15 z");
     Geom::PathVector const star_odd_even =
-        sp_svg_read_pathv("M 5 0 L 7.5 6.25 L 11 4.5 z M 11 4.5 L 18.04296875 9.783203125 L 20 0 z M 18.04296875 "
-                          "9.783203125 L 17.30859375 13.4609375 L 25 15 z M 17.30859375 13.4609375 L 9.783203125 "
-                          "11.95703125 L 15 25 z M 9.783203125 11.95703125 L 7.5 6.25 L 0 10 z");
+        read_pathv("M 5 0 L 7.5 6.25 L 11 4.5 z M 11 4.5 L 18.04296875 9.783203125 L 20 0 z M 18.04296875 "
+                   "9.783203125 L 17.30859375 13.4609375 L 25 15 z M 17.30859375 13.4609375 L 9.783203125 "
+                   "11.95703125 L 15 25 z M 9.783203125 11.95703125 L 7.5 6.25 L 0 10 z");
     Geom::PathVector const star_non_zero =
-        sp_svg_read_pathv("M 5 0 L 7.5 6.25 L 0 10 L 9.783203125 11.95703125 L 15 25 L 17.30859375 13.4609375 L 25 15 "
-                          "L 18.04296875 9.783203125 L 20 0 L 11 4.5 z");
-    Geom::PathVector const star_bbox = sp_svg_read_pathv("M 0,0 L 0,25 L 25,25 L 25,0 z");
+        read_pathv("M 5 0 L 7.5 6.25 L 0 10 L 9.783203125 11.95703125 L 15 25 L 17.30859375 13.4609375 L 25 15 "
+                   "L 18.04296875 9.783203125 L 20 0 L 11 4.5 z");
+    Geom::PathVector const star_bbox = read_pathv("M 0,0 L 0,25 L 25,25 L 25,0 z");
 
     static void comparePaths(Geom::PathVector const &result, Geom::PathVector const &reference)
     {

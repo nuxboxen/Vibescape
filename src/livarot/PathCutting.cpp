@@ -18,6 +18,8 @@
 #include <cstdio>
 #include <vector>
 
+#include <glib.h>
+
 #include <2geom/pathvector.h>
 #include <2geom/point.h>
 #include <2geom/affine.h>
@@ -25,7 +27,6 @@
 #include <2geom/curves.h>
 
 #include "Path.h"
-#include "style.h"
 #include "livarot/path-description.h"
 #include "helper/geom-curves.h"
 
@@ -55,22 +56,22 @@ void  Path::DashPolyline(float head,float tail,float body,int nbD, const float d
   }
 }
 
-void  Path::DashPolylineFromStyle(SPStyle *style, float scale, float min_len)
+void  Path::DashPolyline(std::vector<double> array_values, double offset, float scale, float min_len)
 {
-    if (style->stroke_dasharray.values.empty() || !style->stroke_dasharray.is_valid()) return;
-
     double dlen = 0.0;
     // Find total length
-    for (auto & value : style->stroke_dasharray.values) {
-        dlen += value.value * scale;
+    for (auto & value : array_values) {
+        dlen += value * scale;
     }
+
     if (dlen >= min_len) {
         // Extract out dash pattern (relative positions)
-        double dash_offset = style->stroke_dashoffset.value * scale;
-        size_t n_dash = style->stroke_dasharray.values.size();
+        double dash_offset = offset * scale;
+
+        size_t n_dash = array_values.size();
         std::vector<double> dash(n_dash);
         for (unsigned i = 0; i < n_dash; i++) {
-            dash[i] = style->stroke_dasharray.values[i].value * scale;
+            dash[i] = array_values[i] * scale;
         }
 
         // Convert relative positions to absolute positions
