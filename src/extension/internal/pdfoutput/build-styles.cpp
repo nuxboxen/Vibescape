@@ -15,6 +15,7 @@
 #include "colors/color.h"
 #include "colors/spaces/cms.h"
 #include "colors/spaces/cmyk.h"
+#include "object/sp-gradient.h"
 #include "object/sp-paint-server.h"
 #include "style.h"
 
@@ -332,7 +333,10 @@ std::optional<capypdf::Color> Document::get_paint(SPIPaint const &paint, SPStyle
 
     capypdf::Color out;
     if (paint.isPaintserver()) {
-        if (auto pattern_id = get_pattern(paint.href ? paint.href->getObject() : nullptr, opacity)) {
+        auto swatch = cast<SPGradient>(paint.href ? paint.href->getObject() : nullptr);
+        if (swatch && swatch->isSolid()) {
+            return get_color(swatch->getPreviewAverageColor(), opacity);
+        } else if (auto pattern_id = get_pattern(paint.href ? paint.href->getObject() : nullptr, opacity)) {
             out.set_pattern(*pattern_id);
         } else {
             g_warning("Couldn't generate pattern for fill '%s'", paint.get_value().c_str());
