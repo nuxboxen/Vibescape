@@ -28,8 +28,6 @@
 #include <string>                              // for string
 #include <vector>                              // for vector
 
-#include <boost/ptr_container/ptr_list.hpp>    // for ptr_list
-
 #include <giomm/simpleactiongroup.h>           // for SimpleActionGroup
 #include <glib.h>                              // for GQuark, gboolean, gchar
 #include <glibmm/refptr.h>                     // for RefPtr
@@ -479,6 +477,7 @@ private:
     using ReconstructionFinish = sigc::signal<void ()>;
     using CommitSignal = sigc::signal<void ()>;
     using BeforeCommitSignal = sigc::signal<void ()>; // allow to add actions berfore commit to include in undo
+    using BulkChange = sigc::signal<void (bool)>;
 
     using IDChangedSignalMap = std::map<GQuark, SPDocument::IDChangedSignal>;
     using ResourcesChangedSignalMap = std::map<GQuark, SPDocument::ResourcesChangedSignal>;
@@ -492,6 +491,7 @@ private:
     SPDocument::ReconstructionFinish  _reconstruction_finish_signal;
     SPDocument::CommitSignal commit_signal; // Used by friend Inkscape::DocumentUndo
     SPDocument::BeforeCommitSignal before_commit_signal; // Used by friend Inkscape::DocumentUndo
+    SPDocument::BulkChange _bulk_change_signal;
 
     sigc::signal<void ()> destroySignal;
     sigc::signal<void ()> _saved_or_modified_signal;
@@ -516,6 +516,7 @@ public:
     sigc::connection connectReconstructionStart(ReconstructionStart::slot_type slot, bool first = false);
     sigc::connection connectReconstructionFinish(ReconstructionFinish::slot_type slot);
     sigc::connection connectSavedOrModified(sigc::slot<void ()> &&slot);
+    sigc::connection connectBulkChange(sigc::slot<void (bool)> &&slot);
 
     /* Resources */
     std::map<std::string, std::vector<SPObject *> > resources;
@@ -524,6 +525,7 @@ public:
     void _emitModified(unsigned int object_modified_tag = 0);  // Used by SPItem
     void emitReconstructionStart();
     void emitReconstructionFinish();
+    void emitBulkChange(bool suppress);
 };
 
 /*

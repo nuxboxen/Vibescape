@@ -2448,6 +2448,11 @@ sigc::connection SPDocument::connectSavedOrModified(sigc::slot<void ()> &&slot)
     return _saved_or_modified_signal.connect(std::move(slot));
 }
 
+sigc::connection SPDocument::connectBulkChange(sigc::slot<void(bool)> &&slot)
+{
+    return _bulk_change_signal.connect(std::move(slot));
+}
+
 void SPDocument::_emitModified(unsigned int object_modified_tag) {
     static guint const flags = SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_CHILD_MODIFIED_FLAG | SP_OBJECT_PARENT_MODIFIED_FLAG;
     root->emitModified(object_modified_tag);
@@ -2475,6 +2480,11 @@ SPDocument::emitReconstructionFinish()
     // Reference to the old persp3d object is invalid after reconstruction.
     initialize_current_persp3d();
 **/
+}
+
+void SPDocument::emitBulkChange(bool suppress)
+{
+    _bulk_change_signal.emit(suppress);
 }
 
 void SPDocument::set_reference_document(SPDocument* document) {

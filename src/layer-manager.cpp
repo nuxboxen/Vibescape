@@ -20,6 +20,7 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include <ranges>
 #include <set>
 
 #include <sigc++/functors/mem_fun.h>
@@ -312,7 +313,7 @@ static SPObject *next_sibling_layer(SPObject *layer) {
     if (layer->parent == nullptr) {
       return nullptr;
     }
-    SPObject::ChildrenList &list = layer->parent->children;
+    auto &list = layer->parent->children;
     auto l = std::find_if(++list.iterator_to(*layer), list.end(), &is_layer);
     return l != list.end() ? &*l : nullptr;
 }
@@ -322,10 +323,10 @@ static SPObject *next_sibling_layer(SPObject *layer) {
  *  @returns NULL if there are no further layers under a parent
  */
 static SPObject *previous_sibling_layer(SPObject *layer) {
-    SPObject::ChildrenList &list = layer->parent->children;
-    auto start = SPObject::ChildrenList::reverse_iterator(list.iterator_to(*layer));
-    auto l = std::find_if(start, list.rend(), &is_layer);
-    return l != list.rend() ? &*l : nullptr;
+    auto &list = layer->parent->children;
+    auto rev_view = std::ranges::subrange(list.begin(), list.iterator_to(*layer)) | std::views::reverse;
+    auto l = std::ranges::find_if(rev_view, &is_layer);
+    return l != rev_view.end() ? &*l : nullptr;
 }
 
 /** Finds the first child of a \a layer
@@ -349,9 +350,9 @@ static SPObject *first_descendant_layer(SPObject *layer) {
  *  @returns NULL if layer has no sublayers
  */
 static SPObject *last_child_layer(SPObject *layer) {
-    auto& list = layer->children;
-    auto l = std::find_if(list.rbegin(), list.rend(), &is_layer);
-    return l != list.rend() ? &*l : nullptr;
+    auto rev_view = layer->children | std::views::reverse;
+    auto l = std::ranges::find_if(rev_view, &is_layer);
+    return l != rev_view.end() ? &*l : nullptr;
 }
 
 static SPObject *last_elder_layer(SPObject *root, SPObject *layer) {

@@ -15,9 +15,11 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include <memory>
 #include <set>
 #include <glibmm/ustring.h>
 #include "util/const_char_ptr.h"
+#include "util/ordered-list.h"
 #include "xml/node-observer.h"
 /* SPObject flags */
 
@@ -72,8 +74,6 @@ inline unsigned cascade_flags(unsigned flags)
 
 #include <vector>
 #include <cassert>
-#include <cstddef>
-#include <boost/intrusive/list.hpp>
 #include <2geom/point.h> // Used for dpi only
 #include <sigc++/connection.h>
 #include <sigc++/functors/slot.h>
@@ -109,6 +109,14 @@ public:
     SPIXmlSpace(): set(0), value(SP_XML_SPACE_DEFAULT) {};
     unsigned int set : 1;
     unsigned int value : 1;
+};
+
+// Helper for determining whether this `SPObject` counts as `SPItem`
+// to support fast `SPItem` indexing in `OrderedList`.
+struct SPItemAggregate
+{
+    using value_type = unsigned;
+    static value_type contribution(SPObject const &item);
 };
 
 /*
@@ -195,6 +203,13 @@ private:
      * The value of the `xml:lang` or `lang` attribute, if set.
      */
     std::optional<Glib::ustring> _lang_attribute;
+
+    /** 
+     * Fast children membership check helper.
+     * Lazily evaluated to anticipate many "leaf" objects with no children.
+     */
+    class ReprMap;
+    std::unique_ptr<ReprMap> _reprmap;
 
 public:
     int refCount{1};
@@ -917,18 +932,10 @@ protected:
 
     virtual Inkscape::XML::Node *write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr, unsigned int flags);
 
-    typedef boost::intrusive::list_member_hook<> ListHook;
-    ListHook _child_hook;
+    Inkscape::Util::OrderedListNode<SPItemAggregate> _child_hook;
 
 public:
-    using ChildrenList = boost::intrusive::list<
-        SPObject,
-        boost::intrusive::member_hook<
-            SPObject,
-            ListHook,
-            &SPObject::_child_hook
-        >>;
-    ChildrenList children;
+    Inkscape::Util::OrderedList<SPObject, &SPObject::_child_hook> children;
     virtual void read_content();
 
     void recursivePrintTree(unsigned level = 0); // For debugging

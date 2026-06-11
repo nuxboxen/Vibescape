@@ -173,6 +173,19 @@ void DrawingItem::prependChild(DrawingItem *item)
     });
 }
 
+void DrawingItem::insertChildAtZ(DrawingItem *item, unsigned zorder)
+{
+    assert(item->_child_type == ChildType::ORPHAN);
+    item->_parent = this;
+    item->_child_type = ChildType::NORMAL;
+
+    defer([=, this] {
+        _children.insert_at(*item, zorder);
+        item->_state = STATE_ALL;
+        item->_markForUpdate(STATE_ALL, true);
+    });
+}
+
 // Clear this node's ordinary children, deleting them and their descendants without otherwise changing them in any way.
 void DrawingItem::clearChildren()
 {
@@ -408,12 +421,8 @@ void DrawingItem::setZOrder(unsigned zorder)
     if (_child_type != ChildType::NORMAL) return;
 
     defer([=, this] {
-        auto it = _parent->_children.iterator_to(*this);
-        _parent->_children.erase(it);
-
-        auto it2 = _parent->_children.begin();
-        std::advance(it2, std::min<unsigned>(zorder, _parent->_children.size()));
-        _parent->_children.insert(it2, *this);
+        _parent->_children.erase(*this);
+        _parent->_children.insert_at(*this, zorder);
         _markForRendering();
     });
 }
@@ -1282,8 +1291,7 @@ void DrawingItem::unlink()
 
         switch (_child_type) {
             case ChildType::NORMAL: {
-                auto it = _parent->_children.iterator_to(*this);
-                _parent->_children.erase(it);
+                _parent->_children.erase(*this);
                 break;
             }
             case ChildType::CLIP:

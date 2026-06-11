@@ -13,8 +13,12 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include <cstddef>
+#include <cstdint>
 #include <gtest/gtest.h>
+#include <string>
 #include "util/longest-common-suffix.h"
+#include "util/ordered-list.h"
 #include "util/parse-int-range.h"
 #include "util/delete-with.h"
 
@@ -149,6 +153,118 @@ TEST(UtilTest, DeleteWithTest)
         ASSERT_EQ(flag, false);
     }
     ASSERT_EQ(flag, false);
+}
+
+namespace {
+
+struct MyObject;
+struct LengthAggregate
+{
+    using value_type = uint16_t;
+    static value_type contribution(MyObject const &obj);
+};
+
+struct CoolClubAggregate
+{
+    using value_type = size_t;
+    static value_type contribution(MyObject const &obj);
+};
+
+struct MyObject
+{
+    Inkscape::Util::OrderedListNode<LengthAggregate, CoolClubAggregate> _hook;
+    uint16_t length;
+    std::string club;
+};
+
+LengthAggregate::value_type LengthAggregate::contribution(MyObject const &obj)
+{
+    return obj.length;
+};
+
+CoolClubAggregate::value_type CoolClubAggregate::contribution(MyObject const &obj)
+{
+    return obj.club.starts_with("cool");
+}
+
+} // namespace
+
+TEST(UtilTest, OrderedListTest)
+{
+    Inkscape::Util::OrderedList<MyObject, &MyObject::_hook> list;
+    ASSERT_EQ(list.empty(), true);
+    ASSERT_EQ(list.size(), 0);
+
+    MyObject a = {.length = 5, .club = "cows"};
+    MyObject b = {.length = 1, .club = "coolBirds"};
+    MyObject c = {.length = 0, .club = ""};
+    MyObject d = {.length = 3, .club = "cool horses"};
+
+    list.push_back(a);
+    list.push_front(b);
+    /**
+     * Item view        : [ba]
+     * Length view      : [baaaaa]
+     * CoolClub view    : [b]
+     */
+    ASSERT_EQ(list.empty(), false);
+    ASSERT_EQ(list.size(), 2);
+    ASSERT_EQ(list.atIndex(0), &b);
+    ASSERT_EQ(list.atIndex(1), &a);
+    ASSERT_EQ(list.getIndex(a), 1);
+    ASSERT_EQ(list.getIndex(b), 0);
+    ASSERT_EQ(list.getIndex<LengthAggregate>(a), 1);
+    ASSERT_EQ(list.atIndex<LengthAggregate>(0), &b);
+    ASSERT_EQ(list.atIndex<LengthAggregate>(1), &a);
+    ASSERT_EQ(list.atIndex<LengthAggregate>(5), &a);
+    ASSERT_EQ(list.atIndex<LengthAggregate>(6), nullptr);
+    ASSERT_EQ(list.atIndex<CoolClubAggregate>(0), &b);
+
+    list.insert_after(a, d);
+    list.insert_at(c, 2);
+    /**
+     * Item view        : [bacd]
+     * Length view      : [baaaaaddd]
+     * CoolClub view    : [bd]
+     */
+    ASSERT_EQ(list.size(), 4);
+    ASSERT_EQ(list.iterator_to(a), ++list.begin());
+    ASSERT_EQ(list.getIndex(c), 2);
+    ASSERT_EQ(list.atIndex<LengthAggregate>(5), &a);
+    ASSERT_EQ(list.atIndex<LengthAggregate>(6), &d);
+    ASSERT_EQ(list.getIndex<CoolClubAggregate>(d), 1);
+    ASSERT_EQ(list.iterator_to(c), --(--list.end()));
+
+    list.erase(a);
+    list.insert_after(c, a);
+    /**
+     * Item view        : [bcad]
+     * Length view      : [baaaaaddd]
+     * CoolClub view    : [bd]
+     */
+    ASSERT_EQ(list.size(), 4);
+    ASSERT_EQ(&list.front(), &b);
+    ASSERT_EQ(list.getIndex(c), 1);
+    ASSERT_EQ(list.getIndex(a), 2);
+
+    std::string clubs = "";
+    for (auto &i : list) {
+        clubs.append(i.club);
+    }
+    ASSERT_EQ(clubs, "coolBirdscowscool horses");
+
+    list.erase(b);
+    /**
+     * Item view        : [cad]
+     * Length view      : [aaaaaddd]
+     * CoolClub view    : [d]
+     */
+    ASSERT_EQ(&list.front(), &c);
+
+    size_t remaining_lengths = 0;
+    list.clear_and_dispose([&](MyObject *obj) { remaining_lengths += obj->length; });
+    ASSERT_EQ(remaining_lengths, 8);
+    ASSERT_EQ(list.empty(), true);
 }
 
 // vim: filetype=cpp:expandtab:shiftwidth=4:softtabstop=4:fileencoding=utf-8:textwidth=99 :

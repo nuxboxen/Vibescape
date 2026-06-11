@@ -100,8 +100,7 @@ void SPGroup::child_added(Inkscape::XML::Node* child, Inkscape::XML::Node* ref) 
             for (auto &v : views) {
                 auto ac = item->invoke_show (v.drawingitem->drawing(), v.key, v.flags);
                 if (ac) {
-                    v.drawingitem->prependChild(ac);
-                    ac->setZOrder(position);
+                    v.drawingitem->insertChildAtZ(ac, position);
                 }
             }
         }

@@ -17,8 +17,10 @@
  */
 
 #include <cstring>
+#include <memory>
 #include <ranges>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <limits>
 #include <glibmm.h>
@@ -107,6 +109,12 @@ public:
     }
 };
 
+// Fast children membership check helper, using XML repr as key.
+struct SPObject::ReprMap
+{
+    std::unordered_map<Inkscape::XML::Node *, SPObject *> map;
+};
+
 /**
  * Constructor, sets all attributes to default values.
  */
@@ -144,7 +152,11 @@ SPObject::~SPObject()
         this->_tmpsuccessor = nullptr;
     }
     if (parent) {
-        parent->children.erase(parent->children.iterator_to(*this));
+        parent->children.erase(*this);
+        if (parent->_reprmap && this->getRepr()) {
+            auto res = parent->_reprmap->map.erase(this->getRepr());
+            g_assert(res == 1);
+        }
     }
 
     delete style;
@@ -638,11 +650,18 @@ void SPObject::attach(SPObject *object, SPObject *prev)
     object->parent = this;
     this->_updateTotalHRefCount(object->_total_hrefcount);
 
-    auto it = children.begin();
     if (prev != nullptr) {
-        it = ++children.iterator_to(*prev);
+        children.insert_after(*prev, *object);
+    } else {
+        children.push_front(*object);
     }
-    children.insert(it, *object);
+    if (auto orepr = object->getRepr()) {
+        if (!_reprmap) {
+            _reprmap = std::make_unique<ReprMap>();
+        }
+        auto res = _reprmap->map.emplace(orepr, object);
+        g_assert(res.second);
+    }
 
     if (!object->xml_space.set)
         object->xml_space.value = this->xml_space.value;
@@ -655,12 +674,12 @@ void SPObject::reorder(SPObject* obj, SPObject* prev) {
     g_return_if_fail(obj != prev);
     g_return_if_fail(!prev || prev->parent == obj->parent);
 
-    auto it = children.begin();
+    children.erase(*obj);
     if (prev != nullptr) {
-        it = ++children.iterator_to(*prev);
+        children.insert_after(*prev, *obj);
+    } else {
+        children.push_front(*obj);
     }
-
-    children.splice(it, children, children.iterator_to(*obj));
 }
 
 void SPObject::detach(SPObject *object)
@@ -668,7 +687,7 @@ void SPObject::detach(SPObject *object)
     g_return_if_fail(object != nullptr);
     g_return_if_fail(object->parent == this);
 
-    children.erase(children.iterator_to(*object));
+    children.erase(*object);
     object->releaseReferences();
 
     object->parent = nullptr;
@@ -683,14 +702,11 @@ SPObject *SPObject::get_child_by_repr(Inkscape::XML::Node *repr)
     SPObject *result = nullptr;
 
     if (children.size() > 0 && children.back().getRepr() == repr) {
-        result = &children.back();   // optimization for common scenario
-    } else {
-        for (auto& child: children) {
-            if (child.getRepr() == repr) {
-                result = &child;
-                break;
-            }
-        }
+        result = &children.back(); // optimization for common scenario
+    } else if (_reprmap) {
+        auto child = _reprmap->map.find(repr);
+        if (child != _reprmap->map.end())
+            result = child->second;
     }
     return result;
 }
@@ -864,6 +880,12 @@ void SPObject::invoke_build(SPDocument *document, Inkscape::XML::Node *repr, uns
 
     if ( !cloned ) {
         this->document->bindObjectToRepr(this->repr, this);
+        if (this->parent) {
+            if (!this->parent->_reprmap)
+                this->parent->_reprmap = std::make_unique<ReprMap>();
+            auto res = this->parent->_reprmap->map.emplace(this->repr, this);
+            g_assert(res.second);
+        }
 
         if (Inkscape::XML::id_permitted(this->repr)) {
             /* If we are not cloned, and not seeking, force unique id */
@@ -919,17 +941,7 @@ void SPObject::appendChild(Inkscape::XML::Node *child) {
 
 SPObject* SPObject::nthChild(unsigned index) {
     g_assert(this->repr);
-    if (hasChildren()) {
-        std::vector<SPObject*> l;
-        unsigned counter = 0;
-        for (auto& child: children) {
-            if (counter == index) {
-                return &child;
-            }
-            counter++;
-        }
-    }
-    return nullptr;
+    return this->children.atIndex(index);
 }
 
 void SPObject::addChild(Inkscape::XML::Node *child, Inkscape::XML::Node * prev)
@@ -971,6 +983,10 @@ void SPObject::releaseReferences() {
     }
 
     this->document = nullptr;
+    if (this->parent && this->parent->_reprmap) {
+        auto res = this->parent->_reprmap->map.erase(this->repr);
+        g_assert(!this->repr || res == 1);
+    }
     this->repr = nullptr;
 }
 
