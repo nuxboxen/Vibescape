@@ -37,6 +37,7 @@
                     <property name="hexpand">false</property>
                     <property name="halign">center</property>
                     <property name="margin-end">16</property>
+                    <property name="tooltip-text" translatable="yes">Reset to original colors</property>
                     <child>
                       <object class="GtkImage">
                         <property name="icon-name">reset-settings</property>

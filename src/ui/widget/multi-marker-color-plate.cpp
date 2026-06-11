@@ -53,7 +53,6 @@ MultiMarkerColorPlate::MultiMarkerColorPlate(Colors::ColorSet const &colors)
             Color new_color = _specific_colors->get().value();
             if (_color_wheel->getActiveIndex() != -1) {
                 _color_wheel->changeColor(_color_wheel->getActiveIndex(), new_color);
-                _color_wheel_preview->setRgba32(new_color.toRGBA());
             }
         });
     });
@@ -65,7 +64,7 @@ MultiMarkerColorPlate::MultiMarkerColorPlate(Colors::ColorSet const &colors)
     }
 
     _lightness_icon->set_from_icon_name(INKSCAPE_ICON("lightness"));
-    _lightness_icon->set_tooltip_text(_("change saturation for all if hue lock is on"));
+    _lightness_icon->set_tooltip_text(_("Change saturation for all if hue lock is on"));
     _lightness_bar.set_value_pos(Gtk::PositionType::RIGHT);
     _lightness_bar.set_hexpand(true);
     _lightness_bar.set_draw_value(true);
@@ -75,7 +74,7 @@ MultiMarkerColorPlate::MultiMarkerColorPlate(Colors::ColorSet const &colors)
     });
 
     _saturation_icon->set_from_icon_name(INKSCAPE_ICON("saturation"));
-    _saturation_icon->set_tooltip_text(_("change saturation for all if hue lock is on"));
+    _saturation_icon->set_tooltip_text(_("Change saturation for all if hue lock is on"));
     _saturation_bar.set_value_pos(Gtk::PositionType::RIGHT);
     _saturation_bar.set_hexpand(true);
     _saturation_bar.set_draw_value(true);
@@ -98,7 +97,7 @@ MultiMarkerColorPlate::MultiMarkerColorPlate(Colors::ColorSet const &colors)
         }
         _color_wheel->redrawOnHueLocked();
     });
-    _hue_lock.set_tooltip_text(_("lock hue angles for colors set"));
+    _hue_lock.set_tooltip_text(_("Lock hue angles for colors set"));
     _hue_lock.set_hexpand(false);
     _hue_lock.set_margin_top(8);
     _hue_lock.set_halign(Gtk::Align::END);
@@ -109,6 +108,10 @@ MultiMarkerColorPlate::MultiMarkerColorPlate(Colors::ColorSet const &colors)
     _color_wheel_preview->set_halign(Gtk::Align::START);
     _color_wheel_preview->set_margin_top(8);
     _color_wheel_preview->setStyle(_color_wheel_preview->Style::Outlined);
+    _color_wheel_preview->set_tooltip_text(_("Color preview"));
+    _color_wheel->connect_color_changed(static_cast<sigc::slot<void()>>([this] {
+        _color_wheel_preview->setRgba32(_color_wheel->getColor().toRGBA());
+    }));
 
     auto image = Gtk::make_managed<Gtk::Image>();
     image->set_from_icon_name(INKSCAPE_ICON("reset-settings"));
@@ -119,6 +122,7 @@ MultiMarkerColorPlate::MultiMarkerColorPlate(Colors::ColorSet const &colors)
             _ra->onResetClicked();
         }
     });
+    _reset->set_tooltip_text(_("Reset to original colors"));
 
     auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
     box->set_spacing(64);
