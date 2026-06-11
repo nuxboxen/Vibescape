@@ -25,6 +25,7 @@
 #include <gtkmm/separator.h>
 #include <gtkmm/treestore.h>
 
+#include "desktop-style.h"
 #include "desktop.h"
 #include "display/translucency-group.h"
 #include "document-undo.h"
@@ -32,6 +33,7 @@
 #include "filter-chemistry.h"
 #include "inkscape-window.h"
 #include "layer-manager.h"
+#include "object/object-set.h"
 #include "object/sp-root.h"
 #include "style.h"
 #include "svg/css-ostringstream.h"
@@ -857,9 +859,12 @@ ObjectsPanel::ObjectsPanel()
             auto css = sp_repr_css_attr_new();
             sp_repr_css_set_property(css, "opacity", os.str().c_str());
 
-            // Apply the style change through the StyleSubject.
-            // This ensures the "last style used" system is notified
-            _subject.setCSS(css);
+            // Apply CSS through the desktop to ensure that "last style used" is
+            // set correctly.
+            auto obj_set = Inkscape::ObjectSet();
+            obj_set.set(current_item);
+            sp_desktop_set_style(&obj_set, getDesktop(), css);
+
             sp_repr_css_attr_unref(css);
             DocumentUndo::maybeDone(current_item->document, ":opacity", RC_("Undo", "Change opacity"), INKSCAPE_ICON("dialog-object-properties"));
         }
@@ -1069,19 +1074,13 @@ ObjectsPanel::ObjectsPanel()
     update();
 }
 
-ObjectsPanel::~ObjectsPanel() {
-    _subject.setDesktop(nullptr);
-};
+ObjectsPanel::~ObjectsPanel() = default;
 
 void ObjectsPanel::desktopReplaced()
 {
     layer_changed.disconnect();
 
     auto desktop = getDesktop();
-
-    // Update the _subject with the new desktop
-    _subject.setDesktop(desktop);
-
     if (desktop) {
         layer_changed = desktop->layerManager().connectCurrentLayerChanged(sigc::mem_fun(*this, &ObjectsPanel::layerChanged));
     }
