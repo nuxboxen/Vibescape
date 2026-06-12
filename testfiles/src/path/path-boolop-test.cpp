@@ -124,3 +124,54 @@ TEST_F(PathBoolopTest, DifferenceOutside) {
 
     comparePaths(pathv, both_paths);
 }
+
+TEST_F(PathBoolopTest, CutOverlapping) {
+    // Test that cutting one rectangle with an overlapping one results in a path
+    // containing all but the portion of the first rectangle covered by the
+    // second, and only the portion of the second covered by the first.
+    // This test expects current behavior, which includes redundant paths and
+    // expresses both result paths as a single string of path commands. As such,
+    // it may break with improvements to the cut op.
+    auto expected = read_pathv("M 0 0 z M 0 0 z M 0 1.5 V 2 H 0.5 V 1.5 z M 0.5 2 z M 0.5 2 H 0 V 2.5 H 0.5 z M 2 2 z");
+
+    auto actual = sp_pathvector_boolop(rectangle_bigger, rectangle_outside, bool_op_cut, fill_oddEven, fill_oddEven);
+    comparePaths(actual, expected);
+}
+
+TEST_F(PathBoolopTest, CutContained) {
+    // Test that cutting one rectangle with one fully contained in it results in
+    // a path containing all but the portion of the first rectangle covered by
+    // the second, as well as the entirety of the second.
+    // This test expects current behavior, which includes redundant paths and
+    // expresses both result paths as a single string of path commands. As such,
+    // it may break with improvements to the cut op.
+    auto expected = read_pathv("M 0 0 z M 0 0 z M 0 2 z M 2 2 z M 0.5 0.5 V 1.5 H 1.5 V 0.5 z");
+
+    auto actual = sp_pathvector_boolop(rectangle_bigger, rectangle_smaller, bool_op_cut, fill_oddEven, fill_oddEven);
+    comparePaths(actual, expected);
+}
+
+
+TEST_F(PathBoolopTest, CutSurrounded) {
+    // Test that cutting one rectangle with one fully surrounding it results in
+    // a path representing only the surrounded rectangle.
+    // This test expects current behavior, which includes redundant paths. As
+    // such, it may break with improvements to the cut op.
+    auto expected = read_pathv("M 0 0 V 2 H 2 V 0 z M 0.5 0.5 H 1.5 V 1.5 H 0.5 z M 0.5 0.5 V 1.5 H 1.5 V 0.5 z");
+
+    auto actual = sp_pathvector_boolop(rectangle_smaller, rectangle_bigger, bool_op_cut, fill_oddEven, fill_oddEven);
+    comparePaths(actual, expected);
+}
+
+TEST_F(PathBoolopTest, CutDisjoint) {
+    // Test that cutting one rectangle with a non-overlapping one results in a
+    // path representing only the non-overlapping rectangle.
+    auto const rectangle_disjoint = read_pathv("m 3,0.5 h 0.5 v 1 H 3 Z");
+
+    // This test expects current behavior, which includes redundant paths. As
+    // such, it may break with improvements to the cut op.
+    auto expected = read_pathv("M 0 0 z M 0 0 z M 0 1.5 V 2 H 0.5 V 1.5 z M 0.5 2 z M 0.5 2 H 0 V 2.5 H 0.5 z M 2 2 z");
+
+    auto actual = sp_pathvector_boolop(rectangle_bigger, rectangle_outside, bool_op_cut, fill_oddEven, fill_oddEven);
+    comparePaths(actual, expected);
+}
