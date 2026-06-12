@@ -62,6 +62,10 @@ SwatchesPanel::SwatchesPanel(PanelType panel_type, char const *prefsPath)
     _selector(get_widget<Gtk::MenuButton>(_builder, "selector")),
     _selector_label(get_widget<Gtk::Label>(_builder, "selector-label")),
     _selector_menu{panel_type == Compact ? nullptr : std::make_unique<UI::Widget::PopoverMenu>(Gtk::PositionType::BOTTOM)},
+    // Read the saved custom palette from the dialog path, regardless of our current
+    // panel_type/_prefs_path, because that is the only place it is saved, and we want to show
+    // the saved palette in other contexts, like the Compact view too.
+    _saved_palette_path("/dialogs/swatches/palette-path"),
     _new_btn(get_widget<Gtk::Button>(_builder, "new")),
     _delete_btn(get_widget<Gtk::Button>(_builder, "delete")),
     _import_btn(get_widget<Gtk::Button>(_builder, "import")),
@@ -100,6 +104,8 @@ SwatchesPanel::SwatchesPanel(PanelType panel_type, char const *prefsPath)
         });
     }
 
+    update_palettes(panel_type);
+
     auto prefs = Inkscape::Preferences::get();
     _current_palette_id = prefs->getString(_prefs_path + "/palette");
     if (auto p = get_palette(_current_palette_id)) {
@@ -107,16 +113,8 @@ SwatchesPanel::SwatchesPanel(PanelType panel_type, char const *prefsPath)
     } else {
         _current_palette_id = auto_id; // Fall back to auto palette.
     }
-    auto path = prefs->getString(_prefs_path + "/palette-path");
-    auto loaded = load_swatches(Glib::filename_from_utf8(path));
-
-    update_palettes(panel_type);
 
     if (panel_type == Dialog) {
-        if (loaded) {
-            update_loaded_palette_entry();
-        }
-
         g_assert(_selector_menu);
         setup_selector_menu();
         update_selector_menu();
@@ -166,6 +164,8 @@ SwatchesPanel::SwatchesPanel(PanelType panel_type, char const *prefsPath)
         _palette->get_palette_selected_signal().connect([this] (Glib::ustring name) {
             set_palette(name);
         });
+        // The Dialog version will update the saved preference underneath us, so watch for that.
+        _saved_palette_path.action = [this, panel_type] { update_palettes(panel_type); };
     }
     else if (panel_type == Popup) {
         // swatch fill
@@ -496,28 +496,40 @@ void SwatchesPanel::update_fillstroke_indicators()
  * Process the list of available palettes and update the list in the _palette widget.
  */
 void SwatchesPanel::update_palettes(PanelType panel_type) {
-    std::vector<UI::Widget::palette_t> palettes;
+    _palettes.clear();
 
     // The first palette in the list is always the "Auto" palette. Although this
     // will contain colors when selected, the preview we show for it is empty.
     // TRANSLATORS: A list of swatches in the document
-    palettes.push_back({_("Document swatches"), auto_id, {}});
+    _palettes.push_back(PaletteLoaded{{_("Document swatches"), auto_id, {}}, false});
 
     if (panel_type != Popup) {
-        palettes.reserve(1 + GlobalPalettes::get().palettes().size());
+        // One extra for auto palette above, and one extra for (optional) loaded palette below.
+        _palettes.reserve(2 + GlobalPalettes::get().palettes().size());
         // The remaining palettes in the list are the global palettes.
         for (auto &p : GlobalPalettes::get().palettes()) {
             auto palette = to_palette_t(p);
-            palettes.emplace_back(std::move(palette));
+            _palettes.emplace_back(PaletteLoaded{std::move(palette), false});
+        }
+
+        // If the _saved_palette_path value changed on us and the loaded palette is currently
+        // selected, we'll need to reset the visible palette after we load the new palette path.
+        auto reset_to_loaded_palette = (!_current_palette_id.empty() &&
+                                        _current_palette_id == _loaded_palette.id);
+        if (load_swatches(Glib::filename_from_utf8(_saved_palette_path))) {
+            update_loaded_palette_entry();
+            if (reset_to_loaded_palette) {
+                set_palette(_loaded_palette.id);
+            }
         }
     }
 
+    // Save the palettes to our popup button
+    std::vector<UI::Widget::palette_t> palettes;
+    std::transform(_palettes.begin(), _palettes.end(), std::back_inserter(palettes),
+                   [](auto &&pair){ return pair.first; });
     _palette->set_palettes(palettes);
-
-    _palettes.clear();
-    _palettes.reserve(palettes.size());
-    std::transform(palettes.begin(), palettes.end(), std::back_inserter(_palettes),
-                   [](auto &&palette){ return PaletteLoaded{std::move(palette), false}; });
+    _palette->set_selected(_current_palette_id);
 }
 
 /**
