@@ -126,6 +126,7 @@ void LPEToolbar::setActiveUnit(Util::Unit const *unit)
 void LPEToolbar::setMode(int mode)
 {
     _mode_buttons[mode]->set_active();
+    mode_changed(mode); // set_active() does not trigger callback, call it here.
 }
 
 // this is called when the mode is changed via the toolbar (i.e., one of the subtool buttons is pressed)
