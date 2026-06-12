@@ -488,6 +488,8 @@ void Inkscape::ObjectSet::_pathBoolOp(BooleanOp bop)
         }
     }
 
+    std::vector<Operand> valid_operands;
+
     for (auto &operand : operands) {
         distribute_intersection_times(operand.cuts, operand.cuts, operand.pathv.intersectSelf());
         sort_and_clean_intersection_times(operand.cuts);
@@ -496,14 +498,40 @@ void Inkscape::ObjectSet::_pathBoolOp(BooleanOp bop)
         operand.path->LoadPathVector(operand.pathv, operand.cuts);
         operand.path->ConvertWithBackData(RELATIVE_THRESHOLD, true);
 
-        if (operand.path->descr_cmd.size() <= 1) {
-            return;
+        if (operand.path->descr_cmd.size() > 1) {
+            valid_operands.emplace_back(std::move(operand));
         }
+    }
+
+    operands.clear();
+    operands = std::move(valid_operands);
+
+    switch (bop) {
+        case bool_op_union:
+            if (operands.empty()) {
+                return;
+            }
+            break;
+
+        case bool_op_inters:
+        case bool_op_symdiff:
+            if (operands.size() < 2) {
+                return;
+            }
+            break;
+
+        case bool_op_diff:
+        case bool_op_cut:
+        case bool_op_slice:
+            if (operands.size() != 2) {
+                return;
+            }
+            break;
     }
 
     // reverse if needed
     // note that the selection list keeps its order
-    if (reverseOrderForOp) {
+    if (reverseOrderForOp && operands.size() == 2) {
         std::swap(operands[0], operands[1]);
     }
 
