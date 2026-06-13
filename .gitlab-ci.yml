@@ -212,14 +212,18 @@ inkscape:macos:
   variables:
     CHERE_INVOKING: "yes"
     MSYSTEM: UCRT64
-    CCACHE_BASEDIR: $CI_PROJECT_DIR/src
     # ICW = inkscape-ci-windows, https://gitlab.com/inkscape/infra/inkscape-ci-windows
     ICW_VERSION: 177
     ICW_NAME: ink$ICW_VERSION
     ICW_RELEASE_URL: $CI_API_V4_URL/projects/46863172/packages/generic/windows/r$ICW_VERSION/${ICW_NAME}_$MSYSTEM.wim
   before_script:
-    - $drive = (Split-Path "${Env:CI_PROJECT_DIR}" -Qualifier)
-    - |
+    - | # determine drive letter
+      try {
+        $drive = (Split-Path "${Env:CI_PROJECT_DIR}" -Qualifier)
+      } catch [System.FormatException] {
+        $drive = "C:"
+      }
+    - | # download and mount image containing the build environment
       if (-not (Test-Path -Path "$drive/${Env:ICW_NAME}/usr/bin/bash.exe")) {
         (New-Object System.Net.WebClient).DownloadFile("${Env:ICW_RELEASE_URL}", "${drive}/${Env:ICW_NAME}_${Env:MSYSTEM}.wim")
         md "${drive}/${Env:ICW_NAME}"
@@ -228,17 +232,6 @@ inkscape:macos:
   artifacts:
     paths:
       - build/inkscape*.${DIST}
-
-
-.windows_build_script: &windows_build_script
-  # configure
-  - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc 'cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=$CI_PROJECT_DIR/inkscape'
-  # make + make install
-  - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build install"
-  # run dependency checker
-  - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc 'python3 $CI_PROJECT_DIR/buildtools/msys2checkdeps.py check $CI_PROJECT_DIR/inkscape -w $CI_PROJECT_DIR/inkscape/bin'
-  # create distributable
-  - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build dist-win-${DIST}"
 
 
 inkscape:windows:7z:
@@ -254,51 +247,52 @@ inkscape:windows:7z:
     CCACHE_MAXSIZE: "1G"
     DIST: 7z
   script:
-    - *windows_build_script
-  # we have enough resources so we can skip the cleanup
-  # after_script:
-  #   - |
-  #     dism /Unmount-Wim /MountDir:"${drive}/${Env:ICW_NAME}" /discard
-  #     rd "${drive}/${Env:ICW_NAME}"
+    # configure
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=$CI_PROJECT_DIR/inkscape"
+    # make + make install
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build install"
+    # run dependency checker
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "python3 buildtools/msys2checkdeps.py check $CI_PROJECT_DIR/inkscape -w $CI_PROJECT_DIR/inkscape/bin"
+    # create distributable
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build dist-win-${DIST}"
+    # we have enough resources so we can skip the cleanup
+    # after_script:
+    #   - |
+    #     dism /Unmount-Wim /MountDir:"${drive}/${Env:ICW_NAME}" /discard
+    #     rd "${drive}/${Env:ICW_NAME}"
 
 
 inkscape:windows:
   extends: .windows
   tags:
-    - saas-windows-medium-amd64
-  timeout: 2h  # this is imposed by the runner
-  retry: 2
+    - clouding
   parallel:
     matrix:
       - DIST: [ "7z", "exe", "msi" ]
   rules:
     - *do_not_run_for_schedules
-    - if: $DIST == "7z" && $CI_PROJECT_NAMESPACE == "inkscape"
-      when: never
     - if: $DIST != "7z"
       when: manual
       allow_failure: true
-    - *run_otherwise
-  cache:
-    - key: ccache-windows
-      paths:
-        - ccache
-      when: always
+    - if: $CI_PROJECT_NAMESPACE == "inkscape"
+    - if: $CI_PROJECT_NAMESPACE == "dehesselle"
   variables:
     CCACHE_COMPILERCHECK: content
-    CCACHE_DIR: $CI_PROJECT_DIR/ccache
-    CCACHE_MAXSIZE: "200M"
+    CCACHE_DIR: C:/ccache
+    CCACHE_SECONDARY_STORAGE: file:///ccache2
   script:
-    # If we are building the MSI package, install extra build dependencies
-    - if (${Env:DIST} -eq "msi") { . "${Env:CI_PROJECT_DIR}\buildtools\windows-deps-install-wix4.ps1" }
-    # Kill the job before hitting runner's timeout. This way we can preserve the cache so the next retry
-    # will be able to advance the build further and eventually finish (after up to two retries, 3 jobs in total).
-    # Calculation is: 100 minutes build (6000 seconds, see 'sleep' below)
-    #                  20 minutes for pre- and post-flight, buffer
-    #                 --- -----------------------------------------------
-    #                 120 minutes runner timeout
-    - Start-Job -ScriptBlock{sleep 6000; taskkill /t /F /IM "ninja.exe"}
-    - *windows_build_script
+    - | # if we are building the MSI package, install extra build dependencies
+      if (${Env:DIST} -eq "msi") {
+        . "${Env:CI_PROJECT_DIR}\buildtools\windows-deps-install-wix4.ps1"
+      }
+    # configure
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=${drive}/$CI_PROJECT_DIR/inkscape"
+    # make + make install
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build install"
+    # run dependency checker
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "python3 buildtools/msys2checkdeps.py check inkscape -w ${drive}/$CI_PROJECT_DIR/inkscape/bin"
+    # create distributable
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build dist-win-${DIST}"
 
 
 inkscape:android:
