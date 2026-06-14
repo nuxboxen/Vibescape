@@ -336,6 +336,7 @@ target_link_libraries(inkscape_base
         croco_LIB
         adaptagrams_LIB
         Uemf::uemf
+        $<$<BOOL:WITH_CAPYPDF>:Inkscape::CapyPDF>
     PUBLIC
         ${INKSCAPE_LIBS}
         2Geom::2geom
