@@ -372,7 +372,7 @@ LPEPerspectiveEnvelope::horizontal(PointParam &param_one, PointParam &param_two,
 void
 LPEPerspectiveEnvelope::doBeforeEffect (SPLPEItem const* lpeitem)
 {
-    original_bbox(lpeitem, false, true);
+    original_bbox(lpeitem);
     if (Geom::are_near(boundingbox_X.min(),boundingbox_X.max()) || 
         Geom::are_near(boundingbox_Y.min(),boundingbox_Y.max())) 
     {
@@ -544,7 +544,7 @@ void
 LPEPerspectiveEnvelope::resetDefaults(SPItem const* item)
 {
     Effect::resetDefaults(item);
-    original_bbox(cast<SPLPEItem>(item), false, true);
+    original_bbox(cast<SPLPEItem>(item));
     setDefaults();
     resetGrid();
 }

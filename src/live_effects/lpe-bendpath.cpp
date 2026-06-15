@@ -115,7 +115,7 @@ void
 LPEBendPath::doBeforeEffect (SPLPEItem const* lpeitem)
 {
     // get the item bounding box
-    original_bbox(lpeitem, false, true);
+    original_bbox(lpeitem);
     original_height = boundingbox_Y.max() - boundingbox_Y.min();
     if (is_load) {
         bend_path.reload();
@@ -214,7 +214,7 @@ void
 LPEBendPath::resetDefaults(SPItem const* item)
 {
     Effect::resetDefaults(item);
-    original_bbox(cast<SPLPEItem>(item), false, true);
+    original_bbox(cast<SPLPEItem>(item));
 
     Geom::Point start(boundingbox_X.min(), (boundingbox_Y.max()+boundingbox_Y.min())/2);
     Geom::Point end(boundingbox_X.max(), (boundingbox_Y.max()+boundingbox_Y.min())/2);

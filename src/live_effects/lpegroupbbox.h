@@ -24,8 +24,8 @@ protected:
     Geom::Interval boundingbox_X;
     Geom::Interval boundingbox_Y;
 
-    //This sets boundingbox_X and boundingbox_Y
     Geom::OptRect clip_mask_bbox(SPLPEItem * item, Geom::Affine transform);
+    // This sets boundingbox_X and boundingbox_Y
     void original_bbox(SPLPEItem const* lpeitem, bool absolute = false, bool clip_mask = false, Geom::Affine base_transform = Geom::identity());
 };
 
