@@ -236,8 +236,6 @@ inkscape:macos:
   - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc 'cmake -B build -G Ninja -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_INSTALL_PREFIX=$CI_PROJECT_DIR/inkscape'
   # make + make install
   - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build install"
-  # run dependency checker
-  - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc 'python3 $CI_PROJECT_DIR/buildtools/msys2checkdeps.py check $CI_PROJECT_DIR/inkscape -w $CI_PROJECT_DIR/inkscape/bin'
   # create distributable
   - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc "ninja -C build dist-win-${DIST}"
 
@@ -256,6 +254,8 @@ inkscape:windows:7z:
     DIST: 7z
   script:
     - *windows_build_script
+    # run dependency checker only on custom runner due to dcomp.dll availability
+    - . "${drive}/${Env:ICW_NAME}/usr/bin/bash.exe" -lc 'python3 $CI_PROJECT_DIR/buildtools/msys2checkdeps.py check $CI_PROJECT_DIR/inkscape -w $CI_PROJECT_DIR/inkscape/bin'
   # we have enough resources so we can skip the cleanup
   # after_script:
   #   - |
