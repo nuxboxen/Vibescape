@@ -13,8 +13,18 @@
 #include <vector>
 
 #include <2geom/forward.h>
+#include <2geom/pathvector.h>
 
 #include "livarot/LivarotDefs.h" // FillRule, BooleanOp
+#include "livarot/Path.h"
+
+constexpr auto RELATIVE_THRESHOLD = 0.08;
+
+void distribute_intersection_times(std::vector<Geom::PathVectorTime> &dst1,
+                                   std::vector<Geom::PathVectorTime> &dst2,
+                                   std::vector<Geom::PathVectorIntersection> const &intersections);
+bool is_line(Path const &path);
+void sort_and_clean_intersection_times(std::vector<Geom::PathVectorTime> &vec);
 
 /// Flatten a pathvector according to the given fill rule.
 Geom::PathVector flattened(Geom::PathVector const &pathv, FillRule fill_rule);

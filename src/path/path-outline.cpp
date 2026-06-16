@@ -142,7 +142,7 @@ item_find_paths(const SPItem *item, Geom::PathVector& fill, Geom::PathVector& st
     if (!style->stroke_dasharray.values.empty() && style->stroke_dasharray.is_valid()) {
         // We have dashes!
         origin->ConvertWithBackData(0.005); // Approximate by polyline
-        origin->DashPolylineFromStyle(style, scale, 0);
+        origin->DashPolyline(style->stroke_dasharray.get_computed(), style->stroke_dashoffset.computed, scale, 0);
         auto bounds = Geom::bounds_fast(pathv);
         if (bounds) {
             double size = Geom::L2(bounds->dimensions());
