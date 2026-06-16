@@ -130,18 +130,17 @@ appimage:linux:
     CCACHE_DIR: $CI_PROJECT_DIR/ccache
     # ICM = inkscape ci macos
     # https://gitlab.com/inkscape/infra/inkscape-ci-macos
-    ICM_REPO_REF: c722fc920cecc5c348fbf20f44ada169661412a0
+    ICM_REPO_REF: 4675bc18b03b7b7b20645b4ac35d5c847a5975c3
     ICM_REPO_URL: https://gitlab.com/inkscape/infra/inkscape-ci-macos.git
     # build number
     INK_BUILD: $CI_PIPELINE_IID
-    # build host
-    ORKA_RUNNER: sequoia-4
+    # build host: check scripts first before advancing OS major version
+    ORKA_RUNNER: sequoia-8
     # package registry to upload dependencies
     PACKAGE_REGISTRY_URL: $CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic
     PACKAGE_URL_PREFIX: ${PACKAGE_REGISTRY_URL}/icm/${ICM_REPO_REF}
-    # directory and SDK settings for ICM
-    REP_DIR: $CI_PROJECT_DIR
-    WRK_DIR: /Users/Shared/work
+    # directory settings for ICM
+    DIR_WORK: /Users/Shared/work
   before_script:
     # Clone the repo containing all the build scripts.
     - |
@@ -154,23 +153,26 @@ deps:macos:
   extends: .macos
   variables:
     CCACHE_MAXSIZE: "500Mi"
-    SDKROOT: /opt/sdks/MacOSX11.3.sdk
+    SDKROOT: /opt/sdks/MacOSX13.3.sdk
   script:
     # Build dependencies and upload to the package registry.
     - |
-      VER_DIR=$(icm/jhb/usr/bin/config get VER_DIR)
-      PACKAGE_URL=${PACKAGE_URL_PREFIX}/$(basename $VER_DIR)_$(uname -m).dmg
+      DIR_VERSION=$(icm/jhb/usr/bin/config get DIR_VERSION)
+      PACKAGE_URL=${PACKAGE_URL_PREFIX}/$(basename $DIR_VERSION)_$(uname -m).dmg
       if curl --max-filesize 1M -H "JOB-TOKEN: $CI_JOB_TOKEN" -sLO $PACKAGE_URL 2>/dev/null; then
         # rc=0 as GitLab returns a 404 page
         icm/110-bootstrap_jhb.sh
         icm/120-build_gtk4.sh
         icm/130-build_inkdeps.sh
-        rm $VER_DIR/var/cache/pkg/.skip
-        icm/jhb/usr/bin/jhb run rustup self uninstall -y || true
+        unset SDKROOT
+        export MACOSX_DEPLOYMENT_TARGET=13.3
+        icm/140-build_capypdf.sh
+        rm $DIR_VERSION/var/cache/pkg/.skip_remove_nonessential_files
+        icm/jhb/usr/bin/jhb run rustup self uninstall -y
         icm/jhb/usr/bin/archive remove_nonessentials
         icm/jhb/usr/bin/archive create_dmg
         curl --fail-with-body -H "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $(basename $PACKAGE_URL) $PACKAGE_URL
-        rm -rf ${VER_DIR:?}
+        rm -rf ${DIR_VERSION:?}
       else
         # rc=56 because the artifact size exceeds the specified max-filesize
         echo "Found dependencies in package registry."
@@ -183,21 +185,20 @@ inkscape:macos:
   variables:
     CCACHE_MAXSIZE: "200Mi"
     MACOSX_DEPLOYMENT_TARGET: 13.3
-    SDKROOT: /opt/sdks/MacOSX15.5.sdk
   script:
     - |
-      VER_DIR=$(icm/jhb/usr/bin/config get VER_DIR)
-      PACKAGE_URL=${PACKAGE_URL_PREFIX}/$(basename $VER_DIR)_$(uname -m).dmg
+      DIR_VERSION=$(icm/jhb/usr/bin/config get DIR_VERSION)
+      PACKAGE_URL=${PACKAGE_URL_PREFIX}/$(basename $DIR_VERSION)_$(uname -m).dmg
       if curl -H "JOB-TOKEN: $CI_JOB_TOKEN" -fLO $PACKAGE_URL; then
-        icm/jhb/usr/bin/archive install_dmg
+        icm/jhb/usr/bin/archive mount_dmg
         icm/210-inkscape_build.sh
         icm/220-inkscape_package.sh
         icm/230-inkscape_distrib.sh
-        icm/jhb/usr/bin/archive uninstall_dmg
+        icm/jhb/usr/bin/archive unmount_dmg
       fi
     # Replace the command above with this one to keep the shadow file.
     # This will be used in the test job.
-    #- icm/jhb/usr/bin/archive uninstall_dmg archive
+    #- icm/jhb/usr/bin/archive unmount_dmg archive
   artifacts:
     expire_in: 1 year
     paths:
