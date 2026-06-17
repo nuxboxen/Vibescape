@@ -27,5 +27,6 @@ boolop_result = layer.find('{http://www.w3.org/2000/svg}path[@id="small"]')
 
 assert boolop_result.attrib.get("transform") == "scale(2)"
 
-assert d_cmp("M 0 0 L 0 50 A 50 50 0 0 0 50 0 L 0 0 z", boolop_result.attrib.get("d"))
+result_d = boolop_result.attrib.get("d")
+assert d_cmp("M 0 0 L 0 50 A 50 50 0 0 0 50 0 L 0 0 z", result_d), result_d
 

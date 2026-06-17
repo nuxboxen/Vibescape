@@ -722,7 +722,7 @@ void sp_file_fix_lpe(SPDocument *doc)
     }
 }
 
-void sp_file_fix_page_elements(std::unique_ptr<SPDocument> &doc)
+void sp_file_fix_page_elements(SPDocument *doc)
 {
     std::vector<XML::Node *> to_delete;
     std::vector<XML::Node *> to_add;
@@ -758,7 +758,7 @@ void sp_file_fix_page_elements(std::unique_ptr<SPDocument> &doc)
                 defs->appendChild(i);
                 Inkscape::GC::release(i);
             }
-            DocumentUndo::done(doc.get(), RC_("Undo", "Convert Pages to SVG2"), "");
+            DocumentUndo::done(doc, RC_("Undo", "Convert Pages to SVG2"), "");
         }
     }
 }

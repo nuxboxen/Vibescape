@@ -512,10 +512,6 @@ std::vector<AttributeInfo> getKnownAttrs()
         AttributeInfo("tensor", true),
 
         // SPNamedView
-        AttributeInfo("fit-margin-top", true),
-        AttributeInfo("fit-margin-left", true),
-        AttributeInfo("fit-margin-right", true),
-        AttributeInfo("fit-margin-bottom", true),
         AttributeInfo("units", true),
         AttributeInfo("viewonly", true),
         AttributeInfo("showgrid", true),

@@ -2663,10 +2663,6 @@ void init_as_svg(TR_INFO *tri){
    TRPRINT(tri,"     showgrid=\"false\"\n");
    TRPRINT(tri,"     width=\"0px\"\n");
    TRPRINT(tri,"     height=\"0px\"\n");
-   TRPRINT(tri,"     fit-margin-top=\"0\"\n");
-   TRPRINT(tri,"     fit-margin-left=\"0\"\n");
-   TRPRINT(tri,"     fit-margin-right=\"0\"\n");
-   TRPRINT(tri,"     fit-margin-bottom=\"0\"\n");
    TRPRINT(tri,"     units=\"in\"\n");
    TRPRINT(tri,"     inkscape:window-width=\"1200\"\n");
    TRPRINT(tri,"     inkscape:window-height=\"675\"\n");

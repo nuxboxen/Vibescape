@@ -435,60 +435,60 @@ std::unique_ptr<SPDocument> SPDocument::createDoc(
 
     DocumentUndo::setUndoSensitive(document.get(), true);
 
-    // ************* Fix Document **************
-    // Move to separate function?
+    // Update document level action settings
+    // -- none available so far --
 
+    return document;
+}
+
+void SPDocument::runMigrationsForOlderVersions()
+{
     /** Fix baseline spacing (pre-92 files) **/
     Inkscape::Version const lowest_version{0, 1};
-    Inkscape::Version &docver = document->root->inkscape_version;
+    Inkscape::Version &docver = root->inkscape_version;
     if (!sp_no_convert_text_baseline_spacing &&
         docver.isInsideRangeExclusive(lowest_version, {0, 92})) {
-        sp_file_convert_text_baseline_spacing(document.get());
+        sp_file_convert_text_baseline_spacing(this);
     }
 
     /** Fix font names in legacy documents (pre-92 files) **/
     if (docver.isInsideRangeExclusive(lowest_version, {0, 92})) {
-        sp_file_convert_font_name(document.get());
+        sp_file_convert_font_name(this);
     }
 
     /** Fix first line spacing in legacy documents (pre-1.0 files) **/
     if (docver.isInsideRangeExclusive(lowest_version, {1, 0})) {
-        sp_file_fix_empty_lines(document.get());
+        sp_file_fix_empty_lines(this);
     }
 
     /** Fix OSB (pre-1.1 files) **/
     if (docver.isInsideRangeExclusive(lowest_version, {1, 1})) {
-        sp_file_fix_osb(document->getRoot());
+        sp_file_fix_osb(root);
     }
 
     /** Fix feComposite (pre-1.2 files) **/
     if (docver.isInsideRangeExclusive(lowest_version, {1, 2})) {
-        sp_file_fix_feComposite(document->getRoot());
+        sp_file_fix_feComposite(root);
     }
 
     /** Fix hotspot (pre-1.5 files) **/
     if (docver.isInsideRangeExclusive(lowest_version, {1, 5})) {
-        sp_file_fix_hotspot(document->getRoot());
+        sp_file_fix_hotspot(root);
     }
-    sp_file_fix_page_elements(document);
+    sp_file_fix_page_elements(this);
 
     /** Fix d missing on shapes (1.3.1 files) **/
     std::string version = docver.str();
     if (version.size() > 4) {
         version.erase(5);
         if (version == "1.3.1") {
-            document->getRoot()->updateRepr(SP_OBJECT_CHILD_MODIFIED_FLAG);
+            root->updateRepr(SP_OBJECT_CHILD_MODIFIED_FLAG);
         }
     }
     /** Fix dpi (pre-92 files). With GUI fixed in Inkscape::Application::fix_document. **/
     if (!(INKSCAPE.use_gui()) && docver.isInsideRangeExclusive(lowest_version, {0, 92})) {
-        sp_file_convert_dpi(document.get());
+        sp_file_convert_dpi(this);
     }
-
-    // Update document level action settings
-    // -- none available so far --
-
-    return document;
 }
 
 /**
@@ -860,6 +860,7 @@ std::unique_ptr<SPDocument> SPDocument::createNewDoc(char const *filename, bool 
     g_assert(document_name);
 
     auto doc = createDoc(rdoc, filename, document_base, document_name, parent);
+    doc->runMigrationsForOlderVersions();
 
     g_free(document_base);
     g_free(document_name);
@@ -886,7 +887,10 @@ std::unique_ptr<SPDocument> SPDocument::createNewDocFromMem(std::span<char const
 
     auto document_name = Glib::ustring::compose(_("Memory document %1"), ++doc_mem_count);
 
-    return createDoc(rdoc, filename.c_str(), document_base.c_str(), document_name.c_str());
+    auto doc = createDoc(rdoc, filename.c_str(), document_base.c_str(), document_name.c_str());
+    doc->runMigrationsForOlderVersions();
+
+    return doc;
 }
 
 /// guaranteed not to return nullptr

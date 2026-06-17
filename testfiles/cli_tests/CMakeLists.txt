@@ -271,7 +271,6 @@ add_cli_test(export-area-page_emf PARAMETERS --export-area-page --export-type=em
 add_cli_test(export-area-page_wmf PARAMETERS --export-area-page --export-type=wmf INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area-page.wmf REFERENCE_FILENAME export-area-page_expected.wmf FUZZ_PERCENTAGE 0.5)
 
 # --export-area-page + --export-id  (+ --export-id-only)
-# TODO: PDF/PS/EPS always behave as if --export-id-only was given, see https://gitlab.com/inkscape/inkscape/-/issues/1173
 add_cli_test(export-area-page_export-id_png PARAMETERS --export-area-page --export-id=MyStar --export-id-only INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area-page_export-id.png REFERENCE_FILENAME export-area-page_export-id.png)
 add_cli_test(export-area-page_export-id_svg PARAMETERS --export-area-page --export-id=MyStar --export-id-only INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area-page_export-id.svg REFERENCE_FILENAME export-area-page_export-id.svg)
 if(WITH_CAPYPDF)
@@ -304,12 +303,24 @@ add_cli_test(export-area-drawing-page_ps  PARAMETERS --export-area-drawing --exp
 
 # --export-area=x0:y0:x1:y1
 add_cli_test(export-area_png PARAMETERS --export-area=150:150:350:300 --export-type=png INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.png REFERENCE_FILENAME export-area_expected.png)
-# SVG, PDF, PS, EPS, EMF, WMF: Not supported. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/678
+add_cli_test(export-area_svg PARAMETERS --export-area=150:150:350:300 --export-type=svg INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.svg REFERENCE_FILENAME export-area_expected.svg)
+if(WITH_CAPYPDF)
+add_cli_test(export-area_pdf PARAMETERS --export-area=150:150:350:300 --export-type=pdf INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.pdf REFERENCE_FILENAME export-area_expected.pdf)
+endif()
+add_cli_test(export-area_ps PARAMETERS --export-area=150:150:350:300 --export-type=ps INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.ps REFERENCE_FILENAME export-area_expected.ps)
+add_cli_test(export-area_eps PARAMETERS --export-area=150:150:350:300 --export-type=eps INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.eps REFERENCE_FILENAME export-area_expected.eps)
+# EMF, WMF: Not supported yet
 
 # --export-area-snap
 add_cli_test(export-area-snap_export-id           PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=png INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.png      REFERENCE_FILENAME export-area-snap_expected.png)
 add_cli_test(export-area-snap_export-area-drawing PARAMETERS --export-area-drawing       --export-area-snap --export-type=png INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-drawing.png REFERENCE_FILENAME export-area-snap_expected.png)
-# SVG, PDF, PS, EPS, EMF, WMF: doesn't make sense
+add_cli_test(export-area-snap_svg                 PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=svg INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.svg      REFERENCE_FILENAME export-area-snap_expected.svg)
+if(WITH_CAPYPDF)
+add_cli_test(export-area-snap_pdf                 PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=pdf INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.pdf      REFERENCE_FILENAME export-area-snap_expected.pdf)
+endif()
+add_cli_test(export-area-snap_ps                  PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=ps  INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.ps       REFERENCE_FILENAME export-area-snap_expected.ps)
+add_cli_test(export-area-snap_eps                 PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=eps INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.eps      REFERENCE_FILENAME export-area-snap_expected.eps)
+# EMF, WMF: Not supported yet
 
 # --export-dpi=DPI
 add_cli_test(export-dpi_png PARAMETERS --export-dpi=12 --export-type=png INPUT_FILENAME filter.svg OUTPUT_FILENAME export-dpi.png REFERENCE_FILENAME export-dpi_expected.png)
@@ -339,8 +350,7 @@ add_cli_test(export-height_export-use-hints PARAMETERS --export-height=40 --expo
 # - PNG, EPS, EMF, WMF: --export-margin is't supported. This affects all PNG, EPS, EMF, WMF tests below. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/1142
 # - PDF: Defaults to margin in millimeters. This affects all mm based PDF tests below. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/1142
 # - PS: Defaults to margin in pixels. This affects all px based OS tests below. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/1142
-# - --export-id for PDF/PS/EPS is buggy: works as --export-id + --export-id-only should work. See: https://gitlab.com/inkscape/inkscape/-/issues/1173
-# - --export-margin + --export-area=x0:y0:x1:y1 is PNG only feature.
+# - --export-margin doesn't work: https://gitlab.com/inkscape/inkscape/-/work_items/4668
 # - --export-margin + --export-use-hints is PNG only feature.
 # There is no test for --export-margin + --export-area-page combination because it's equivalent to --export-margin
 
@@ -425,8 +435,9 @@ add_cli_test(export-height_export-use-hints PARAMETERS --export-height=40 --expo
 # --export-id=OBJECT-ID[;OBJECT-ID]*
 add_cli_test(export-id_png PARAMETERS --export-id=red --export-type=png INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.png REFERENCE_FILENAME export-id_expected.png )
 add_cli_test(export-id_svg PARAMETERS --export-id=red --export-type=svg INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.svg REFERENCE_FILENAME export-id_expected.svg )
-# PDF, PS, EPS doesn't respect --export-id-only, bug report: https://gitlab.com/inkscape/inkscape/-/issues/1173
-# add_cli_test(export-id_pdf PARAMETERS --export-id=red --export-type=pdf INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.pdf REFERENCE_FILENAME export-id_expected.pdf )
+if(WITH_CAPYPDF)
+add_cli_test(export-id_pdf PARAMETERS --export-id=red --export-type=pdf INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.pdf REFERENCE_FILENAME export-id_expected.pdf )
+endif()
 # add_cli_test(export-id_ps  PARAMETERS --export-id=red --export-type=ps  INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.ps  REFERENCE_FILENAME export-id_expected.ps  )
 # add_cli_test(export-id_eps PARAMETERS --export-id=red --export-type=eps INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.eps REFERENCE_FILENAME export-id_expected.eps )
 # EMF, WMF There is no support, feature request: https://gitlab.com/inkscape/inkscape/-/issues/1204

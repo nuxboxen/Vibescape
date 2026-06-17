@@ -202,6 +202,8 @@ private:
      * \return shift to apply to display to keep content from scrolling */
     double update_desktop_affine();
 
+    void runMigrationsForOlderVersions();
+
 public:
     void clearNodeCache() { _node_cache.clear(); }
     void importDefs(SPDocument *source);

@@ -264,6 +264,94 @@ InkFileExportCmd::do_export(SPDocument* doc, std::string filename_in)
     }
 }
 
+// Resizes the doc to just be the target export area (including snapping, margins, etc)
+// If `object` is not null, the doc will be scoped down to just the one object.
+void InkFileExportCmd::fit_to_export_area(SPDocument *doc, SPObject *object)
+{
+    Geom::Rect area;
+    doc->ensureUpToDate();
+
+    auto obj_export_type = export_area_type;
+    auto drawing_bounds = static_cast<SPItem *>(doc->getRoot());
+
+    if (obj_export_type == ExportAreaType::Area) {
+        /* Try to parse area (given in SVG pixels) */
+        gdouble x0, y0, x1, y1;
+        if (sscanf(export_area.c_str(), "%lg:%lg:%lg:%lg", &x0, &y0, &x1, &y1) != 4) {
+            g_warning("Cannot parse export area '%s'; use 'x0:y0:x1:y1'. Ignoring argument.",
+                        export_area.c_str());
+            obj_export_type = ExportAreaType::Unset;
+        } else {
+            area = Geom::Rect(Geom::Interval(x0, x1), Geom::Interval(y0, y1));
+        }
+    }
+
+    if (obj_export_type == ExportAreaType::Unset) {
+        // Default to just the object bbox if provided, otherwise export page
+        if (object) {
+            obj_export_type = ExportAreaType::Drawing;
+            drawing_bounds = static_cast<SPItem *>(object); // chop drawing to our object bbox
+        } else {
+            obj_export_type = ExportAreaType::Page;
+        }
+    }
+
+    // Three choices: 1. Command-line export_area  2. Page area  3. Drawing area
+    switch (obj_export_type) {
+        case ExportAreaType::Unset:
+            std::cerr << "ExportAreaType::not_set should be handled before" << std::endl;
+            break;
+        case ExportAreaType::Page: {
+            // Export area page (explicit or if no object is given).
+            Geom::Point origin(doc->getRoot()->x.computed, doc->getRoot()->y.computed);
+            area = Geom::Rect(origin, origin + doc->getDimensions());
+            break;
+        }
+        case ExportAreaType::Area:
+            // already parsed and set above
+            break;
+        case ExportAreaType::Drawing: {
+            // Export area drawing (explicit or if object is given).
+            Geom::OptRect areaMaybe = drawing_bounds->documentVisualBounds();
+            if (areaMaybe) {
+                area = *areaMaybe;
+            } else {
+                std::cerr << "InkFileExport::fit_to_export_area: "
+                            << "Unable to determine a valid bounding box. Skipping." << std::endl;
+            }
+            break;
+        }
+    }
+
+    if (export_area_snap) {
+        area = area.roundOutwards();
+    }
+
+    // Scope document down to the provided object, if any
+    if (object && export_id_only) {
+        // Remove all other objects to complete the "crop"
+        std::cerr << "Exporting only object with id=\""
+                << object->getId() << "\"; all other objects hidden." << std::endl;
+        doc->getRoot()->cropToObject(object);
+    }
+
+    if (export_margin != 0) {
+        // Note: this doesn't work anymore - it got broken sometime before 1.4 (see issue below),
+        //  but I'm refactoring how we set the export area and have removed the code that tried but
+        //  failed to implement this.
+        //  For future devs looking at fixing export margins, please test that this works for a
+        //  variety of output modes: png, svg, wmf, pdf.
+        //  Issue about this: https://gitlab.com/inkscape/inkscape/-/work_items/4668
+        //  MR that removed the code: https://gitlab.com/inkscape/inkscape/-/merge_requests/7973
+        std::cerr << "The --export-margin argument does not currently work. Ignored." << std::endl;
+    }
+
+    // Only adjust the doc if we have to
+    if (*doc->preferredBounds() != area) {
+        doc->fitToRect(area);
+    }
+}
+
 // File names use std::string. HTML5 and presumably SVG 2 allows UTF-8 characters. Do we need to convert "object_id" here?
 std::string
 InkFileExportCmd::get_filename_out(std::string filename_in, std::string object_id)
@@ -342,28 +430,6 @@ int InkFileExportCmd::do_export_vector(SPDocument *doc, std::string const &expor
         Inkscape::convert_text_to_curves(doc);
     }
 
-    if (export_margin != 0) {
-        gdouble margin = export_margin;
-        doc->ensureUpToDate();
-        SPNamedView *nv;
-        Inkscape::XML::Node *nv_repr;
-        if ((nv = doc->getNamedView()) && (nv_repr = nv->getRepr())) {
-            nv_repr->setAttributeSvgDouble("fit-margin-top", margin);
-            nv_repr->setAttributeSvgDouble("fit-margin-left", margin);
-            nv_repr->setAttributeSvgDouble("fit-margin-right", margin);
-            nv_repr->setAttributeSvgDouble("fit-margin-bottom", margin);
-        }
-    }
-
-    if (export_area_type == ExportAreaType::Drawing) {
-        fit_canvas_to_drawing(doc, export_margin != 0 ? true : false);
-    } else if (export_area_type == ExportAreaType::Page || export_id.empty()) {
-        if (export_margin) {
-            doc->ensureUpToDate();
-            doc->fitToRect(*(doc->preferredBounds()), export_margin);
-        }
-    }
-
     // Export pages instead of objects
     if (!export_page.empty()) {
         auto &pm = doc->getPageManager();
@@ -414,25 +480,20 @@ int InkFileExportCmd::do_export_vector(SPDocument *doc, std::string const &expor
             return 1;
         }
 
+        SPObject *obj = nullptr;
         if(!object.empty()) {
             copy_doc->ensureUpToDate();
 
             // "crop" the document to the specified object, cleaning as we go.
-            SPObject *obj = copy_doc->getObjectById(object);
+            obj = copy_doc->getObjectById(object);
             if (obj == nullptr) {
                 std::cerr << "InkFileExportCmd::do_export_vector: Object " << object.raw() << " not found in document, nothing to export." << std::endl;
                 return 1;
             }
-            if (export_id_only) {
-                // If -j then remove all other objects to complete the "crop"
-                copy_doc->getRoot()->cropToObject(obj);
-            }
-            if (export_area_type != ExportAreaType::Drawing && export_area_type != ExportAreaType::Page) {
-                Inkscape::ObjectSet s(copy_doc.get());
-                s.set(obj);
-                s.fitCanvas((bool)export_margin);
-            }
         }
+
+        fit_to_export_area(copy_doc.get(), obj);
+
         try {
             extension.set_gui(false);
             Inkscape::Extension::save(&extension, copy_doc.get(),
@@ -555,17 +616,14 @@ InkFileExportCmd::do_export_png(SPDocument *doc, std::string const &export_filen
     }
 
     for (auto const &object_id : objects_found) {
-        SPObject *object = doc->getRoot();
+        auto copy_doc = doc->copy();
+
+        SPObject *object = copy_doc->getRoot();
         if (!object_id.empty()) {
-            object = doc->getObjectById(object_id);
+            object = copy_doc->getObjectById(object_id);
         }
 
         std::string filename_out = get_filename_out(export_filename, Glib::filename_from_utf8(object_id));
-
-        if (export_id_only) {
-            std::cerr << "Exporting only object with id=\""
-                      << object_id.raw() << "\"; all other objects hidden." << std::endl;
-        }
 
         // Find file name and dpi from hints.
         if (export_use_hints) {
@@ -608,8 +666,8 @@ InkFileExportCmd::do_export_png(SPDocument *doc, std::string const &export_filen
         }
 
         //Make relative paths go from the document location, if possible:
-        if (filename_from_hint && !Glib::path_is_absolute(filename_out) && doc->getDocumentFilename()) {
-            std::string dirname = Glib::path_get_dirname(doc->getDocumentFilename());
+        if (filename_from_hint && !Glib::path_is_absolute(filename_out) && copy_doc->getDocumentFilename()) {
+            std::string dirname = Glib::path_get_dirname(copy_doc->getDocumentFilename());
             if (!dirname.empty()) {
                 filename_out = Glib::build_filename(dirname, filename_out);
             }
@@ -622,62 +680,10 @@ InkFileExportCmd::do_export_png(SPDocument *doc, std::string const &export_filen
             continue;
         }
 
-        // -------------------------  Area -------------------------------
+        fit_to_export_area(copy_doc.get(), object_id.empty() ? nullptr : object);
+        auto const area = *copy_doc->preferredBounds(); // whole document after fitting
 
-        Geom::Rect area;
-        doc->ensureUpToDate();
-
-        if (export_area_type == ExportAreaType::Unset) {
-            // Default to drawing if has object, otherwise export page
-            if (object_id.empty()) {
-                export_area_type = ExportAreaType::Page;
-            } else {
-                export_area_type = ExportAreaType::Drawing;
-            }
-        }
-        // Three choices: 1. Command-line export_area  2. Page area  3. Drawing area
-        switch (export_area_type) {
-            case ExportAreaType::Unset:
-                std::cerr << "ExportAreaType::not_set should be handled before" << std::endl;
-                return 1;
-            case ExportAreaType::Page: {
-                // Export area page (explicit or if no object is given).
-                Geom::Point origin(doc->getRoot()->x.computed, doc->getRoot()->y.computed);
-                area = Geom::Rect(origin, origin + doc->getDimensions());
-                break;
-            }
-            case ExportAreaType::Area: {
-                // Export area command-line
-
-                /* Try to parse area (given in SVG pixels) */
-                gdouble x0, y0, x1, y1;
-                if (sscanf(export_area.c_str(), "%lg:%lg:%lg:%lg", &x0, &y0, &x1, &y1) != 4) {
-                    g_warning("Cannot parse export area '%s'; use 'x0:y0:x1:y1'. Nothing exported.",
-                              export_area.c_str());
-                    return 1; // If it fails once, it will fail for all objects.
-                }
-                area = Geom::Rect(Geom::Interval(x0, x1), Geom::Interval(y0, y1));
-                break;
-            }
-            case ExportAreaType::Drawing: {
-                // Export area drawing (explicit or if object is given).
-                Geom::OptRect areaMaybe = static_cast<SPItem *>(object)->documentVisualBounds();
-                if (areaMaybe) {
-                    area = *areaMaybe;
-                } else {
-                    std::cerr << "InkFileExport::do_export_png: "
-                              << "Unable to determine a valid bounding box. Skipping." << std::endl;
-                    continue;
-                }
-                break;
-            }
-        }
-
-        if (export_area_snap) {
-            area = area.roundOutwards();
-        }
-        // End finding area.
-        do_export_png_now(doc, filename_out, area, dpi, items);
+        do_export_png_now(copy_doc.get(), filename_out, area, dpi, items);
 
     } // End loop over objects.
     prefs->setBool("/options/dithering/value", old_dither);
@@ -811,8 +817,9 @@ InkFileExportCmd::do_export_png_now(SPDocument *doc, std::string const &filename
             return;
         }
 
+        // Pass an empty items vector, because we've already cropped to just the item we care about.
         if( sp_export_png_file(doc, filename_out.c_str(), area, width, height, xdpi, ydpi,
-                               bgcolor, nullptr, nullptr, true, export_id_only ? items : std::vector<SPItem const *>(),
+                               bgcolor, nullptr, nullptr, true, std::vector<SPItem const *>(),
                                false, color_type, bit_depth, export_png_compression, export_png_antialias) == 1 ) {
         } else {
             std::cerr << "InkFileExport::do_export_png: Failed to export to " << filename_out << std::endl;
@@ -939,6 +946,7 @@ int InkFileExportCmd::do_export_extension(SPDocument *doc, std::string const &fi
 {
     std::string filename_out = get_filename_out(filename_in);
     if (extension) {
+        fit_to_export_area(doc, nullptr);
         extension->set_state(Inkscape::Extension::Extension::STATE_LOADED);
         try {
             extension->set_gui(false);
