@@ -442,7 +442,7 @@ bool Handle::grabbed(MotionEvent const &)
 void Handle::dragged(Geom::Point &new_pos, MotionEvent const &event)
 {
     auto const confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(event.modifiers);
-    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(event.modifiers);
     auto const link_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_LINK_HANDLES)->active(event.modifiers);
     auto const preserve_length = Modifiers::Modifier::get(Modifiers::Type::NODE_PRESERVE_LENGTH)->active(event.modifiers);
 
@@ -1420,7 +1420,7 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
 {
     auto const confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(event.modifiers);
     auto const confine_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_CONFINE_HANDLES)->active(event.modifiers);
-    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(event.modifiers);
 
     // For a note on how snapping is implemented in Inkscape, see snap.h.
     auto &sm = _desktop->getNamedView()->snap_manager;

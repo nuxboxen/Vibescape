@@ -252,6 +252,12 @@ private:
     sigc::scoped_connection _knot_end_moved_connection;
     sigc::scoped_connection _knot_end_click_connection;
     sigc::scoped_connection _knot_end_ungrabbed_connection;
+
+    Modifiers::Modifier *mod_freehand_angle_snapping;
+    Modifiers::Modifier *mod_measure_knot_dialog;
+    Modifiers::Modifier *mod_measure_select_segment;
+    Modifiers::Modifier *mod_move_no_snapping;
+    Modifiers::Modifier *mod_select_in_groups;
 };
 
 } // namespace Inkscape::UI::Tools

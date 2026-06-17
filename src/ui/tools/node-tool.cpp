@@ -108,7 +108,7 @@ Inkscape::CanvasItemGroup *create_control_group(SPDesktop *desktop)
 
 NodeTool::NodeTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/nodes", "node.svg")
-    , mod_move_snapping(Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING))
+    , mod_move_no_snapping(Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING))
     , mod_node_invert(Modifiers::Modifier::get(Modifiers::Type::NODE_INVERT))
     , mod_node_remove_from(Modifiers::Modifier::get(Modifiers::Type::NODE_REMOVE_FROM))
     , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
@@ -438,7 +438,7 @@ bool NodeTool::root_handler(CanvasEvent const &event)
         // We will show a pre-snap indication for when the user adds a node through double-clicking
         // Adding a node will only work when a path has been selected; if that's not the case then snapping is useless
         if (!_desktop->getSelection()->isEmpty()) {
-            if (!mod_move_snapping->active(event.modifiers)) {
+            if (!mod_move_no_snapping->active(event.modifiers)) {
                 m.setup(_desktop);
                 auto scp = Inkscape::SnapCandidatePoint(motion_dt, Inkscape::SNAPSOURCE_OTHER_HANDLE);
                 m.preSnap(scp, true);

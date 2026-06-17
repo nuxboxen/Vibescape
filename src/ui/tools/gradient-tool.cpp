@@ -40,6 +40,11 @@ namespace Inkscape::UI::Tools {
 
 GradientTool::GradientTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/gradient", "gradient.svg")
+    , mod_freehand_angle_snapping(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING))
+    , mod_gradient_create(Modifiers::Modifier::get(Modifiers::Type::GRADIENT_CREATE))
+    , mod_node_insert(Modifiers::Modifier::get(Modifiers::Type::NODE_INSERT))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
 {
     // TODO: This value is overwritten in the root handler
     tolerance = 6;
@@ -444,14 +449,15 @@ bool GradientTool::root_handler(CanvasEvent const &event)
             dragging = true;
 
             auto button_dt = _desktop->w2d(event.pos);
-            if (event.modifiers & GDK_SHIFT_MASK && !(event.modifiers & GDK_CONTROL_MASK)) {
+            if (mod_select_add_to->active(event.modifiers) && !mod_gradient_create->active(event.modifiers)) {
                 auto rubberband = Rubberband::get(_desktop);
                 rubberband->start(_desktop, button_dt);
             } else {
                 // remember clicked item, disregarding groups, honoring Alt; do nothing with Crtl to
                 // enable Ctrl+doubleclick of exactly the selected item(s)
-                if (!(event.modifiers & GDK_CONTROL_MASK)) {
-                    item_to_select = sp_event_context_find_item(_desktop, event.pos, event.modifiers & GDK_ALT_MASK, true);
+                if (!mod_gradient_create->active(event.modifiers)) {
+                    auto force_drag = mod_select_force_drag->active(event.modifiers);
+                    item_to_select = sp_event_context_find_item(_desktop, event.pos, force_drag, true);
                 }
 
                 if (!selection->isEmpty()) {
@@ -517,7 +523,7 @@ bool GradientTool::root_handler(CanvasEvent const &event)
 
             auto item = is_over_curve(event.pos);
 
-            if ((event.modifiers & GDK_CONTROL_MASK) && (event.modifiers & GDK_ALT_MASK)) {
+            if (mod_node_insert->active(event.modifiers)) {
                 if (item) {
                     add_stop_near_point(item, mousepoint_doc);
                     ret = true;
@@ -525,8 +531,8 @@ bool GradientTool::root_handler(CanvasEvent const &event)
             } else {
                 dragging = false;
 
-                // unless clicked with Ctrl (to enable Ctrl+doubleclick).
-                if (event.modifiers & GDK_CONTROL_MASK && !(event.modifiers & GDK_SHIFT_MASK)) {
+                // unless clicked with intent to create (to enable Ctrl+doubleclick).
+                if (mod_gradient_create->active(event.modifiers) && !mod_select_add_to->active(event.modifiers)) {
                     ret = true;
                     Rubberband::get(_desktop)->stop();
                     return;
@@ -549,7 +555,7 @@ bool GradientTool::root_handler(CanvasEvent const &event)
                         // possible change in selection during a double click with overlapping objects
                     } else {
                         // no dragging, select clicked item if any
-                        if (event.modifiers & GDK_SHIFT_MASK) {
+                        if (mod_select_add_to->active(event.modifiers)) {
                             selection->toggle(item_to_select);
                         } else {
                             _grdrag->deselectAll();
@@ -573,21 +579,17 @@ bool GradientTool::root_handler(CanvasEvent const &event)
         },
 
     [&] (KeyPressEvent const &event) {
-        switch (get_latin_keyval(event)) {
-        case GDK_KEY_Alt_L:
-        case GDK_KEY_Alt_R:
-        case GDK_KEY_Control_L:
-        case GDK_KEY_Control_R:
-        case GDK_KEY_Shift_L:
-        case GDK_KEY_Shift_R:
-        case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt (at least on my machine)
-        case GDK_KEY_Meta_R:
-            sp_event_show_modifier_tip(defaultMessageContext(), event,
-                                        _("<b>Ctrl</b>: snap gradient angle"),
-                                        _("<b>Shift</b>: draw gradient around the starting point"),
-                                        nullptr);
-            break;
+        auto keyval = get_latin_keyval(event);
 
+        if (Modifiers::keyval_is_a_modifier(keyval)) {
+            Modifiers::responsive_tooltip_with_labels(
+                defaultMessageContext(), event, 2,
+                Modifiers::Type::FREEHAND_ANGLE_SNAPPING, _("Snap gradient angle"),
+                Modifiers::Type::TRANS_OFF_CENTER, _("Draw gradient around the starting point")
+            );
+        }
+
+        switch (keyval) {
         case GDK_KEY_A:
         case GDK_KEY_a:
             if (mod_ctrl_only(event) && _grdrag->isNonEmpty()) {
@@ -666,20 +668,10 @@ bool GradientTool::root_handler(CanvasEvent const &event)
     },
 
     [&] (KeyReleaseEvent const &event) {
-        switch (get_latin_keyval(event)) {
-        case GDK_KEY_Alt_L:
-        case GDK_KEY_Alt_R:
-        case GDK_KEY_Control_L:
-        case GDK_KEY_Control_R:
-        case GDK_KEY_Shift_L:
-        case GDK_KEY_Shift_R:
-        case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt
-        case GDK_KEY_Meta_R:
-            defaultMessageContext()->clear();
-            break;
+        auto keyval = get_latin_keyval (event);
 
-        default:
-            break;
+        if (Modifiers::keyval_is_a_modifier(keyval)) {
+            defaultMessageContext()->clear();
         }
     },
 
@@ -754,9 +746,9 @@ void GradientTool::drag(Geom::Point const &pt, uint32_t etime)
         // during drag
         int const n_objects = std::ranges::distance(selection->items());
         message_context->setF(NORMAL_MESSAGE,
-                                  ngettext("<b>Gradient</b> for %d object; with <b>Ctrl</b> to snap angle",
-                                           "<b>Gradient</b> for %d objects; with <b>Ctrl</b> to snap angle", n_objects),
-                                  n_objects);
+                              ngettext("<b>Gradient</b> for %d object; with <b>%s</b> to snap angle",
+                                       "<b>Gradient</b> for %d objects; with <b>%s</b> to snap angle", n_objects),
+                              n_objects, mod_freehand_angle_snapping->get_label().c_str());
     } else {
         _desktop->messageStack()->flash(Inkscape::WARNING_MESSAGE, _("Select <b>objects</b> on which to create gradient."));
     }

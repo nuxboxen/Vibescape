@@ -78,7 +78,7 @@ private:
     bool show_transform_handles = false;
     bool single_node_transform_handles = false;
 
-    Modifiers::Modifier *mod_move_snapping;
+    Modifiers::Modifier *mod_move_no_snapping;
     Modifiers::Modifier *mod_node_invert;
     Modifiers::Modifier *mod_node_remove_from;
     Modifiers::Modifier *mod_select_add_to;

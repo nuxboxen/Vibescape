@@ -51,6 +51,12 @@ private:
     bool edit_fill;
     bool edit_stroke;
 
+    Modifiers::Modifier *mod_gradient_create;
+    Modifiers::Modifier *mod_node_insert;
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_select_force_drag;
+    Modifiers::Modifier *mod_select_remove_from;
+
     void selection_changed(Inkscape::Selection *sel);
     void select_next();
     void select_prev();

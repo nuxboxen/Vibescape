@@ -42,6 +42,12 @@ private:
     sigc::scoped_connection selcon;
     sigc::scoped_connection subselcon;
 
+    Modifiers::Modifier *mod_freehand_angle_snapping;
+    Modifiers::Modifier *mod_gradient_create;
+    Modifiers::Modifier *mod_node_insert;
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_select_force_drag;
+
     void select_next();
     void select_prev();
 

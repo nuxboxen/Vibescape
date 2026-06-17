@@ -27,6 +27,7 @@ namespace Inkscape::UI::Tools {
 
 MarkerTool::MarkerTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/marker", "select.svg")
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
 {
     Inkscape::Selection *selection = desktop->getSelection();
 
@@ -120,8 +121,8 @@ bool MarkerTool::root_handler(CanvasEvent const &event)
     inspect_event(event,
         [&] (ButtonPressEvent const &event) {
             if (event.num_press == 1 && event.button == 1) {
-
-                item_to_select = sp_event_context_find_item (_desktop, event.pos, event.modifiers & GDK_ALT_MASK, true);
+                auto force_drag = mod_select_force_drag->active(event.modifiers);
+                item_to_select = sp_event_context_find_item(_desktop, event.pos, force_drag, true);
 
                 grabCanvasEvents();
                 ret = true;

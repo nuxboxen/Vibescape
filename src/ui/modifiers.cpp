@@ -49,11 +49,15 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"select-remove-snap", Type::SELECT_REMOVE_SNAP},
         {"move-confine", Type::MOVE_CONFINE},
         {"move-increment", Type::MOVE_INCREMENT},
-        {"move-snapping", Type::MOVE_SNAPPING},
+        {"move-snapping", Type::MOVE_NO_SNAPPING}, // name is move-snapping for historical reasons
         {"trans-confine", Type::TRANS_CONFINE},
         {"trans-increment", Type::TRANS_INCREMENT},
         {"trans-off-center", Type::TRANS_OFF_CENTER},
-        {"trans-snapping", Type::TRANS_SNAPPING},
+        {"trans-snapping", Type::TRANS_NO_SNAPPING}, // name is trans-snapping for historical reasons
+        {"freehand-angle-snapping", Type::FREEHAND_ANGLE_SNAPPING},
+        {"freehand-dot", Type::FREEHAND_DOT},
+        {"freehand-dot-double", Type::FREEHAND_DOT_DOUBLE},
+        {"freehand-dot-random", Type::FREEHAND_DOT_RANDOM},
         {"bool-shift", Type::BOOL_SHIFT},
         {"box3d-extrude-one", Type::BOX3D_EXTRUDE_ONE},
         {"box3d-extrude-two", Type::BOX3D_EXTRUDE_TWO},
@@ -65,6 +69,10 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"dropper-stroke", Type::DROPPER_STROKE},
         {"flood-item", Type::FLOOD_ITEM},
         {"flood-touch-fill", Type::FLOOD_TOUCH_FILL},
+        {"gradient-create", Type::GRADIENT_CREATE},
+        {"gradient-link-handles", Type::GRADIENT_LINK_HANDLES},
+        {"measure-knot-dialog", Type::MEASURE_KNOT_DIALOG},
+        {"measure-select-segment", Type::MEASURE_SELECT_SEGMENT},
         {"node-bspline-handles", Type::NODE_BSPLINE_HANDLES},
         {"node-confine-handles", Type::NODE_CONFINE_HANDLES},
         {"node-cycle-type", Type::NODE_CYCLE_TYPE},
@@ -80,8 +88,10 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"node-remove-from", Type::NODE_REMOVE_FROM},
         {"node-retract-handle", Type::NODE_RETRACT_HANDLE},
         {"node-straighten-segment", Type::NODE_STRAIGHTEN_SEGMENT},
-        {"spiral-snapping", Type::SPIRAL_SNAPPING},
-        {"star-snapping", Type::STAR_SNAPPING},
+        {"pen-cusp-node", Type::PEN_CUSP_NODE},
+        {"pen-move-prev", Type::PEN_MOVE_PREV},
+        {"pen-switch-axis", Type::PEN_SWITCH_AXIS},
+        {"pencil-sketch", Type::PENCIL_SKETCH},
         {"tweak-invert", Type::TWEAK_INVERT},
     };
     return static_id_to_type_map;
@@ -151,6 +161,11 @@ Modifier::Container &Modifier::_modifiers()
     // Center handle click: seltrans.cpp:734 SHIFT
     // Align handle click: seltrans.cpp:1365 SHIFT
 
+        make_modifier("freehand-angle-snapping", _("Snap angle"), _("Snap while rotating item"), CTRL, FREEHAND, DRAG),
+        make_modifier("freehand-dot", _("Create dot"), _("Create a single dot"), CTRL, FREEHAND, CLICK),
+        make_modifier("freehand-dot-double", _("Double dot size"), _("Create dots at double the size"), SHIFT, FREEHAND, CLICK),
+        make_modifier("freehand-dot-random", _("Randomly adjust dot size"), _("Create dots with with a randomly adjusted size"), ALT, FREEHAND, CLICK),
+
         make_modifier("bool-shift", _("Switch mode"), _("Change shape builder mode temporarily by holding a modifier key"), SHIFT, BOOLEANS_TOOL, DRAG),
 
         make_modifier("box3d-extrude-one", _("Extrude along the Z axis"), _("Extend the 3D box in one dimension only"), SHIFT, BOX3D_TOOL, DRAG),
@@ -166,6 +181,12 @@ Modifier::Container &Modifier::_modifiers()
 
         make_modifier("flood-item", _("Apply style to item"), _("Apply the chosen color to the stroke and fill of an item"), CTRL, FLOOD_TOOL, CLICK),
         make_modifier("flood-touch-fill", _("Replace only the first color in drag"), _("Replace only the initial color from drag throughout the drag"), ALT, FLOOD_TOOL, DRAG),
+
+        make_modifier("gradient-create", _("Create gradient"), _("Create gradient on selected item"), CTRL, GRADIENT_TOOL, CLICK),
+        make_modifier("gradient-link-handles", _("Move handles together"), _("Move both gradient handles together during a drag"), CTRL | SHIFT, GRADIENT_TOOL, DRAG),
+
+        make_modifier("measure-knot-dialog", _("Open position dialog"), _("Open the position dialog for the selected knot"), SHIFT, MEASURE_TOOL, CLICK),
+        make_modifier("measure-select-segment", _("Select just the one segment"), _("Select a segment rather than a curve"), SHIFT, MEASURE_TOOL, CLICK),
 
         make_modifier("node-bspline-handles", _("Move B-Spline handles"), _("When dragging a B-Spline segment, create and/or move handles instead"), SHIFT, NODE_TOOL, DRAG),
         make_modifier("node-confine-handles", _("Confine to handles"), _("When dragging, confine to the handle lines"), ALT, NODE_TOOL, DRAG),
@@ -183,9 +204,11 @@ Modifier::Container &Modifier::_modifiers()
         make_modifier("node-retract-handle", _("Retract handle into node"), _("Remove handle when clicked"), ALT, NODE_TOOL, CLICK),
         make_modifier("node-straighten-segment", _("Straighten segment"), _("Straighten segment when double-clicked"), ALT, NODE_TOOL, CLICK),
 
-        make_modifier("spiral-snapping", _("Snap angle"), _("Snap while rotating spiral"), CTRL, SPIRAL_TOOL, DRAG),
+        make_modifier("pen-cusp-node", _("Create cusp node"), _("Create a cusp node when making a B-Spline curve"), SHIFT, PEN_TOOL, CLICK),
+        make_modifier("pen-move-prev", _("Move previous node"), _("Move previous node while placing the next"), ALT, PEN_TOOL, DRAG),
+        make_modifier("pen-switch-axis", _("Switch paraxial axis"), _("Create the next paraxial node on the opposite axis"), SHIFT, PEN_TOOL, DRAG),
 
-        make_modifier("star-snapping", _("Snap angle; keep rays radial"), _("Snap while rotating star or polygon"), CTRL, STAR_TOOL, DRAG),
+        make_modifier("pencil-sketch", _("Sketch mode"), _("Interpolate between sketched paths"), ALT, PENCIL_TOOL, DRAG),
 
         make_modifier("tweak-invert", _("Invert tweak"), _("Reverse the direction of the tweak"), SHIFT, TWEAK_TOOL, CLICK),
     };
@@ -199,6 +222,7 @@ Modifier::CategoryNames const &Modifier::_category_names()
         {CANVAS, _("Canvas")},
         {SELECT, _("Selection")},
         {MOVE, _("Movement")},
+        {FREEHAND, _("Freehand")},
         {TRANSFORM, _("Transformations")},
         {NODE_TOOL, _("Node Tool")},
         {BOOLEANS_TOOL, _("Shape Builder")},
@@ -206,9 +230,11 @@ Modifier::CategoryNames const &Modifier::_category_names()
         {CALLI_TOOL, _("Calligraphy Tool")},
         {DROPPER_TOOL, _("Dropper Tool")},
         {FLOOD_TOOL, _("Paint Bucket Tool")},
-        {SPIRAL_TOOL, _("Spiral Tool")},
-        {STAR_TOOL, _("Star/Polygon Tool")},
         {TWEAK_TOOL, _("Tweak Tool")},
+        {GRADIENT_TOOL, _("Gradient Tool")},
+        {MEASURE_TOOL, _("Measure Tool")},
+        {PEN_TOOL, _("Pen Tool")},
+        {PENCIL_TOOL, _("Pencil Tool")},
     };
     return static_category_names;
 }
@@ -361,9 +387,9 @@ unsigned long calculate_weight(KeyMask mask)
 static void responsive_tooltip_from_list(MessageContext *message_context, KeyEvent const &event,
                                          std::vector<std::pair<Modifier *, std::string>> mods)
 {
-    std::string ctrl_msg = "<b>Ctrl</b>: ";
-    std::string shift_msg = "<b>Shift</b>: ";
-    std::string alt_msg = "<b>Alt</b>: ";
+    std::string ctrl_msg;
+    std::string shift_msg;
+    std::string alt_msg;
 
     // NOTE: This will hide any keys changed to SUPER or multiple keys such as CTRL+SHIFT
     for (const auto& mod : mods) {
@@ -381,12 +407,26 @@ static void responsive_tooltip_from_list(MessageContext *message_context, KeyEve
                 g_warning("Unhandled responsive tooltip: %s", mod.second.c_str());
         }
     }
-    ctrl_msg.erase(ctrl_msg.size() - 2);
-    shift_msg.erase(shift_msg.size() - 2);
-    alt_msg.erase(alt_msg.size() - 2);
+    if (!ctrl_msg.empty()) {
+        ctrl_msg.erase(ctrl_msg.size() - 2);
+        ctrl_msg = "<b>Ctrl</b>: " + ctrl_msg;
+    }
+    if (!shift_msg.empty()) {
+        shift_msg.erase(shift_msg.size() - 2);
+        shift_msg = "<b>Shift</b>: " + shift_msg;
+    }
+    if (!alt_msg.empty()) {
+        alt_msg.erase(alt_msg.size() - 2);
+        alt_msg = "<b>Alt</b>: " + alt_msg;
+    }
 
-    UI::Tools::sp_event_show_modifier_tip(message_context, event,
-        ctrl_msg.c_str(), shift_msg.c_str(), alt_msg.c_str());
+    UI::Tools::sp_event_show_modifier_tip(
+        message_context,
+        event,
+        ctrl_msg.empty() ? nullptr : ctrl_msg.c_str(),
+        shift_msg.empty() ? nullptr : shift_msg.c_str(),
+        alt_msg.empty() ? nullptr : alt_msg.c_str()
+    );
 }
 
 /**

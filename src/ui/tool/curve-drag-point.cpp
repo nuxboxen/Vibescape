@@ -75,7 +75,7 @@ void CurveDragPoint::dragged(Geom::Point &new_pos, MotionEvent const &event)
     NodeList::iterator second = first.next();
 
     auto const bspline_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_BSPLINE_HANDLES)->active(event.modifiers);
-    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(event.modifiers);
 
     // special cancel handling - retract handles when if the segment was degenerate
     if (_is_drag_cancelled(event) && _segment_was_degenerate) {

@@ -43,8 +43,8 @@ private:
 
     sigc::connection sel_changed_connection;
 
+    Modifiers::Modifier *mod_freehand_angle_snapping;
     Modifiers::Modifier *mod_select_add_to;
-    Modifiers::Modifier *mod_spiral_snapping;
 
     void drag(Geom::Point const &p, unsigned state);
     void finishItem();

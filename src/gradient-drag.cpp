@@ -778,6 +778,10 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
 {
     GrDragger *dragger = (GrDragger *) data;
 
+    auto angle_snap = Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING)->active(state);
+    auto off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER)->active(state);
+    auto angle_increment = Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT)->active(state);
+
     // Dragger must have at least one draggable
     GrDraggable *draggable = (GrDraggable *) dragger->draggables[0];
     if (!draggable) return;
@@ -795,7 +799,7 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
 
     Geom::Point p = ppointer;
 
-    if (state & GDK_SHIFT_MASK) {
+    if (off_center) {
         // with Shift; unsnap if we carry more than one draggable
         if (dragger->draggables.size()>1) {
             // create a new dragger
@@ -816,7 +820,7 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
             dragger->updateKnotShape();
             dragger->updateTip();
         }
-    } else if (!(state & GDK_CONTROL_MASK)) {
+    } else if (!angle_snap) {
         // without Shift or Ctrl; see if we need to snap to another dragger
         for (std::vector<GrDragger *>::const_iterator di = dragger->parent->draggers.begin(); di != dragger->parent->draggers.end() ; ++di) {
             GrDragger *d_new = *di; 
@@ -851,7 +855,7 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
         }
     }
 
-    if (!((state & GDK_SHIFT_MASK) || (state & GDK_CONTROL_MASK))) {
+    if (!off_center && !angle_snap) {
         m.setup(desktop);
         Inkscape::SnappedPoint s = m.freeSnap(Inkscape::SnapCandidatePoint(p, Inkscape::SNAPSOURCE_OTHER_HANDLE));
         m.unSetup();
@@ -859,7 +863,7 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
             p = s.getPoint();
             knot->moveto(p);
         }
-    } else if (state & GDK_CONTROL_MASK) {
+    } else if (angle_snap) {
         IntermSnapResults isr;
         Inkscape::SnapCandidatePoint scp = Inkscape::SnapCandidatePoint(p, Inkscape::SNAPSOURCE_OTHER_HANDLE);
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
@@ -880,7 +884,7 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
                                     draggable->point_type == POINT_LG_BEGIN? POINT_LG_END : POINT_LG_BEGIN,
                                     draggable->fill_or_stroke)) {
                         // found the other end of the linear gradient;
-                        if (state & GDK_SHIFT_MASK) {
+                        if (off_center) {
                             // moving linear around center
                             Geom::Point center = Geom::Point (0.5*(d_new->point + dragger->point));
                             dr_snap = center;
@@ -915,7 +919,7 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
             Inkscape::SnappedPoint sp;
             if (dr_snap.isFinite()) {
                 m.setup(desktop);
-                if (state & GDK_ALT_MASK) {
+                if (angle_increment) {
                     // with Alt, snap to the original angle and its perpendiculars
                     sp = m.constrainedAngularSnap(scp, dragger->point_original, dr_snap, 2);
                 } else {
@@ -947,7 +951,7 @@ static void gr_knot_moved_handler(SPKnot *knot, Geom::Point const &ppointer, gui
 
     GrDrag *drag = dragger->parent;  // There is just one GrDrag.
     drag->keep_selection = (drag->selected.find(dragger)!=drag->selected.end());
-    bool scale_radial = (state & GDK_CONTROL_MASK) && (state & GDK_SHIFT_MASK);
+    bool scale_radial = Modifiers::Modifier::get(Modifiers::Type::GRADIENT_LINK_HANDLES)->active(state);
 
     if (drag->keep_selection) {
         Geom::Point diff = p - dragger->point;
@@ -1066,13 +1070,13 @@ static void gr_knot_moved_midpoint_handler(SPKnot */*knot*/, Geom::Point const &
     std::vector<GrDragger *> moving;
     gr_midpoint_limits(dragger, server, &begin, &end, &low_lim, &high_lim, moving);
 
-    if (state & GDK_CONTROL_MASK) {
+    if (Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING)->active(state)) {
         Geom::LineSegment ls(low_lim, high_lim);
         p = ls.pointAt(round(ls.nearestTime(p) / snap_fraction) * snap_fraction);
     } else {
         Geom::LineSegment ls(low_lim, high_lim);
         p = ls.pointAt(ls.nearestTime(p));
-        if (!(state & GDK_SHIFT_MASK)) {
+        if (!Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(state)) {
             Inkscape::Snapper::SnapConstraint cl(low_lim, high_lim - low_lim);
             SPDesktop *desktop = dragger->parent->desktop;
             auto &m = desktop->getNamedView()->snap_manager;
@@ -1086,7 +1090,7 @@ static void gr_knot_moved_midpoint_handler(SPKnot */*knot*/, Geom::Point const &
     for (auto drg : moving) {
         SPKnot *drgknot = drg->knot;
         Geom::Point this_move = displacement;
-        if (state & GDK_ALT_MASK) {
+        if (Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT)->active(state)) {
             // FIXME: unify all these profiles (here, in nodepath, in tweak) in one place
             double alpha = 1.0;
             if (Geom::L2(drg->point - dragger->point) + Geom::L2(drg->point - begin) - 1e-3 > Geom::L2(dragger->point - begin)) { // drg is on the end side from dragger
@@ -1134,11 +1138,8 @@ static void gr_knot_ungrabbed_handler(SPKnot *knot, unsigned int state, gpointer
 
     dragger->point_original = dragger->point = knot->pos;
 
-    if ((state & GDK_CONTROL_MASK) && (state & GDK_SHIFT_MASK)) {
-        dragger->fireDraggables (true, true);
-    } else {
-        dragger->fireDraggables (true);
-    }
+    bool scale_radial = Modifiers::Modifier::get(Modifiers::Type::GRADIENT_LINK_HANDLES)->active(state);
+    dragger->fireDraggables(true, scale_radial);
     dragger->moveMeshHandles( dragger->point_original, MG_NODE_NO_SCALE );
 
     for (std::set<GrDragger *>::const_iterator it = dragger->parent->selected.begin(); it != dragger->parent->selected.end() ; ++it ) {
@@ -1169,7 +1170,7 @@ static void gr_knot_clicked_handler(SPKnot */*knot*/, guint state, gpointer data
     GrDraggable *draggable = dragger->draggables[0];
     if (!draggable) return;
 
-    if ( (state & GDK_CONTROL_MASK) && (state & GDK_ALT_MASK ) ) {
+    if (Modifiers::Modifier::get(Modifiers::Type::NODE_DELETE)->active(state)) {
     // delete this knot from vector
         SPGradient *gradient = getGradient(draggable->item, draggable->fill_or_stroke);
         gradient = gradient->getVector();
@@ -1221,7 +1222,7 @@ static void gr_knot_clicked_handler(SPKnot */*knot*/, guint state, gpointer data
 
         dragger->point_original = dragger->point;
 
-        if ( state & GDK_SHIFT_MASK ) {
+        if (Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO)->active(state)) {
             dragger->parent->setSelected (dragger, true, false);
         } else {
             dragger->parent->setSelected (dragger);
@@ -1485,6 +1486,11 @@ void GrDragger::updateTip()
 {
     g_return_if_fail(this->knot != nullptr);
 
+    auto mod_delete = Modifiers::Modifier::get(Modifiers::Type::NODE_DELETE);
+    auto mod_increment = Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT);
+    auto mod_off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER);
+    auto mod_snap = Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING);
+
     char *tip = nullptr;
 
     if (this->draggables.size() == 1) {
@@ -1494,11 +1500,13 @@ void GrDragger::updateTip()
             case POINT_LG_MID:
             case POINT_RG_MID1:
             case POINT_RG_MID2:
-                tip = g_strdup_printf (_("%s %d for: %s%s; drag with <b>Ctrl</b> to snap offset; click with <b>Ctrl+Alt</b> to delete stop"),
+                tip = g_strdup_printf (_("%s %d for: %s%s; drag with <b>%s</b> to snap offset; click with <b>%s</b> to delete stop"),
                                        _(gr_knot_descr.at(draggable->point_type)),
                                        draggable->point_i,
                                        item_desc,
-                                       (draggable->fill_or_stroke == Inkscape::FOR_STROKE) ? _(" (stroke)") : "");
+                                       (draggable->fill_or_stroke == Inkscape::FOR_STROKE) ? _(" (stroke)") : "",
+                                       mod_snap->get_label().c_str(),
+                                       mod_delete->get_label().c_str());
                 break;
 
             case POINT_MG_CORNER:
@@ -1511,10 +1519,13 @@ void GrDragger::updateTip()
                 break;
 
             default:
-                tip = g_strdup_printf (_("%s for: %s%s; drag with <b>Ctrl</b> to snap angle, with <b>Ctrl+Alt</b> to preserve angle, with <b>Ctrl+Shift</b> to scale around center"),
+                tip = g_strdup_printf (_("%s for: %s%s; drag with <b>%s</b> to snap angle (with <b>%s</b> to preserve angle or <b>%s</b> to scale around center)"),
                                        _(gr_knot_descr.at(draggable->point_type)),
                                        item_desc,
-                                       (draggable->fill_or_stroke == Inkscape::FOR_STROKE) ? _(" (stroke)") : "");
+                                       (draggable->fill_or_stroke == Inkscape::FOR_STROKE) ? _(" (stroke)") : "",
+                                       mod_snap->get_label().c_str(),
+                                       mod_increment->get_label().c_str(),
+                                       mod_off_center->get_label().c_str());
                 break;
         }
         g_free(item_desc);
