@@ -183,6 +183,9 @@ ColorPalette::ColorPalette():
     });
 
     if (auto vert_scrollbar = _scroll.get_vscrollbar()) {
+        vert_scrollbar->get_adjustment()->signal_changed().connect([this] {
+            update_scroll_arrows_sensitivity();
+        });
         vert_scrollbar->get_adjustment()->signal_value_changed().connect([this] {
             update_scroll_arrows_sensitivity();
         });

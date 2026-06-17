@@ -130,6 +130,8 @@ private:
     Glib::RefPtr<Gtk::Builder> _builder;
     Gtk::ToggleButton &_list_btn;
     Gtk::ToggleButton &_grid_btn;
+
+    Pref<Glib::ustring> _saved_palette_path;
     PaletteFileData _loaded_palette;
 
     Gtk::MenuButton &_selector;
