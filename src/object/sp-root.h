@@ -59,6 +59,8 @@ public:
         const char* typeName() const override;
         const char* displayName() const override;
 
+    void updateDocVersion();
+
     // Copy out the x/y coordinates for editing
     SVGLength root_x;
     SVGLength root_y;
