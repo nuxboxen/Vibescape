@@ -489,6 +489,9 @@ void SPDocument::runMigrationsForOlderVersions()
     if (!(INKSCAPE.use_gui()) && docver.isInsideRangeExclusive(lowest_version, {0, 92})) {
         sp_file_convert_dpi(this);
     }
+
+    // Prevent the updates from running multiples times and mark the changes as complete.
+    root->updateDocVersion();
 }
 
 /**

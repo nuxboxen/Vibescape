@@ -21,6 +21,7 @@
 #include "display/drawing-group.h"                   // for DrawingGroup
 #include "display/drawing-item-ptr.h"                // for DrawingItemPtr
 #include "document.h"                                // for SPDocument
+#include "inkscape-version.h"
 #include "print.h"                                   // for SPPrintContext
 #include <2geom/rect.h>                              // for Rect
 #include "sp-defs.h"                                 // for SPDefs
@@ -386,6 +387,11 @@ const char *SPRoot::typeName() const {
 
 const char *SPRoot::displayName() const {
     return "SVG";  // Do not translate
+}
+
+void SPRoot::updateDocVersion()
+{
+    getRepr()->setAttribute("inkscape:version", Inkscape::version_string);
 }
 
 /*
