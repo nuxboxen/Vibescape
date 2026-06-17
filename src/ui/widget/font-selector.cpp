@@ -86,8 +86,11 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
 
     style_treeview.set_model (font_lister->get_style_list());
     style_treeview.set_name ("FontSelectorStyle");
-    style_treeview.append_column ("CSS", font_lister->font_style_list.cssStyle);
+    style_treeview.set_headers_visible (false);
+    // Moved to tooltip to save space, but still useful for debugging.
+    // style_treeview.append_column ("CSS", font_lister->font_style_list.cssStyle);
     style_treeview.append_column (style_treecolumn);
+    style_treeview.set_tooltip_column(font_lister->font_style_list.cssStyle.index());
 
     style_treeview.get_column(0)->set_resizable (true);
 
@@ -262,6 +265,7 @@ void FontSelector::update_font()
     // Copy font-lister style list to private list store, searching for match.
     Gtk::TreeModel::iterator match;
     auto local_style_list_store = Gtk::ListStore::create(font_lister->font_style_list);
+
     for (auto const &s : *styles) {
         auto srow = *local_style_list_store->append();
         srow[font_lister->font_style_list.cssStyle] = s.css_name;
@@ -350,6 +354,8 @@ FontSelector::get_fontspec(bool use_variations) {
         if (variations.empty()) {
             fontspec += style;
         } else {
+            fontspec += style;
+            fontspec += " ";
             fontspec += variations;
         }
     } else {
@@ -371,13 +377,15 @@ FontSelector::style_cell_data_func(Gtk::CellRenderer * const renderer,
 
     Glib::ustring style = "Normal";
     (*iter).get_value(1, style);
+    Glib::ustring css = "Normal";
+    (*iter).get_value(0, css);
 
     Glib::ustring style_escaped  = Glib::Markup::escape_text( style );
-    Glib::ustring font_desc = Glib::Markup::escape_text( family + ", " + style );
+    Glib::ustring font_desc = Glib::Markup::escape_text( family + ", " + css );
     Glib::ustring markup;
 
     markup = "<span font='" + font_desc + "'>" + style_escaped + "</span>";
-
+    // std::cout << "CSS: " << css << "   Markup: " << markup << std::endl;
     renderer->set_property("markup", markup);
 }
 

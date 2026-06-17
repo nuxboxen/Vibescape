@@ -31,58 +31,15 @@ PangoFontDescription *ink_font_description_from_style(SPStyle const *style)
             break;
     }
 
-    switch (style->font_weight.computed) {
-        case SP_CSS_FONT_WEIGHT_100:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_THIN);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_200:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_ULTRALIGHT);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_300:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_LIGHT);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_400:
-        case SP_CSS_FONT_WEIGHT_NORMAL:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_NORMAL);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_500:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_MEDIUM);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_600:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_SEMIBOLD);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_700:
-        case SP_CSS_FONT_WEIGHT_BOLD:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_BOLD);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_800:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_ULTRABOLD);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_900:
-            pango_font_description_set_weight(descr, PANGO_WEIGHT_HEAVY);
-            break;
-
-        case SP_CSS_FONT_WEIGHT_LIGHTER:
-        case SP_CSS_FONT_WEIGHT_BOLDER:
-        default:
-            if (style->font_weight.computed > 0 && style->font_weight.computed <= 1000) {
-                pango_font_description_set_weight(descr, static_cast<PangoWeight>(style->font_weight.computed));
-            }
-            else {
-                g_warning("FaceFromStyle: Unrecognized font_weight.computed value");
-                pango_font_description_set_weight(descr, PANGO_WEIGHT_NORMAL);
-            }
-            break;
+    // CSS now allows any value between 1 and 1000, including 1000.
+    auto weight = style->font_weight.computed;
+    if (weight > 0 && weight <= 1000) {
+        pango_font_description_set_weight(descr, static_cast<PangoWeight>(style->font_weight.computed));
+    } else {
+        // SP_CSS_FONT_WEIGHT_LIGHTER, SP_CSS_FONT_WEIGHT_BOLDER (shouldn't be in computed).
+        g_warning("FaceFromStyle: Unrecognized font_weight.computed value");
+        pango_font_description_set_weight(descr, PANGO_WEIGHT_NORMAL);
     }
-    // PANGO_WIEGHT_ULTRAHEAVY not used (not CSS2)
 
     switch (style->font_stretch.computed) {
         case SP_CSS_FONT_STRETCH_ULTRA_CONDENSED:

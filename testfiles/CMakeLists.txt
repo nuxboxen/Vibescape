@@ -190,6 +190,8 @@ get_libnrtype_unit_lib()
 
 add_unit_tests(TEST_SOURCES "libnrtype/font-factory-test.cpp"
                             "libnrtype/font-instance-test.cpp"
+                            "libnrtype/font-utils-test.cpp"
+
                 ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
                             "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
                  EXTRA_LIBS libnrtype_unit_lib)

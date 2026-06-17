@@ -18,6 +18,9 @@
 #include <2geom/forward.h>
 #include <pango/pango-font.h>
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
 #include "font-glyph.h"
 #include "OpenTypeUtil.h"
 #include "style-enums.h"
@@ -101,8 +104,7 @@ public:
 
     bool FontSlope(double &run, double &rise) const; // for generating slanted cursors for oblique fonts
 
-    bool IsOutlineFont() const { return FT_IS_SCALABLE(face); }
-    bool has_vertical() const { return FT_HAS_VERTICAL(face); }
+    bool has_vertical() const { return _has_vertical; }
 
     auto get_descr() const { return descr; }
     auto get_hash() const { return descr_hash; }
@@ -165,6 +167,7 @@ private:
     double  _italic_angle = 0.0; // angle for oblique fonts, if specified in a font
     bool _fixed_width = false; // monospaced font (if advertised as such)
     bool _oblique = false;  // oblique or italic font
+    bool _has_vertical = false; // Has vertical metrics
     unsigned short _family_class = 0; // OS/2 sFamily class field
 
     // Baselines
@@ -185,8 +188,11 @@ private:
         // Map of SVG in OpenType glyphs
         std::map<unsigned int, SVGGlyphEntry> openTypeSVGGlyphs;
 
-        // Maps for font variations.
-        std::map<Glib::ustring, OTVarAxis> openTypeVarAxes; // Axes with ranges
+        // Vector for font variations.
+        std::vector<OTVarAxis> openTypeVarAxes; // Axes with ranges
+
+        // Map of named instances. Key is name, data is corresponding Pango string.
+        std::map<Glib::ustring, Glib::ustring> openTypeVarNamedInstances;
 
         // Map of GSUB OpenType tables found in font. Transparently lazy-loaded.
         std::optional<std::map<Glib::ustring, OTSubstitution>> openTypeTables;

@@ -28,7 +28,6 @@
 #include FT_TRUETYPE_TAGS_H
 #include FT_TRUETYPE_TABLES_H
 #include FT_GLYPH_H
-#include FT_MULTIPLE_MASTERS_H
 
 #include <glibmm/regex.h>
 #include <glibmm/stringutils.h>
@@ -184,6 +183,20 @@ void FontInstance::release()
     g_object_unref(p_font);
 }
 
+// Compose an OpenType font tag from a string.
+uint32_t compose_tag(Glib::ustring tag_name) {
+    if (tag_name.size() != 4) {
+        std::cerr << "compose_tag: '" << tag_name << "' not four characters!" << std::endl;
+        return 0;
+    }
+
+    return
+        tag_name[0] << 24 +
+        tag_name[1] << 16 +
+        tag_name[2] <<  8 +
+        tag_name[3];
+}
+
 void FontInstance::init_face()
 {
     auto hb_font = pango_font_get_hb_font(p_font); // Pango owns hb_font.
@@ -191,78 +204,15 @@ void FontInstance::init_face()
 
     has_svg = hb_ot_color_has_svg(hb_face); // SVG glyphs Since HB 2.1.0
 
-    FT_Select_Charmap(face, ft_encoding_unicode);
-    FT_Select_Charmap(face, ft_encoding_symbol);
-
     data = std::make_shared<Data>();
     readOpenTypeTableList(hb_font, openTypeTableList);
+    _has_vertical = openTypeTableList.contains("vmtx") && openTypeTableList.contains("vhea");
     readOpenTypeSVGTable(hb_font, data->openTypeSVGGlyphs, data->openTypeSVGData);
-    readOpenTypeFvarAxes(face, data->openTypeVarAxes);
+    readOpenTypeFvarAxes(hb_font, data->openTypeVarAxes);
+}
 
-#if FREETYPE_MAJOR == 2 && FREETYPE_MINOR >= 8  // 2.8 does not seem to work even though it has some support.
-
-    // 'font-variation-settings' support.
-    //    The font returned from pango_fc_font_lock_face does not include variation settings. We must set them.
-
-    // We need to:
-    //   Extract axes with values from Pango font description.
-    //   Replace default axis values with extracted values.
-
-    if (auto var = pango_font_description_get_variations(descr)) {
-        Glib::ustring variations = var;
-
-        FT_MM_Var *mmvar = nullptr;
-        FT_Multi_Master mmtype;
-        if (FT_HAS_MULTIPLE_MASTERS(face)      &&    // Font has variables
-            FT_Get_MM_Var(face, &mmvar) == 0   &&    // We found the data
-            FT_Get_Multi_Master(face, &mmtype) != 0) {  // It's not an Adobe MM font
-
-            // std::cout << "  Multiple Masters: variables: " << mmvar->num_axis
-            //           << "  named styles: " << mmvar->num_namedstyles << std::endl;
-
-            // Get the required values from Pango Font Description
-            // Need to check format of values from Pango, for the moment accept any format.
-            auto regex = Glib::Regex::create("(\\w{4})=([-+]?\\d*\\.?\\d+([eE][-+]?\\d+)?)");
-            Glib::MatchInfo matchInfo;
-
-            FT_UInt num_axis = data->openTypeVarAxes.size();
-            std::vector<FT_Fixed> w(num_axis, 0);
-
-            auto tokens = Glib::Regex::split_simple(",", variations);
-            for (auto const &token : tokens) {
-
-                regex->match(token, matchInfo);
-                if (matchInfo.matches()) {
-
-                    float value = std::stod(matchInfo.fetch(2).raw());  // Should clamp value
-
-                    // Translate the "named" axes.
-                    auto name = matchInfo.fetch(1);
-                    if (name == "wdth") name = "Width"      ; // 'font-stretch'
-                    if (name == "wght") name = "Weight"     ; // 'font-weight'
-                    if (name == "opsz") name = "OpticalSize"; // 'font-optical-sizing' (indirectly)
-                    if (name == "slnt") name = "Slant"      ; // 'font-style'
-                    if (name == "ital") name = "Italic"     ; // 'font-style'
-
-                    auto it = data->openTypeVarAxes.find(name);
-                    if (it != data->openTypeVarAxes.end()) {
-                        it->second.set_val = value;
-                        w[it->second.index] = value * 65536;
-                    }
-                }
-            }
-
-            // Set design coordinates
-            auto err = FT_Set_Var_Design_Coordinates(face, num_axis, w.data());
-            if (err) {
-                std::cerr << "FontInstance::FontInstance(): Error in call to FT_Set_Var_Design_Coordinates(): " << err << std::endl;
-            }
-
-            // FT_Done_MM_Var(mmlib, mmvar);
-        }
-    }
-
-#endif // FreeType
+inline double FTFixedToDouble (FT_Fixed value) {
+    return static_cast<FT_Int32>(value) / 65536.0;
 }
 
 // Internal function to find baselines

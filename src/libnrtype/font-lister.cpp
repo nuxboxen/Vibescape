@@ -23,7 +23,6 @@
 #include <glibmm/regex.h>
 #include <gtkmm/cellrenderertext.h>
 #include <gtkmm/settings.h>
-#include <libnrtype/font-instance.h>
 #include <string>
 
 #include "font-factory.h"
@@ -32,6 +31,9 @@
 #include "document.h"
 #include "inkscape.h"
 #include "preferences.h"
+#include "style-text.h"
+#include "libnrtype/font-instance.h"
+#include "libnrtype/font-utils.h"
 #include "object/sp-object.h"
 // Following are needed to limit the source of updating font data to text and containers.
 #include "object/sp-root.h"
@@ -46,7 +48,6 @@
 #include "util/recently-used-fonts.h"
 #include "util/document-fonts.h"
 #include "xml/repr.h"
-#include "style-text.h"
 
 //#define DEBUG_FONT
 
@@ -586,47 +587,6 @@ void FontLister::emit_update()
     block = false;
 }
 
-Glib::ustring FontLister::canonize_fontspec(Glib::ustring const &fontspec) const
-{
-    // Pass fontspec to and back from Pango to get a the fontspec in
-    // canonical form.  -inkscape-font-specification relies on the
-    // Pango constructed fontspec not changing form. If it does,
-    // this is the place to fix it.
-    PangoFontDescription *descr = pango_font_description_from_string(fontspec.c_str());
-    gchar *canonized = pango_font_description_to_string(descr);
-    Glib::ustring Canonized = canonized;
-    g_free(canonized);
-    pango_font_description_free(descr);
-
-    // Pango canonized strings remove space after comma between family names. Put it back.
-    // But don't add a space inside a 'font-variation-settings' declaration (this breaks Pango).
-    size_t i = 0;
-    while ((i = Canonized.find_first_of(",@", i)) != std::string::npos ) {
-        if (Canonized[i] == '@') // Found start of 'font-variation-settings'.
-            break;
-        Canonized.replace(i, 1, ", ");
-        i += 2;
-    }
-
-    return Canonized;
-}
-
-Glib::ustring FontLister::system_fontspec(Glib::ustring const &fontspec)
-{
-    // Find what Pango thinks is the closest match.
-    Glib::ustring out = fontspec;
-
-    PangoFontDescription *descr = pango_font_description_from_string(fontspec.c_str());
-    auto res = FontFactory::get().Face(descr);
-    if (res) {
-        auto nFaceDesc = pango_font_describe(res->get_font());
-        out = sp_font_description_get_family(nFaceDesc);
-    }
-    pango_font_description_free(descr);
-
-    return out;
-}
-
 std::pair<Glib::ustring, Glib::ustring> FontLister::ui_from_fontspec(Glib::ustring const &fontspec) const
 {
     PangoFontDescription *descr = pango_font_description_from_string(fontspec.c_str());
@@ -734,6 +694,9 @@ std::pair<Glib::ustring, Glib::ustring> FontLister::selection_update()
         //std::cout << "   fontspec from thin air   :" << fontspec << ":" << std::endl;
     }
 
+    // Make sure fontspec matches canonical form
+    fontspec = canonize_fontspec(fontspec);
+
     // Need to update font family row too
     // Consider the count of document fonts before setting the start point
     int font_data_size = add_document_fonts_at_top(SP_ACTIVE_DOCUMENT);
@@ -763,6 +726,7 @@ void FontLister::set_fontspec(Glib::ustring const &new_fontspec, bool /*check*/)
     auto const &[new_family, new_style] = ui_from_fontspec(new_fontspec);
 
 #ifdef DEBUG_FONT
+    std::cout << "FontLister::set_fontspec: " << new_fontspec << std::endl;
     std::cout << "FontLister::set_fontspec: family: " << new_family
               << "   style:" << new_style << std::endl;
 #endif
@@ -921,7 +885,6 @@ void FontLister::set_font_style(Glib::ustring new_style, bool emit)
     }
 }
 
-
 // We do this ourselves as we can't rely on FontFactory.
 void FontLister::fill_css(SPCSSAttr *css, Glib::ustring fontspec)
 {
@@ -930,7 +893,6 @@ void FontLister::fill_css(SPCSSAttr *css, Glib::ustring fontspec)
     }
 
     std::pair<Glib::ustring, Glib::ustring> ui = ui_from_fontspec(fontspec);
-
     Glib::ustring family = ui.first;
 
 
@@ -1054,18 +1016,26 @@ void FontLister::fill_css(SPCSSAttr *css, Glib::ustring fontspec)
     std::string variations;
 
     if (str) {
+        auto variations_map = parse_variations(str);
+        for (auto [tag, value] : variations_map) {
 
-        std::vector<Glib::ustring> tokens = Glib::Regex::split_simple(",", str);
-
-        Glib::RefPtr<Glib::Regex> regex = Glib::Regex::create("(\\w{4})=([-+]?\\d*\\.?\\d+([eE][-+]?\\d+)?)");
-        Glib::MatchInfo matchInfo;
-        for (auto const &token: tokens) {
-            regex->match(token, matchInfo);
-            if (matchInfo.matches()) {
+            // Per CSS Fonts Level 4, favor higher level properties over 'font-variation-settings'
+            if (tag == "wght") {
+                sp_repr_css_set_property(css, "font-weight", value.c_str());
+         // } else if (tag == "wdth") {      Need to support font-stretch % values before enabling.
+         //     sp_repr_css_set_property(css, "font-stretch", value.c_str());
+         // } else if (tag == "slnt") {      Need to support arbitrary oblique angles before enabling.
+         // Ranges from -90deg to 90deg. If not value given, defaults to 14deg.
+         //     sp_repr_css_set_property(css, "font-style", "oblique" + std::to_string(value));
+            } else if (tag == "ital") {
+                // A font should not have both a 'slnt' and an 'ital' axis. The 'ital' axis ranges
+                // between 0 and 1 but CSS only allows it to be either on or off.
+                sp_repr_css_set_property(css, "font-style", (value == "1" ? "italic" : "normal"));
+            } else {
                 variations += "'";
-                variations += matchInfo.fetch(1).raw();
+                variations += tag;
                 variations += "' ";
-                variations += matchInfo.fetch(2).raw();
+                variations += value;
                 variations += ", ";
             }
         }
@@ -1088,8 +1058,6 @@ Glib::ustring FontLister::fontspec_from_style(SPStyle *style) const
     PangoFontDescription* descr = ink_font_description_from_style( style );
     Glib::ustring fontspec = pango_font_description_to_string( descr );
     pango_font_description_free(descr);
-
-    //std::cout << "FontLister:fontspec_from_style: " << fontspec << std::endl;
 
     return fontspec;
 }

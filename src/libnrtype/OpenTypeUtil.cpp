@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /** @file
- * TODO: insert short description here
+ * Extract OpenType features from a font using HarfBuzz.
  *//*
  * Authors: see git history
  *
- * Copyright (C) 2018 Authors
+ * Copyright (C) 2018, 2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
@@ -12,17 +12,12 @@
 
 
 #include <iostream>  // For debugging
+#include <iomanip>   // For debugging
 #include <memory>
 #include <unordered_map>
 
-// FreeType
-#include FT_FREETYPE_H
-#include FT_MULTIPLE_MASTERS_H
-#include FT_SFNT_NAMES_H
-
 // Harfbuzz
 #include <harfbuzz/hb.h>
-#include <harfbuzz/hb-ft.h>
 #include <harfbuzz/hb-ot.h>
 
 #include <glibmm/regex.h>
@@ -56,6 +51,16 @@ Glib::ustring extract_tag( guint32 *tag ) {
     tag_name += ((char)((*tag & 0x000000ff)    ));
     return tag_name;
 }
+
+// Retrieve name from OpenType name table.
+Glib::ustring get_name_string(hb_face_t* hb_face, hb_ot_name_id_t name_id) {
+
+    unsigned int text_size = 1023;
+    std::vector<char> buffer(text_size + 1); // Always returns null terminated string, not included in text_size.
+    hb_ot_name_get_utf8(hb_face, name_id, HB_LANGUAGE_INVALID, &text_size, buffer.data()); // Defaults to "en".
+    return Glib::ustring(buffer.data());
+}
+
 
 void readOpenTypeTableList(hb_font_t* hb_font, std::unordered_set<std::string>& list) {
 
@@ -294,84 +299,129 @@ void readOpenTypeGsubTable (hb_font_t* hb_font,
     g_free(hb_scripts);
 }
 
-// Harfbuzz now as API for variations (Version 2.2, Nov 29 2018).
-// Make a list of all Variation axes with ranges.
-void readOpenTypeFvarAxes(const FT_Face ft_face,
-                          std::map<Glib::ustring, OTVarAxis>& axes) {
+// Make a vector of all Variation axes with ranges. This is used by the GUI.
+// Variation axes tags are unique per OpenType specification. They are limited to ASCII.
+void readOpenTypeFvarAxes(hb_font_t* hb_font,
+                          std::vector<OTVarAxis>& axes) {
 
-#if FREETYPE_MAJOR *10000 + FREETYPE_MINOR*100 + FREETYPE_MICRO >= 20701
-    FT_MM_Var* mmvar = nullptr;
-    FT_Multi_Master mmtype;
-    if (FT_HAS_MULTIPLE_MASTERS( ft_face )    &&    // Font has variables
-        FT_Get_MM_Var( ft_face, &mmvar) == 0   &&    // We found the data
-        FT_Get_Multi_Master( ft_face, &mmtype) !=0) {  // It's not an Adobe MM font
+    hb_face_t* hb_face = hb_font_get_face(hb_font);
 
-        std::vector<FT_Fixed> coords(mmvar->num_axis);
-        FT_Get_Var_Design_Coordinates(ft_face, mmvar->num_axis, coords.data());
+    if (!hb_ot_var_has_data(hb_face)) { // hb 1.4.2
+        return;
+    }
 
-        for (size_t i = 0; i < mmvar->num_axis; ++i) {
-            FT_Var_Axis* axis = &mmvar->axis[i];
-            char tag[5];
-            for (int j = 0; j < 4; ++j) {
-                tag[j] = (axis->tag >> (3 - j) * 8) & 0xff;
-            }
-            tag[4] = 0;
-            if (axes.find(axis->name) == axes.end()) {
-                axes[axis->name] =  OTVarAxis(FTFixedToDouble(axis->minimum),
-                                              FTFixedToDouble(axis->def),
-                                              FTFixedToDouble(axis->maximum),
-                                              FTFixedToDouble(coords[i]),
-                                              i, tag);
+    unsigned int axis_count = hb_ot_var_get_axis_count(hb_face); // hb 1.4.2
+    std::vector<hb_ot_var_axis_info_t> axes_raw(axis_count);
+    hb_ot_var_get_axis_infos(hb_face, 0, &axis_count, axes_raw.data()); // hb 2.2.0
+
+    auto axis_count_save = axis_count;
+    auto axes_coords = hb_font_get_var_coords_design(hb_font, &axis_count); // hb 3.3.0
+    if (axis_count_save != axis_count) {
+        std::cerr << "readOpenTypeFvarAxes: number of design coordinates not equal to number of axes!" << std::endl;
+    }
+
+    for (unsigned int i = 0; i < axis_count; ++i) {
+        auto axis = axes_raw[i];
+
+        // Don't expose parametric axes internal to font, i.e. Roboto Flex has a number).
+        if (axis.flags & HB_OT_VAR_AXIS_FLAG_HIDDEN) continue;
+
+        char tag[5];
+        hb_tag_to_string(axis.tag, tag);
+        tag[4] = 0;
+
+        auto name = get_name_string(hb_face, axis.name_id);
+
+        axes.emplace_back(OTVarAxis(tag,
+                                    name,
+                                    axis.min_value,
+                                    axis.default_value,
+                                    axis.max_value,
+                                    axes_coords[i]));
+    }
+
+    // std::cout << "readOpenTypeFvarAxes:" << std::endl;
+    // for (auto axis: axes) {
+    //     std::cout << " "         << std::setw(4)  << axis.tag
+    //               << "  name:  " << std::setw(20) << axis.name
+    //               << "  min:  "  << std::setw(4)  << axis.minimum
+    //               << "  def:  "  << std::setw(4)  << axis.def
+    //               << "  max:  "  << std::setw(4)  << axis.maximum
+    //               << "  set:  "  << std::setw(4)  << axis.set_val << std::endl;
+    // }
+    // std::cout << std::endl;
+}
+
+// Construct a map of variable font named instances with names as key and corresponding Pango string as data.
+// String is of form: AXIS1=VALUE,AXIS2=VALUE... where:
+//    AXIS is a 4 character tag.
+//    VALUE is a float (FIXME: currently saved as an integer).
+// This is the same format as passed to "font-variation-settings".
+// Axes with default values are not included.
+void readOpenTypeFvarNamedInstances(hb_font_t* hb_font, std::map<Glib::ustring, Glib::ustring>& named_instance) {
+
+    hb_face_t* hb_face = hb_font_get_face(hb_font);
+
+    unsigned int names_count = hb_ot_var_get_named_instance_count(hb_face);
+
+    // Get tags and default values.
+    std::vector<Glib::ustring> tags; // Order is important.
+    std::vector<float> defaults;
+    unsigned int axis_count = hb_ot_var_get_axis_count(hb_face); // hb 1.4.2
+    std::vector<hb_ot_var_axis_info_t> axes_raw(axis_count);
+    hb_ot_var_get_axis_infos(hb_face, 0, &axis_count, axes_raw.data()); // hb 2.2.0
+    for (unsigned int i = 0; i < axis_count; ++i) {
+        auto axis = axes_raw[i];
+        char tag[5];
+        hb_tag_to_string(axis.tag, tag);
+        tag[4] = 0;
+        tags.push_back(tag);
+        defaults.push_back(axis.default_value);
+    }
+
+    for (unsigned int i = 0; i < names_count; ++i) {
+        auto name = get_name_string(hb_face, hb_ot_var_named_instance_get_subfamily_name_id (hb_face, i));
+
+        std::vector<float> coords(axis_count);
+        std::map<std::string, float> axes;
+        hb_ot_var_named_instance_get_design_coords(hb_face, i, &axis_count, coords.data());
+        for (unsigned int j = 0; j < axis_count; ++j) {
+            if (defaults[j] != coords[j]) {
+                axes[tags[j]] = coords[j]; // Sorts alphabetically.
             }
         }
 
-        // for (auto a: axes) {
-        //     std::cout << " " << a.first
-        //               << " min: " << a.second.minimum
-        //               << " max: " << a.second.maximum
-        //               << " set: " << a.second.set_val << std::endl;
-        // }
+        Glib::ustring pango_string;
+        for (auto [tag, value] : axes) {
+            pango_string += tag + "=" + std::to_string(value);
+            // Remove trailing zeros and decimal point
+            pango_string = pango_string.substr(0, pango_string.find_last_not_of('0') + 1);
+            if (pango_string.find('.') == pango_string.size() - 1) {
+                pango_string = pango_string.substr(0, pango_string.size() - 1);
+            }
+            pango_string += ",";
+        }
 
+        // Remove trailing comma.
+        if (!pango_string.empty()) {
+            pango_string.erase (pango_string.size() - 1);
+        }
+
+        named_instance[name] = pango_string;
     }
 
-#endif /* FREETYPE Version */
-}
-
-
-// Harfbuzz now as API for named variations (Version 2.2, Nov 29 2018).
-// Make a list of all Named instances with axis values.
-void readOpenTypeFvarNamed(const FT_Face ft_face,
-                           std::map<Glib::ustring, OTVarInstance>& named) {
-
-#if FREETYPE_MAJOR *10000 + FREETYPE_MINOR*100 + FREETYPE_MICRO >= 20701
-    FT_MM_Var* mmvar = nullptr;
-    FT_Multi_Master mmtype;
-    if (FT_HAS_MULTIPLE_MASTERS( ft_face )    &&    // Font has variables
-        FT_Get_MM_Var( ft_face, &mmvar) == 0   &&    // We found the data
-        FT_Get_Multi_Master( ft_face, &mmtype) !=0) {  // It's not an Adobe MM font
-
-        std::cout << "  Multiple Masters: variables: " << mmvar->num_axis
-                  << "  named styles: " << mmvar->num_namedstyles << std::endl;
-
-    //     const FT_UInt numNames = FT_Get_Sfnt_Name_Count(ft_face);
-    //     std::cout << "  number of names: " << numNames << std::endl;
-    //     FT_SfntName ft_name;
-    //     for (FT_UInt i = 0; i < numNames; ++i) {
-
-    //         if (FT_Get_Sfnt_Name(ft_face, i, &ft_name) != 0) {
-    //             continue;
-    //         }
-
-    //         Glib::ustring name;
-    //         for (size_t j = 0; j < ft_name.string_len; ++j) {
-    //             name += (char)ft_name.string[j];
-    //         }
-    //         std::cout << " " << i << ": " << name << std::endl;
-    //     }
-
-    }
-
-#endif /* FREETYPE Version */
+    // std::cout << "readOpenTypeFvarNames: "
+    //           << "Family: "    << std::setw(30) << std::left << get_name_string(hb_face, 1) << " "
+    //           << "Subfamily: " << std::setw(30) << std::left << get_name_string(hb_face, 2) << " "
+    //           << "count: " << names_count << std::endl;
+    // std::cout << "            Preferred: "
+    //           << "Family: "    << std::setw(30) << std::left << get_name_string(hb_face, 16) << " "
+    //           << "Subfamily: " << std::setw(30) << std::left << get_name_string(hb_face, 17) << " "
+    //           << std::endl;
+    // for (auto i : named_instance) {
+    //     std::cout << "  " << std::setw(20) << i.first << ": " << i.second << std::endl;
+    // }
+    // std::cout << "readOpenTypeFvarNames: Exit" << std::endl;
 }
 
 #define HB_OT_TAG_SVG HB_TAG('S','V','G',' ')

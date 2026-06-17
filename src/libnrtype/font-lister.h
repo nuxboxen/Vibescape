@@ -33,6 +33,8 @@
 #include <gtkmm/treemodelcolumn.h>
 #include <gtkmm/treepath.h>
 
+#include "libnrtype/font-utils.h" // canonize_fontspec
+
 inline constexpr int FONT_FAMILIES_GROUP_SIZE = 30;
 
 class SPObject;
@@ -190,13 +192,6 @@ public:
     void apply_collections(std::set <Glib::ustring> &selected_collections);
     void set_dragging_family(Glib::ustring const &new_family);
 
-    Glib::ustring canonize_fontspec(Glib::ustring const &fontspec) const;
-
-    /**
-     * Find closest system font to given font.
-     */
-    Glib::ustring system_fontspec(Glib::ustring const &fontspec);
-
     /**
      * Gets font-family and style from fontspec.
      *  font-family and style returned.
@@ -216,7 +211,9 @@ public:
      */
     void set_fontspec(Glib::ustring const &fontspec, bool check = true);
 
-    Glib::ustring get_fontspec() const { return canonize_fontspec(current_family + ", " + current_style); }
+    Glib::ustring get_fontspec() const {
+        return Inkscape::canonize_fontspec(current_family + ", " + current_style);
+    }
 
     /**
      * Changes font-family, updating style list and attempting to find

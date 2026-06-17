@@ -120,7 +120,7 @@ public:
     T<SPAttr::FONT_FAMILY, SPIString> font_family;
     /** Font shorthand */
     T<SPAttr::FONT, SPIFont> font;
-    /** Full font name, as FontFactory::ConstructFontSpecification would give, for internal use. */
+    /** Full font name, as pango_font_description_to_string() would give, for internal use. */
     T<SPAttr::INKSCAPE_FONT_SPEC, SPIString> font_specification;
 
     /* Font variants -------------------- */

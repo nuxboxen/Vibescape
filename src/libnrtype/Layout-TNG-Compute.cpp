@@ -1853,7 +1853,6 @@ void Layout::Calculator::_estimateLigatureSubcomponents(std::span<Character> cha
  */
 void Layout::Calculator::dumpPangoItemsOut(ParagraphInfo *para){
     std::cerr << "Pango items: " << para->pango_items.size() << std::endl;
-    FontFactory &factory = FontFactory::get();
     for(unsigned pidx = 0 ; pidx < para->pango_items.size(); pidx++){
         std::cerr 
         << "idx: " << pidx 
@@ -1862,7 +1861,7 @@ void Layout::Calculator::dumpPangoItemsOut(ParagraphInfo *para){
         << " length: "
         << para->pango_items[pidx].item->length
         << " font: "
-        << factory.ConstructFontSpecification(para->pango_items[pidx].font.get())
+        << pango_font_description_to_string(para->pango_items[pidx].font.get()->get_descr())
         << std::endl;
     }
 }
