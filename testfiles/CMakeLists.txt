@@ -138,7 +138,19 @@ if(WITH_CAPYPDF)
     )
 endif()
 
-add_library(cpp_test_static_library SHARED inkscape-test.cpp doc-per-case-test.cpp compare-paths-test.h lpespaths-test.h store-integrity-test.h test-with-svg-object-pairs.cpp)
+if(WIN32)
+    # make cpp_test_static_library actually static under windows, otherwise it fails with export ordinal too large
+    add_library(cpp_test_static_library STATIC
+        inkscape-test.cpp
+        doc-per-case-test.cpp
+        compare-paths-test.h
+        lpespaths-test.h
+        store-integrity-test.h
+        test-with-svg-object-pairs.cpp
+    )
+else()
+    add_library(cpp_test_static_library SHARED inkscape-test.cpp doc-per-case-test.cpp compare-paths-test.h lpespaths-test.h store-integrity-test.h test-with-svg-object-pairs.cpp)
+endif()
 target_link_libraries(cpp_test_static_library PUBLIC ${GTEST_LIBRARIES} inkscape_base)
 
 add_custom_target(tests)
@@ -184,15 +196,6 @@ add_unit_tests(TEST_SOURCES "svg-length-test.cpp"
                             # MOCK object files to unitise these tests
                             "mocks/util-units-filename.cpp"
                     EXTRA_LIBS GLibmm::GLibmm 2Geom::2geom)
-
-include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
-get_libnrtype_unit_lib()
-
-add_unit_tests(TEST_SOURCES "libnrtype/font-factory-test.cpp"
-                            "libnrtype/font-instance-test.cpp"
-                ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
-                            "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
-                 EXTRA_LIBS libnrtype_unit_lib)
 
 include("${CMAKE_SOURCE_DIR}/src/colors/CMakeUnit.txt")
 get_color_unit_lib()
@@ -240,6 +243,16 @@ if(NOT WIN32)
     add_unit_test(xslt-extension-test TEST_SOURCE "xslt-extension-test.cpp"
                                           SOURCES "extension/implementation/xslt.cpp"
                                        EXTRA_LIBS LibXml2::LibXml2 PkgConfig::SIGC++ GLibmm::GLibmm 2Geom::2geom)
+    
+    # libnrtype has an ifdef'd call to Inkscape::IO::Resource on Windows, but we can't just add io/resource.cpp
+    # to CMakeUnit.txt because that file calls Inkscape::Application, so we'd basically need to link to all of inkscape_base to make it work.
+    include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
+    get_libnrtype_unit_lib()
+    add_unit_tests(TEST_SOURCES "libnrtype/font-factory-test.cpp"
+                                "libnrtype/font-instance-test.cpp"
+                    ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
+                                "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
+                    EXTRA_LIBS libnrtype_unit_lib)
 endif()
 add_unit_test(mod360-test TEST_SOURCE "mod360-test.cpp"
                               SOURCES "mod360.cpp"

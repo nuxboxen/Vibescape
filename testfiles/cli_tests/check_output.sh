@@ -5,9 +5,9 @@ MY_LOCATION=$(dirname "$0")
 source "${MY_LOCATION}/../utils/functions.sh"
 
 ensure_command "convert"
-ensure_command "compare"
 ensure_command "bc"
 ensure_command "cp"
+get_magick
 
 OUTPUT_FILENAME=$1
 OUTPUT_PAGE=$2
@@ -60,7 +60,7 @@ if [ -n "${REFERENCE_FILENAME}" ]; then
 
     if [[ $(identify -format "%m" "${OUTPUT_FILENAME}") != "PNG" ]] then
         echo -density "%[fx:$DPI*$SUPERSAMPLING]" ${delegate1}${OUTPUT_FILENAME}${OUTFILE_SUFFIX} ${CONVERSION_OPTIONS} -resize "%[fx:100/$SUPERSAMPLING]%" ${PNG_FILENAME}
-        if ! magick -density "%[fx:$DPI*$SUPERSAMPLING]" ${delegate1}${OUTPUT_FILENAME}${OUTFILE_SUFFIX} ${CONVERSION_OPTIONS} -resize "%[fx:100/$SUPERSAMPLING]%" ${PNG_FILENAME}; then
+        if ! $MAGICK -density "%[fx:$DPI*$SUPERSAMPLING]" ${delegate1}${OUTPUT_FILENAME}${OUTFILE_SUFFIX} ${CONVERSION_OPTIONS} -resize "%[fx:100/$SUPERSAMPLING]%" ${PNG_FILENAME}; then
             echo "Warning: Failed to convert test file '${OUTPUT_FILENAME}' to PNG format. Skipping comparison test."
             exit 42
         fi
@@ -68,7 +68,7 @@ if [ -n "${REFERENCE_FILENAME}" ]; then
         cp "${OUTPUT_FILENAME}" "${PNG_FILENAME}"
     fi
     if [[ $(identify -format "%m" "${REFERENCE_FILENAME}") != "PNG" ]] then
-        if ! magick -density "%[fx:$DPI*$SUPERSAMPLING]" ${delegate2}${REFERENCE_FILENAME} ${CONVERSION_OPTIONS} -resize "%[fx:100/$SUPERSAMPLING]%" ${PNG_REFERENCE}; then
+        if ! $MAGICK -density "%[fx:$DPI*$SUPERSAMPLING]" ${delegate2}${REFERENCE_FILENAME} ${CONVERSION_OPTIONS} -resize "%[fx:100/$SUPERSAMPLING]%" ${PNG_REFERENCE}; then
             echo "Warning: Failed to convert reference file '${REFERENCE_FILENAME}' to PNG format. Skipping comparison test."
             exit 42
         fi
@@ -77,7 +77,7 @@ if [ -n "${REFERENCE_FILENAME}" ]; then
     fi
 
     # Compare the two files
-    COMPARE_OUTPUT=$(compare 2>&1 -metric RMSE "${PNG_FILENAME}" "${PNG_REFERENCE}" "${PNG_COMPARE}")
+    COMPARE_OUTPUT=$($COMPARE 2>&1 -metric RMSE "${PNG_FILENAME}" "${PNG_REFERENCE}" "${PNG_COMPARE}")
     RELATIVE_ERROR=$(get_compare_result "$COMPARE_OUTPUT")
     PERCENTAGE_ERROR=$(fraction_to_percentage "$RELATIVE_ERROR")
     if (( $(is_relative_error_within_tolerance "$RELATIVE_ERROR" "$FUZZ") )) then
