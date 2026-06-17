@@ -7,7 +7,6 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "colors/spaces/okhsl.h"
 #include "spaces-testbase.h"
 
 namespace {
@@ -23,7 +22,10 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(toString);
 
 INSTANTIATE_TEST_SUITE_P(ColorsSpacesOkHSL, convertColorSpace, testing::Values(
     // No conversion
-    _P(inb, OKHSL, { 1.0, 0.400, 0.200 }, OKHSL, { 1.0, 0.400, 0.200 })
+    _P(inb, OKHSL, { 1.0, 0.400, 0.200 }, OKHSL, { 1.0, 0.400, 0.200 }),
+
+    // Test conversion from RGB to OkHsl when total chrominance is low.
+    _P(inb, RGB, { 1.0, 1.0, 1.0 }, OKHSL, { 0.0, 0.0, 1.0 })
 ));
 
 INSTANTIATE_TEST_SUITE_P(ColorsSpacesOkHSL, normalize, testing::Values(

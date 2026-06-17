@@ -57,6 +57,7 @@ public:
         OkLab::toLinearRGB(o, o);
         LinearRGB::toRGB(o, o);
     }
+
     template<typename T, bool PremultiplyAlpha = false>
     inline static void profileToSpace(T const *i, T *o)
     {
@@ -71,17 +72,17 @@ public:
             o[2] = o[0];
             o[1] = 0.0;
             o[0] = 0.0;
+        } else {
+            // Compute the hue (in the unit interval).
+            Geom::Angle const hue_angle = std::atan2(o[2], o[1]);
+            o[2] = std::clamp((double)o[0], 0.0, 1.0);
+            o[0] = hue_angle.radians0() / (2.0 * M_PI);
+
+            // Compute the linear saturation.
+            double const hue_degrees = Geom::deg_from_rad(hue_angle.radians0());
+            double const chromax = OkLch::max_chroma(o[2], hue_degrees);
+            o[1] = (chromax == 0.0) ? 0.0 : std::clamp(absolute_chroma / chromax, 0.0, 1.0);
         }
-
-        // Compute the hue (in the unit interval).
-        Geom::Angle const hue_angle = std::atan2(o[2], o[1]);
-        o[2] = std::clamp((double)o[0], 0.0, 1.0);
-        o[0] = hue_angle.radians0() / (2.0 * M_PI);
-
-        // Compute the linear saturation.
-        double const hue_degrees = Geom::deg_from_rad(hue_angle.radians0());
-        double const chromax = OkLch::max_chroma(o[2], hue_degrees);
-        o[1] = (chromax == 0.0) ? 0.0 : std::clamp(absolute_chroma / chromax, 0.0, 1.0);
 
         if constexpr (PremultiplyAlpha) {
             o[0] *= i[3];
