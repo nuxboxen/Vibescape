@@ -509,6 +509,30 @@ void Script::export_raster(Inkscape::Extension::Output *module,
     }
 }
 
+void Script::_setAppSensitive(bool sensitive)
+{
+    if (!INKSCAPE.use_gui()) {
+        return;
+    }
+
+    auto application = InkscapeApplication::instance()->gtk_app();
+    for (auto const &win : application->get_windows()) {
+        win->set_sensitive(sensitive);
+    }
+
+#ifdef __APPLE__
+    // On macOS, hide or show our global menubar to avoid users interacting with it while
+    // insensitive. We could try to disable all the actions in the menu, but that would get a bit
+    // messy as we keep track of which were already disabled, and would prevent the extension
+    // script from being able to activate those actions on the CLI.
+    if (sensitive) {
+        build_menu();
+    } else {
+        application->set_menubar(nullptr);
+    }
+#endif
+}
+
 /**
     \return    none
     \brief     This function uses an extension as an effect on a document.
@@ -563,11 +587,9 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
         execute(command, {}, empty, outfile, module->ignore_stderr, module->pipe_diffs);
 
         // Hack to allow for extension manager to reload extensions
-        // TODO: Find a better way to do this, e.g. implement an action and have extensions (or users)
-        //       call that instead when there's a change that requires extensions to reload
+        // TODO: Have the extension manager call this action itself
         if (!g_strcmp0(module->get_id(), "org.inkscape.extension.manager")) {
-            Inkscape::Extension::refresh_user_extensions();
-            build_menu(); // Rebuild main menubar.
+            InkscapeApplication::instance()->gio_app()->activate_action("refresh-user-extensions");
         }
 
         return;
@@ -771,7 +793,8 @@ bool Script::cancelProcessing () {
     are closed, and we return to what we were doing.
 */
 int Script::execute(std::list<std::string> const &in_command, std::list<std::string> const &in_params,
-                    Glib::ustring const &filein, file_listener &fileout, bool ignore_stderr, bool pipe_diffs)
+                    Glib::ustring const &filein, file_listener &fileout, bool ignore_stderr,
+                    bool pipe_diffs)
 {
     g_return_val_if_fail(!in_command.empty(), 0);
 
@@ -847,14 +870,11 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
     // Save the pid. (This function is reentrant, so _pid could be overwritten.)
     auto const local_pid = _pid;
 
-    // Create a new MainContext for the loop so that the original context sources are not run here,
-    // this enforces that only the file_listeners should be read in this new MainLoop
-    // Unless in pipe_diffs mode, in which case use the application-wide main loop
-    auto const main_context = !pipe_diffs
-        ? Glib::MainContext::create()
-        : Glib::MainContext::get_default();
-
-    _main_loop = Glib::MainLoop::create(main_context, false);
+    // Use GTK's MainContext, so that it can process events and the UI is not flagged as frozen.
+    // But we'll set all windows as insensitive below while we run, to avoid any race conditions
+    // from interacting with Inkscape while an extension is running (like quitting before an
+    // extension can finish writing a file).
+    _main_loop = Glib::MainLoop::create();
 
     file_listener fileerr;
     fileout.init(stdout_pipe, _main_loop);
@@ -887,6 +907,7 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
         conns.emplace_back(document->connectDestroy(on_lose_document));
     }
 
+    _setAppSensitive(false);
     _canceled = false;
     _main_loop->run();
 
@@ -903,6 +924,7 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
     }
 
     _main_loop.reset();
+    _setAppSensitive(true);
 
     if (pipe_diffs && lost_document) {
         throw Inkscape::Extension::Output::lost_document{};
