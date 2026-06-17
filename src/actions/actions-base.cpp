@@ -30,9 +30,11 @@
 #include "selection.h"            // Selection
 
 #include "actions/actions-extra-data.h"
+#include "extension/init.h"
 #include "util-string/ustring-format.h"
 #include "io/resource.h"
 #include "object/sp-root.h"       // query_all()
+#include "ui/desktop/menubar.h"
 
 void
 print_inkscape_version()
@@ -71,6 +73,13 @@ void
 print_user_data_directory()
 {
     show_output(Inkscape::IO::Resource::profile_path(), false);
+}
+
+// Can be used by Extension Manager, to update extensions as it installs/uninstalls them
+void refresh_user_extensions()
+{
+    Inkscape::Extension::refresh_user_extensions();
+    build_menu(); // Rebuild main menubar.
 }
 
 // Helper function for query_x(), query_y(), query_width(), and query_height().
@@ -238,6 +247,7 @@ std::vector<std::vector<Glib::ustring>> raw_data_base =
     {"app.list-input-types",      N_("List Input File Extensions"), SECTION_BASE,    N_("Print a list of input file extensions and exit")    },
     {"app.quit",                  N_("Quit"),                       SECTION_BASE,    N_("Quit Inkscape, check for data loss")                },
     {"app.quit-immediate",        N_("Quit Immediately"),           SECTION_BASE,    N_("Immediately quit Inkscape, no check for data loss") },
+    {"app.refresh-user-extensions", N_("Refresh User Extensions"),  SECTION_BASE,    N_("Refresh list of available user extensions")         },
 
     {"app.open-page",             N_("Import Page Number"),            SECTION_IMPORT, N_("Select PDF page number to import")                   },
     {"app.convert-dpi-method",    N_("Import DPI Method"),             SECTION_IMPORT, N_("Set DPI conversion method for legacy Inkscape files")},
@@ -270,6 +280,7 @@ add_actions_base(InkscapeApplication* app)
     gapp->add_action(               "list-input-types",   sigc::mem_fun(*app, &InkscapeApplication::print_input_type_list)                        );
     gapp->add_action(               "quit",               sigc::mem_fun(*app, &InkscapeApplication::on_quit)                                      );
     gapp->add_action(               "quit-immediate",     sigc::mem_fun(*app, &InkscapeApplication::on_quit_immediate)                            );
+    gapp->add_action(               "refresh-user-extensions",                             sigc::ptr_fun(&refresh_user_extensions)                );
 
     gapp->add_action_radio_integer( "open-page",                                           sigc::ptr_fun(&pdf_page),                             0);
     gapp->add_action_radio_string(  "convert-dpi-method",                                  sigc::ptr_fun(&convert_dpi_method),              "none");

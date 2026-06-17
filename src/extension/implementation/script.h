@@ -78,6 +78,8 @@ private:
     void _change_extension(Inkscape::Extension::Extension *mod, ExecutionEnv *executionEnv, SPDocument *doc,
                            std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs = false);
 
+    void _setAppSensitive(bool sensitive);
+
     /**
      * The command that has been derived from
      * the configuration file with appropriate directories
