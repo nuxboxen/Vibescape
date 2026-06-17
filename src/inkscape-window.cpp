@@ -45,6 +45,7 @@
 #include "actions/actions-view-mode.h"
 #include "actions/actions-view-window.h"
 #include "inkscape.h"
+#include "object/sp-namedview.h"
 #include "ui/desktop/menubar.h"
 #include "ui/desktop/menu-set-tooltips-shift-icons.h"
 #include "ui/dialog/dialog-manager.h"
@@ -121,6 +122,10 @@ InkscapeWindow::InkscapeWindow(SPDesktop *desktop)
     set_child(*_desktop_widget);
 
     _desktop_widget->addDesktop(desktop);
+
+    // Resize the window to match the document properties early, before we can possibly be shown.
+    Widget::realize();
+    sp_namedview_window_from_document(desktop);
 
     // ================== Callbacks ==================
     property_is_active().signal_changed().connect(sigc::mem_fun(*this, &InkscapeWindow::on_is_active_changed));

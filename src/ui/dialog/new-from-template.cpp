@@ -16,7 +16,6 @@
 #include "inkscape-application.h"
 #include "inkscape.h"
 #include "preferences.h"
-#include "object/sp-namedview.h"
 #include "ui/dialog-run.h"
 
 namespace Inkscape::UI {
@@ -74,8 +73,7 @@ void NewFromTemplate::_createFromTemplate()
         return;
 
     auto app = InkscapeApplication::instance();
-    auto new_desktop = app->desktopOpen(doc);
-    sp_namedview_window_from_document(new_desktop);
+    app->desktopOpen(doc);
 
     if (old_desktop)
         old_desktop->clearWaitingCursor();

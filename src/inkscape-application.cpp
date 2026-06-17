@@ -406,9 +406,6 @@ SPDesktop *InkscapeApplication::desktopOpen(SPDocument *document, bool new_windo
         assert(_active_selection == desktop->getSelection());
         assert(_active_document  == document);
 
-        // Resize the window to match the document properties
-        sp_namedview_window_from_document(desktop);
-
         win->present();
     }
 
