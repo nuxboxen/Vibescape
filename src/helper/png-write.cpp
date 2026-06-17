@@ -52,7 +52,7 @@
 
 struct SPEBP {
     unsigned long int width, height, sheight;
-    std::optional<Colors::Color> background;
+    std::optional<Inkscape::Colors::Color> background;
     Inkscape::Drawing *drawing; // it is assumed that all unneeded items are hidden
     guchar *px;
     unsigned (*status)(float, void *);
@@ -380,7 +380,7 @@ sp_export_get_rows(guchar const **rows, void **to_free, int row, int num_rows, v
 ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
                                 double x0, double y0, double x1, double y1,
                                 unsigned long int width, unsigned long int height, double xdpi, double ydpi,
-                                Colors::Color const &bgcolor,
+                                Inkscape::Colors::Color const &bgcolor,
                                 unsigned int (*status) (float, void *),
                                 void *data, bool force_overwrite,
                                 const std::vector<SPItem const *> &items_only, bool interlace, int color_type, int bit_depth, int zlib, int antialiasing)
@@ -398,7 +398,7 @@ ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
 ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
                                 Geom::Rect const &area,
                                 unsigned long width, unsigned long height, double xdpi, double ydpi,
-                                Colors::Color const &bgcolor,
+                                Inkscape::Colors::Color const &bgcolor,
                                 unsigned (*status)(float, void *),
                                 void *data, bool force_overwrite,
                                 const std::vector<SPItem const *> &items_only, bool interlace, int color_type, int bit_depth, int zlib, int antialiasing)

@@ -63,6 +63,7 @@
 #define noSP_GR_VERBOSE
 
 using Inkscape::DocumentUndo;
+namespace Colors = Inkscape::Colors;
 
 namespace {
 
@@ -879,7 +880,7 @@ SPStop* sp_gradient_add_stop_at(SPGradient* gradient, double offset) {
     }
 }
 
-void sp_set_gradient_stop_color(SPDocument* document, SPStop* stop, Color const &color) {
+void sp_set_gradient_stop_color(SPDocument* document, SPStop* stop, Colors::Color const &color) {
    sp_repr_set_css_double(stop->getRepr(), "offset", stop->offset);
    stop->setColor(color);
    DocumentUndo::maybeDone(document, "gradient:stop:color", RC_("Undo", "Change gradient stop color"), INKSCAPE_ICON("color-gradient"));
@@ -923,7 +924,7 @@ SPStop* sp_item_gradient_get_stop(SPItem *item, GrPointType point_type, guint po
     return nullptr;
 }
 
-Color sp_item_gradient_stop_query_style(SPItem *item, GrPointType point_type, guint point_i, Inkscape::PaintTarget fill_or_stroke)
+Colors::Color sp_item_gradient_stop_query_style(SPItem *item, GrPointType point_type, guint point_i, Inkscape::PaintTarget fill_or_stroke)
 {
     SPGradient *gradient = getGradient(item, fill_or_stroke);
 
@@ -1077,7 +1078,7 @@ void sp_item_gradient_stop_set_style(SPItem *item, GrPointType point_type, guint
 
                 // Update mesh array (which is not updated automatically when stop is changed?)
                 gchar const* color_str = sp_repr_css_property(stop, "stop-color", nullptr);
-                if (auto color = Color::parse(color_str)) {
+                if (auto color = Colors::Color::parse(color_str)) {
                     color->addOpacity(sp_repr_css_double_property(stop, "stop-opacity", 1.0));
                     if (*color != mg->array.corners[point_i]->color) {
                         mg->array.corners[ point_i ]->color = *color;
@@ -1696,7 +1697,7 @@ static void sp_gradient_repr_set_link(Inkscape::XML::Node *repr, SPGradient *lin
 }
 
 
-static void addStop(Inkscape::XML::Node *parent, Color const &color, double opacity, gchar const *offset)
+static void addStop(Inkscape::XML::Node *parent, Colors::Color const &color, double opacity, gchar const *offset)
 {
 #ifdef SP_GR_VERBOSE
     g_message("addStop(%p, %s, %f, %s)", parent, color.toString().c_str(), opacity, offset);
@@ -1704,7 +1705,7 @@ static void addStop(Inkscape::XML::Node *parent, Color const &color, double opac
     auto doc = parent->document();
     Inkscape::XML::Node *repr = doc->createElement("svg:stop");
 
-    Color copy = color;
+    Colors::Color copy = color;
     copy.addOpacity(opacity);
     SPStop::setColorRepr(repr, copy);
     repr->setAttribute( "offset", offset );
@@ -1715,7 +1716,7 @@ static void addStop(Inkscape::XML::Node *parent, Color const &color, double opac
 /*
  * Get default normalized gradient vector of document, create if there is none
  */
-SPGradient *sp_document_default_gradient_vector(SPDocument *document, Color const &color, double opacity, bool singleStop)
+SPGradient *sp_document_default_gradient_vector(SPDocument *document, Colors::Color const &color, double opacity, bool singleStop)
 {
     SPDefs *defs = document->getDefs();
 
@@ -1746,7 +1747,7 @@ SPGradient *sp_document_default_gradient_vector(SPDocument *document, Color cons
     addStop(repr, color, opacity, "0");
     if (!singleStop) {
         auto lightness = Colors::get_perceptual_lightness(color);
-        auto contrast = (lightness > 0.95 ? Color(0x00'00'00'ff) : Color(0xff'ff'ff'ff)).converted(color.getSpace());
+        auto contrast = (lightness > 0.95 ? Colors::Color(0x00'00'00'ff) : Colors::Color(0xff'ff'ff'ff)).converted(color.getSpace());
         // second stop without transparency - no more forcing users to fix alpha channel on new gradients
         addStop(repr, /*contrast.value_or*/(color), 1.0, "1");
     }
@@ -1765,7 +1766,7 @@ SPGradient *sp_document_default_gradient_vector(SPDocument *document, Color cons
 SPGradient *sp_gradient_vector_for_object( SPDocument *const doc, SPDesktop *const desktop,
                                            SPObject *const o, Inkscape::PaintTarget const fill_or_stroke, bool singleStop )
 {
-    Color color(0x000000ff);
+    Colors::Color color(0x000000ff);
     double opacity = 1.0;
     bool for_fill = fill_or_stroke == Inkscape::FOR_FILL;
 
@@ -1892,7 +1893,7 @@ int sp_get_gradient_refcount(SPDocument* document, SPGradient* gradient) {
 void sp_item_apply_gradient(SPItem* item, SPGradient* vector, SPDesktop* desktop, SPGradientType gradient_type, bool create_swatch, FillOrStroke kind) {
     if (!item || !item->document || !item->style || gradient_type == SP_GRADIENT_TYPE_MESH) return;
 
-    PaintTarget paint_target = kind == FILL ? FOR_FILL : FOR_STROKE;
+    Inkscape::PaintTarget paint_target = kind == FILL ? Inkscape::FOR_FILL : Inkscape::FOR_STROKE;
 
     if (!vector) {
         // no vector means that we want to create a new one; find initial color
@@ -2058,7 +2059,7 @@ SPGradient* sp_find_replacement_swatch(SPDocument* document, SPGradient* swatch)
     return nullptr;
 }
 
-void sp_change_swatch_color(SPGradient* swatch, const Color& color) {
+void sp_change_swatch_color(SPGradient* swatch, const Colors::Color& color) {
     if (!swatch) return;
 
     if (swatch->hasStops()) {
@@ -2066,7 +2067,7 @@ void sp_change_swatch_color(SPGradient* swatch, const Color& color) {
     }
 }
 
-void sp_create_document_swatches(SPDocument* document, const std::vector<Color>& colors) {
+void sp_create_document_swatches(SPDocument* document, const std::vector<Colors::Color>& colors) {
     if (!document || colors.empty()) return;
 
     for (auto& color : colors) {
@@ -2133,7 +2134,7 @@ int sp_cleanup_document_swatches(SPDocument* document) {
     return removed;
 }
 
-SPGradient* sp_find_matching_swatch(SPDocument* document, const Color& color) {
+SPGradient* sp_find_matching_swatch(SPDocument* document, const Colors::Color& color) {
     if (!document) return nullptr;
 
     auto rgb = color.converted(Colors::Space::Type::RGB);

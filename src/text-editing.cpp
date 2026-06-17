@@ -35,6 +35,8 @@
 #include "xml/attribute-record.h"
 #include "xml/sp-css-attr.h"
 
+using namespace Inkscape;
+
 static const gchar *tref_edit_message = _("You cannot edit <b>cloned character data</b>.");
 static void move_child_nodes(XML::Node *from_repr, XML::Node *to_repr, bool prepend = false);
 

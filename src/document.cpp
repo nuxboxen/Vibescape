@@ -112,7 +112,7 @@ SPDocument::SPDocument()
     , document_filename(nullptr)
     , document_base(nullptr)
     , document_name(nullptr)
-    , console_output_undo_observer{create_console_output_observer()}
+    , console_output_undo_observer{Inkscape::create_console_output_observer()}
     , object_id_counter(1)
     , _router(std::make_unique<Avoid::Router>(Avoid::PolyLineRouting | Avoid::OrthogonalRouting))
     , current_persp3d(nullptr)
@@ -578,7 +578,7 @@ void SPDocument::import(SPDocument &input_doc, Inkscape::XML::Node *parent, Inks
         }
         Inkscape::GC::release(obj_copy);
 
-        sp_repr_visit_descendants(obj_copy, [&layerMode, &output_doc](XML::Node *node) {
+        sp_repr_visit_descendants(obj_copy, [&layerMode, &output_doc](Inkscape::XML::Node *node) {
             auto tag = node->name();
             if (layerMode == ImportLayersMode::ToGroup && !strcmp(tag, "svg:g")) {
                 // convert layers to groups, and make sure they are unlocked

@@ -958,6 +958,8 @@ copy_cairo_surface_ci(cairo_surface_t *in, cairo_surface_t *out) {
     cairo_surface_set_user_data(out, &ink_color_interpolation_key, cairo_surface_get_user_data(in, &ink_color_interpolation_key), nullptr);
 }
 
+namespace Colors = Inkscape::Colors;
+
 /**
  * Set the source color of the Cairo context.
  *

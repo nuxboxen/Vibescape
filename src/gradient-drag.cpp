@@ -128,7 +128,7 @@ static int gr_drag_style_query(SPStyle *style, int property, gpointer data)
         return QUERY_STYLE_NOTHING;
     } else {
         int ret = QUERY_STYLE_NOTHING;
-        auto colors = Colors::ColorSet();
+        auto colors = Inkscape::Colors::ColorSet();
 
         SPStop* selected = nullptr;
         for(auto d : drag->selected) { //for all selected draggers

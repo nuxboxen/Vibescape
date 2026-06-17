@@ -63,6 +63,7 @@ void sp_style_set_ipaint_to_uri(SPStyle *style, SPIPaint *paint, const Inkscape:
 void sp_style_set_ipaint_to_uri_string (SPStyle *style, SPIPaint *paint, const gchar *uri);
 
 using Inkscape::CSSOStringStream;
+namespace Colors = Inkscape::Colors;
 
 // SPIBase --------------------------------------------------------------
 
@@ -1845,7 +1846,7 @@ SPIPaint::reset( bool init ) {
     href.reset();
 
     if (init && id() == SPAttr::FILL) {
-        _color = Inkscape::Colors::Color(0x000000ff); // 'black' is default for 'fill'
+        _color = Colors::Color(0x000000ff); // 'black' is default for 'fill'
     }
 }
 

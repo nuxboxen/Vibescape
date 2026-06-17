@@ -46,8 +46,6 @@ class AnySpace;
 }
 };
 
-using namespace Inkscape;
-
 static const unsigned SP_STYLE_FLAG_ALWAYS (1 << 2);
 static const unsigned SP_STYLE_FLAG_IFSET  (1 << 0);
 static const unsigned SP_STYLE_FLAG_IFDIFF (1 << 1);
@@ -697,19 +695,19 @@ public:
     void merge(   const SPIBase* const parent ) override;
 
     SPIColor& operator=(const SPIColor& rhs);
-    SPIColor& operator=(const Colors::Color &rhs);
+    SPIColor& operator=(const Inkscape::Colors::Color &rhs);
 
     bool equals(const SPIBase& rhs) const override;
 
-    void setColor(Colors::Color const &other);
-    Colors::Color const &getColor() const;
+    void setColor(Inkscape::Colors::Color const &other);
+    Inkscape::Colors::Color const &getColor() const;
 
     bool canHaveCMS() const;
-    Colors::DocumentCMS const &getCMS() const;
+    Inkscape::Colors::DocumentCMS const &getCMS() const;
 public:
     bool currentcolor = false;
 private:
-    std::optional<Colors::Color> _color;
+    std::optional<Inkscape::Colors::Color> _color;
 };
 
 
@@ -789,11 +787,11 @@ public:
     void setTag(SPObject* tag) { this->tag = tag; }
     SPObject* getTag() { return tag; }
 
-    void setColor(Colors::Color const &other);
-    Colors::Color const &getColor() const;
+    void setColor(Inkscape::Colors::Color const &other);
+    Inkscape::Colors::Color const &getColor() const;
 
     bool canHaveCMS() const;
-    Colors::DocumentCMS const &getCMS() const;
+    Inkscape::Colors::DocumentCMS const &getCMS() const;
   // To do: make private
 public:
     SPPaintOrigin paintOrigin : 2; // Inherited value (from cascade)
@@ -803,7 +801,7 @@ public:
     std::shared_ptr<SPPaintServerReference> href;
     SPObject *tag = nullptr;
 private:
-    std::optional<Colors::Color> _color;
+    std::optional<Inkscape::Colors::Color> _color;
 };
 
 class SPIColorInterpolation : public SPIBase
@@ -821,13 +819,13 @@ public:
     void cascade( const SPIBase* const parent ) override;
     void merge(   const SPIBase* const parent ) override;
 
-    std::shared_ptr<Colors::Space::AnySpace> const getInterpolationSpace() const { return _color_space; }
-    void setInterpolationSpace(std::shared_ptr<Colors::Space::AnySpace> space) { _color_space = space; }
+    std::shared_ptr<Inkscape::Colors::Space::AnySpace> const getInterpolationSpace() const { return _color_space; }
+    void setInterpolationSpace(std::shared_ptr<Inkscape::Colors::Space::AnySpace> space) { _color_space = space; }
 
     bool canHaveCMS() const;
-    Colors::DocumentCMS const &getCMS() const;
+    Inkscape::Colors::DocumentCMS const &getCMS() const;
 private:
-    std::shared_ptr<Colors::Space::AnySpace> _color_space;
+    std::shared_ptr<Inkscape::Colors::Space::AnySpace> _color_space;
 };
 
 // Normal maybe should be moved out as is done in other classes.

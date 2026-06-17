@@ -41,6 +41,7 @@
 
 using Inkscape::DocumentUndo;
 using namespace Inkscape::Util;
+namespace Colors = Inkscape::Colors;
 
 namespace {
 

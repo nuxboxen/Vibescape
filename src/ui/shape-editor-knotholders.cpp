@@ -1432,7 +1432,7 @@ sp_genericellipse_side(SPGenericEllipse *ellipse, Geom::Point const &p)
 void
 ArcKnotHolderEntityStart::knot_set(Geom::Point const &p, Geom::Point const &/*origin*/, unsigned int state)
 {
-    double snaps = Preferences::get()->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
+    double snaps = Inkscape::Preferences::get()->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
 
     auto arc = cast<SPGenericEllipse>(item);
     g_assert(arc != nullptr);
@@ -1484,7 +1484,7 @@ ArcKnotHolderEntityStart::knot_click(unsigned int state)
 void
 ArcKnotHolderEntityEnd::knot_set(Geom::Point const &p, Geom::Point const &/*origin*/, unsigned int state)
 {
-    double snaps = Preferences::get()->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
+    double snaps = Inkscape::Preferences::get()->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
 
     auto arc = cast<SPGenericEllipse>(item);
     g_assert(arc != nullptr);
@@ -1893,8 +1893,7 @@ public:
 void
 SpiralKnotHolderEntityInner::knot_set(Geom::Point const &p, Geom::Point const &origin, unsigned int state)
 {
-    Preferences *prefs = Preferences::get();
-    double snaps = prefs->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
+    double snaps = Inkscape::Preferences::get()->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
 
     auto spiral = cast<SPSpiral>(item);
     g_assert(spiral != nullptr);
@@ -1943,7 +1942,7 @@ SpiralKnotHolderEntityInner::knot_set(Geom::Point const &p, Geom::Point const &o
  */
 void SpiralKnotHolderEntityOuter::knot_set(Geom::Point const &p, Geom::Point const & /*origin*/, unsigned int state)
 {
-    auto const snaps = Preferences::get()->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
+    auto const snaps = Inkscape::Preferences::get()->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
     auto const spiral = cast<SPSpiral>(item);
     g_assert(spiral != nullptr);
 
@@ -2403,7 +2402,7 @@ void TextPathKnotHolderEntityOffset::knot_set(Geom::Point const &p, Geom::Point 
 
     // Find the projection of this point on the path.
     auto const t0 = Geom::nearest_time(p, _pwd2);
-    gint const precision = Preferences::get()->getInt("/options/svgoutput/numericprecision");
+    gint const precision = Inkscape::Preferences::get()->getInt("/options/svgoutput/numericprecision");
 
     if (_placement == Placement::MIDDLE) {
         if (auto const desired_side = get_desired_textpath_side(p, origin, t0); _textpath->side != desired_side) {
@@ -2437,7 +2436,7 @@ void TextPathKnotHolderEntityOffset::knot_set(Geom::Point const &p, Geom::Point 
     offset_stream << std::fixed << std::setprecision(precision) << _offset_val << "%";
     auto const offset_str = offset_stream.str();
     _textpath->setStartOffset(offset_str.c_str());
-    DocumentUndo::maybeDone(_desktop->getDocument(), "textpath:startOffset", RC_("Undo", "Modify textpath startOffset"), "");
+    Inkscape::DocumentUndo::maybeDone(_desktop->getDocument(), "textpath:startOffset", RC_("Undo", "Modify textpath startOffset"), "");
     _text->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
     _text->updateRepr();
 }
@@ -2458,7 +2457,7 @@ void TextPathKnotHolderEntityOffset::knot_ungrabbed(Geom::Point const & /*p*/, G
     if (_placement == Placement::MIDDLE && (_initial_side != _textpath->side)) {
         _initial_side = _textpath->side;
         auto const icon = _textpath->side ? "text-path-right" : "text-path-left";
-        DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Change textpath side"), INKSCAPE_ICON(icon));
+        Inkscape::DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Change textpath side"), INKSCAPE_ICON(icon));
     }
 
     for (auto const ent : parent_holder->entity) {
@@ -2477,7 +2476,7 @@ void TextPathKnotHolderEntityOffset::knot_ungrabbed(Geom::Point const & /*p*/, G
 // Conversion from SVG 2 'inline-offset' to Inkscape's SVG 1.1.
 void TextPathKnotHolderEntityOffset::knot_click(unsigned int state)
 {
-    auto const popover = Gtk::make_managed<UI::Widget::TextpathPopover>(_text, _textpath, _desktop, _offset_val);
+    auto const popover = Gtk::make_managed<Inkscape::UI::Widget::TextpathPopover>(_text, _textpath, _desktop, _offset_val);
     popover->signal_closed().connect([this] {
         for (auto const ent : parent_holder->entity) {
             if (auto const textpath_ent = dynamic_cast<TextPathKnotHolderEntityOffset *>(ent)) {
@@ -2490,7 +2489,7 @@ void TextPathKnotHolderEntityOffset::knot_click(unsigned int state)
     auto const canvas = _desktop->getCanvas();
     _desktop->getDesktopWidget()->get_canvas_grid()->setPopover(popover);
 
-    UI::popup_at(*popover, *canvas, canvas->get_last_mouse());
+    Inkscape::UI::popup_at(*popover, *canvas, canvas->get_last_mouse());
 }
 
 TextPathSide TextPathKnotHolderEntityOffset::get_desired_textpath_side(Geom::Point p, Geom::Point const origin, double const t0) const

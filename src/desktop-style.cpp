@@ -395,7 +395,7 @@ objects_query_fillstroke (const std::vector<SPItem*> &objects, SPStyle *style_re
     paint_res->set = true;
 
     bool paintImpossible = true;
-    Colors::ColorSet colors;
+    Inkscape::Colors::ColorSet colors;
 
     for (auto obj : objects) {
         if (!obj) {

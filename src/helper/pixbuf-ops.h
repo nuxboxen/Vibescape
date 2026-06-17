@@ -29,5 +29,5 @@ Inkscape::Pixbuf *sp_generate_internal_bitmap(SPDocument *document,
                                               bool set_opaque = false,
                                               uint32_t const *checkerboard_color = nullptr,
                                               double device_scale = 1.0,
-                                              std::optional<Antialiasing> antialias = {});
+                                              std::optional<Inkscape::Antialiasing> antialias = {});
 #endif // INKSCAPE_HELPER_PIXBUF_OPS_H
