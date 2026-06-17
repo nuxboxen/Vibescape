@@ -471,7 +471,14 @@ int add_keyval(int state, int keyval, bool release)
  */
 bool keyval_is_a_modifier(int keyval)
 {
-    return keyval & ALL_MODS;
+    return (keyval == GDK_KEY_Alt_L     ||
+            keyval == GDK_KEY_Alt_R     ||
+            keyval == GDK_KEY_Control_L ||
+            keyval == GDK_KEY_Control_R ||
+            keyval == GDK_KEY_Shift_L   ||
+            keyval == GDK_KEY_Shift_R   ||
+            keyval == GDK_KEY_Meta_L    ||  // Meta is when you press Shift+Alt (at least on my machine)
+            keyval == GDK_KEY_Meta_R);
 }
 
 } // namespace Inkscape::Modifiers
