@@ -71,6 +71,7 @@ TweakTool::TweakTool(SPDesktop *desktop)
     , do_s(true)
     , do_l(true)
     , do_o(false)
+    , mod_tweak_invert(Modifiers::Modifier::get(Modifiers::Type::TWEAK_INVERT))
 {
     dilate_area = make_canvasitem<CanvasItemBpath>(desktop->getCanvasSketch());
     dilate_area->set_stroke(0xff9900ff);
@@ -120,7 +121,7 @@ static bool is_color_mode(gint mode)
     return mode == TWEAK_MODE_COLORPAINT || mode == TWEAK_MODE_COLORJITTER || mode == TWEAK_MODE_BLUR;
 }
 
-void TweakTool::update_cursor (bool with_shift) {
+void TweakTool::update_cursor(bool reverse) {
     guint num = 0;
     gchar *sel_message = nullptr;
 
@@ -137,8 +138,10 @@ void TweakTool::update_cursor (bool with_shift) {
            this->set_cursor("tweak-move.svg");
            break;
        case TWEAK_MODE_MOVE_IN_OUT:
-           this->message_context->setF(Inkscape::NORMAL_MESSAGE, _("%s. Drag or click to <b>move in</b>; with Shift to <b>move out</b>."), sel_message);
-           if (with_shift) {
+           this->message_context->setF(Inkscape::NORMAL_MESSAGE,
+                                       _("%s. Drag or click to <b>move in</b>; with %s to <b>move out</b>."),
+                                       sel_message, mod_tweak_invert->get_label().c_str());
+           if (reverse) {
                this->set_cursor("tweak-move-out.svg");
            } else {
                this->set_cursor("tweak-move-in.svg");
@@ -149,24 +152,30 @@ void TweakTool::update_cursor (bool with_shift) {
             this->set_cursor("tweak-move-jitter.svg");
            break;
        case TWEAK_MODE_SCALE:
-           this->message_context->setF(Inkscape::NORMAL_MESSAGE, _("%s. Drag or click to <b>scale down</b>; with Shift to <b>scale up</b>."), sel_message);
-           if (with_shift) {
+           this->message_context->setF(Inkscape::NORMAL_MESSAGE,
+                                       _("%s. Drag or click to <b>scale down</b>; with %s to <b>scale up</b>."),
+                                       sel_message, mod_tweak_invert->get_label().c_str());
+           if (reverse) {
                this->set_cursor("tweak-scale-up.svg");
            } else {
                this->set_cursor("tweak-scale-down.svg");
            }
            break;
        case TWEAK_MODE_ROTATE:
-           this->message_context->setF(Inkscape::NORMAL_MESSAGE, _("%s. Drag or click to <b>rotate clockwise</b>; with Shift, <b>counterclockwise</b>."), sel_message);
-           if (with_shift) {
+           this->message_context->setF(Inkscape::NORMAL_MESSAGE,
+                                       _("%s. Drag or click to <b>rotate clockwise</b>; with %s, <b>counterclockwise</b>."),
+                                       sel_message, mod_tweak_invert->get_label().c_str());
+           if (reverse) {
                this->set_cursor("tweak-rotate-counterclockwise.svg");
            } else {
                this->set_cursor("tweak-rotate-clockwise.svg");
            }
            break;
        case TWEAK_MODE_MORELESS:
-           this->message_context->setF(Inkscape::NORMAL_MESSAGE, _("%s. Drag or click to <b>duplicate</b>; with Shift, <b>delete</b>."), sel_message);
-           if (with_shift) {
+           this->message_context->setF(Inkscape::NORMAL_MESSAGE,
+                                       _("%s. Drag or click to <b>duplicate</b>; with %s, <b>delete</b>."),
+                                       sel_message, mod_tweak_invert->get_label().c_str());
+           if (reverse) {
                this->set_cursor("tweak-less.svg");
            } else {
                this->set_cursor("tweak-more.svg");
@@ -177,16 +186,20 @@ void TweakTool::update_cursor (bool with_shift) {
            this->set_cursor("tweak-push.svg");
            break;
        case TWEAK_MODE_SHRINK_GROW:
-           this->message_context->setF(Inkscape::NORMAL_MESSAGE, _("%s. Drag or click to <b>inset paths</b>; with Shift to <b>outset</b>."), sel_message);
-           if (with_shift) {
+           this->message_context->setF(Inkscape::NORMAL_MESSAGE,
+                                       _("%s. Drag or click to <b>inset paths</b>; with %s to <b>outset</b>."),
+                                       sel_message, mod_tweak_invert->get_label().c_str());
+           if (reverse) {
                this->set_cursor("tweak-outset.svg");
            } else {
                this->set_cursor("tweak-inset.svg");
            }
            break;
        case TWEAK_MODE_ATTRACT_REPEL:
-           this->message_context->setF(Inkscape::NORMAL_MESSAGE, _("%s. Drag or click to <b>attract paths</b>; with Shift to <b>repel</b>."), sel_message);
-           if (with_shift) {
+           this->message_context->setF(Inkscape::NORMAL_MESSAGE,
+                                       _("%s. Drag or click to <b>attract paths</b>; with %s to <b>repel</b>."),
+                                       sel_message, mod_tweak_invert->get_label().c_str());
+           if (reverse) {
                this->set_cursor("tweak-repel.svg");
            } else {
                this->set_cursor("tweak-attract.svg");
@@ -205,7 +218,9 @@ void TweakTool::update_cursor (bool with_shift) {
            this->set_cursor("tweak-color.svg");
            break;
        case TWEAK_MODE_BLUR:
-           this->message_context->setF(Inkscape::NORMAL_MESSAGE, _("%s. Drag or click to <b>increase blur</b>; with Shift to <b>decrease</b>."), sel_message);
+           this->message_context->setF(Inkscape::NORMAL_MESSAGE,
+                                       _("%s. Drag or click to <b>increase blur</b>; with %s to <b>decrease</b>."),
+                                       sel_message, mod_tweak_invert->get_label().c_str());
            this->set_cursor("tweak-color.svg");
            break;
    }
@@ -983,7 +998,7 @@ sp_tweak_update_area (TweakTool *tc)
 }
 
     static void
-sp_tweak_switch_mode (TweakTool *tc, gint mode, bool with_shift)
+sp_tweak_switch_mode(TweakTool *tc, gint mode, bool reverse)
 {
     auto tb = dynamic_cast<UI::Toolbar::TweakToolbar*>(tc->getDesktop()->get_toolbar_by_name("TweakToolbar"));
 
@@ -995,11 +1010,11 @@ sp_tweak_switch_mode (TweakTool *tc, gint mode, bool with_shift)
 
     // need to set explicitly, because the prefs may not have changed by the previous
     tc->mode = mode;
-    tc->update_cursor(with_shift);
+    tc->update_cursor(reverse);
 }
 
     static void
-sp_tweak_switch_mode_temporarily (TweakTool *tc, gint mode, bool with_shift)
+sp_tweak_switch_mode_temporarily(TweakTool *tc, gint mode, bool reverse)
 {
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     // Juggling about so that prefs have the old value but tc->mode and the button show new mode:
@@ -1017,7 +1032,7 @@ sp_tweak_switch_mode_temporarily (TweakTool *tc, gint mode, bool with_shift)
     prefs->setInt("/tools/tweak/mode", now_mode);
     // changing prefs changed tc->mode, restore back :
     tc->mode = mode;
-    tc->update_cursor(with_shift);
+    tc->update_cursor(reverse);
 }
 
 bool TweakTool::root_handler(CanvasEvent const &event)
@@ -1074,7 +1089,8 @@ bool TweakTool::root_handler(CanvasEvent const &event)
 
             // dilating:
             if (is_drawing && ( event.modifiers & GDK_BUTTON1_MASK )) {
-                sp_tweak_dilate (this, event.pos, motion_doc, motion_doc - last_push, event.modifiers & GDK_SHIFT_MASK? true : false);
+                sp_tweak_dilate (this, event.pos, motion_doc, motion_doc - last_push,
+                                 mod_tweak_invert->active(event.modifiers));
                 //this->last_push = motion_doc;
                 has_dilated = true;
                 // It's slow, so prevent clogging up with events.
@@ -1092,7 +1108,8 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 if (has_dilated) {
                     // If we did not rub, do a light tap.
                     pressure = 0.03;
-                    sp_tweak_dilate(this, event.pos, _desktop->dt2doc(motion_dt), Geom::Point(0, 0), event.modifiers & GDK_SHIFT_MASK);
+                    sp_tweak_dilate(this, event.pos, _desktop->dt2doc(motion_dt), Geom::Point(0, 0),
+                                    mod_tweak_invert->active(event.modifiers));
                 }
                 is_dilating = false;
                 has_dilated = false;
@@ -1142,12 +1159,14 @@ bool TweakTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (KeyPressEvent const &event) {
+            auto const reverse = mod_tweak_invert->active(event.modifiers);
+
             switch (get_latin_keyval (event)) {
                 case GDK_KEY_m:
                 case GDK_KEY_M:
                 case GDK_KEY_0:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_MOVE, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_MOVE, reverse);
                         ret = true;
                     }
                     break;
@@ -1155,7 +1174,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_I:
                 case GDK_KEY_1:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_MOVE_IN_OUT, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_MOVE_IN_OUT, reverse);
                         ret = true;
                     }
                     break;
@@ -1163,7 +1182,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_Z:
                 case GDK_KEY_2:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_MOVE_JITTER, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_MOVE_JITTER, reverse);
                         ret = true;
                     }
                     break;
@@ -1173,7 +1192,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_period:
                 case GDK_KEY_3:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_SCALE, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_SCALE, reverse);
                         ret = true;
                     }
                     break;
@@ -1181,7 +1200,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_bracketleft:
                 case GDK_KEY_4:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_ROTATE, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_ROTATE, reverse);
                         ret = true;
                     }
                     break;
@@ -1189,7 +1208,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_D:
                 case GDK_KEY_5:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_MORELESS, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_MORELESS, reverse);
                         ret = true;
                     }
                     break;
@@ -1197,7 +1216,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_P:
                 case GDK_KEY_6:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_PUSH, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_PUSH, reverse);
                         ret = true;
                     }
                     break;
@@ -1205,7 +1224,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_S:
                 case GDK_KEY_7:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_SHRINK_GROW, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_SHRINK_GROW, reverse);
                         ret = true;
                     }
                     break;
@@ -1213,7 +1232,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_A:
                 case GDK_KEY_8:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_ATTRACT_REPEL, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_ATTRACT_REPEL, reverse);
                         ret = true;
                     }
                     break;
@@ -1221,28 +1240,28 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                 case GDK_KEY_R:
                 case GDK_KEY_9:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_ROUGHEN, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_ROUGHEN, reverse);
                         ret = true;
                     }
                     break;
                 case GDK_KEY_c:
                 case GDK_KEY_C:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_COLORPAINT, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_COLORPAINT, reverse);
                         ret = true;
                     }
                     break;
                 case GDK_KEY_j:
                 case GDK_KEY_J:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_COLORJITTER, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_COLORJITTER, reverse);
                         ret = true;
                     }
                     break;
                 case GDK_KEY_b:
                 case GDK_KEY_B:
                     if (mod_shift_only(event)) {
-                        sp_tweak_switch_mode(this, TWEAK_MODE_BLUR, mod_shift(event));
+                        sp_tweak_switch_mode(this, TWEAK_MODE_BLUR, reverse);
                         ret = true;
                     }
                     break;
@@ -1315,7 +1334,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
 
                 case GDK_KEY_Control_L:
                 case GDK_KEY_Control_R:
-                    sp_tweak_switch_mode_temporarily(this, TWEAK_MODE_SHRINK_GROW, mod_shift(event));
+                    sp_tweak_switch_mode_temporarily(this, TWEAK_MODE_SHRINK_GROW, reverse);
                     break;
                 case GDK_KEY_Delete:
                 case GDK_KEY_KP_Delete:
@@ -1329,6 +1348,7 @@ bool TweakTool::root_handler(CanvasEvent const &event)
         },
         [&] (KeyReleaseEvent const &event) {
             Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+            auto const reverse = mod_tweak_invert->active(event.modifiers);
             switch (get_latin_keyval(event)) {
                 case GDK_KEY_Shift_L:
                 case GDK_KEY_Shift_R:
@@ -1336,11 +1356,11 @@ bool TweakTool::root_handler(CanvasEvent const &event)
                     break;
                 case GDK_KEY_Control_L:
                 case GDK_KEY_Control_R:
-                    sp_tweak_switch_mode (this, prefs->getInt("/tools/tweak/mode"), mod_shift(event));
+                    sp_tweak_switch_mode (this, prefs->getInt("/tools/tweak/mode"), reverse);
                     message_context->clear();
                     break;
                 default:
-                    sp_tweak_switch_mode (this, prefs->getInt("/tools/tweak/mode"), mod_shift(event));
+                    sp_tweak_switch_mode (this, prefs->getInt("/tools/tweak/mode"), reverse);
                     break;
             }
         },

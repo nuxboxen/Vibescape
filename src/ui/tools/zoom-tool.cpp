@@ -23,6 +23,7 @@ namespace Inkscape::UI::Tools {
 
 ZoomTool::ZoomTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/zoom", "zoom-in.svg")
+    , mod_canvas_zoom_invert(Modifiers::Modifier::get(Modifiers::Type::CANVAS_ZOOM_INVERT))
 {
     auto prefs = Preferences::get();
 
@@ -65,9 +66,8 @@ bool ZoomTool::root_handler(CanvasEvent const &event)
                 escaped = false;
                 ret = true;
             } else if (event.button == 3) {
-                double const zoom_rel = (event.modifiers & GDK_SHIFT_MASK)
-                                       ? zoom_inc
-                                       : 1 / zoom_inc;
+                auto const invert = mod_canvas_zoom_invert->active(event.modifiers);
+                double const zoom_rel = invert ? zoom_inc : 1 / zoom_inc;
                 _desktop->zoom_relative(button_dt, zoom_rel);
                 ret = true;
             }
@@ -100,13 +100,12 @@ bool ZoomTool::root_handler(CanvasEvent const &event)
 
             if (event.button == 1) {
                 auto const b = Rubberband::get(_desktop)->getRectangle();
+                auto const invert = mod_canvas_zoom_invert->active(event.modifiers);
 
-                if (b && !within_tolerance && !(event.modifiers & GDK_SHIFT_MASK)) {
+                if (b && !within_tolerance && !invert) {
                     _desktop->set_display_area(*b, 10);
                 } else if (!escaped) {
-                    double const zoom_rel = (event.modifiers & GDK_SHIFT_MASK)
-                                          ? 1 / zoom_inc
-                                          : zoom_inc;
+                    double const zoom_rel = invert ? 1 / zoom_inc : zoom_inc;
                     _desktop->zoom_relative(button_dt, zoom_rel);
                 }
 

@@ -28,6 +28,8 @@ public:
 
 private:
     bool escaped = false;
+
+    Modifiers::Modifier *mod_canvas_zoom_invert;
 };
 
 } // namespace Inkscape::UI::Tools

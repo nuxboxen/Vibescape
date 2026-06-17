@@ -17,6 +17,7 @@
 #include "object/sp-namedview.h"
 #include "path-manipulator.h"
 #include "ui/widget/events/canvas-event.h"
+#include "util/join.h"
 
 namespace Inkscape {
 namespace UI {
@@ -73,6 +74,9 @@ void CurveDragPoint::dragged(Geom::Point &new_pos, MotionEvent const &event)
     if (!first || !first.next()) return;
     NodeList::iterator second = first.next();
 
+    auto const bspline_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_BSPLINE_HANDLES)->active(event.modifiers);
+    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+
     // special cancel handling - retract handles when if the segment was degenerate
     if (_is_drag_cancelled(event) && _segment_was_degenerate) {
         first->front()->retract();
@@ -81,7 +85,7 @@ void CurveDragPoint::dragged(Geom::Point &new_pos, MotionEvent const &event)
         return;
     }
 
-    if (_drag_initiated && !(event.modifiers & GDK_SHIFT_MASK)) {
+    if (_drag_initiated && !no_snap) {
         auto &m = _desktop->getNamedView()->snap_manager;
         SPItem *path = static_cast<SPItem *>(_pm._path);
         m.setup(_desktop, true, path); // We will not try to snap to "path" itself
@@ -109,13 +113,13 @@ void CurveDragPoint::dragged(Geom::Point &new_pos, MotionEvent const &event)
         first->front()->move(first->front()->position() + offset0);
         second->back()->move(second->back()->position() + offset1);
     } else if (weight >= 0.8) {
-        if (mod_shift(event)) {
+        if (bspline_handles) {
             second->back()->move(new_pos);
         } else {
             second->move(second->position() + delta);
         }
     } else if (weight <= 0.2) {
-        if (mod_shift(event)) {
+        if (bspline_handles) {
             first->back()->move(new_pos);
         } else {
             first->move(first->position() + delta);
@@ -136,19 +140,21 @@ void CurveDragPoint::ungrabbed(ButtonReleaseEvent const *)
 
 bool CurveDragPoint::clicked(ButtonReleaseEvent const &event)
 {
+    auto const insert = Modifiers::Modifier::get(Modifiers::Type::NODE_INSERT)->active(event.modifiers);
+    auto const add_to = Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO)->active(event.modifiers);
+
     // This check is probably redundant
     if (!first || event.button != 1) return false;
     // the next iterator can be invalid if we click very near the end of path
     NodeList::iterator second = first.next();
     if (!second) return false;
 
-    // insert nodes on Ctrl+Alt+click
-    if (mod_ctrl(event) && mod_alt(event)) {
+    if (insert) {
         _insertNode(false);
         return true;
     }
 
-    if (mod_shift(event)) {
+    if (add_to) {
         // if both nodes of the segment are selected, deselect;
         // otherwise add to selection
         if (first->selected() && second->selected())  {
@@ -170,12 +176,16 @@ bool CurveDragPoint::clicked(ButtonReleaseEvent const &event)
 bool CurveDragPoint::doubleclicked(ButtonReleaseEvent const &event)
 {
     if (event.button != 1 || !first || !first.next()) return false;
-    if (mod_ctrl(event)) {
+
+    auto const delete_segment = Modifiers::Modifier::get(Modifiers::Type::NODE_DELETE_SEGMENT)->active(event.modifiers);
+    auto const straighten = Modifiers::Modifier::get(Modifiers::Type::NODE_STRAIGHTEN_SEGMENT)->active(event.modifiers);
+
+    if (delete_segment) {
         auto ref = _pm.shared_from_this(); // hold ref during possible deletion of _pm.
         _pm.deleteSegments();
         _pm.update(true);
         _pm._commit(RC_("Undo", "Remove segment"));
-    } else if (mod_alt(event)) {
+    } else if (straighten) {
         _pm.setSegmentType(Inkscape::UI::SEGMENT_STRAIGHT);
         _pm.update(true);
         _pm._commit(RC_("Undo", "Straighten segments"));
@@ -201,31 +211,48 @@ Glib::ustring CurveDragPoint::_getTip(unsigned state) const
     if (_pm.empty()) return "";
     if (!first || !first.next()) return "";
     bool linear = first->front()->isDegenerate() && first.next()->back()->isDegenerate();
-    if (mod_shift(state) && _pm._isBSpline()) {
-        return C_("Path segment tip",
-            "<b>Shift</b>: drag to open or move BSpline handles");
+
+    auto const mod_add_to = Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO);
+    auto const mod_bspline_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_BSPLINE_HANDLES);
+    auto const mod_insert = Modifiers::Modifier::get(Modifiers::Type::NODE_INSERT);
+    auto const mod_straighten = Modifiers::Modifier::get(Modifiers::Type::NODE_STRAIGHTEN_SEGMENT);
+
+    if (mod_bspline_handles->active(state) && _pm._isBSpline()) {
+        return Glib::ustring::compose(C_("Path segment tip", "<b>%1</b>: drag to open or move BSpline handles"),
+                                      mod_bspline_handles->get_label());
     }
-    if (mod_shift(state)) {
-        return C_("Path segment tip",
-            "<b>Shift</b>: click to toggle segment selection");
+    if (mod_add_to->active(state)) {
+        return Glib::ustring::compose(C_("Path segment tip", "<b>%1</b>: click to toggle segment selection"),
+                                      mod_add_to->get_label());
     }
-    if (mod_ctrl(state) && mod_alt(state)) {
-        return C_("Path segment tip",
-            "<b>Ctrl+Alt</b>: click to insert a node");
+    if (mod_insert->active(state)) {
+        return Glib::ustring::compose(C_("Path segment tip", "<b>%1</b>: click to insert a node"),
+                                      mod_insert->get_label());
     }
-    if (mod_alt(state)) {
-        return C_("Path segment tip", "<b>Alt</b>: double click to change line type");
+    if (mod_straighten->active(state)) {
+        return Glib::ustring::compose(C_("Path segment tip", "<b>%1</b>: double click to change line type"),
+                                      mod_straighten->get_label());
     }
+
+    std::set<Glib::ustring> labels;
     if (_pm._isBSpline()) {
-        return C_("Path segment tip", "<b>BSpline segment</b>: drag to shape the segment, doubleclick to insert node, "
-                                      "click to select (more: Alt, Shift, Ctrl+Alt)");
+        labels.insert(mod_bspline_handles->get_label());
+    }
+    labels.insert(mod_add_to->get_label());
+    labels.insert(mod_insert->get_label());
+    labels.insert(mod_straighten->get_label());
+    auto const more_labels = Inkscape::Util::join_with_separator(labels);
+
+    if (_pm._isBSpline()) {
+        return Glib::ustring::compose(C_("Path segment tip", "<b>BSpline segment</b>: drag to shape the segment, doubleclick to insert node, "
+                                         "click to select (more: %1)"), more_labels);
     }
     if (linear) {
-        return C_("Path segment tip", "<b>Linear segment</b>: drag to convert to a Bezier segment, "
-                                      "doubleclick to insert node, click to select (more: Alt, Shift, Ctrl+Alt)");
+        return Glib::ustring::compose(C_("Path segment tip", "<b>Linear segment</b>: drag to convert to a Bezier segment, "
+                                         "doubleclick to insert node, click to select (more: %1)"), more_labels);
     } else {
-        return C_("Path segment tip", "<b>Bezier segment</b>: drag to shape the segment, doubleclick to insert node, "
-                                      "click to select (more: Alt, Shift, Ctrl+Alt)");
+        return Glib::ustring::compose(C_("Path segment tip", "<b>Bezier segment</b>: drag to shape the segment, doubleclick to insert node, "
+                                         "click to select (more: %1)"), more_labels);
     }
 }
 

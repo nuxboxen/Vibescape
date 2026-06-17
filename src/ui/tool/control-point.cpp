@@ -367,6 +367,11 @@ void ControlPoint::_setMouseover(ControlPoint *p, unsigned state)
 
 bool ControlPoint::_updateTip(unsigned state)
 {
+    // TODO: refactor _getTip implementations to be more dynamic, if the user has changed the
+    //  modifier settings. For example, dynamically creating the tooltip based off the strings
+    //  from the Modifier class and which of several modifiers are pressed (rather than the current
+    //  approach which checks each in order, and tries to manually handle the case where some
+    //  modifiers are pressed together -- see Handle::_getTip for an example of the trickiness).
     Glib::ustring tip = _getTip(state);
     if (!tip.empty()) {
         _desktop->getTool()->defaultMessageContext()->set(Inkscape::NORMAL_MESSAGE,

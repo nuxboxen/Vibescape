@@ -78,6 +78,13 @@ private:
     bool show_transform_handles = false;
     bool single_node_transform_handles = false;
 
+    Modifiers::Modifier *mod_move_snapping;
+    Modifiers::Modifier *mod_node_invert;
+    Modifiers::Modifier *mod_node_remove_from;
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_select_force_drag;
+    Modifiers::Modifier *mod_select_touch_path;
+
     void selection_changed(Inkscape::Selection *sel);
 
     void select_area(Geom::Path const &path, ButtonReleaseEvent const &event);

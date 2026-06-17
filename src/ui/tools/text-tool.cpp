@@ -193,6 +193,8 @@ bool TextTool::item_handler(SPItem *item, CanvasEvent const &event)
                         // find out click point in document coordinates
                         auto const p = _desktop->w2d(event.pos);
                         // set the cursor closest to that point
+                        // (We hardcode the modifier to match expectations for text fields, which
+                        // on many platforms use shift to mean "select from cursor to HERE")
                         if (event.modifiers & GDK_SHIFT_MASK) {
                             text_sel_start = old_start;
                             text_sel_end = sp_te_get_position_by_coords(text, p);

@@ -44,6 +44,8 @@ namespace Tools {
 
 StarTool::StarTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/shapes/star", "star.svg")
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_star_snapping(Modifiers::Modifier::get(Modifiers::Type::STAR_SNAPPING))
 {
     sp_event_context_read(this, "isflatsided");
     sp_event_context_read(this, "magnitude");
@@ -181,7 +183,7 @@ bool StarTool::root_handler(CanvasEvent const &event)
                     finishItem();
                 } else if (item_to_select) {
                     // No dragging, select clicked item if any.
-                    if (event.modifiers & GDK_SHIFT_MASK) {
+                    if (mod_select_add_to->active(event.modifiers)) {
                         selection->toggle(item_to_select);
                     } else if (!selection->includes(item_to_select)) {
                         selection->set(item_to_select);
@@ -197,24 +199,18 @@ bool StarTool::root_handler(CanvasEvent const &event)
             ungrabCanvasEvents();
         },
         [&] (KeyPressEvent const &event) {
-            switch (get_latin_keyval(event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt (at least on my machine)
-                case GDK_KEY_Meta_R:
-                    sp_event_show_modifier_tip(defaultMessageContext(), event,
-                                               _("<b>Ctrl</b>: snap angle; keep rays radial"),
-                                               nullptr,
-                                               nullptr);
-                    break;
+            auto const keyval = get_latin_keyval(event);
 
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                Modifiers::responsive_tooltip(
+                    defaultMessageContext(), event, 1, Modifiers::Type::STAR_SNAPPING
+                );
+            }
+
+            switch (keyval) {
                 case GDK_KEY_Escape:
                     if (dragging) {
-        		dragging = false;
+                        dragging = false;
                         discard_delayed_snap_event();
                         // If drawing, cancel, otherwise pass it up for deselecting.
                         cancel();
@@ -249,20 +245,10 @@ bool StarTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (KeyReleaseEvent const &event) {
-            switch (event.keyval) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt
-                case GDK_KEY_Meta_R:
-                    defaultMessageContext()->clear();
-                    break;
+            auto const keyval = get_latin_keyval(event);
 
-                default:
-                    break;
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                defaultMessageContext()->clear();
             }
         },
         [&] (CanvasEvent const &event) {}
@@ -315,7 +301,7 @@ void StarTool::drag(Geom::Point p, unsigned state)
     Geom::Coord const r1 = Geom::L2(d);
     double arg1 = atan2(d);
 
-    if (state & GDK_CONTROL_MASK) {
+    if (mod_star_snapping->active(state)) {
         /* Snap angle */
         double snaps_radian = M_PI / snaps;
         arg1 = std::round(arg1 / snaps_radian) * snaps_radian;
@@ -329,9 +315,9 @@ void StarTool::drag(Geom::Point p, unsigned state)
     Glib::ustring rads = q.string(_desktop->getNamedView()->display_units);
     this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
                                ( this->isflatsided?
-                                 _("<b>Polygon</b>: radius %s, angle %.2f&#176;; with <b>Ctrl</b> to snap angle") :
-                                 _("<b>Star</b>: radius %s, angle %.2f&#176;; with <b>Ctrl</b> to snap angle") ),
-                               rads.c_str(), arg1 * 180 / M_PI);
+                                 _("<b>Polygon</b>: radius %s, angle %.2f&#176;; with <b>%s</b> to snap angle") :
+                                 _("<b>Star</b>: radius %s, angle %.2f&#176;; with <b>%s</b> to snap angle") ),
+                               rads.c_str(), arg1 * 180 / M_PI, mod_star_snapping->get_label().c_str());
 }
 
 void StarTool::finishItem() {

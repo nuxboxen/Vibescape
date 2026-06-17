@@ -40,7 +40,6 @@
 #include "ui/knot/knot-holder.h"
 #include "ui/knot/knot-ptr.h"
 #include "ui/knot/knot.h"
-#include "ui/modifiers.h"
 #include "ui/popup-menu.h"
 #include "ui/toolbar/toolbars.h"
 #include "ui/toolbar/toolbar.h"
@@ -109,6 +108,13 @@ ToolBase::ToolBase(SPDesktop *desktop, std::string &&prefs_path, std::string &&c
     , _acc_quick_zoom{"tool.all.quick-zoom"}
     , _acc_quick_pan{"tool.all.quick-pan"}
     , _acc_focus_first_widget{"tool.all.focus-first-widget"}
+    , mod_canvas_pan_drag(Modifiers::Modifier::get(Modifiers::Type::CANVAS_PAN_DRAG))
+    , mod_canvas_rotate_drag(Modifiers::Modifier::get(Modifiers::Type::CANVAS_ROTATE_DRAG))
+    , mod_canvas_rotate_reset(Modifiers::Modifier::get(Modifiers::Type::CANVAS_ROTATE_RESET))
+    , mod_canvas_rotate_snapping(Modifiers::Modifier::get(Modifiers::Type::CANVAS_ROTATE_SNAPPING))
+    , mod_canvas_zoom_invert(Modifiers::Modifier::get(Modifiers::Type::CANVAS_ZOOM_INVERT))
+    , mod_canvas_zoom_rubberband(Modifiers::Modifier::get(Modifiers::Type::CANVAS_ZOOM_RUBBERBAND))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
 {
     pref_observer = Inkscape::Preferences::PreferencesObserver::create(_prefs_path, [this] (auto &val) { set(val); });
     set_cursor(_cursor_default);
@@ -436,7 +442,7 @@ bool ToolBase::root_handler(CanvasEvent const &event)
                 break;
 
             case 2:
-                if (event.modifiers & GDK_CONTROL_MASK && !_desktop->get_rotation_lock()) {
+                if (mod_canvas_rotate_drag->active(event.modifiers) && !_desktop->get_rotation_lock()) {
                     // Canvas ctrl + middle-click to rotate
                     rotating = true;
 
@@ -447,7 +453,7 @@ bool ToolBase::root_handler(CanvasEvent const &event)
                                      EventType::BUTTON_RELEASE |
                                      EventType::MOTION);
 
-                } else if (event.modifiers & GDK_SHIFT_MASK) {
+                } else if (mod_canvas_zoom_rubberband->active(event.modifiers)) {
                     zoom_rb = 2;
                 } else {
                     // When starting panning, make sure there are no snap events pending because these might disable the panning again
@@ -463,7 +469,7 @@ bool ToolBase::root_handler(CanvasEvent const &event)
                 break;
 
             case 3:
-                if (event.modifiers & (GDK_SHIFT_MASK | GDK_CONTROL_MASK)) {
+                if (mod_canvas_pan_drag->active(event.modifiers)) {
                     // When starting panning, make sure there are no snap events pending because these might disable the panning again
                     if (_uses_snap) {
                         discard_delayed_snap_event();
@@ -564,15 +570,10 @@ bool ToolBase::root_handler(CanvasEvent const &event)
 
             double constexpr rotation_snap = 15.0;
             double delta_angle = angle - start_angle;
-            if (event.modifiers & GDK_SHIFT_MASK &&
-                event.modifiers & GDK_CONTROL_MASK) {
+            if (mod_canvas_rotate_reset->active(event.modifiers)) {
                 delta_angle = 0.0;
-            } else if (event.modifiers & GDK_SHIFT_MASK) {
+            } else if (mod_canvas_rotate_snapping->active(event.modifiers)) {
                 delta_angle = std::round(delta_angle / rotation_snap) * rotation_snap;
-            } else if (event.modifiers & GDK_CONTROL_MASK) {
-                // ?
-            } else if (event.modifiers & GDK_ALT_MASK) {
-                // Decimal raw angle
             } else {
                 delta_angle = std::floor(delta_angle);
             }
@@ -612,8 +613,9 @@ bool ToolBase::root_handler(CanvasEvent const &event)
             auto const event_dt = _desktop->w2d(event_w);
 
             double const zoom_inc = prefs->getDoubleLimited("/options/zoomincrement/value", M_SQRT2, 1.01, 10);
+            auto const zoom_invert = mod_canvas_zoom_invert->active(event.modifiers);
 
-            _desktop->zoom_relative(event_dt, (event.modifiers & GDK_SHIFT_MASK) ? 1 / zoom_inc : zoom_inc);
+            _desktop->zoom_relative(event_dt, zoom_invert ? 1 / zoom_inc : zoom_inc);
             ret = true;
         } else if (panning == event.button) {
             panning = PANNING_NONE;
@@ -1007,7 +1009,7 @@ bool ToolBase::item_handler(SPItem *item, CanvasEvent const &event)
     inspect_event(event,
         [&] (ButtonPressEvent const &event) {
             if (!are_buttons_1_and_3_on(event) && event.button == 3 &&
-                !(event.modifiers & (GDK_SHIFT_MASK | GDK_CONTROL_MASK))) {
+                !mod_canvas_pan_drag->active(event.modifiers)) {
                 menu_popup(event);
                 ret = true;
             } else if (event.button == 1 && shape_editor && shape_editor->has_knotholder()) {
@@ -1123,7 +1125,8 @@ void ToolBase::set_high_motion_precision(bool high_precision)
 void ToolBase::setup_for_drag_start(ButtonPressEvent const &ev)
 {
     saveDragOrigin(ev.pos);
-    item_to_select = sp_event_context_find_item(_desktop, ev.pos, ev.modifiers & GDK_ALT_MASK, true);
+    auto const force_drag = mod_select_force_drag->active(ev.modifiers);
+    item_to_select = sp_event_context_find_item(_desktop, ev.pos, force_drag, true);
 }
 
 void ToolBase::saveDragOrigin(Geom::Point const &pos)

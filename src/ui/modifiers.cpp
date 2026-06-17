@@ -16,8 +16,10 @@
 #include <bitset>
 #include <glibmm/i18n.h>
 
+#include "message-context.h"
 #include "modifiers.h"
 #include "ui/tools/tool-base.h"
+#include "ui/widget/events/canvas-event.h"
 
 namespace Inkscape::Modifiers {
 
@@ -26,10 +28,16 @@ using ModifierIdToTypeMap = std::map<std::string, Type>;
 ModifierIdToTypeMap const &modifier_type_from_id()
 {
     static ModifierIdToTypeMap const static_id_to_type_map {
-        {"canvas-pan-y", Type::CANVAS_PAN_Y},
+        {"canvas-pan-drag", Type::CANVAS_PAN_DRAG},
         {"canvas-pan-x", Type::CANVAS_PAN_X},
-        {"canvas-zoom", Type::CANVAS_ZOOM},
+        {"canvas-pan-y", Type::CANVAS_PAN_Y},
         {"canvas-rotate", Type::CANVAS_ROTATE},
+        {"canvas-rotate-drag", Type::CANVAS_ROTATE_DRAG},
+        {"canvas-rotate-reset", Type::CANVAS_ROTATE_RESET},
+        {"canvas-rotate-snapping", Type::CANVAS_ROTATE_SNAPPING},
+        {"canvas-zoom", Type::CANVAS_ZOOM},
+        {"canvas-zoom-invert", Type::CANVAS_ZOOM_INVERT},
+        {"canvas-zoom-rubberband", Type::CANVAS_ZOOM_RUBBERBAND},
         {"select-add-to", Type::SELECT_ADD_TO},
         {"select-in-groups", Type::SELECT_IN_GROUPS},
         {"select-touch-path", Type::SELECT_TOUCH_PATH},
@@ -38,6 +46,7 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"select-force-drag", Type::SELECT_FORCE_DRAG},
         {"select-cycle", Type::SELECT_CYCLE},
         {"select-duplicate", Type::SELECT_DUPLICATE},
+        {"select-remove-snap", Type::SELECT_REMOVE_SNAP},
         {"move-confine", Type::MOVE_CONFINE},
         {"move-increment", Type::MOVE_INCREMENT},
         {"move-snapping", Type::MOVE_SNAPPING},
@@ -56,10 +65,24 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"dropper-stroke", Type::DROPPER_STROKE},
         {"flood-item", Type::FLOOD_ITEM},
         {"flood-touch-fill", Type::FLOOD_TOUCH_FILL},
+        {"node-bspline-handles", Type::NODE_BSPLINE_HANDLES},
+        {"node-confine-handles", Type::NODE_CONFINE_HANDLES},
+        {"node-cycle-type", Type::NODE_CYCLE_TYPE},
+        {"node-delete", Type::NODE_DELETE},
+        {"node-delete-segment", Type::NODE_DELETE_SEGMENT},
+        {"node-drag-handle", Type::NODE_DRAG_HANDLE},
         {"node-grow-linear", Type::NODE_GROW_LINEAR},
+        {"node-grow-spatial", Type::NODE_GROW_SPATIAL},
+        {"node-insert", Type::NODE_INSERT},
         {"node-invert", Type::NODE_INVERT},
+        {"node-link-handles", Type::NODE_LINK_HANDLES},
+        {"node-preserve-length", Type::NODE_PRESERVE_LENGTH},
         {"node-remove-from", Type::NODE_REMOVE_FROM},
-        {"node-grow-spatial", Type::NODE_GROW_SPATIAL}
+        {"node-retract-handle", Type::NODE_RETRACT_HANDLE},
+        {"node-straighten-segment", Type::NODE_STRAIGHTEN_SEGMENT},
+        {"spiral-snapping", Type::SPIRAL_SNAPPING},
+        {"star-snapping", Type::STAR_SNAPPING},
+        {"tweak-invert", Type::TWEAK_INVERT},
     };
     return static_id_to_type_map;
 }
@@ -95,10 +118,16 @@ Modifier::Container &Modifier::_modifiers()
     // these must be in the same order as the * enum in "modifiers.h"
     static Modifier::Container static_modifiers {
     // Canvas modifiers
-        make_modifier("canvas-pan-y", _("Vertical pan"), _("Pan/Scroll up and down"), ALWAYS, CANVAS, SCROLL),
+        make_modifier("canvas-pan-drag", _("Drag pan"), _("Pan/Scroll by right click drag"), SHIFT | CTRL, CANVAS, DRAG),
         make_modifier("canvas-pan-x", _("Horizontal pan"), _("Pan/Scroll left and right"), SHIFT, CANVAS, SCROLL),
-        make_modifier("canvas-zoom", _("Canvas zoom"), _("Zoom in and out with scroll wheel"), CTRL, CANVAS, SCROLL),
+        make_modifier("canvas-pan-y", _("Vertical pan"), _("Pan/Scroll up and down"), ALWAYS, CANVAS, SCROLL),
         make_modifier("canvas-rotate", _("Canvas rotate"), _("Rotate the canvas with scroll wheel"), SHIFT | CTRL, CANVAS, SCROLL),
+        make_modifier("canvas-rotate-drag", _("Canvas rotate"), _("Rotate the canvas with middle click drag"), CTRL, CANVAS, DRAG),
+        make_modifier("canvas-rotate-reset", _("Reset canvas rotation"), _("Reset the angle while rotating canvas"), SHIFT | CTRL, CANVAS, DRAG),
+        make_modifier("canvas-rotate-snapping", _("Canvas rotate snapping"), _("Snap while rotating canvas"), SHIFT, CANVAS, DRAG),
+        make_modifier("canvas-zoom", _("Canvas zoom"), _("Zoom in and out with scroll wheel"), CTRL, CANVAS, SCROLL),
+        make_modifier("canvas-zoom-invert", _("Invert zoom"), _("Reverse direction of middle click zoom"), SHIFT, CANVAS, CLICK),
+        make_modifier("canvas-zoom-rubberband", _("Rubberband zoom"), _("Start a rubberband zoom with middle click drag"), SHIFT, CANVAS, DRAG),
 
     // Select tool modifiers (minus transforms)
         make_modifier("select-add-to", _("Add to selection"), _("Add items to existing selection"), SHIFT, SELECT, CLICK),
@@ -108,8 +137,8 @@ Modifier::Container &Modifier::_modifiers()
         make_modifier("select-remove-from", _("Remove from selection"), _("Remove items from existing selection"), SHIFT | CTRL, SELECT, DRAG),
         make_modifier("select-force-drag", _("Forced Drag"), _("Drag objects even if the mouse isn't over them"), ALT, SELECT, DRAG),
         make_modifier("select-cycle", _("Cycle through objects"), _("Scroll through objects under the cursor"), ALT, SELECT, SCROLL),
-        make_modifier("select-duplicate", _("Duplicate selection on drag"),
-                      _("Duplicate selection when starting a drag"), NEVER, SELECT, DRAG),
+        make_modifier("select-duplicate", _("Duplicate selection on drag"), _("Duplicate selection when starting a drag"), NEVER, SELECT, DRAG),
+        make_modifier("select-remove-snap", _("Remove snap target"), _("Remove snap target during a drag"), SHIFT | ALT, SELECT, DRAG),
 
     // Transform handle modifiers (applies to multiple tools)
         make_modifier("move-confine", _("Move one axis only"), _("When dragging items, confine to either x or y axis"), CTRL, MOVE, DRAG),
@@ -118,30 +147,47 @@ Modifier::Container &Modifier::_modifiers()
         make_modifier("trans-confine", _("Keep aspect ratio"), _("When resizing objects, confine the aspect ratio"), CTRL, TRANSFORM, DRAG),
         make_modifier("trans-increment", _("Transform in increments"), _("Scale, rotate or skew by set increments"), ALT, TRANSFORM, DRAG),
         make_modifier("trans-off-center", _("Transform around center"), _("When scaling, scale selection symmetrically around its rotation center. When rotating/skewing, transform relative to opposite corner/edge."), SHIFT, TRANSFORM, DRAG),
-        make_modifier("trans-snapping", _("No Transform Snapping"), _("Disable snapping when transforming object."), SHIFT, TRANSFORM, DRAG),
+        make_modifier("trans-snapping", _("No Transform Snapping"), _("Disable snapping when transforming object"), SHIFT, TRANSFORM, DRAG),
     // Center handle click: seltrans.cpp:734 SHIFT
     // Align handle click: seltrans.cpp:1365 SHIFT
 
-        make_modifier("bool-shift", _("Switch mode"), _("Change shape builder mode temporarily by holding a modifier key."), SHIFT, BOOLEANS_TOOL, DRAG),
+        make_modifier("bool-shift", _("Switch mode"), _("Change shape builder mode temporarily by holding a modifier key"), SHIFT, BOOLEANS_TOOL, DRAG),
 
-        make_modifier("box3d-extrude-one", _("Extrude along the Z axis"), _("Extends the 3D box in one dimension only."), SHIFT, BOX3D_TOOL, DRAG),
-        make_modifier("box3d-extrude-two", _("Extrude along the Y and Z axes"), _("Extends the 3D box in two dimensions."), SHIFT | CTRL, BOX3D_TOOL, DRAG),
+        make_modifier("box3d-extrude-one", _("Extrude along the Z axis"), _("Extend the 3D box in one dimension only"), SHIFT, BOX3D_TOOL, DRAG),
+        make_modifier("box3d-extrude-two", _("Extrude along the Y and Z axes"), _("Extend the 3D box in two dimensions"), SHIFT | CTRL, BOX3D_TOOL, DRAG),
 
-        make_modifier("calligraphic-hatching", _("Use a guide path"), _("Use a selected path as a guide."), CTRL, CALLI_TOOL, DRAG),
-        make_modifier("calligraphic-subtract", _("Subtract the drawn stroke"), _("Subtracts the drawn stroke from the selection."), ALT, CALLI_TOOL, DRAG),
-        make_modifier("calligraphic-unionize", _("Add in the drawn stroke"), _("Adds the drawn stroke into the selection."), SHIFT, CALLI_TOOL, DRAG),
+        make_modifier("calligraphic-hatching", _("Use a guide path"), _("Use a selected path as a guide"), CTRL, CALLI_TOOL, DRAG),
+        make_modifier("calligraphic-subtract", _("Subtract the drawn stroke"), _("Subtract the drawn stroke from the selection"), ALT, CALLI_TOOL, DRAG),
+        make_modifier("calligraphic-unionize", _("Add in the drawn stroke"), _("Add the drawn stroke into the selection"), SHIFT, CALLI_TOOL, DRAG),
 
-        make_modifier("dropper-dropping", _("Reverse direction of drop"), _("Drop onto the hovered item from the selected item, instead of the other way around."), CTRL, DROPPER_TOOL, CLICK),
-        make_modifier("dropper-invert", _("Invert the color"), _("Invert the chosen color when applying it."), ALT, DROPPER_TOOL, CLICK),
-        make_modifier("dropper-stroke", _("Apply color to stroke"), _("Apply the chosen color to the stroke, not the fill."), SHIFT, DROPPER_TOOL, CLICK),
+        make_modifier("dropper-dropping", _("Reverse direction of drop"), _("Drop onto the hovered item from the selected item, instead of the other way around"), CTRL, DROPPER_TOOL, CLICK),
+        make_modifier("dropper-invert", _("Invert the color"), _("Invert the chosen color when applying it"), ALT, DROPPER_TOOL, CLICK),
+        make_modifier("dropper-stroke", _("Apply color to stroke"), _("Apply the chosen color to the stroke, not the fill"), SHIFT, DROPPER_TOOL, CLICK),
 
-        make_modifier("flood-item", _("Apply style to item"), _("Apply the chosen color to the stroke and fill of an item."), CTRL, FLOOD_TOOL, CLICK),
-        make_modifier("flood-touch-fill", _("Replace only the first color in drag"), _("Replace only the initial color from drag throughout the drag."), ALT, FLOOD_TOOL, DRAG),
+        make_modifier("flood-item", _("Apply style to item"), _("Apply the chosen color to the stroke and fill of an item"), CTRL, FLOOD_TOOL, CLICK),
+        make_modifier("flood-touch-fill", _("Replace only the first color in drag"), _("Replace only the initial color from drag throughout the drag"), ALT, FLOOD_TOOL, DRAG),
 
+        make_modifier("node-bspline-handles", _("Move B-Spline handles"), _("When dragging a B-Spline segment, create and/or move handles instead"), SHIFT, NODE_TOOL, DRAG),
+        make_modifier("node-confine-handles", _("Confine to handles"), _("When dragging, confine to the handle lines"), ALT, NODE_TOOL, DRAG),
+        make_modifier("node-cycle-type", _("Change node type"), _("Cycle through node types when clicked"), CTRL, NODE_TOOL, CLICK),
+        make_modifier("node-delete", _("Delete node"), _("Delete node when clicked"), CTRL | ALT, NODE_TOOL, CLICK),
+        make_modifier("node-delete-segment", _("Delete segment"), _("Delete segment when double-clicked"), CTRL | ALT, NODE_TOOL, CLICK),
+        make_modifier("node-drag-handle", _("Drag handle from node"), _("Create a new handle from a node"), SHIFT, NODE_TOOL, DRAG),
         make_modifier("node-grow-linear", _("Linear node selection"), _("Select the next nodes with scroll wheel or keyboard"), CTRL, NODE_TOOL, SCROLL),
-        make_modifier("node-invert", _("Inverted node selection"), _("Select nodes outside the selection area"), CTRL, NODE_TOOL, DRAG),
-        make_modifier("node-remove-from", _("Remove nodes from selection"), _("Remove selected nodes from the selection"), SHIFT | CTRL, NODE_TOOL, DRAG),
         make_modifier("node-grow-spatial", _("Spatial node selection"), _("Select more nodes with scroll wheel or keyboard"), ALWAYS, NODE_TOOL, SCROLL),
+        make_modifier("node-insert", _("Insert new node"), _("Add a new node to a curve"), CTRL | ALT, NODE_TOOL, CLICK),
+        make_modifier("node-invert", _("Inverted node selection"), _("Select nodes outside the selection area"), CTRL, NODE_TOOL, DRAG),
+        make_modifier("node-link-handles", _("Move handles together"), _("Move both node handles together during a drag"), SHIFT, NODE_TOOL, DRAG),
+        make_modifier("node-preserve-length", _("Preserve handle length"), _("Keep the node handle length constant during a drag"), ALT, NODE_TOOL, DRAG),
+        make_modifier("node-remove-from", _("Remove nodes from selection"), _("Remove selected nodes from the selection"), SHIFT | CTRL, NODE_TOOL, DRAG),
+        make_modifier("node-retract-handle", _("Retract handle into node"), _("Remove handle when clicked"), ALT, NODE_TOOL, CLICK),
+        make_modifier("node-straighten-segment", _("Straighten segment"), _("Straighten segment when double-clicked"), ALT, NODE_TOOL, CLICK),
+
+        make_modifier("spiral-snapping", _("Snap angle"), _("Snap while rotating spiral"), CTRL, SPIRAL_TOOL, DRAG),
+
+        make_modifier("star-snapping", _("Snap angle; keep rays radial"), _("Snap while rotating star or polygon"), CTRL, STAR_TOOL, DRAG),
+
+        make_modifier("tweak-invert", _("Invert tweak"), _("Reverse the direction of the tweak"), SHIFT, TWEAK_TOOL, CLICK),
     };
     return static_modifiers;
 }
@@ -160,6 +206,9 @@ Modifier::CategoryNames const &Modifier::_category_names()
         {CALLI_TOOL, _("Calligraphy Tool")},
         {DROPPER_TOOL, _("Dropper Tool")},
         {FLOOD_TOOL, _("Paint Bucket Tool")},
+        {SPIRAL_TOOL, _("Spiral Tool")},
+        {STAR_TOOL, _("Star/Polygon Tool")},
+        {TWEAK_TOOL, _("Tweak Tool")},
     };
     return static_category_names;
 }

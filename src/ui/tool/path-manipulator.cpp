@@ -1632,11 +1632,22 @@ Inkscape::XML::Node *PathManipulator::_getXMLNode()
     return lpeobj->getRepr();
 }
 
-bool PathManipulator::_nodeClicked(Node *n, ButtonReleaseEvent const &event)
+/**
+ * Process a mouse click on a node (also used when its handles are clicked).
+ *
+ * @param n The Node
+ * @param event The mouse event
+ * @param skip_auto When cycling through node types, whether to skip the NODE_AUTO type (handle
+ *                  clicks will set this to true)
+ */
+bool PathManipulator::_nodeClicked(Node *n, ButtonReleaseEvent const &event, bool skip_auto)
 {
     if (event.button != 1) return false;
-    if (mod_alt(event) && mod_ctrl(event)) {
-        // Ctrl+Alt+click: delete nodes
+
+    auto const cycle_type = Modifiers::Modifier::get(Modifiers::Type::NODE_CYCLE_TYPE)->active(event.modifiers);
+    auto const delete_node = Modifiers::Modifier::get(Modifiers::Type::NODE_DELETE)->active(event.modifiers);
+
+    if (delete_node) {
         hideDragPoint();
         NodeList::iterator iter = NodeList::get_iterator(n);
         NodeList &nl = iter->nodeList();
@@ -1657,10 +1668,13 @@ bool PathManipulator::_nodeClicked(Node *n, ButtonReleaseEvent const &event)
         _multi_path_manipulator._doneWithCleanup(RC_("Undo", "Delete node"));
 
         return true;
-    } else if (mod_ctrl(event)) {
-        // Ctrl+click: cycle between node types
+    } else if (cycle_type) {
         if (!n->isEndNode()) {
-            n->setType(static_cast<NodeType>((n->type() + 1) % NODE_LAST_REAL_TYPE));
+            auto next = n->type() + 1;
+            if (skip_auto && next == NODE_AUTO) {
+                next += 1;
+            }
+            n->setType(static_cast<NodeType>(next % NODE_LAST_REAL_TYPE));
             update();
             _commit(RC_("Undo", "Cycle node type"));
         }
@@ -1682,8 +1696,9 @@ void PathManipulator::_handleUngrabbed()
 
 bool PathManipulator::_handleClicked(Handle *h, ButtonReleaseEvent const &event)
 {
-    // retracting by Alt+Click
-    if (event.button == 1 && mod_alt(event)) {
+    auto const retract = Modifiers::Modifier::get(Modifiers::Type::NODE_RETRACT_HANDLE)->active(event.modifiers);
+
+    if (event.button == 1 && retract) {
         h->move(h->parent()->position());
         update();
         _commit(RC_("Undo", "Retract handle"));

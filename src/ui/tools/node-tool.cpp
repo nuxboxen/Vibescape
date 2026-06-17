@@ -108,6 +108,12 @@ Inkscape::CanvasItemGroup *create_control_group(SPDesktop *desktop)
 
 NodeTool::NodeTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/nodes", "node.svg")
+    , mod_move_snapping(Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING))
+    , mod_node_invert(Modifiers::Modifier::get(Modifiers::Type::NODE_INVERT))
+    , mod_node_remove_from(Modifiers::Modifier::get(Modifiers::Type::NODE_REMOVE_FROM))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
+    , mod_select_touch_path(Modifiers::Modifier::get(Modifiers::Type::SELECT_TOUCH_PATH))
 {
     this->_path_data = new Inkscape::UI::PathSharedData();
 
@@ -412,7 +418,7 @@ bool NodeTool::root_handler(CanvasEvent const &event)
                 _updateSelectionColor(event);
             }
   
-            auto touch_path = Modifier::get(Modifiers::Type::SELECT_TOUCH_PATH)->get_label();
+            auto touch_path = mod_select_touch_path->get_label();
             if (rubberband->getMode() == Rubberband::Mode::TOUCHPATH) {
                 defaultMessageContext()->setF(Inkscape::NORMAL_MESSAGE,
                     _("<b>Draw over</b> lines to select their nodes; release <b>%s</b> to switch to rubberband selection"), touch_path.c_str());
@@ -432,7 +438,7 @@ bool NodeTool::root_handler(CanvasEvent const &event)
         // We will show a pre-snap indication for when the user adds a node through double-clicking
         // Adding a node will only work when a path has been selected; if that's not the case then snapping is useless
         if (!_desktop->getSelection()->isEmpty()) {
-            if (!(event.modifiers & GDK_SHIFT_MASK)) {
+            if (!mod_move_snapping->active(event.modifiers)) {
                 m.setup(_desktop);
                 auto scp = Inkscape::SnapCandidatePoint(motion_dt, Inkscape::SNAPSOURCE_OTHER_HANDLE);
                 m.preSnap(scp, true);
@@ -550,7 +556,7 @@ bool NodeTool::root_handler(CanvasEvent const &event)
 
         if (event.num_press == 1) {
 
-            if (Modifier::get(Modifiers::Type::SELECT_TOUCH_PATH)->active(event.modifiers)) {
+            if (mod_select_touch_path->active(event.modifiers)) {
                 rubberband->setMode(Rubberband::Mode::TOUCHPATH);
                 rubberband->setHandle(RUBBERBAND_TOUCHPATH);
             }
@@ -627,14 +633,15 @@ void NodeTool::update_tip(CanvasEvent const &event)
 
         auto modifiers_after = event.modifiers ^ modifiers_change;
 
-        if (mod_shift(modifiers_after)) {
+        if (mod_select_add_to->active(modifiers_after)) {
             if (_last_over) {
-                message_context->set(Inkscape::NORMAL_MESSAGE,
-                    C_("Node tool tip", "<b>Shift</b>: drag to add nodes to the selection, "
-                    "click to toggle object selection"));
+                message_context->setF(Inkscape::NORMAL_MESSAGE,
+                    C_("Node tool tip", "<b>%s</b>: drag to add nodes to the selection, "
+                    "click to toggle object selection"), mod_select_add_to->get_label().c_str());
             } else {
-                message_context->set(Inkscape::NORMAL_MESSAGE,
-                    C_("Node tool tip", "<b>Shift</b>: drag to add nodes to the selection"));
+                message_context->setF(Inkscape::NORMAL_MESSAGE,
+                    C_("Node tool tip", "<b>%s</b>: drag to add nodes to the selection"),
+                    mod_select_add_to->get_label().c_str());
             }
 
             return;
@@ -715,20 +722,21 @@ void NodeTool::select_area(Geom::Path const &path, ButtonReleaseEvent const &eve
         auto items = _desktop->getDocument()->getItemsInBox(_desktop->dkey, sel_doc);
         selection->setList(items);
     } else {
-        bool shift = mod_shift(event);
-        bool ctrl = mod_ctrl(event);
+        bool add_to = mod_select_add_to->active(event.modifiers);
+        bool remove_from = mod_node_remove_from->active(event.modifiers);
+        bool invert = mod_node_invert->active(event.modifiers);
 
-        if (!shift) {
-            // A/C. No modifier, selects all nodes, or selects all other nodes.
-            _selected_nodes->clear();
-        }
-        if (shift && ctrl) {
+        if (remove_from) {
             // D. Shift+Ctrl pressed, removes nodes under box from existing selection.
             _selected_nodes->selectArea(path, true);
         } else {
+            if (!add_to) {
+                // A/C. No modifier, selects all nodes, or selects all other nodes.
+                _selected_nodes->clear();
+            }
             // A/B/C. Adds nodes under box to existing selection.
             _selected_nodes->selectArea(path);
-            if (ctrl) {
+            if (invert) {
                 // C. Selects the inverse of all nodes under the box.
                 _selected_nodes->invertSelection();
             }
@@ -744,8 +752,8 @@ void NodeTool::select_point(ButtonReleaseEvent const &event)
 
     auto selection = _desktop->getSelection();
 
-    auto item_clicked = sp_event_context_find_item(_desktop, event.pos,
-        (event.modifiers & GDK_ALT_MASK) && !(event.modifiers & GDK_CONTROL_MASK), true);
+    auto const force_drag = mod_select_force_drag->active(event.modifiers);
+    auto item_clicked = sp_event_context_find_item(_desktop, event.pos, force_drag, true);
 
     if (!item_clicked) { // nothing under cursor
         // if no Shift, deselect
@@ -788,10 +796,10 @@ void NodeTool::handleControlUiStyleChange() {
 void NodeTool::_updateSelectionColor(CanvasEvent const &event)
 {
     auto rubberband = get_rubberband();
-    if (Modifier::get(Modifiers::Type::NODE_REMOVE_FROM)->active(event.modifiersAfter())) {
+    if (mod_node_remove_from->active(event.modifiersAfter())) {
         // if Ctrl+Shift is pressed, change rubberband operation to remove
         rubberband->setOperation(Rubberband::Operation::REMOVE);
-    } else if (Modifier::get(Modifiers::Type::NODE_INVERT)->active(event.modifiersAfter())) {
+    } else if (mod_node_invert->active(event.modifiersAfter())) {
         // Ctrl pressed, it's an invert option
         rubberband->setOperation(Rubberband::Operation::INVERT);
     } else {

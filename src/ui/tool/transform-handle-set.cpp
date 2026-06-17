@@ -182,22 +182,34 @@ public:
 protected:
     Glib::ustring _getTip(unsigned state) const override
     {
-        if (mod_ctrl(state)) {
-            if (mod_shift(state)) {
-                return C_("Transform handle tip",
-                    "<b>Shift+Ctrl</b>: scale uniformly about the rotation center");
+        auto const mod_increment = Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT);
+        auto const mod_off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER);
+        auto const mod_uniform = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE);
+
+        if (mod_uniform->active(state)) {
+            if (mod_off_center->active(state)) {
+                auto const combined = Modifiers::generate_label(mod_uniform->get_and_mask() |
+                                                                mod_off_center->get_and_mask());
+                return Glib::ustring::compose(C_("Transform handle tip",
+                    "<b>%1</b>: scale uniformly about the rotation center"), combined);
             }
-            return C_("Transform handle tip", "<b>Ctrl:</b> scale uniformly");
+            return Glib::ustring::compose(C_("Transform handle tip", "<b>%1</b>: scale uniformly"),
+                                          mod_uniform->get_label());
         }
-        if (mod_shift(state)) {
-            if (mod_alt(state)) {
-                return C_("Transform handle tip",
-                    "<b>Shift+Alt</b>: scale using an integer ratio about the rotation center");
+        if (mod_off_center->active(state)) {
+            if (mod_increment->active(state)) {
+                auto const combined = Modifiers::generate_label(mod_increment->get_and_mask() |
+                                                                mod_off_center->get_and_mask());
+                return Glib::ustring::compose(C_("Transform handle tip",
+                    "<b>%1</b>: scale using an integer ratio about the rotation center"),
+                    combined);
             }
-            return C_("Transform handle tip", "<b>Shift</b>: scale from the rotation center");
+            return Glib::ustring::compose(C_("Transform handle tip",
+                "<b>%1</b>: scale from the rotation center"), mod_off_center->get_label());
         }
-        if (mod_alt(state)) {
-            return C_("Transform handle tip", "<b>Alt</b>: scale using an integer ratio");
+        if (mod_increment->active(state)) {
+            return Glib::ustring::compose(C_("Transform handle tip",
+                "<b>%1</b>: scale using an integer ratio"), mod_increment->get_label());
         }
         return C_("Transform handle tip", "<b>Scale handle</b>: drag to scale the selection");
     }
@@ -236,7 +248,11 @@ protected:
 
     Geom::Affine computeTransform(Geom::Point const &new_pos, MotionEvent const &event) override
     {
-        Geom::Point scc = mod_shift(event) ? _sc_center : _sc_opposite;
+        auto const increment = Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT)->active(event.modifiers);
+        auto const off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER)->active(event.modifiers);
+        auto const uniform = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE)->active(event.modifiers);
+
+        Geom::Point scc = off_center ? _sc_center : _sc_opposite;
         Geom::Point vold = _origin - scc, vnew = new_pos - scc;
         // avoid exploding the selection
         if (Geom::are_near(vold[Geom::X], 0) || Geom::are_near(vold[Geom::Y], 0))
@@ -244,7 +260,7 @@ protected:
 
         Geom::Scale scale = Geom::Scale(vnew[Geom::X] / vold[Geom::X], vnew[Geom::Y] / vold[Geom::Y]);
 
-        if (mod_alt(event)) {
+        if (increment) {
             for (unsigned i = 0; i < 2; ++i) {
                 if (fabs(scale[i]) >= 1.0) {
                     scale[i] = round(scale[i]);
@@ -257,7 +273,7 @@ protected:
             m.setupIgnoreSelection(_th._desktop, true, &_unselected_points);
 
             Inkscape::PureScale *ptr;
-            if (mod_ctrl(event)) {
+            if (uniform) {
                 scale[0] = scale[1] = std::min(scale[0], scale[1]);
                 ptr = new Inkscape::PureScaleConstrained(Geom::Scale(scale[0], scale[1]), scc);
             } else {
@@ -315,7 +331,11 @@ protected:
 
     Geom::Affine computeTransform(Geom::Point const &new_pos, MotionEvent const &event) override
     {
-        Geom::Point scc = mod_shift(event) ? _sc_center : _sc_opposite;
+        auto const increment = Modifiers::Modifier::get(Modifiers::Type::TRANS_INCREMENT)->active(event.modifiers);
+        auto const off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER)->active(event.modifiers);
+        auto const uniform = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE)->active(event.modifiers);
+
+        Geom::Point scc = off_center ? _sc_center : _sc_opposite;
         Geom::Point vs;
         Geom::Dim2 d1 = static_cast<Geom::Dim2>((_side + 1) % 2);
         Geom::Dim2 d2 = static_cast<Geom::Dim2>(_side % 2);
@@ -325,7 +345,7 @@ protected:
             return Geom::identity();
 
         vs[d1] = (new_pos - scc)[d1] / (_origin - scc)[d1];
-        if (mod_alt(event)) {
+        if (increment) {
             if (std::abs(vs[d1]) >= 1.0) {
                 vs[d1] = std::round(vs[d1]);
             } else {
@@ -336,7 +356,6 @@ protected:
             auto &m = _th._desktop->getNamedView()->snap_manager;
             m.setupIgnoreSelection(_th._desktop, true, &_unselected_points);
 
-            bool uniform = mod_ctrl(event);
             auto psc = Inkscape::PureStretchConstrained(vs[d1], scc, d1, uniform);
             m.snapTransformed(_snap_points, _origin, psc);
             m.unSetup();
@@ -394,9 +413,12 @@ protected:
 
     Geom::Affine computeTransform(Geom::Point const &new_pos, MotionEvent const &event) override
     {
-        Geom::Point rotc = mod_shift(event) ? _rot_opposite : _rot_center;
+        auto const confine = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE)->active(event.modifiers);
+        auto const off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER)->active(event.modifiers);
+
+        Geom::Point rotc = off_center ? _rot_opposite : _rot_center;
         double angle = Geom::angle_between(_origin - rotc, new_pos - rotc);
-        if (mod_ctrl(event)) {
+        if (confine) {
             angle = snap_angle(angle);
         } else {
             auto &m = _th._desktop->getNamedView()->snap_manager;
@@ -421,17 +443,24 @@ protected:
 
     Glib::ustring _getTip(unsigned state) const override
     {
-        if (mod_shift(state)) {
-            if (mod_ctrl(state)) {
-                return format_tip(C_("Transform handle tip",
-                    "<b>Shift+Ctrl</b>: rotate around the opposite corner and snap "
-                    "angle to %f° increments"), snap_increment_degrees());
+        auto const mod_confine = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE);
+        auto const mod_off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER);
+
+        if (mod_off_center->active(state)) {
+            if (mod_confine->active(state)) {
+                auto const combined = Modifiers::generate_label(mod_confine->get_and_mask() |
+                                                                mod_off_center->get_and_mask());
+                return Glib::ustring::compose(C_("Transform handle tip",
+                    "<b>%1</b>: rotate around the opposite corner and snap "
+                    "angle to %2° increments"), combined, snap_increment_degrees());
             }
-            return C_("Transform handle tip", "<b>Shift</b>: rotate around the opposite corner");
+            return Glib::ustring::compose(C_("Transform handle tip",
+                "<b>%1</b>: rotate around the opposite corner"), mod_off_center->get_label());
         }
-        if (mod_ctrl(state)) {
-            return format_tip(C_("Transform handle tip",
-                "<b>Ctrl</b>: snap angle to %f° increments"), snap_increment_degrees());
+        if (mod_confine->active(state)) {
+            return Glib::ustring::compose(C_("Transform handle tip",
+                "<b>%1</b>: snap angle to %2° increments"), mod_confine->get_label(),
+                snap_increment_degrees());
         }
         return C_("Transform handle tip", "<b>Rotation handle</b>: drag to rotate "
             "the selection around the rotation center");
@@ -473,7 +502,10 @@ protected:
 
     Geom::Affine computeTransform(Geom::Point const &new_pos, MotionEvent const &event) override
     {
-        Geom::Point scc = mod_shift(event) ? _skew_center : _skew_opposite;
+        auto const confine = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE)->active(event.modifiers);
+        auto const off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER)->active(event.modifiers);
+
+        Geom::Point scc = off_center ? _skew_center : _skew_opposite;
         Geom::Dim2 d1 = static_cast<Geom::Dim2>((_side + 1) % 2);
         Geom::Dim2 d2 = static_cast<Geom::Dim2>(_side % 2);
 
@@ -503,7 +535,7 @@ protected:
 
         double angle = atan(skew[d1] / scale[d1]);
 
-        if (mod_ctrl(event)) {
+        if (confine) {
             angle = snap_angle(angle);
             skew[d1] = tan(angle) * scale[d1];
         } else {
@@ -555,17 +587,24 @@ protected:
 
     Glib::ustring _getTip(unsigned state) const override
     {
-        if (mod_shift(state)) {
-            if (mod_ctrl(state)) {
-                return format_tip(C_("Transform handle tip",
-                    "<b>Shift+Ctrl</b>: skew about the rotation center with snapping "
-                    "to %f° increments"), snap_increment_degrees());
+        auto const mod_confine = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE);
+        auto const mod_off_center = Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER);
+
+        if (mod_off_center->active(state)) {
+            if (mod_confine->active(state)) {
+                auto const combined = Modifiers::generate_label(mod_confine->get_and_mask() |
+                                                                mod_off_center->get_and_mask());
+                return Glib::ustring::compose(C_("Transform handle tip",
+                    "<b>%1</b>: skew about the rotation center with snapping "
+                    "to %2° increments"), combined, snap_increment_degrees());
             }
-            return C_("Transform handle tip", "<b>Shift</b>: skew about the rotation center");
+            return Glib::ustring::compose(C_("Transform handle tip",
+                "<b>%1</b>: skew about the rotation center"), mod_off_center->get_label());
         }
-        if (mod_ctrl(state)) {
-            return format_tip(C_("Transform handle tip",
-                "<b>Ctrl</b>: snap skew angle to %f° increments"), snap_increment_degrees());
+        if (mod_confine->active(state)) {
+            return Glib::ustring::compose(C_("Transform handle tip",
+                "<b>%1</b>: snap skew angle to %2° increments"), mod_confine->get_label(),
+                snap_increment_degrees());
         }
         return C_("Transform handle tip",
             "<b>Skew handle</b>: drag to skew (shear) selection about "
@@ -610,17 +649,20 @@ public:
 protected:
     void dragged(Geom::Point &new_pos, MotionEvent const &event) override
     {
+        auto const confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(event.modifiers);
+        auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+
         auto &sm = _th._desktop->getNamedView()->snap_manager;
         sm.setup(_th._desktop);
-        bool snap = !mod_shift(event) && sm.someSnapperMightSnap();
-        if (mod_ctrl(event)) {
+        bool snap = !no_snap && sm.someSnapperMightSnap();
+        if (confine) {
             // constrain to axes
             Geom::Point origin = _last_drag_origin();
             std::vector<Inkscape::Snapper::SnapConstraint> constraints;
             constraints.emplace_back(origin, Geom::Point(1, 0));
             constraints.emplace_back(origin, Geom::Point(0, 1));
             new_pos = sm.multipleConstrainedSnaps(Inkscape::SnapCandidatePoint(new_pos,
-                SNAPSOURCE_ROTATION_CENTER), constraints, mod_shift(event)).getPoint();
+                SNAPSOURCE_ROTATION_CENTER), constraints, no_snap).getPoint();
         } else if (snap) {
             sm.freeSnapReturnByRef(new_pos, SNAPSOURCE_ROTATION_CENTER);
         }

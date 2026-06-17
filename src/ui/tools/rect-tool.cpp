@@ -43,6 +43,10 @@ RectTool::RectTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/shapes/rect", "rect.svg")
     , rx(0)
     , ry(0)
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
+    , mod_trans_confine(Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE))
+    , mod_trans_off_center(Modifiers::Modifier::get(Modifiers::Type::TRANS_OFF_CENTER))
 {
     this->shape_editor = new ShapeEditor(desktop);
 
@@ -141,7 +145,8 @@ bool RectTool::root_handler(CanvasEvent const &event)
                 dragging = true;
 
                 // Remember clicked item, disregarding groups, honoring Alt.
-                item_to_select = sp_event_context_find_item (_desktop, button_w, event.modifiers & GDK_ALT_MASK, true);
+                bool force_drag = mod_select_force_drag->active(event.modifiers);
+                item_to_select = sp_event_context_find_item (_desktop, button_w, force_drag, true);
                 // Postion center
                 auto button_dt = _desktop->w2d(button_w);
                 center = button_dt;
@@ -189,7 +194,7 @@ bool RectTool::root_handler(CanvasEvent const &event)
                     finishItem();
                 } else if (item_to_select) {
                     // No dragging, select clicked item if any.
-                    if (event.modifiers & GDK_SHIFT_MASK) {
+                    if (mod_select_add_to->active(event.modifiers)) {
                         selection->toggle(item_to_select);
                     } else if (!selection->includes(item_to_select)) {
                         selection->set(item_to_select);
@@ -205,23 +210,21 @@ bool RectTool::root_handler(CanvasEvent const &event)
             ungrabCanvasEvents();
         },
         [&] (KeyPressEvent const &event) {
-            switch (get_latin_keyval (event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt (at least on my machine)
-                case GDK_KEY_Meta_R:
-                    if (!dragging){
-                        sp_event_show_modifier_tip(defaultMessageContext(), event,
-                                                   _("<b>Ctrl</b>: make square or integer-ratio rect, lock a rounded corner circular"),
-                                                   _("<b>Shift</b>: draw around the starting point"),
-                                                   _("<b>Alt</b>: use with Ctrl to make square"));
-                    }
-                    break;
+            auto keyval = get_latin_keyval(event);
 
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                if (!dragging) {
+                    Modifiers::responsive_tooltip_with_labels(
+                        defaultMessageContext(), event, 3,
+                        Modifiers::Type::TRANS_CONFINE,
+                        _("Make square or integer-ratio rect, lock a rounded corner circular"),
+                        Modifiers::Type::TRANS_INCREMENT, _("Use with Ctrl to make square"),
+                        Modifiers::Type::TRANS_OFF_CENTER, _("Draw around the starting point")
+                    );
+                }
+            }
+
+            switch (keyval) {
                 case GDK_KEY_g:
                 case GDK_KEY_G:
                     if (mod_shift_only(event)) {
@@ -265,19 +268,10 @@ bool RectTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (KeyReleaseEvent const &event) {
-            switch (get_latin_keyval(event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt
-                case GDK_KEY_Meta_R:
-                    defaultMessageContext()->clear();
-                    break;
-                default:
-                    break;
+            auto keyval = get_latin_keyval(event);
+
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                defaultMessageContext()->clear();
             }
         },
         [&] (CanvasEvent const &event) {}
@@ -331,7 +325,7 @@ void RectTool::drag(Geom::Point const pt, unsigned state) {
     Glib::ustring xs = rdimx_q.string(_desktop->getNamedView()->display_units);
     Glib::ustring ys = rdimy_q.string(_desktop->getNamedView()->display_units);
 
-    if (state & GDK_CONTROL_MASK) {
+    if (mod_trans_confine->active(state)) {
         int ratio_x, ratio_y;
         bool is_golden_ratio = false;
 
@@ -353,23 +347,25 @@ void RectTool::drag(Geom::Point const pt, unsigned state) {
 
         if (!is_golden_ratio) {
             this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                    _("<b>Rectangle</b>: %s &#215; %s (constrained to ratio %d:%d); with <b>Shift</b> to draw around the starting point"),
-                    xs.c_str(), ys.c_str(), ratio_x, ratio_y);
+                    _("<b>Rectangle</b>: %s &#215; %s (constrained to ratio %d:%d); with <b>%s</b> to draw around the starting point"),
+                    xs.c_str(), ys.c_str(), ratio_x, ratio_y,
+                    mod_trans_off_center->get_label().c_str());
         } else {
             if (ratio_y == 1) {
                 this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                        _("<b>Rectangle</b>: %s &#215; %s (constrained to golden ratio 1.618 : 1); with <b>Shift</b> to draw around the starting point"),
-                        xs.c_str(), ys.c_str());
+                        _("<b>Rectangle</b>: %s &#215; %s (constrained to golden ratio 1.618 : 1); with <b>%s</b> to draw around the starting point"),
+                        xs.c_str(), ys.c_str(), mod_trans_off_center->get_label().c_str());
             } else {
                 this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                        _("<b>Rectangle</b>: %s &#215; %s (constrained to golden ratio 1 : 1.618); with <b>Shift</b> to draw around the starting point"),
-                        xs.c_str(), ys.c_str());
+                        _("<b>Rectangle</b>: %s &#215; %s (constrained to golden ratio 1 : 1.618); with <b>%s</b> to draw around the starting point"),
+                        xs.c_str(), ys.c_str(), mod_trans_off_center->get_label().c_str());
             }
         }
     } else {
         this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                _("<b>Rectangle</b>: %s &#215; %s; with <b>Ctrl</b> to make square, integer-ratio, or golden-ratio rectangle; with <b>Shift</b> to draw around the starting point"),
-                xs.c_str(), ys.c_str());
+                _("<b>Rectangle</b>: %s &#215; %s; with <b>%s</b> to make square, integer-ratio, or golden-ratio rectangle; with <b>%s</b> to draw around the starting point"),
+                xs.c_str(), ys.c_str(), mod_trans_confine->get_label().c_str(),
+                mod_trans_off_center->get_label().c_str());
     }
 }
 

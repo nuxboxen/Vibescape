@@ -44,6 +44,11 @@ private:
 
     sigc::connection sel_changed_connection;
 
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_select_force_drag;
+    Modifiers::Modifier *mod_trans_confine;
+    Modifiers::Modifier *mod_trans_off_center;
+
     void drag(Geom::Point const pt, unsigned state);
     void finishItem();
     void cancel();

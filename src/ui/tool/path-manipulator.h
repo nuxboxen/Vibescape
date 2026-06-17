@@ -147,7 +147,7 @@ private:
 
     void _selectionChangedM(std::vector<SelectableControlPoint *> pvec, bool selected);
     void _selectionChanged(SelectableControlPoint * p, bool selected);
-    bool _nodeClicked(Node *, ButtonReleaseEvent const &);
+    bool _nodeClicked(Node *, ButtonReleaseEvent const &, bool skip_auto);
     void _handleGrabbed();
     bool _handleClicked(Handle *, ButtonReleaseEvent const &);
     void _handleUngrabbed();

@@ -100,6 +100,9 @@ private:
     std::vector<Inkscape::SnapCandidatePoint> _bbox_points;
     std::unique_ptr<Inkscape::SelectionState> _selection_state;
 
+    Modifiers::Modifier *mod_move_snapping;
+    Modifiers::Modifier *mod_trans_confine;
+
     static Geom::Point middleOfSide(int side, const Geom::Rect &rect);
 };
 

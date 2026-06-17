@@ -20,6 +20,7 @@
 #include "ui/tool/path-manipulator.h"
 #include "ui/tools/node-tool.h"
 #include "ui/widget/events/canvas-event.h"
+#include "util/join.h"
 #include "util/units.h"
 
 namespace {
@@ -440,13 +441,18 @@ bool Handle::grabbed(MotionEvent const &)
 
 void Handle::dragged(Geom::Point &new_pos, MotionEvent const &event)
 {
+    auto const confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(event.modifiers);
+    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+    auto const link_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_LINK_HANDLES)->active(event.modifiers);
+    auto const preserve_length = Modifiers::Modifier::get(Modifiers::Type::NODE_PRESERVE_LENGTH)->active(event.modifiers);
+
     Geom::Point parent_pos = _parent->position();
     Geom::Point origin = _last_drag_origin();
     SnapManager &sm = _desktop->getNamedView()->snap_manager;
-    bool snap = mod_shift(event) ? false : sm.someSnapperMightSnap();
+    bool snap = no_snap ? false : sm.someSnapperMightSnap();
     std::optional<Inkscape::Snapper::SnapConstraint> ctrl_constraint;
 
-    if (mod_alt(event)) {
+    if (preserve_length) {
         // with Alt, preserve length of the handle
         new_pos = parent_pos + Geom::unit_vector(new_pos - parent_pos) * _saved_length;
         snap = false;
@@ -457,14 +463,14 @@ void Handle::dragged(Geom::Point &new_pos, MotionEvent const &event)
         _saved_dir = Geom::unit_vector(relativePos());
     }
 
-    if (_parent->type() != NODE_CUSP && mod_shift(event) && !mod_alt(event)) {
+    if (_parent->type() != NODE_CUSP && link_handles && !preserve_length) {
         // if we hold Shift, and node is not cusp, link the two handles
         other()->setRelativePos(-relativePos());
     }
 
     // with Ctrl, constrain to M_PI/rotationsnapsperpi increments from vertical
     // and the original position.
-    if (mod_ctrl(event)) {
+    if (confine) {
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
         double snaps = 2 * prefs->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
 
@@ -531,9 +537,8 @@ void Handle::dragged(Geom::Point &new_pos, MotionEvent const &event)
         sm.unSetup();
     }
 
-    // with Shift, if the node is cusp, rotate the other handle as well
     if (_parent->type() == NODE_CUSP && !_drag_out) {
-        if (mod_shift(event)) {
+        if (link_handles) { // rotate the other handle as well
             Geom::Point other_relpos = _saved_other_pos - parent_pos;
             other_relpos *= Geom::Rotate(Geom::angle_between(origin - parent_pos, new_pos - parent_pos));
             other()->setRelativePos(other_relpos);
@@ -543,7 +548,7 @@ void Handle::dragged(Geom::Point &new_pos, MotionEvent const &event)
         }
     }
     // if it is BSpline, but SHIFT or CONTROL are not pressed, fix it in the original position
-    if (_pm()._isBSpline() && !mod_shift(event) && !mod_ctrl(event)) {
+    if (_pm()._isBSpline() && !no_snap && !confine) {
         new_pos = _last_drag_origin();
     }
     _pm().update();
@@ -576,14 +581,7 @@ void Handle::ungrabbed(ButtonReleaseEvent const *event)
 
 bool Handle::clicked(ButtonReleaseEvent const &event)
 {
-    if (mod_ctrl(event) && !mod_alt(event)) {
-        // we want to skip the Node Auto when we cycle between nodes
-        if (_parent->type() == NODE_SMOOTH) {
-            _parent->setType(NODE_AUTO, false);
-        }
-    }
-
-    if (_pm()._nodeClicked(this->parent(), event)) {
+    if (_pm()._nodeClicked(this->parent(), event, true)) {
         return true;
     }
     _pm()._handleClicked(this, event);
@@ -622,61 +620,84 @@ Glib::ustring Handle::_getTip(unsigned state) const
     Glib::ustring s = C_("Status line hint",
                          "node control handle"); // not expected
 
-    if (mod_alt(state) && !isBSpline) {
-        if (mod_ctrl(state)) {
-            if (mod_shift(state) && can_shift_rotate) {
-                s = format_tip(C_("Status line hint", "<b>Shift+Ctrl+Alt</b>: "
+    auto const mod_confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE);
+    auto const mod_bspline_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_BSPLINE_HANDLES);
+    auto const mod_link_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_LINK_HANDLES);
+    auto const mod_preserve_length = Modifiers::Modifier::get(Modifiers::Type::NODE_PRESERVE_LENGTH);
+
+    if (mod_preserve_length->active(state) && !isBSpline) {
+        if (mod_confine->active(state)) {
+            if (mod_link_handles->active(state) && can_shift_rotate) {
+                auto const combined = Modifiers::generate_label(mod_confine->get_and_mask() |
+                                                                mod_link_handles->get_and_mask() |
+                                                                mod_preserve_length->get_and_mask());
+                s = format_tip(C_("Status line hint", "<b>%s</b>: "
                                                       "preserve length and snap rotation angle to %g° increments, "
                                                       "and rotate both handles"),
-                               snap_increment_degrees());
+                               combined.c_str(), snap_increment_degrees());
             } else {
-                s = format_tip(C_("Status line hint", "<b>Ctrl+Alt</b>: "
+                auto const combined = Modifiers::generate_label(mod_confine->get_and_mask() |
+                                                                mod_preserve_length->get_and_mask());
+                s = format_tip(C_("Status line hint", "<b>%s</b>: "
                                                       "preserve length and snap rotation angle to %g° increments"),
-                               snap_increment_degrees());
+                               combined.c_str(), snap_increment_degrees());
             }
         } else {
-            if (mod_shift(state) && can_shift_rotate) {
-                s = C_("Path handle tip", "<b>Shift+Alt</b>: preserve handle length and rotate both handles");
+            if (mod_link_handles->active(state) && can_shift_rotate) {
+                auto const combined = Modifiers::generate_label(mod_link_handles->get_and_mask() |
+                                                                mod_preserve_length->get_and_mask());
+                s = format_tip(C_("Path handle tip", "<b>%s</b>: preserve handle length and rotate both handles"),
+                               combined.c_str());
             } else {
-                s = C_("Path handle tip", "<b>Alt</b>: preserve handle length while dragging");
+                s = format_tip(C_("Path handle tip", "<b>%s</b>: preserve handle length while dragging"),
+                               mod_preserve_length->get_label().c_str());
             }
         }
     } else {
-        if (mod_ctrl(state)) {
-            if (mod_shift(state) && can_shift_rotate && !isBSpline) {
-                s = format_tip(C_("Path handle tip", "<b>Shift+Ctrl</b>: "
+        if (mod_confine->active(state)) {
+            if (mod_link_handles->active(state) && can_shift_rotate && !isBSpline) {
+                auto const combined = Modifiers::generate_label(mod_confine->get_and_mask() |
+                                                                mod_link_handles->get_and_mask());
+                s = format_tip(C_("Path handle tip", "<b>%s</b>: "
                                                      "snap rotation angle to %g° increments, and rotate both handles"),
-                               snap_increment_degrees());
+                               combined.c_str(), snap_increment_degrees());
             } else if (isBSpline) {
-                s = C_("Path handle tip", "<b>Ctrl</b>: "
-                                          "Snap handle to steps defined in BSpline Live Path Effect");
+                s = format_tip(C_("Path handle tip",
+                    "<b>%s</b>: Snap handle to steps defined in BSpline Live Path Effect"),
+                    mod_confine->get_label().c_str());
             } else {
-                s = format_tip(C_("Path handle tip", "<b>Ctrl</b>: "
-                                                     "snap rotation angle to %g° increments, click to retract"),
-                               snap_increment_degrees());
+                s = format_tip(C_("Path handle tip", 
+                    "<b>%s</b>: snap rotation angle to %g° increments, click to retract"),
+                    mod_confine->get_label().c_str(), snap_increment_degrees());
             }
-        } else if (mod_shift(state) && can_shift_rotate && !isBSpline) {
-            s = C_("Path handle tip", "<b>Shift</b>: rotate both handles by the same angle");
-        } else if (mod_shift(state) && isBSpline) {
-            s = C_("Path handle tip", "<b>Shift</b>: move handle");
+        } else if (mod_link_handles->active(state) && can_shift_rotate && !isBSpline) {
+            s = Glib::ustring::compose(C_("Path handle tip",
+                "<b>%1</b>: rotate both handles by the same angle"), mod_link_handles->get_label());
+        } else if (mod_bspline_handles->active(state) && isBSpline) {
+            s = Glib::ustring::compose(C_("Path handle tip", "<b>%1</b>: move handle"),
+                mod_bspline_handles->get_label());
         } else {
             char const *handletype = handle_type_to_localized_string(_parent->_type);
-            char const *more;
 
-            if (can_shift_rotate && !isBSpline) {
-                more = C_("Status line hint", "Shift, Ctrl, Alt");
-            } else if (isBSpline) {
-                more = C_("Status line hint", "Shift, Ctrl");
+            std::set<Glib::ustring> labels;
+            labels.insert(mod_confine->get_label());
+            if (isBSpline) {
+                labels.insert(mod_bspline_handles->get_label());
             } else {
-                more = C_("Status line hint", "Ctrl, Alt");
+                if (can_shift_rotate) {
+                    labels.insert(mod_link_handles->get_label());
+                }
+                labels.insert(mod_preserve_length->get_label());
             }
+            auto const more = Inkscape::Util::join_with_separator(labels);
+
             if (isBSpline) {
                 double power = _pm()._bsplineHandlePosition(h);
                 s = format_tip(C_("Status line hint", "<b>BSpline node handle</b> (%.3g power): "
                                                       "Shift-drag to move, "
                                                       "double-click to reset. "
                                                       "(more: %s)"),
-                               power, more);
+                               power, more.c_str());
             } else if (_parent->type() == NODE_CUSP) {
                 s = format_tip(C_("Status line hint", "<b>%s</b>: "
                                                       "drag to shape the path"
@@ -688,7 +709,7 @@ Glib::ustring Handle::_getTip(unsigned state) const
                                                       "Shift+Y to make symmetric"
                                                       ". "
                                                       "(more: %s)"),
-                               handletype, more);
+                               handletype, more.c_str());
             } else if (_parent->type() == NODE_SMOOTH) {
                 s = format_tip(C_("Status line hint", "<b>%s</b>: "
                                                       "drag to shape the path"
@@ -698,7 +719,7 @@ Glib::ustring Handle::_getTip(unsigned state) const
                                                       "Shift+Y to make symmetric"
                                                       ". "
                                                       "(more: %s)"),
-                               handletype, more);
+                               handletype, more.c_str());
             } else if (_parent->type() == NODE_AUTO) {
                 s = format_tip(C_("Status line hint", "<b>%s</b>: "
                                                       "drag to make smooth, "
@@ -707,13 +728,13 @@ Glib::ustring Handle::_getTip(unsigned state) const
                                                       "Shift+Y to make symmetric"
                                                       ". "
                                                       "(more: %s)"),
-                               handletype, more);
+                               handletype, more.c_str());
             } else if (_parent->type() == NODE_SYMMETRIC) {
                 s = format_tip(C_("Status line hint", "<b>%s</b>: "
                                                       "drag to shape the path"
                                                       ". "
                                                       "(more: %s)"),
-                               handletype, more);
+                               handletype, more.c_str());
             } else {
                 s = C_("Status line hint",
                        "<b>unknown node handle</b>"); // not expected
@@ -1360,7 +1381,7 @@ bool Node::grabbed(MotionEvent const &event)
     }
 
     // Dragging out handles with Shift + drag on a node.
-    if (!mod_shift(event)) {
+    if (!Modifiers::Modifier::get(Modifiers::Type::NODE_DRAG_HANDLE)->active(event.modifiers)) {
         return false;
     }
 
@@ -1397,6 +1418,10 @@ bool Node::grabbed(MotionEvent const &event)
 
 void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
 {
+    auto const confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(event.modifiers);
+    auto const confine_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_CONFINE_HANDLES)->active(event.modifiers);
+    auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+
     // For a note on how snapping is implemented in Inkscape, see snap.h.
     auto &sm = _desktop->getNamedView()->snap_manager;
     // even if we won't really snap, we might still call the one of the
@@ -1404,8 +1429,7 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
     // to setup the snapmanager anyway; this is also required for someSnapperMightSnap()
     sm.setup(_desktop);
 
-    // do not snap when Shift is pressed
-    bool snap = !mod_shift(event) && sm.someSnapperMightSnap();
+    bool snap = !no_snap && sm.someSnapperMightSnap();
 
     Inkscape::SnappedPoint sp;
     std::vector<Inkscape::SnapCandidatePoint> unselected;
@@ -1469,12 +1493,12 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
         scp_free.addVector(*back_direction);
     }
 
-    if (mod_ctrl(event)) {
+    if (confine) {
         // We're about to consider a constrained snap, which is already limited to 1D
         // Therefore tangential or perpendicular snapping will not be considered, and therefore
         // all calls above to scp_free.addVector() and scp_free.addOrigin() can be neglected
         std::vector<Inkscape::Snapper::SnapConstraint> constraints;
-        if (mod_alt(event)) { // with Ctrl+Alt, constrain to handle lines
+        if (confine_handles) { // constrain to handle lines
             Inkscape::Preferences *prefs = Inkscape::Preferences::get();
             double snaps = prefs->getDoubleLimited("/options/rotationsnapsperpi/value", 12.0, 0.1, 1800.0);
             double min_angle = M_PI / snaps;
@@ -1508,13 +1532,13 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
             }
 
             sp = sm.multipleConstrainedSnaps(Inkscape::SnapCandidatePoint(new_pos, _snapSourceType()), constraints,
-                                             mod_shift(event));
+                                             no_snap);
         } else {
             // with Ctrl and no Alt: constrain to axes
             constraints.emplace_back(origin, Geom::Point(1, 0));
             constraints.emplace_back(origin, Geom::Point(0, 1));
             sp = sm.multipleConstrainedSnaps(Inkscape::SnapCandidatePoint(new_pos, _snapSourceType()), constraints,
-                                             mod_shift(event));
+                                             no_snap);
         }
         new_pos = sp.getPoint();
     } else if (snap) {
@@ -1529,7 +1553,7 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
 
 bool Node::clicked(ButtonReleaseEvent const &event)
 {
-    if (_pm()._nodeClicked(this, event)) {
+    if (_pm()._nodeClicked(this, event, false)) {
         return true;
     }
     return SelectableControlPoint::clicked(event);
@@ -1609,7 +1633,12 @@ Glib::ustring Node::_getTip(unsigned state) const
     Glib::ustring s = C_("Path node tip",
                          "node handle"); // not expected
 
-    if (mod_shift(state)) {
+    auto const mod_add_to = Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO);
+    auto const mod_cycle_type = Modifiers::Modifier::get(Modifiers::Type::NODE_CYCLE_TYPE);
+    auto const mod_delete = Modifiers::Modifier::get(Modifiers::Type::NODE_DELETE);
+    auto const mod_drag_handle = Modifiers::Modifier::get(Modifiers::Type::NODE_DRAG_HANDLE);
+
+    if (mod_drag_handle->active(state)) {
         bool can_drag_out = (_next() && _front.isDegenerate()) || (_prev() && _back.isDegenerate());
 
         if (can_drag_out) {
@@ -1618,27 +1647,33 @@ Glib::ustring Node::_getTip(unsigned state) const
                     "<b>Shift+Ctrl:</b> drag out a handle and snap its angle "
                     "to %f° increments"), snap_increment_degrees());
             }*/
-            s = C_("Path node tip", "<b>Shift</b>: drag out a handle, click to toggle selection");
+            s = Glib::ustring::compose(C_("Path node tip",
+                "<b>%1</b>: drag out a handle, click to toggle selection"),
+                mod_drag_handle->get_label());
         } else {
-            s = C_("Path node tip", "<b>Shift</b>: click to toggle selection");
+            s = Glib::ustring::compose(C_("Path node tip", "<b>%1</b>: click to toggle selection"),
+                mod_add_to->get_label());
         }
     }
-
-    else if (mod_ctrl(state)) {
-        if (mod_alt(state)) {
-            s = C_("Path node tip", "<b>Ctrl+Alt</b>: move along handle lines or line segment, click to delete node");
-        } else {
-            s = C_("Path node tip", "<b>Ctrl</b>: move along axes, click to change node type");
-        }
+    else if (mod_delete->active(state)) {
+        s = Glib::ustring::compose(C_("Path node tip",
+            "<b>%1</b>: move along handle lines or line segment, click to delete node"),
+            mod_delete->get_label());
     }
-
-    else if (mod_alt(state)) {
-        s = C_("Path node tip", "<b>Alt</b>: sculpt nodes");
+    else if (mod_cycle_type->active(state)) {
+        s = Glib::ustring::compose(C_("Path node tip",
+            "<b>%1</b>: move along axes, click to change node type"), mod_cycle_type->get_label());
     }
-
     else { // No modifiers: assemble tip from node type
         char const *nodetype = node_type_to_localized_string(_type);
         double power = _pm()._bsplineHandlePosition(h);
+
+        std::set<Glib::ustring> labels;
+        labels.insert(mod_add_to->get_label());
+        labels.insert(mod_cycle_type->get_label());
+        labels.insert(mod_delete->get_label());
+        labels.insert(mod_drag_handle->get_label());
+        auto const more_labels = Inkscape::Util::join_with_separator(labels);
 
         if (_selection.transformHandlesEnabled() && selected()) {
             if (_selection.size() == 1) {
@@ -1646,14 +1681,14 @@ Glib::ustring Node::_getTip(unsigned state) const
                     s = format_tip(C_("Path node tip", "<b>%s</b>: "
                                                        "drag to shape the path"
                                                        ". "
-                                                       "(more: Shift, Ctrl, Alt)"),
-                                   nodetype);
+                                                       "(more: %s)"),
+                                   nodetype, more_labels.c_str());
                 } else {
                     s = format_tip(C_("Path node tip", "<b>BSpline node</b> (%.3g power): "
                                                        "drag to shape the path"
                                                        ". "
-                                                       "(more: Shift, Ctrl, Alt)"),
-                                   power);
+                                                       "(more: %s)"),
+                                   power, more_labels.c_str());
                 }
             } else {
                 s = format_tip(C_("Path node tip", "<b>%s</b>: "
@@ -1661,8 +1696,8 @@ Glib::ustring Node::_getTip(unsigned state) const
                                                    ", "
                                                    "click to toggle scale/rotation handles"
                                                    ". "
-                                                   "(more: Shift, Ctrl, Alt)"),
-                               nodetype);
+                                                   "(more: %s)"),
+                               nodetype, more_labels.c_str());
             }
         } else if (!isBSpline) {
             s = format_tip(C_("Path node tip", "<b>%s</b>: "
@@ -1670,16 +1705,16 @@ Glib::ustring Node::_getTip(unsigned state) const
                                                ", "
                                                "click to select only this node"
                                                ". "
-                                               "(more: Shift, Ctrl, Alt)"),
-                           nodetype);
+                                               "(more: %s)"),
+                           nodetype, more_labels.c_str());
         } else {
             s = format_tip(C_("Path node tip", "<b>BSpline node</b> (%.3g power): "
                                                "drag to shape the path"
                                                ", "
                                                "click to select only this node"
                                                ". "
-                                               "(more: Shift, Ctrl, Alt)"),
-                           power);
+                                               "(more: %s)"),
+                           power, more_labels.c_str());
         }
     }
 
