@@ -98,6 +98,31 @@ namespace Inkscape::UI::Dialog {
 using Inkscape::XML::Node;
 using namespace Inkscape::UI::Widget;
 
+namespace {
+
+char const objects_panel_dnd_target[] = "application/x-inkscape-objects-panel-row";
+
+std::vector<Gtk::TargetEntry> objects_panel_dnd_targets()
+{
+    return {Gtk::TargetEntry(objects_panel_dnd_target, Gtk::TARGET_SAME_WIDGET, 0)};
+}
+
+void objects_panel_drag_data_get(Glib::RefPtr<Gdk::DragContext> const &,
+                                 Gtk::SelectionData &selection_data,
+                                 guint,
+                                 guint)
+{
+    static guint8 const data[] = {1};
+    selection_data.set(objects_panel_dnd_target, 8, data, sizeof(data));
+}
+
+} // namespace
+
+bool objects_panel_use_native_tree_reordering(bool /*over_name_column*/)
+{
+    return false;
+}
+
 class ObjectWatcher : public Inkscape::XML::NodeObserver
 {
 public:
@@ -692,9 +717,10 @@ ObjectsPanel::ObjectsPanel()
     //Set up the tree
     _tree.set_model(_store);
     _tree.set_headers_visible(false);
-    // Reorderable means that we allow drag-and-drop, but we only allow that
-    // when at least one row is selected
-    _tree.enable_model_drag_dest (Gdk::ACTION_MOVE);
+    auto const dnd_targets = objects_panel_dnd_targets();
+    _tree.drag_source_set(dnd_targets, Gdk::BUTTON1_MASK, Gdk::ACTION_MOVE);
+    _tree.drag_dest_set(dnd_targets, Gtk::DEST_DEFAULT_ALL, Gdk::ACTION_MOVE);
+    _tree.set_reorderable(false);
     _tree.set_name("ObjectsTreeView");
 
     auto& header = get_widget<Gtk::Box>(_builder, "header");
@@ -948,6 +974,7 @@ ObjectsPanel::ObjectsPanel()
     _tree.signal_drag_drop().connect(sigc::mem_fun(*this, &ObjectsPanel::on_drag_drop), false);
     _tree.signal_drag_begin().connect(sigc::mem_fun(*this, &ObjectsPanel::on_drag_start), false);
     _tree.signal_drag_end().connect(sigc::mem_fun(*this, &ObjectsPanel::on_drag_end), false);
+    _tree.signal_drag_data_get().connect(sigc::ptr_fun(&objects_panel_drag_data_get), false);
 
     //Set up the label editing signals
     _text_renderer->signal_edited().connect(sigc::mem_fun(*this, &ObjectsPanel::_handleEdited));
@@ -1548,8 +1575,9 @@ void ObjectsPanel::on_motion_motion(GtkEventControllerMotion const * const contr
             _drag_column = nullptr;
         }
 
-        // Only allow drag and drop when not filtering. Otherwise bad things happen
-        _tree.set_reorderable(col == _name_column);
+        // The Objects panel handles row drag/drop itself; GTK's native TreeView
+        // reordering path can produce invalid row drag data for nested groups.
+        _tree.set_reorderable(objects_panel_use_native_tree_reordering(col == _name_column));
 
         if (auto row = *_store->get_iter(path)) {
             row[_model->_colHover] = true;
