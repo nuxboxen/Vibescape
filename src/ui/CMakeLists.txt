@@ -181,6 +181,7 @@ target_sources(inkscape_base PRIVATE
 	widget/character-viewer.cpp
 	widget/iconrenderer.cpp
 	widget/ink-property-grid.cpp
+	widget/advanced-tab.cpp
 	widget/alignment-selector.cpp
 	widget/anchor-selector.cpp
 	widget/completion-popup.cpp
@@ -506,6 +507,7 @@ target_sources(inkscape_base PRIVATE
 
 	widget/iconrenderer.h
 	widget/ink-property-grid.h
+	widget/advanced-tab.h
 	widget/alignment-selector.h
 	widget/anchor-selector.h
 	widget/attr-widget.h

@@ -20,9 +20,10 @@
 #include <gtkmm/notebook.h>
 
 #include "ui/dialog/dialog-base.h"
+#include "ui/widget/advanced-tab.h"
 #include "ui/widget/object-composite-settings.h"
-#include "ui/widget/style-subject.h"
 #include "ui/widget/paint-switch.h"
+#include "ui/widget/style-subject.h"
 
 namespace Gtk {
 class Box;
@@ -56,10 +57,10 @@ protected:
     UI::Widget::NotebookPage    *_page_fill         = nullptr;
     UI::Widget::NotebookPage    *_page_stroke_paint = nullptr;
     UI::Widget::NotebookPage    *_page_stroke_style = nullptr;
+    UI::Widget::NotebookPage    * _page_advanced    = nullptr;
 
     UI::Widget::StyleSubject::Selection _subject;
     UI::Widget::ObjectCompositeSettings _composite_settings;
-    Gtk::MenuButton _recolor_btn;
     Gtk::Box &_createPageTabLabel(const Glib::ustring &label,
                                   const char *label_image);
 
@@ -75,6 +76,7 @@ private:
     void selectionModified(Selection *selection, unsigned flags) final;
     void _ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, bool is_fill);
     void _updateFromSelection();
+    void _layoutPageAdvanced();
     int npage = 0;
     bool page_changed = false;
     bool changed_fill = true;
@@ -84,6 +86,8 @@ private:
     std::unique_ptr<UI::Widget::PaintSwitch> _fill_switch;
     std::unique_ptr<UI::Widget::PaintSwitch> _stroke_switch;
     UI::Widget::StrokeStyle *strokeStyleWdgt = nullptr;
+    std::unique_ptr<UI::Widget::AdvancedTab> _advanced_tab;
+    std::vector<Gtk::Label *> _tab_labels;
 
     sigc::scoped_connection _switch_page_conn;
 };

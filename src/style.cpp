@@ -444,6 +444,8 @@ SPStyle::SPStyle(SPDocument *document_in, SPObject *object_in) :
     color.setStylePointer(this);
     stop_color.setStylePointer(this);
     solid_color.setStylePointer(this);
+    color_interpolation.setStylePointer(this);
+    color_interpolation_filters.setStylePointer(this);
 
     // 'text_decoration' shorthand requires access to included properties.
     text_decoration.setStylePointer( this );

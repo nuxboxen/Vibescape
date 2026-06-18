@@ -814,6 +814,7 @@ public:
     void read( gchar const *str ) override;
     const Glib::ustring get_value() const override;
     void clear() override {
+        SPIBase::clear();
         _color_space.reset();
     }
     void cascade( const SPIBase* const parent ) override;

@@ -1613,10 +1613,14 @@ void SPIColorInterpolation::read(gchar const *str)
 {
     set = (bool)str;
     if (str) {
+        Glib::ustring unquoted_str = str;
+        // Required for profile name containing a period (e.g., "CASIO-COMPUTER-CO.-LTD")
+        css_unquote(unquoted_str);
+
         if (canHaveCMS()) {
-            _color_space = getCMS().findSvgColorSpace(str);
+            _color_space = getCMS().findSvgColorSpace(unquoted_str.c_str());
         } else {
-            _color_space = Colors::Manager::get().findSvgColorSpace(str);
+            _color_space = Colors::Manager::get().findSvgColorSpace(unquoted_str.c_str());
         }
     }
 }
