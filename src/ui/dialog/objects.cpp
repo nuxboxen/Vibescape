@@ -2050,6 +2050,16 @@ bool ObjectsPanel::on_drag_drop(Glib::ValueBase const &/*value*/, double x, doub
     auto document = getDocument();
     if (selection && document) {
         auto item = document->getObjectByRepr(drop_repr);
+        if (!item) {
+            std::cerr << "ObjectsPanel::on_drag_drop: drop target doesn't correspond to an object!" << std::endl;
+            return true;
+        }
+
+        // The motion handler rejects these targets, but the drop handler must
+        // defend itself in case GTK still delivers a drop.
+        if (selection->includes(item) || selection->includesAncestor(item)) {
+            return true;
+        }
 
         // We always try to drop the item, even if we end up dropping it after the non-group item.
         if (drop_into && is<SPGroup>(item)) {
