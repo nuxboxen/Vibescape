@@ -5,13 +5,14 @@
    width="100mm"
    height="100mm"
    viewBox="0 0 100 100"
-   version="1.1"
+   version="2.0"
    id="svg1"
-   inkscape:version="1.5-dev (748b129404, 2025-02-13, custom)"
+   inkscape:version="1.5-dev (20acd38e17, 2026-06-18)"
    sodipodi:docname="02-test-fills.svg"
    inkscape:export-filename="/home/doctormo/Desktop/02-test-fills-cairo.pdf"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96"
+   standalone="no"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -27,9 +28,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="2.0000001"
-     inkscape:cx="457.24998"
-     inkscape:cy="207.99999"
+     inkscape:zoom="0.55658879"
+     inkscape:cx="4297.6072"
+     inkscape:cy="187.75082"
      inkscape:window-width="2560"
      inkscape:window-height="1408"
      inkscape:window-maximized="1"
@@ -1278,6 +1279,48 @@
        inkscape:label="Pattern"
        inkscape:margin="10"
        inkscape:bleed="0" />
+    <view
+       viewBox="1100 0 100 100"
+       id="view1"
+       inkscape:margin="10"
+       inkscape:bleed="0"
+       inkscape:label="Swatch" />
+    <linearGradient
+       id="swatch_rgb"
+       inkscape:swatch="solid"
+       gradientTransform="matrix(0,0,0,0,101122.97,-70418.45)">
+      <stop
+         style="stop-color:#37354c;stop-opacity:1;"
+         offset="0"
+         id="stop24" />
+    </linearGradient>
+    <linearGradient
+       id="swatch_hsl"
+       inkscape:swatch="solid"
+       gradientTransform="matrix(0,0,0,0,101082.33,-70418.273)">
+      <stop
+         style="stop-color:hsl(10, 70%, 50%);stop-opacity:1;"
+         offset="0"
+         id="stop3" />
+    </linearGradient>
+    <linearGradient
+       id="swatch_cmyk"
+       inkscape:swatch="solid"
+       gradientTransform="matrix(0,0,0,0,101081.73,-70459.905)">
+      <stop
+         style="stop-color:device-cmyk(0 81% 81% 30%);stop-opacity:1;"
+         offset="0"
+         id="stop4" />
+    </linearGradient>
+    <linearGradient
+       id="swatch_icc"
+       inkscape:swatch="solid"
+       gradientTransform="matrix(0,0,0,0,101032.69,-70539.871)">
+      <stop
+         style="stop-color:#ec148d icc-color(Artifex-CMYK-SWOP-Profile, 0, 1, 0, 0);stop-opacity:1;"
+         offset="0"
+         id="stop5" />
+    </linearGradient>
   </defs>
   <g
      inkscape:label="Layer 1"
@@ -1663,5 +1706,33 @@
          y="50"
          style="fill:url(#linearGradient19)" />
     </g>
+    <rect
+       style="fill:url(#swatch_rgb);stroke:none;stroke-width:0.401373"
+       id="rect13"
+       width="30.958"
+       height="30.958"
+       x="1110"
+       y="10" />
+    <rect
+       style="fill:url(#swatch_hsl);stroke:none;stroke-width:0.401373"
+       id="rect24"
+       width="30.958"
+       height="30.958"
+       x="1159.042"
+       y="10" />
+    <rect
+       style="fill:url(#swatch_cmyk);stroke:none;stroke-width:0.401373"
+       id="rect24-5"
+       width="30.958"
+       height="30.958"
+       x="1159.042"
+       y="59.042" />
+    <rect
+       style="fill:url(#swatch_icc);stroke:none;stroke-width:0.401373"
+       id="rect18"
+       width="30.958"
+       height="30.958"
+       x="1110"
+       y="59.042" />
   </g>
 </svg>
