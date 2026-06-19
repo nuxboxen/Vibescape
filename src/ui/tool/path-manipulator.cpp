@@ -1237,6 +1237,18 @@ Geom::Affine PathManipulator::_getTransform() const
     return _i2d_transform * _edit_transform;
 }
 
+void PathManipulator::_normalizeBsplineHandles(Node *n)
+{
+    // If either handle is degenerate, make them both degenerate. When loading a bspline curve,
+    // only one side might start degenerate (which isn't a possible situation in the UI - they
+    // should both be or neither be) and we need to do this to fix it.
+    if (n->front()->isDegenerate()) {
+        n->back()->setPosition(n->position());
+    } else if (n->back()->isDegenerate()) {
+        n->front()->setPosition(n->position());
+    }
+}
+
 /** Create nodes and handles based on the XML of the edited path. */
 void PathManipulator::_createControlPointsFromGeometry()
 {
@@ -1301,6 +1313,21 @@ void PathManipulator::_createControlPointsFromGeometry()
             {
                 previous_node->front()->setPosition((*bezier)[1]);
                 current_node ->back() ->setPosition((*bezier)[2]);
+
+                // Once we have set the position of both handles of a node, normalize that node.
+                if (previous_node != subpath->begin().get_pointer()) {
+                    // Not the first segment, so both handles of previous node are now set.
+                    // This will hit on every segment but the first one, leaving the first node
+                    // to be handled in the check below (or never if we are an open path).
+                    _normalizeBsplineHandles(previous_node);
+                }
+                if (current_node == subpath->begin().get_pointer()) {
+                    // Last segment, so the very first node now has both handles set.
+                    // This will only hit for closed paths, where this will finally close the first
+                    // node after we ignored it above. Open paths won't have their two edge nodes
+                    // finalized because the last segment closing the path isn't in this loop.
+                    _normalizeBsplineHandles(current_node);
+                }
             }
             previous_node = current_node;
         }
