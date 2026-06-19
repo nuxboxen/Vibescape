@@ -816,7 +816,7 @@ bool InkSpinButton::on_scroll(double dx, double dy) {
     if (_drag_full_travel <= 0) return false;
 
     // growth direction: up or right
-    auto delta = std::abs(dx) > std::abs(dy) ? -dx : dy;
+    auto delta = std::abs(dx) > std::abs(dy) ? dx : -dy;
     _scroll_counter += delta;
     // this is a threshold to control the rate at which scrolling increments/decrements current value;
     // the larger the threshold, the slower the rate; it may need to be tweaked on different platforms
