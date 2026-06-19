@@ -39,7 +39,7 @@ private:
     bool _soft_mask;
 
     // Text style memory
-    Glib::ustring last_font;
+    std::string last_font;
     double last_letter_spacing = 0;
     double last_ca = 1.0;
     double last_CA = 1.0;
