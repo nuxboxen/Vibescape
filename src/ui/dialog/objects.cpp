@@ -102,9 +102,7 @@ namespace {
 
 char const objects_panel_dnd_target[] = "application/x-inkscape-objects-panel-row";
 
-void objects_panel_drag_data_get(Glib::RefPtr<Gdk::DragContext> const &,
-                                 Gtk::SelectionData &selection_data,
-                                 guint,
+void objects_panel_drag_data_get(Glib::RefPtr<Gdk::DragContext> const &, Gtk::SelectionData &selection_data, guint,
                                  guint)
 {
     static guint8 const data[] = {1};

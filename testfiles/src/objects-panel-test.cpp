@@ -5,12 +5,10 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include <cstdlib>
 #include <gtest/gtest.h>
-
 #include <gtk/gtk.h>
 #include <gtkmm/treestore.h>
-
-#include <cstdlib>
 
 namespace Inkscape::UI::Dialog {
 bool objects_panel_use_native_tree_reordering(bool over_name_column);
@@ -61,9 +59,7 @@ void request_native_tree_model_row_data_for_deep_path()
     selection_data.target = gdk_atom_intern_static_string("GTK_TREE_MODEL_ROW");
 
     auto *gtk_selection_data = reinterpret_cast<GtkSelectionData *>(&selection_data);
-    if (!gtk_tree_drag_source_drag_data_get(GTK_TREE_DRAG_SOURCE(store->gobj()),
-                                            path.gobj(),
-                                            gtk_selection_data)) {
+    if (!gtk_tree_drag_source_drag_data_get(GTK_TREE_DRAG_SOURCE(store->gobj()), path.gobj(), gtk_selection_data)) {
         std::_Exit(3);
     }
 
@@ -74,11 +70,13 @@ void request_native_tree_model_row_data_for_deep_path()
 
 TEST(ObjectsPanelTest, DoesNotRequestNativeTreeModelRowDataForDeepRows)
 {
-    ASSERT_EXIT({
-        if (Inkscape::UI::Dialog::objects_panel_use_native_tree_reordering(true)) {
-            request_native_tree_model_row_data_for_deep_path();
-            std::_Exit(4);
-        }
-        std::_Exit(0);
-    }, ::testing::ExitedWithCode(0), "");
+    ASSERT_EXIT(
+        {
+            if (Inkscape::UI::Dialog::objects_panel_use_native_tree_reordering(true)) {
+                request_native_tree_model_row_data_for_deep_path();
+                std::_Exit(4);
+            }
+            std::_Exit(0);
+        },
+        ::testing::ExitedWithCode(0), "");
 }
