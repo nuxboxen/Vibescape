@@ -347,13 +347,13 @@ void InkSpinButton::measure_vfunc(Gtk::Orientation orientation, int for_size, in
     if (orientation == Gtk::Orientation::HORIZONTAL) {
         minimum_baseline = natural_baseline = -1;
         // always measure, so gtk doesn't complain
-        auto m = _minus.measure(orientation);
-        auto p = _plus.measure(orientation);
-        auto _ = _entry.measure(orientation);
+        auto _ = _minus.measure(orientation);
+        _ = _plus.measure(orientation);
+        _ = _entry.measure(orientation);
         _ = _value.measure(orientation);
         _ = _label.measure(orientation);
         _ = _mask.measure(orientation);
-        auto i = _icon.measure(orientation);
+        _ = _icon.measure(orientation);
 
         auto btn = _enable_arrows ? _button_width : 0;
         // always reserve space for inc/dec buttons and label, whichever is greater
@@ -815,9 +815,12 @@ void InkSpinButton::on_scroll_begin() {
 bool InkSpinButton::on_scroll(double dx, double dy) {
     if (_drag_full_travel <= 0) return false;
 
-    // growth direction: up or right
-    auto delta = std::abs(dx) > std::abs(dy) ? -dx : dy;
+    // Positive scroll delta represents movement down or to the left (what gtk+
+    // docs call the "south" direction). Modify the spin value based on which is
+    // larger.
+    auto delta = std::abs(dx) > std::abs(dy) ? -dx : -dy;
     _scroll_counter += delta;
+
     // this is a threshold to control the rate at which scrolling increments/decrements current value;
     // the larger the threshold, the slower the rate; it may need to be tweaked on different platforms
 #ifdef _WIN32
