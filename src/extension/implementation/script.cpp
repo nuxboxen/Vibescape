@@ -62,27 +62,20 @@
 #include "xml/repr.h"
 #include "xml/simple-document.h"
 
+// This code could maybe be reworked to use GIO's subprocess classes to
+// avoid the need to use these platform-specific defines to manipulate the subprocess.
+// That might not have been an option when this was written
 #ifdef _WIN32
 #include <windows.h>
 #define KILL_PROCESS(pid) TerminateProcess(pid, 0)
+#define WAIT_PROCESS(pid) WaitForSingleObject(pid, INFINITE)
 #else
 #include <unistd.h>
 #define KILL_PROCESS(pid) kill(pid, SIGTERM)
+#define WAIT_PROCESS(pid) waitpid(pid, NULL, 0)
 #endif
 
 namespace Inkscape::Extension::Implementation {
-
-/** \brief  Make GTK+ events continue to come through a little bit
-
-    This just keeps coming the events through so that we'll make the GUI
-    update and look pretty.
-*/
-void Script::pump_events () {
-    auto main_context = Glib::MainContext::get_default();
-    while (main_context->iteration(false)) {
-    }
-}
-
 
 /** \brief  A table of what interpreters to call for a given language
 
@@ -584,7 +577,7 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
 
         Glib::ustring empty;
         file_listener outfile;
-        execute(command, {}, empty, outfile, module->ignore_stderr, module->pipe_diffs);
+        execute(command, {}, empty, outfile, module->ignore_stderr, module->pipe_diffs, !module->_workingDialog);
 
         // Hack to allow for extension manager to reload extensions
         // TODO: Have the extension manager call this action itself
@@ -615,7 +608,7 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
             }
         }
     }
-    _change_extension(module, executionEnv, desktop->getDocument(), params, module->ignore_stderr, module->pipe_diffs);
+    _change_extension(module, executionEnv, desktop->getDocument(), params, module->ignore_stderr, module->pipe_diffs, !module->_workingDialog);
 }
 
 /**
@@ -654,7 +647,7 @@ static size_t get_cmdline_budget()
  * Internally, any modification of an existing document, used by effect and resize_page extensions.
  */
 void Script::_change_extension(Inkscape::Extension::Extension *module, ExecutionEnv *executionEnv, SPDocument *doc,
-                               std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs)
+                               std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs, bool custom_ui)
 {
     module->paramListString(params);
     module->set_environment(doc);
@@ -698,19 +691,16 @@ void Script::_change_extension(Inkscape::Extension::Extension *module, Execution
     }
 
     file_listener fileout;
-    int data_read = execute(command, params, tempfile_in.get_filename(), fileout, ignore_stderr, pipe_diffs);
+    int data_read = execute(command, params, tempfile_in.get_filename(), fileout, ignore_stderr, pipe_diffs, custom_ui);
     if (data_read == 0) {
         return;
     }
     fileout.toFile(tempfile_out.get_filename());
 
-    pump_events();
     Inkscape::XML::Document *new_xmldoc = nullptr;
     if (data_read > 10) {
         new_xmldoc = sp_repr_read_file(tempfile_out.get_filename().c_str(), SP_SVG_NS_URI);
     } // data_read
-
-    pump_events();
 
     if (new_xmldoc) {
         //uncomment if issues on ref extensions links (with previous function)
@@ -756,11 +746,11 @@ void Script::showPopupError (const Glib::ustring &data,
 }
 
 bool Script::cancelProcessing () {
+    KILL_PROCESS(_pid);
     _canceled = true;
     if (_main_loop) {
         _main_loop->quit();
     }
-    Glib::spawn_close_pid(_pid);
 
     return true;
 }
@@ -793,12 +783,10 @@ bool Script::cancelProcessing () {
     are closed, and we return to what we were doing.
 */
 int Script::execute(std::list<std::string> const &in_command, std::list<std::string> const &in_params,
-                    Glib::ustring const &filein, file_listener &fileout, bool ignore_stderr,
-                    bool pipe_diffs)
+                    Glib::ustring const &filein, file_listener &fileout, bool ignore_stderr, bool pipe_diffs,
+                    bool custom_ui)
 {
     g_return_val_if_fail(!in_command.empty(), 0);
-
-    pump_events();
 
     std::vector<std::string> argv;
 
@@ -842,12 +830,13 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
         argv.push_back(filein_native);
     }
 
-    //for(int i=0;i<argv.size(); ++i){printf("%s ",argv[i].c_str());}printf("\n");
-
     int stdout_pipe, stderr_pipe, stdin_pipe;
 
+    GPid local_pid;
     try {
-        auto spawn_flags = Glib::SpawnFlags::DEFAULT;
+        // DO_NOT_REAP_CHILD is required on Windows at least to get the PID from
+        // spawn_async_with_pipes.
+        auto spawn_flags = Glib::SpawnFlags::DO_NOT_REAP_CHILD;
         if (Glib::getenv("SNAP") != "") {
             // If we are running within the Linux "snap" package format,
             // we need different spawn flags to avoid that Inkscape hangs when
@@ -858,7 +847,7 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
                                      argv,              // arg v
                                      spawn_flags,       // spawn flags
                                      sigc::slot<void()>(),
-                                     &_pid,         // Pid
+                                     &local_pid,         // Pid
                                      &stdin_pipe,   // STDIN
                                      &stdout_pipe,  // STDOUT
                                      &stderr_pipe); // STDERR
@@ -868,7 +857,7 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
     }
 
     // Save the pid. (This function is reentrant, so _pid could be overwritten.)
-    auto const local_pid = _pid;
+    _pid = local_pid;
 
     // Use GTK's MainContext, so that it can process events and the UI is not flagged as frozen.
     // But we'll set all windows as insensitive below while we run, to avoid any race conditions
@@ -911,6 +900,12 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
     _canceled = false;
     _main_loop->run();
 
+    WAIT_PROCESS(local_pid);
+    if (_canceled) {
+        // std::cout << "Script Canceled" << std::endl;
+        return 0;
+    }
+
     if (pipe_diffs && !lost_document) {
         (*watch).disconnect(document);
     }
@@ -923,16 +918,13 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
         fileerr.read(Glib::IOCondition::IO_IN);
     }
 
+    Glib::spawn_close_pid(local_pid);
+
     _main_loop.reset();
     _setAppSensitive(true);
 
     if (pipe_diffs && lost_document) {
         throw Inkscape::Extension::Output::lost_document{};
-    }
-
-    if (_canceled) {
-        // std::cout << "Script Canceled" << std::endl;
-        return 0;
     }
 
     Glib::ustring stderr_data = fileerr.string();
