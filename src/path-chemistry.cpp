@@ -28,6 +28,7 @@
 #include "text-editing.h"
 
 #include "display/curve.h"
+#include "live_effects/effect.h"
 
 #include "object/box3d.h"
 #include "object/object-set.h"
@@ -151,6 +152,9 @@ void ObjectSet::combine(bool skip_undo, bool silent)
             // reduce position only if the same parent
             if (item->getRepr()->parent() == parent) {
                 position--;
+            }
+            for (auto lpe : path->getPathEffects()) { // notify deleted elements
+                lpe->adjustForNewPath();
             }
             // delete the object for real, so that its clones can take appropriate action
             item->deleteObject();

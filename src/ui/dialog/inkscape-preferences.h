@@ -405,6 +405,7 @@ protected:
     UI::Widget::PrefCheckButton _cleanup_swatches;
 
     UI::Widget::PrefCheckButton _lpe_copy_mirroricons;
+    UI::Widget::PrefCheckButton _lpe_keep_corners_join;
     UI::Widget::PrefCheckButton _lpe_show_experimental;
 
     UI::Widget::PrefSpinButton  _importexport_export_res;

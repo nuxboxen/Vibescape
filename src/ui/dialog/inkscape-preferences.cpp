@@ -2945,6 +2945,10 @@ void InkscapePreferences::initPageBehavior()
     _lpe_copy_mirroricons.init ( _("Add advanced tiling options"), "/live_effects/copy/mirroricons", true); // text label
     _page_lpe.add_line( true, "", _lpe_copy_mirroricons, "",
                            _("Enables using 16 advanced mirror options between the copies (so there can be copies that are mirrored differently between the rows and the columns) for Tiling LPE")); // tooltip
+    _page_lpe.add_group_header( _("Corners"));
+    _lpe_keep_corners_join.init ( _("Keep on joins"), "/tools/nodes/keepcornersjoin", true); // text label
+    _page_lpe.add_line( true, "", _lpe_keep_corners_join, "",
+                           _("Allow corners live path effect preserve always on join with diferent items")); // tooltip
     this->AddPage(_page_lpe, _("Live Path Effects (LPE)"), iter_behavior, PREFS_PAGE_BEHAVIOR_LPE);
 }
 

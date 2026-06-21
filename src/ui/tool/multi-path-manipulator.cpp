@@ -80,6 +80,32 @@ void find_join_iterators(ControlPointSelection &sel, IterPairList &pairs)
     }
 }
 
+
+// force corners LPE keep when join with non corners path
+// anyway not fix bsplie or spiro, mainy for this reason both require a tool based specialiced original-d
+// but power stroke or others can benefit also (but in a moment we need to define a rule 
+// of preferences if both paths have different LPE
+// for the moment I keep simple just for corners LPE
+bool fix_corners(IterPair &join, std::map<ShapeRecord, std::shared_ptr<PathManipulator>> mmap, bool keep_corners_join)
+{
+    if (keep_corners_join) {
+        keep_corners_join = false;
+        for (auto & i : mmap) {
+            if (join.second == (i.second.get())->extremeNode(join.second, true, true, true)) {
+                if (auto path = cast<SPPath>((i.second.get())->item())) {
+                    if(path->hasPathEffectOfType(Inkscape::LivePathEffect::FILLET_CHAMFER)){
+                        std::swap(join.first, join.second);
+                        return true;
+                    }
+                }
+            }
+
+        }
+    }
+    return false;
+}
+
+
 /** After this function, first should be at the end of path and second at the beginning.
  * @returns True if the nodes are in the same subpath */
 bool prepare_join(IterPair &join_iters)
@@ -370,9 +396,11 @@ void MultiPathManipulator::joinNodes()
         preserve_pos = NodeList::get_iterator(mouseover_node);
     }
     find_join_iterators(_selection, joins);
-
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    bool keep_corners_join = prefs->getBool("/tools/nodes/keepcornersjoin", true);
     for (auto & join : joins) {
-        bool same_path = prepare_join(join);
+        bool same_path = prepare_join(join, _mmap, keep_corners_join);
+        bool corners_fix = same_path ? false : fix_corners(join, _mmap, keep_corners_join);
         NodeList &sp_first = NodeList::get(join.first);
         NodeList &sp_second = NodeList::get(join.second);
         join.first->setType(NODE_CUSP, false);
@@ -408,6 +436,9 @@ void MultiPathManipulator::joinNodes()
         } else {
             sp_first.splice(sp_first.end(), sp_second);
             sp_second.kill();
+            if (corners_fix) {
+                sp_first.reverse();
+            }
         }
         _selection.insert(join.first.ptr());
     }
@@ -448,9 +479,11 @@ void MultiPathManipulator::joinSegments()
     if (_selection.empty()) return;
     IterPairList joins;
     find_join_iterators(_selection, joins);
-
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    bool keep_corners_join = prefs->getBool("/tools/nodes/keepcornersjoin", true);
     for (auto & join : joins) {
-        bool same_path = prepare_join(join);
+        bool same_path = prepare_join(join, _mmap, keep_corners_join);
+        bool corners_fix = same_path ? false : fix_corners(join, _mmap, keep_corners_join);
         NodeList &sp_first = NodeList::get(join.first);
         NodeList &sp_second = NodeList::get(join.second);
         join.first->setType(NODE_CUSP, false);
@@ -460,6 +493,9 @@ void MultiPathManipulator::joinSegments()
         } else {
             sp_first.splice(sp_first.end(), sp_second);
             sp_second.kill();
+            if (corners_fix) {
+                sp_first.reverse();
+            }
         }
     }
 
