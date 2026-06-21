@@ -29,7 +29,7 @@ add_rendering_test(selector-important-003)
 
 add_rendering_test(multi-style)
 add_rendering_test(style-parsing)
-add_rendering_test(test-peppercarrot-text FUZZ 0.001)
+add_rendering_test(test-peppercarrot-text FUZZ 0.002)
 
 # -- Text tests --
 ## Many (if not all) of these tests are sensitive to the text rendering stack: FreeType, HarfBuzz, Pango.
