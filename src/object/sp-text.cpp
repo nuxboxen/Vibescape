@@ -344,28 +344,10 @@ const char* SPText::displayName() const {
 }
 
 gchar* SPText::description() const {
+    int const nChars = layout.iteratorToCharIndex(layout.end());
+    char const *trunc = (layout.inputTruncated()) ? _(" [truncated]") : "";
 
-    SPStyle *style = this->style;
-
-    char *n = xml_quote_strdup(style->font_family.value());
-
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
-    Inkscape::Util::Quantity q = Inkscape::Util::Quantity(style->font_size.computed, "px");
-    q.quantity *= this->i2doc_affine().descrim();
-    Glib::ustring xs = q.string(sp_style_get_css_unit_string(unit));
-
-    char const *trunc = "";
-    Inkscape::Text::Layout const *layout = te_get_layout((SPItem *) this);
-
-    if (layout && layout->inputTruncated()) {
-        trunc = _(" [truncated]");
-    }
-
-    char *ret = ( SP_IS_TEXT_TEXTPATH(this)
-      ? g_strdup_printf(_("on path%s (%s, %s)"), trunc, n, xs.c_str())
-      : g_strdup_printf(_("%s (%s, %s)"),        trunc, n, xs.c_str()) );
-    return ret;
+    return g_strdup_printf(ngettext("(%d character%s)", "(%d characters%s)", nChars), nChars, trunc);
 }
 
 void SPText::snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const {
