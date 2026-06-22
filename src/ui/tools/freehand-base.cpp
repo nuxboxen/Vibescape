@@ -287,6 +287,13 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
 
     auto desktop = dc->getDesktop();
 
+    if (!is_bend) {
+        // The bend effect does not want the transform applied yet
+        item->transform = dc->currentLayer()->i2doc_affine().inverse();
+        item->updateRepr();
+        item->doWriteTransform(item->transform, nullptr, true);
+    }
+
     if (is<SPLPEItem>(item)) {
         double const defsize = 10 / (0.265 * dc->getDesktop()->getDocument()->getDocumentScale()[0]);
         auto const SHAPE_LENGTH = defsize;
@@ -777,19 +784,17 @@ static void spdc_flush_white(FreehandBase *dc, std::shared_ptr<Geom::PathVector>
         if (SP_IS_PENCIL_CONTEXT(dc) && dc->tablet_enabled) {
             if (!dc->white_item) {
                 dc->white_item = cast<SPItem>(layer->appendChildRepr(repr));
+                Inkscape::GC::release(repr);
             }
             spdc_check_for_and_apply_waiting_LPE(dc, dc->white_item, c.get(), false);
         }
         if (!dc->white_item) {
             // Attach repr
             auto item = cast<SPItem>(layer->appendChildRepr(repr));
-            dc->white_item = item;
-            //Bend needs the transforms applied after, Other effects best before
-            spdc_check_for_and_apply_waiting_LPE(dc, item, c.get(), true);
             Inkscape::GC::release(repr);
-            item->transform = layer->i2doc_affine().inverse();
-            item->updateRepr();
-            item->doWriteTransform(item->transform, nullptr, true);
+            dc->white_item = item;
+            // Apply bend and non-bend affects separately, since they need different transforms
+            spdc_check_for_and_apply_waiting_LPE(dc, item, c.get(), true);
             spdc_check_for_and_apply_waiting_LPE(dc, item, c.get(), false);
             if(previous_shape_type == BEND_CLIPBOARD){
                 repr->parent()->removeChild(repr);
