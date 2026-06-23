@@ -497,7 +497,7 @@ void ColorPalette::set_up_scrolling() {
         if (width > 1) {
             int cols = alloc_width / (width + _border);
             cols = std::max(cols - cols % _page_size, _page_size);
-            if (_normal_box.get_max_children_per_line() != cols) {
+            if (_normal_box.get_max_children_per_line() > cols) {
                 _normal_box.set_max_children_per_line(cols);
             }
         }
