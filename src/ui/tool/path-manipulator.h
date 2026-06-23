@@ -135,6 +135,7 @@ private:
     Geom::Point _bsplineHandleReposition(Handle *h, bool check_other = true);
     Geom::Point _bsplineHandleReposition(Handle *h, double pos);
     void _createGeometryFromControlPoints(bool alert_LPE = false);
+    void _normalizeBsplineHandles(Node *n);
     unsigned _deleteStretch(NodeList::iterator first, NodeList::iterator last, NodeDeleteMode mode);
     std::string _createTypeString();
     void _updateOutline();
