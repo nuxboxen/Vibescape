@@ -36,10 +36,11 @@ enum Key : KeyMask {
 
 // Triggers used for collision warnings, two tools are using the same trigger
 enum Triggers : Trigger {
-    NO_CATEGORY, CANVAS, SELECT, MOVE, TRANSFORM,
+    NO_CATEGORY, CANVAS, SELECT, MOVE, TRANSFORM, FREEHAND,
     NODE_TOOL, BOOLEANS_TOOL, BOX3D_TOOL, CALLI_TOOL,
     DROPPER_TOOL, FLOOD_TOOL, SPIRAL_TOOL, STAR_TOOL,
-    TWEAK_TOOL,
+    TWEAK_TOOL, GRADIENT_TOOL, MEASURE_TOOL, PENCIL_TOOL,
+    PEN_TOOL,
     // Action taken to trigger this modifier, starts at
     // bit 6 so categories and triggers can be combined.
     CLICK = 32,
@@ -79,11 +80,17 @@ enum class Type {
     // Transform handles (applies to multiple tools)
     MOVE_CONFINE,         // Limit dragging to X OR Y only {DRAG+CTRL}
     MOVE_INCREMENT,       // Move in increments of grid pitch (preserves distances w.r.t grid) {DRAG+ALT} unassigned by default
-    MOVE_SNAPPING,        // Disable snapping while moving {DRAG+SHIFT}
+    MOVE_NO_SNAPPING,     // Disable snapping while moving {DRAG+SHIFT}
     TRANS_CONFINE,        // Confine resize aspect ratio {HANDLE+CTRL}
     TRANS_INCREMENT,      // Scale/Rotate/skew by fixed ratio angles {HANDLE+ALT}
     TRANS_OFF_CENTER,     // Scale/Rotate/skew from opposite corner {HANDLE+SHIFT}
-    TRANS_SNAPPING,       // Disable snapping while transforming {HANDLE+SHIFT}
+    TRANS_NO_SNAPPING,    // Disable snapping while transforming {HANDLE+SHIFT}
+
+    // Some common motions shared by freehand tools
+    FREEHAND_ANGLE_SNAPPING, // Use angular snapping {DRAG+CTRL}
+    FREEHAND_DOT,         // Create a single dot {CLICK+CTRL}
+    FREEHAND_DOT_DOUBLE,  // Double the size of a created dot {CLICK+SHIFT}
+    FREEHAND_DOT_RANDOM,  // Randomly adjust the size of a created dot {CLICK+ALT}
 
     BOOL_SHIFT,           // Shift the shape builder into its alternative mode.
 
@@ -101,6 +108,12 @@ enum class Type {
     FLOOD_ITEM,           // Applies style to fill+stroke of target item {CLICK+CTRL}
     FLOOD_TOUCH_FILL,     // Flood only the first point of contact during drag {DRAG+ALT}
 
+    GRADIENT_CREATE,      // Creates gradient on selected object {DOUBLECLICK+CTRL}
+    GRADIENT_LINK_HANDLES, // Move both handles at once {DRAG+SHIFT+CTRL}
+
+    MEASURE_KNOT_DIALOG,  // Show properties dialog of knot {CLICK+SHIFT}
+    MEASURE_SELECT_SEGMENT, // Select just the segment under mouse {CLICK+SHIFT}
+
     NODE_BSPLINE_HANDLES, // Create/move bspline handles {DRAG+SHIFT}
     NODE_CONFINE_HANDLES, // When confining, use handles as limits {DRAG+ALT}
     NODE_CYCLE_TYPE,      // Change node type {CLICK+CTRL}
@@ -117,9 +130,11 @@ enum class Type {
     NODE_RETRACT_HANDLE,  // Remove handle {CLICK+ALT}
     NODE_STRAIGHTEN_SEGMENT, // Straighten segment {DOUBLECLICK+ALT}
 
-    SPIRAL_SNAPPING,      // Snap while rotating {DRAG+CTRL}
+    PEN_CUSP_NODE,        // Makes cusp node {CLICK+SHIFT}
+    PEN_MOVE_PREV,        // Moves previous node {DRAG+ALT}
+    PEN_SWITCH_AXIS,      // Uses other axis for line {DRAG+SHIFT}
 
-    STAR_SNAPPING,        // Snap while rotating {DRAG+CTRL}
+    PENCIL_SKETCH,        // Enables sketch mode {DRAG+ALT}
 
     TWEAK_INVERT,         // Reverse the direction of the tweak {CLICK+SHIFT}
 

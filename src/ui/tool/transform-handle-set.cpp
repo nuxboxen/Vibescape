@@ -650,7 +650,7 @@ protected:
     void dragged(Geom::Point &new_pos, MotionEvent const &event) override
     {
         auto const confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(event.modifiers);
-        auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(event.modifiers);
+        auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(event.modifiers);
 
         auto &sm = _th._desktop->getNamedView()->snap_manager;
         sm.setup(_th._desktop);

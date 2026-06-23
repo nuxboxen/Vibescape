@@ -584,8 +584,9 @@ void spdc_endpoint_snap_rotation(ToolBase *tool, Geom::Point &p, Geom::Point con
     SnapManager &m = tool->getDesktop()->getNamedView()->snap_manager;
     m.setup(tool->getDesktop());
 
+    auto snap_user_disabled = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(state);
     bool snap_enabled = m.snapprefs.getSnapEnabledGlobally();
-    if (state & GDK_SHIFT_MASK) {
+    if (snap_user_disabled) {
         // SHIFT disables all snapping, except the angular snapping. After all, the user explicitly asked for angular
         // snapping by pressing CTRL, otherwise we wouldn't have arrived here. But although we temporarily disable
         // the snapping here, we must still call for a constrained snap in order to apply the constraints (i.e. round
@@ -596,7 +597,7 @@ void spdc_endpoint_snap_rotation(ToolBase *tool, Geom::Point &p, Geom::Point con
     Inkscape::SnappedPoint dummy = m.constrainedAngularSnap(Inkscape::SnapCandidatePoint(p, Inkscape::SNAPSOURCE_NODE_HANDLE), std::optional<Geom::Point>(), o, snaps);
     p = dummy.getPoint();
 
-    if (state & GDK_SHIFT_MASK) {
+    if (snap_user_disabled) {
         m.snapprefs.setSnapEnabledGlobally(snap_enabled); // restore the original setting
     }
 
@@ -909,17 +910,20 @@ void spdc_create_single_dot(ToolBase *tool, Geom::Point const &pt, char const *p
     Geom::Affine const i2d (item->i2dt_affine ());
     Geom::Point pp = pt * i2d.inverse();
 
+    auto double_size = Modifiers::Modifier::get(Modifiers::Type::FREEHAND_DOT_DOUBLE)->active(event_state);
+    auto random_size = Modifiers::Modifier::get(Modifiers::Type::FREEHAND_DOT_RANDOM)->active(event_state);
+
     double rad = 0.5 * prefs->getDouble(tool_path + "/dot-size", 3.0);
     if (!strcmp(path, "/tools/calligraphic"))
         rad = 0.0333 * prefs->getDouble(tool_path + "/width", 3.0) / desktop->current_zoom() / desktop->getDocument()->getDocumentScale()[Geom::X];
-    if (event_state & GDK_ALT_MASK) {
+    if (random_size) {
         // TODO: We vary the dot size between 0.5*rad and 1.5*rad, where rad is the dot size
         // as specified in prefs. Very simple, but it might be sufficient in practice. If not,
         // we need to devise something more sophisticated.
         double s = g_random_double_range(-0.5, 0.5);
         rad *= (1 + s);
     }
-    if (event_state & GDK_SHIFT_MASK) {
+    if (double_size) {
         // double the point size
         rad *= 2;
     }

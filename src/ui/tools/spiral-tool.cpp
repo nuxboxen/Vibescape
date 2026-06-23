@@ -42,8 +42,8 @@ namespace Inkscape::UI::Tools {
 
 SpiralTool::SpiralTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/shapes/spiral", "spiral.svg")
+    , mod_freehand_angle_snapping(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING))
     , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
-    , mod_spiral_snapping(Modifiers::Modifier::get(Modifiers::Type::SPIRAL_SNAPPING))
 {
     sp_event_context_read(this, "expansion");
     sp_event_context_read(this, "revolution");
@@ -196,7 +196,7 @@ bool SpiralTool::root_handler(CanvasEvent const &event)
 
             if (Modifiers::keyval_is_a_modifier(keyval)) {
                 Modifiers::responsive_tooltip(
-                    defaultMessageContext(), event, 1, Modifiers::Type::SPIRAL_SNAPPING
+                    defaultMessageContext(), event, 1, Modifiers::Type::FREEHAND_ANGLE_SNAPPING
                 );
             }
 
@@ -286,7 +286,7 @@ void SpiralTool::drag(Geom::Point const &p, guint state) {
     // Start angle calculated from end angle and number of revolutions.
     gdouble arg = Geom::atan2(delta) - 2.0*M_PI * spiral->revo;
 
-    if (mod_spiral_snapping->active(state)) {
+    if (mod_freehand_angle_snapping->active(state)) {
         /* Snap start angle */
         double snaps_radian = M_PI / snaps;
         arg = std::round(arg / snaps_radian) * snaps_radian;
@@ -305,7 +305,7 @@ void SpiralTool::drag(Geom::Point const &p, guint state) {
     this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
                                 _("<b>Spiral</b>: radius %s, angle %.2f&#176;; with <b>%s</b> to snap angle"),
                                 rads.c_str(), arg * 180/M_PI + 360*spiral->revo,
-                                mod_spiral_snapping->get_label().c_str());
+                                mod_freehand_angle_snapping->get_label().c_str());
 }
 
 void SpiralTool::finishItem() {

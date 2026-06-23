@@ -44,8 +44,8 @@ namespace Tools {
 
 StarTool::StarTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/shapes/star", "star.svg")
+    , mod_freehand_angle_snapping(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING))
     , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
-    , mod_star_snapping(Modifiers::Modifier::get(Modifiers::Type::STAR_SNAPPING))
 {
     sp_event_context_read(this, "isflatsided");
     sp_event_context_read(this, "magnitude");
@@ -203,7 +203,7 @@ bool StarTool::root_handler(CanvasEvent const &event)
 
             if (Modifiers::keyval_is_a_modifier(keyval)) {
                 Modifiers::responsive_tooltip(
-                    defaultMessageContext(), event, 1, Modifiers::Type::STAR_SNAPPING
+                    defaultMessageContext(), event, 1, Modifiers::Type::FREEHAND_ANGLE_SNAPPING
                 );
             }
 
@@ -301,7 +301,7 @@ void StarTool::drag(Geom::Point p, unsigned state)
     Geom::Coord const r1 = Geom::L2(d);
     double arg1 = atan2(d);
 
-    if (mod_star_snapping->active(state)) {
+    if (mod_freehand_angle_snapping->active(state)) {
         /* Snap angle */
         double snaps_radian = M_PI / snaps;
         arg1 = std::round(arg1 / snaps_radian) * snaps_radian;
@@ -317,7 +317,7 @@ void StarTool::drag(Geom::Point p, unsigned state)
                                ( this->isflatsided?
                                  _("<b>Polygon</b>: radius %s, angle %.2f&#176;; with <b>%s</b> to snap angle") :
                                  _("<b>Star</b>: radius %s, angle %.2f&#176;; with <b>%s</b> to snap angle") ),
-                               rads.c_str(), arg1 * 180 / M_PI, mod_star_snapping->get_label().c_str());
+                               rads.c_str(), arg1 * 180 / M_PI, mod_freehand_angle_snapping->get_label().c_str());
 }
 
 void StarTool::finishItem() {

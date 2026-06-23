@@ -55,6 +55,11 @@ static bool in_svg_plane(Geom::Point const &p) { return Geom::LInfty(p) < 1e18; 
 
 PencilTool::PencilTool(SPDesktop *desktop)
     : FreehandBase(desktop, "/tools/freehand/pencil", "pencil.svg")
+    , mod_freehand_angle_snapping(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING))
+    , mod_freehand_dot(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_DOT))
+    , mod_move_no_snapping(Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING))
+    , mod_pencil_sketch(Modifiers::Modifier::get(Modifiers::Type::PENCIL_SKETCH))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
 {
     auto prefs = Inkscape::Preferences::get();
     if (prefs->getBool("/tools/freehand/pencil/selcue")) {
@@ -77,14 +82,14 @@ void PencilTool::_extinput(ExtendedInput const &ext)
 
 /** Snaps new node relative to the previous node. */
 void PencilTool::_endpointSnap(Geom::Point &p, guint const state) {
-    if ((state & GDK_CONTROL_MASK)) { //CTRL enables constrained snapping
+    if (mod_freehand_angle_snapping->active(state)) { // constrained snapping (default: Ctrl)
         if (this->_npoints > 0) {
             spdc_endpoint_snap_rotation(this, p, p_array[0], state);
         }
     } else {
-        if (!(state & GDK_SHIFT_MASK)) { //SHIFT disables all snapping, except the angular snapping above
-                                         //After all, the user explicitly asked for angular snapping by
-                                         //pressing CTRL
+        // "no snapping" (default: Shift) disables all snapping, except the angular snapping above.
+        // After all, the user explicitly asked for angular snapping by pressing Ctrl.
+        if (!mod_move_no_snapping->active(state)) {
             std::optional<Geom::Point> origin = this->_npoints > 0 ? p_array[0] : std::optional<Geom::Point>();
             spdc_endpoint_snap_free(this, p, origin);
         } else {
@@ -158,9 +163,9 @@ bool PencilTool::_handleButtonPress(ButtonPressEvent const &event)
             default:
                 /* Set first point of sequence */
                 auto &m = _desktop->getNamedView()->snap_manager;
-                if (event.modifiers & GDK_CONTROL_MASK) {
+                if (mod_freehand_dot->active(event.modifiers)) {
                     m.setup(_desktop, true);
-                    if (!(event.modifiers & GDK_SHIFT_MASK)) {
+                    if (!mod_move_no_snapping->active(event.modifiers)) {
                         m.freeSnapReturnByRef(p, Inkscape::SNAPSOURCE_NODE_HANDLE);
                       }
                     spdc_create_single_dot(this, p, "/tools/freehand/pencil", event.modifiers);
@@ -185,7 +190,7 @@ bool PencilTool::_handleButtonPress(ButtonPressEvent const &event)
                         // anchor, which is handled by the sibling branch above)
                         selection->clear();
                         _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Creating new path"));
-                    } else if (!(event.modifiers & GDK_SHIFT_MASK)) {
+                    } else if (!mod_select_add_to->active(event.modifiers)) {
                         // This is the first click of a new curve; deselect item so that
                         // this curve is not combined with it (unless it is drawn from its
                         // anchor, which is handled by the sibling branch above)
@@ -213,7 +218,7 @@ bool PencilTool::_handleButtonPress(ButtonPressEvent const &event)
 }
 
 bool PencilTool::_handleMotionNotify(MotionEvent const &event) {
-    if ((event.modifiers & GDK_CONTROL_MASK) && (event.modifiers & GDK_BUTTON1_MASK)) {
+    if (mod_freehand_dot->active(event.modifiers) && (event.modifiers & GDK_BUTTON1_MASK)) {
         // mouse was accidentally moved during Ctrl+click;
         // ignore the motion and create a single point
         _is_drawing = false;
@@ -362,7 +367,7 @@ bool PencilTool::_handleButtonRelease(ButtonReleaseEvent const &event) {
             case SP_PENCIL_CONTEXT_IDLE:
                 /* Releasing button in idle mode means single click */
                 /* We have already set up start point/anchor in button_press */
-                if (!(event.modifiers & GDK_CONTROL_MASK) && !is_tablet) {
+                if (!mod_freehand_dot->active(event.modifiers) && !is_tablet) {
                     // Ctrl+click creates a single point so only set context in ADDLINE mode when Ctrl isn't pressed
                     _state = SP_PENCIL_CONTEXT_ADDLINE;
                 }
@@ -395,7 +400,7 @@ bool PencilTool::_handleButtonRelease(ButtonReleaseEvent const &event) {
                 discard_delayed_snap_event();
                 break;
             case SP_PENCIL_CONTEXT_FREEHAND:
-                if (event.modifiers & GDK_ALT_MASK && !tablet_enabled) {
+                if (mod_pencil_sketch->active(event.modifiers) && !tablet_enabled) {
                     /* sketch mode: interpolate the sketched path and improve the current output path with the new interpolation. don't finish sketch */
                     _sketchInterpolate();
 
@@ -483,9 +488,20 @@ void PencilTool::_cancel()
 }
 
 bool PencilTool::_handleKeyPress(KeyPressEvent const &event) {
+    auto keyval = get_latin_keyval(event);
     bool ret = false;
 
-    switch (get_latin_keyval(event)) {
+    if (Modifiers::keyval_is_a_modifier(keyval)) {
+        if (_state == SP_PENCIL_CONTEXT_IDLE) {
+            Modifiers::responsive_tooltip_with_labels(
+                defaultMessageContext(), event, 1,
+                Modifiers::Type::PENCIL_SKETCH,
+                _("Hold to interpolate between sketched paths, release to finalize")
+            );
+        }
+    }
+
+    switch (keyval) {
         case GDK_KEY_Up:
         case GDK_KEY_Down:
         case GDK_KEY_KP_Up:
@@ -521,14 +537,6 @@ bool PencilTool::_handleKeyPress(KeyPressEvent const &event) {
                 ret = true;
             }
             break;
-        case GDK_KEY_Alt_L:
-        case GDK_KEY_Alt_R:
-        case GDK_KEY_Meta_L:
-        case GDK_KEY_Meta_R:
-            if (_state == SP_PENCIL_CONTEXT_IDLE) {
-                _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("<b>Sketch mode</b>: holding <b>Alt</b> interpolates between sketched paths. Release <b>Alt</b> to finalize."));
-            }
-            break;
         default:
             break;
     }
@@ -536,28 +544,25 @@ bool PencilTool::_handleKeyPress(KeyPressEvent const &event) {
 }
 
 bool PencilTool::_handleKeyRelease(KeyReleaseEvent const &event) {
+    auto keyval = get_latin_keyval(event);
     bool ret = false;
 
-    switch (get_latin_keyval(event)) {
-        case GDK_KEY_Alt_L:
-        case GDK_KEY_Alt_R:
-        case GDK_KEY_Meta_L:
-        case GDK_KEY_Meta_R:
-            if (_state == SP_PENCIL_CONTEXT_SKETCH) {
-                spdc_concat_colors_and_flush(this, false);
-                sketch_n = 0;
-                sa = nullptr;
-                ea = nullptr;
-                green_anchor.reset();
-                _state = SP_PENCIL_CONTEXT_IDLE;
-                discard_delayed_snap_event();
-                _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Finishing freehand sketch"));
-                ret = true;
-            }
-            break;
-        default:
-            break;
+    if (Modifiers::keyval_is_a_modifier(keyval)) {
+        if (mod_pencil_sketch->active(event.modifiers, keyval) && _state == SP_PENCIL_CONTEXT_SKETCH) {
+            spdc_concat_colors_and_flush(this, false);
+            sketch_n = 0;
+            sa = nullptr;
+            ea = nullptr;
+            green_anchor.reset();
+            _state = SP_PENCIL_CONTEXT_IDLE;
+            discard_delayed_snap_event();
+            _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Finishing freehand sketch"));
+            ret = true;
+        } else {
+            defaultMessageContext()->clear();
+        }
     }
+
     return ret;
 }
 
