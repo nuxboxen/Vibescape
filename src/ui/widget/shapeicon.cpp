@@ -8,6 +8,9 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+ #include <gtkmm/icontheme.h>
+ #include <gtkmm/snapshot.h>
+
 #include "ui/widget/shapeicon.h"
 
 #include "ui/icon-loader.h"
@@ -15,22 +18,43 @@
 
 namespace Inkscape::UI::Widget {
 
-void CellRendererItemIcon::set_icon_name()
+static const int ICON_SIZE = 16;
+
+void CellRendererItemIcon::update_color()
+{
+    _icon_color = _property_color.get_value();
+    if (!_icon_color && _widget_color) {
+        _icon_color = _widget_color;
+    }
+}
+
+void CellRendererItemIcon::update_shape()
 {
     std::string shape_type = _property_shape_type.get_value();
     if (shape_type == "-") { // "-" is an explicit request not to draw any icon
-        //property_icon_name().set_value({});
+        _shape = nullptr;
+        _overlay = nullptr;
         return;
     }
 
-    auto color = _property_color.get_value();
-    if (color == 0 && _widget_color) {
-        color = *_widget_color;
-    }
+    auto icon_theme = Gtk::IconTheme::get_for_display(Gdk::Display::get_default());
+    auto icon_name = get_shape_icon(shape_type, 0).icon_name;
+    _shape = icon_theme->lookup_icon(icon_name, ICON_SIZE);
+}
 
-    auto [icon_name, color_class] = get_shape_icon(shape_type, color);
-    //property_icon_name().set_value(icon_name);
-    _color_class = std::move(color_class);
+void CellRendererItemIcon::update_overlay()
+{
+    auto icon_theme = Gtk::IconTheme::get_for_display(Gdk::Display::get_default());
+    int clipmask = _property_clipmask.get_value();
+    if (clipmask == OVERLAY_CLIP) {
+        _overlay = icon_theme->lookup_icon("overlay-clip-symbolic", ICON_SIZE);
+    } else if (clipmask == OVERLAY_MASK) {
+        _overlay = icon_theme->lookup_icon("overlay-mask-symbolic", ICON_SIZE);
+    } else if (clipmask == OVERLAY_BOTH) {
+        _overlay = icon_theme->lookup_icon("overlay-clipmask-symbolic", ICON_SIZE);
+    } else {
+        _overlay = nullptr;
+    }
 }
 
 void CellRendererItemIcon::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot,
@@ -39,37 +63,49 @@ void CellRendererItemIcon::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &sna
                                           const Gdk::Rectangle &cell_area,
                                           Gtk::CellRendererState flags)
 {
-    if (property_icon_name().get_value().empty()) {
-        return;
-    }
-
     // CSS color might have changed, so refresh if so:
     if (auto const color = to_guint32(widget.get_color());
         _widget_color != color)
     {
         _widget_color = color;
-        set_icon_name();
+        update_color();
     }
-    // GTK4 will not let us recolor symbolic icons any other way I can find, so…
-    //widget.add_css_class(_color_class);
-    Gtk::CellRendererPixbuf::snapshot_vfunc(snapshot, widget, background_area, cell_area, flags);
-    //widget.remove_css_class(_color_class);
 
-    int clipmask = _property_clipmask.get_value();
-    if (clipmask <= 0) return;
+    paint_icon(_shape.get(), _icon_color, snapshot.get(), cell_area);
+    paint_icon(_overlay.get(), _widget_color, snapshot.get(), cell_area);
+}
 
-    // Create an overlay icon
-    // …somewhat sneakily, by temporarily changing our :icon-name & re-rendering
-    auto icon_name = property_icon_name().get_value();
-    if (clipmask == OVERLAY_CLIP) {
-        //property_icon_name().set_value("overlay-clip");
-    } else if (clipmask == OVERLAY_MASK) {
-        //property_icon_name().set_value("overlay-mask");
-    } else if (clipmask == OVERLAY_BOTH) {
-        //property_icon_name().set_value("overlay-clipmask");
+void CellRendererItemIcon::paint_icon(Gtk::IconPaintable *icon,
+                                      std::uint32_t color,
+                                      Gtk::Snapshot *snapshot,
+                                      const Gdk::Rectangle &area)
+{
+    // Directly paint the icons ourselves, since we want to be dynamic based on the widget colors,
+    // but we can't change properties are add/remove css classes to the widget dynamically in this
+    // method or GTK will crash.
+    // Note: this approach doesn't easily let us handle any state flags (like focused, insensitive).
+    // The long term fix for rendering these icons with colors the "right way" is porting to
+    // GtkListView and using real widgets.
+
+    if (!icon) {
+        return;
     }
-    Gtk::CellRendererPixbuf::snapshot_vfunc(snapshot, widget, background_area, cell_area, flags);
-    //property_icon_name().set_value(std::move(icon_name));
+
+    auto offset_x = area.get_x() + (area.get_width() - ICON_SIZE) / 2;
+    auto offset_y = area.get_y() + (area.get_height() - ICON_SIZE) / 2;
+    auto rgba = to_rgba(color);
+
+    snapshot->save();
+    snapshot->translate(Gdk::Graphene::Point(offset_x, offset_y));
+
+    gtk_symbolic_paintable_snapshot_symbolic(
+        GTK_SYMBOLIC_PAINTABLE(icon->gobj()),
+        GDK_SNAPSHOT(snapshot->gobj()),
+        ICON_SIZE, ICON_SIZE,
+        rgba.gobj(), 1
+    );
+
+    snapshot->restore();
 }
 
 bool CellRendererItemIcon::activate_vfunc(Glib::RefPtr<Gdk::Event const> const &event,

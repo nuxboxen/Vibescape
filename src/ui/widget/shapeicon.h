@@ -12,8 +12,12 @@
 #define SEEN_INKSCAPE_UI_DIALOG_SHAPEICON_H
 
 #include <glibmm/property.h>
-#include <gtkmm/cellrendererpixbuf.h>
+#include <gtkmm/cellrenderer.h>
 #include <cstdint>
+
+namespace Gtk {
+    class IconPaintable;
+}
 
 namespace Inkscape::UI::Widget {
 
@@ -28,22 +32,20 @@ enum OverlayStates : OverlayState {
 };
 
 /// Custom cell renderer for shapes of items in Objects dialog, w/ optional clip/mask icon overlaid
-class CellRendererItemIcon : public Gtk::CellRendererPixbuf {
+class CellRendererItemIcon : public Gtk::CellRenderer {
 public:
     CellRendererItemIcon() :
         Glib::ObjectBase{typeid(*this)},
-        Gtk::CellRendererPixbuf{},
+        Gtk::CellRenderer{},
         _property_shape_type(*this, "shape_type", "unknown"),
         _property_color(*this, "color", 0),
         _property_clipmask(*this, "clipmask", 0)
     {
         property_mode() = Gtk::CellRendererMode::ACTIVATABLE;
-        property_icon_size().set_value(Gtk::IconSize::NORMAL); // Previously ICON_SIZE_MENU
 
-        set_icon_name();
-        auto const set = sigc::mem_fun(*this, &CellRendererItemIcon::set_icon_name);
-        property_shape_type().signal_changed().connect(set);
-        property_color     ().signal_changed().connect(set);
+        property_shape_type().signal_changed().connect(sigc::mem_fun(*this, &CellRendererItemIcon::update_shape));
+        property_color     ().signal_changed().connect(sigc::mem_fun(*this, &CellRendererItemIcon::update_color));
+        property_clipmask  ().signal_changed().connect(sigc::mem_fun(*this, &CellRendererItemIcon::update_overlay));
     } 
      
     Glib::PropertyProxy<std::string> property_shape_type() {
@@ -63,7 +65,10 @@ public:
     }
 
 private:
-    void set_icon_name();
+    void paint_icon(Gtk::IconPaintable *icon, std::uint32_t color, Gtk::Snapshot *snapshot, const Gdk::Rectangle &area);
+    void update_color();
+    void update_shape();
+    void update_overlay();
     void snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot,
                         Gtk::Widget &widget,
                         const Gdk::Rectangle &background_area,
@@ -82,8 +87,10 @@ private:
     Glib::Property<unsigned int> _property_color;
     Glib::Property<unsigned int> _property_clipmask;
 
-    Glib::ustring _color_class;
-    std::optional<std::uint32_t> _widget_color;
+    guint32 _widget_color;
+    guint32 _icon_color;
+    Glib::RefPtr<Gtk::IconPaintable> _shape;
+    Glib::RefPtr<Gtk::IconPaintable> _overlay;
 };
 
 } // namespace Inkscape::UI::Widget
