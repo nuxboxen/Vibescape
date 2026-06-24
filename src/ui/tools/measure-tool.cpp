@@ -14,6 +14,7 @@
 
 #include "measure-tool.h"
 
+#include <cmath>
 #include <iomanip>
 
 #include <2geom/path-intersection.h>
@@ -995,9 +996,18 @@ void MeasureTool::toMarkDimension()
     Glib::ustring total = Inkscape::ustring::format_classic(std::fixed, std::setprecision(precision), totallengthval * scale);
     total += unit_name;
 
-    double textangle = Geom::rad_from_deg(180) - ray.angle();
-    if (_desktop->yaxisdown()) {
-        textangle = ray.angle() - Geom::rad_from_deg(180);
+    double textangle = ray.angle();
+
+    // Normalize the angle to within the range [-π/2, π/2] to ensure text is not
+    // upside down.
+    if (textangle < -M_PI_2) {
+        textangle += M_PI;
+    } else if (textangle > M_PI_2) {
+        textangle -= M_PI;
+    }
+
+    if (!_desktop->yaxisdown()) {
+        textangle = -textangle;
     }
 
     setLabelText(total, middle, fontsize, textangle, color);
