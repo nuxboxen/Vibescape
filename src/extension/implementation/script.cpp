@@ -62,6 +62,13 @@
 #include "xml/repr.h"
 #include "xml/simple-document.h"
 
+// ------------------------------------
+// for post-extension selection
+// ------------------------------------
+#include <boost/algorithm/string.hpp>
+#include <vector>
+#include <string>
+
 #ifdef _WIN32
 #include <windows.h>
 #define KILL_PROCESS(pid) TerminateProcess(pid, 0)
@@ -509,6 +516,58 @@ void Script::export_raster(Inkscape::Extension::Output *module,
     }
 }
 
+// -----------------------------------------------
+// added by simone 20260328
+// for selection loop
+
+/**
+ * Processes a custom 'inkscape:selection' attribute from the extension's 
+ * output to update the canvas selection. A 1ms delay is used to ensure 
+ * this runs after Inkscape's internal selection restoration logic.
+ */    
+// -----------------------------------------------
+
+static void _set_selection_from_named_view(SPDesktop *desktop) {
+    if (!desktop) return;
+
+    auto doc = desktop->getDocument();
+    auto nv = doc ? doc->getReprNamedView() : nullptr;
+    if (!nv) return;
+
+    const char *val = nv->attribute("inkscape:selection");
+    if (!val) return;
+
+    std::string attr_str(val);
+    std::vector<std::string> id_list;
+    std::vector<SPObject *> to_select;
+
+    boost::split(id_list, attr_str, boost::is_any_of(",; "), boost::token_compress_on);
+
+    for (auto &id : id_list) {
+        boost::trim(id);
+        if (!id.empty()) {
+            if (auto obj = doc->getObjectById(id)) {
+                to_select.push_back(obj);
+            }
+        }
+    }
+
+    if (!to_select.empty()) {
+        // Defer execution to "win" against the core selection guard
+        Glib::signal_timeout().connect_once([desktop, to_select]() {
+            if (desktop) {
+                if (auto selection = desktop->getSelection()) {
+                    selection->setList(to_select);
+                }
+            }
+        }, 1);
+    }
+
+    // Clean up the transient attribute
+    nv->setAttribute("inkscape:selection", nullptr);
+}
+
+
 /**
     \return    none
     \brief     This function uses an extension as an effect on a document.
@@ -593,8 +652,11 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
             }
         }
     }
+
     _change_extension(module, executionEnv, desktop->getDocument(), params, module->ignore_stderr, module->pipe_diffs);
+    _set_selection_from_named_view(desktop);
 }
+
 
 /**
  * Pure document version for calling an extension from the command line
@@ -634,6 +696,8 @@ static size_t get_cmdline_budget()
 void Script::_change_extension(Inkscape::Extension::Extension *module, ExecutionEnv *executionEnv, SPDocument *doc,
                                std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs)
 {
+
+   
     module->paramListString(params);
     module->set_environment(doc);
 
@@ -683,13 +747,13 @@ void Script::_change_extension(Inkscape::Extension::Extension *module, Execution
     fileout.toFile(tempfile_out.get_filename());
 
     pump_events();
+    
     Inkscape::XML::Document *new_xmldoc = nullptr;
     if (data_read > 10) {
         new_xmldoc = sp_repr_read_file(tempfile_out.get_filename().c_str(), SP_SVG_NS_URI);
     } // data_read
 
     pump_events();
-
     if (new_xmldoc) {
         //uncomment if issues on ref extensions links (with previous function)
         //sp_change_hrefs(new_xmldoc, tempfile_out.get_filename().c_str(), doc->getDocumentFilename());
