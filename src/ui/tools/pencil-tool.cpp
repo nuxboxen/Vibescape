@@ -51,6 +51,10 @@ namespace Inkscape::UI::Tools {
 static Geom::Point pencil_drag_origin_w(0, 0);
 static bool pencil_within_tolerance = false;
 
+// This gap defines an extra translation on points to avoid zeros in some calculations that really
+// affect spiro maths. See https://gitlab.com/inkscape/inkscape/-/work_items/5658 for details.
+static Geom::Translate handle_cubic_gap(0.01, 0.01);
+
 static bool in_svg_plane(Geom::Point const &p) { return Geom::LInfty(p) < 1e18; }
 
 PencilTool::PencilTool(SPDesktop *desktop)
@@ -919,6 +923,8 @@ void PencilTool::_interpolate()
             if (mode == 2) {
                 Geom::Point point_at1 = b[4 * c + 0] + (1./3) * (b[4 * c + 3] - b[4 * c + 0]);
                 Geom::Point point_at2 = b[4 * c + 3] + (1./3) * (b[4 * c + 0] - b[4 * c + 3]);
+                point_at1 *= handle_cubic_gap;
+                point_at2 *= handle_cubic_gap;
                 green_curve->back().appendNew<Geom::CubicBezier>(point_at1, point_at2, b[4*c+3]);
             } else {
                 if (!tablet_enabled || c != n_segs - 1) {
@@ -1067,6 +1073,8 @@ void PencilTool::_fitAndSplit()
         if (mode == 2){
             Geom::Point point_at1 = b[0] + (1./3)*(b[3] - b[0]);
             Geom::Point point_at2 = b[3] + (1./3)*(b[0] - b[3]);
+            point_at1 *= handle_cubic_gap;
+            point_at2 *= handle_cubic_gap;
             red_curve.back().appendNew<Geom::CubicBezier>(point_at1, point_at2, b[3]);
         } else {
             red_curve.back().appendNew<Geom::CubicBezier>(b[1], b[2], b[3]);

@@ -24,6 +24,10 @@
 using Geom::X;
 using Geom::Y;
 
+// This gap defines an extra translation on points to avoid zeros in some calculations that really
+// affect spiro maths. See https://gitlab.com/inkscape/inkscape/-/work_items/5658 for details.
+static Geom::Translate handle_cubic_gap(0.01, 0.01);
+
 //#################################################################################
 // BOUNDING BOX CALCULATIONS
 
@@ -715,7 +719,8 @@ pathv_to_cubicbezier( Geom::PathVector const &pathv, bool nolines)
             Geom::BezierCurve const *curve = dynamic_cast<Geom::BezierCurve const *>(&*cit);
             // is_straight curves dont work for bspline
             if (nolines && is_straight_curve(*cit)) {
-                Geom::CubicBezier b(cit->initialPoint(), cit->pointAt(0.3334), cit->finalPoint(), cit->finalPoint());
+                Geom::CubicBezier b(cit->initialPoint(), cit->pointAt(0.3334) * handle_cubic_gap,
+                                    cit->finalPoint(), cit->finalPoint());
                 output.back().append(b);
             } else if (!curve || curve->order() != 3) {
                 // convert all other curve types to cubicbeziers

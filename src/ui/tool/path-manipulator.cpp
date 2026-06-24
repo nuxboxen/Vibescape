@@ -41,6 +41,10 @@ static constexpr double BSPLINE_TOL = 0.001;
 static constexpr double NO_POWER = 0.0;
 static constexpr double DEFAULT_START_POWER = 1.0/3.0;
 
+// This gap defines an extra translation on points to avoid zeros in some calculations that really
+// affect spiro maths. See https://gitlab.com/inkscape/inkscape/-/work_items/5658 for details.
+static Geom::Translate handle_cubic_gap(0.001, 0.001);
+
 /**
  * Notifies the path manipulator when something changes the path being edited
  * (e.g. undo / redo)
@@ -1118,14 +1122,14 @@ NodeList::iterator PathManipulator::subdivideSegment(NodeList::iterator first, d
         } else {
             if (second->back()->isDegenerate()) {
                 auto const line_inside_nodes = Geom::LineSegment{n->position(), second->position()};
-                auto const next = line_inside_nodes.pointAt(DEFAULT_START_POWER);
+                auto const next = line_inside_nodes.pointAt(DEFAULT_START_POWER) * handle_cubic_gap;
                 n->front()->setPosition(next);
             } else {
                 n->front()->setPosition(seg2[1]);
             }
             if (first->front()->isDegenerate()) {
                 auto const line_inside_nodes = Geom::LineSegment{n->position(), first->position()};
-                auto const previous = line_inside_nodes.pointAt(DEFAULT_START_POWER);
+                auto const previous = line_inside_nodes.pointAt(DEFAULT_START_POWER) * handle_cubic_gap;
                 n->back()->setPosition(previous);
             } else {
                 n->back()->setPosition(seg1[2]);
@@ -1408,7 +1412,7 @@ double PathManipulator::_bsplineHandlePosition(Handle *h, bool check_other)
     auto const next_node = n->nodeToward(h);
     if (next_node && !Geom::are_near(h->position(), n->position())) {
         auto const line_inside_nodes = Geom::LineSegment{n->position(), next_node->position()};
-        pos = Geom::nearest_time(h->position(), line_inside_nodes);
+        pos = Geom::nearest_time(h->position() * handle_cubic_gap.inverse(), line_inside_nodes);
     }
     if (Geom::are_near(pos, NO_POWER, BSPLINE_TOL) && check_other) {
         return _bsplineHandlePosition(h->other(), false);
@@ -1431,7 +1435,7 @@ Geom::Point PathManipulator::_bsplineHandleReposition(Handle *h, double pos)
     auto next_node = n->nodeToward(h);
     if (next_node && !Geom::are_near(pos, NO_POWER, BSPLINE_TOL)) {
         auto const line_inside_nodes = Geom::LineSegment{n->position(), next_node->position()};
-        ret = line_inside_nodes.pointAt(pos);
+        ret = line_inside_nodes.pointAt(pos) * handle_cubic_gap;
     } else {
         if (Geom::are_near(pos, NO_POWER, BSPLINE_TOL)) {
             ret = n->position();
