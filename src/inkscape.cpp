@@ -443,6 +443,9 @@ Application::crash_handler (int /*signum*/)
             button_ok.signal_clicked().connect([&] { window.close(); });
             button_ok.grab_focus();
             window.signal_close_request().connect([&] { mainloop->quit(); return false; }, true);
+            // Make this dialog transient to help it not get lost (but not modal - if other
+            // dialogs are open, having a mix of modal and not modal windows can have confusing
+            // interactions on some window managers).
             sp_transientize(window);
             window.present();
             mainloop->run();

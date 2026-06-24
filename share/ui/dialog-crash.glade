@@ -4,7 +4,6 @@
   <object class="GtkTextBuffer" id="stacktrace"/>
   <object class="GtkWindow" id="crash_dialog">
     <property name="title" translatable="yes">Crash Report</property>
-    <property name="modal">True</property>
     <property name="resizable">True</property>
     <property name="default-height">550</property>
     <property name="default-width">800</property>

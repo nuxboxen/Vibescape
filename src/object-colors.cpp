@@ -252,7 +252,6 @@ void ColorsExtractor::collectColors(std::vector<SPObject *> objects, ObjectStyle
             if (auto text = cast<SPText>(item)) { // handle text objects color collection by collecting the colors of its tspans children
                 if (auto tspan = cast<SPTSpan>(&text->children.front())) {
                     std::vector<SPObject *> children_vec;
-                    bool noid = true;
                     for (auto &child : tspan->children) {
                         children_vec.push_back(&child);
                     }
