@@ -20,7 +20,7 @@
 #include <memory>
 
 #include "desktop.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "document.h"
 #include "preferences.h"
 #include "snap-enums.h"

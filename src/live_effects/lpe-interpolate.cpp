@@ -13,7 +13,7 @@
 #include "live_effects/lpe-interpolate.h"
 #include <2geom/ray.h>
 #include <2geom/sbasis-to-bezier.h>
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "object/sp-path.h"
 
 // TODO due to internal breakage in glibmm headers, this must be last:

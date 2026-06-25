@@ -24,7 +24,7 @@
 
 #include "inkscape.h"
 #include "style.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "helper/geom.h"
 #include "live_effects/lpeobject.h"
 #include "live_effects/parameter/satellite-reference.h"

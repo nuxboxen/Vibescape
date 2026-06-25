@@ -22,7 +22,7 @@
 #include "document.h"
 #include "inkscape.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "live_effects/effect.h"
 #include "live_effects/lpe-bspline.h"
 #include "live_effects/lpeobject.h"

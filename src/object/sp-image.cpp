@@ -38,7 +38,7 @@
 
 #include "display/drawing-image.h"
 #include "display/cairo-utils.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "xml/quote.h"
 #include "xml/href-attribute-helper.h"
 

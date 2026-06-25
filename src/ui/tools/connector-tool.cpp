@@ -76,7 +76,7 @@
 #include "context-fns.h"
 #include "desktop-style.h"
 #include "display/control/canvas-item-bpath.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "document-undo.h"
 #include "document.h"
 #include "message-context.h"

@@ -21,7 +21,7 @@
 #include "pov-out.h"
 #include <inkscape.h>
 #include <inkscape-version.h>
-#include <display/curve.h>
+#include <path/path-curve.h>
 #include <extension/system.h>
 #include <2geom/pathvector.h>
 #include <2geom/rect.h>

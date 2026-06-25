@@ -19,7 +19,7 @@
 #include "attributes.h"
 #include "style.h"
 #include "sp-guide.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 SPLine::SPLine() : SPShape() {
     this->x1.unset();

@@ -18,7 +18,7 @@
 
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-group.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "live_effects/effect.h"
 #include "message-context.h"
 #include "object/sp-clippath.h"

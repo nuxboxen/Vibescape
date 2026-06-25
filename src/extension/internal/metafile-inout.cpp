@@ -14,7 +14,7 @@
 #include <glib.h>
 #include <glibmm/miscutils.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "extension/internal/metafile-inout.h" // picks up PNG
 #include "extension/print.h"
 #include "path-prefix.h"

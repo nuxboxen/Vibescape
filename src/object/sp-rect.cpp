@@ -24,7 +24,7 @@
 #include "sp-guide.h"
 #include "style.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "svg/svg.h"
 
 #define noRECT_VERBOSE

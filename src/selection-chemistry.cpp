@@ -39,7 +39,7 @@
 #include "display/cairo-utils.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-drawing.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/drawing.h"
 #include "document-undo.h"
 #include "file.h"

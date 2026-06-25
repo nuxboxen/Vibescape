@@ -12,7 +12,7 @@
  */
 
 #include "live_effects/lpe-dynastroke.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 //# include <libnr/n-art-bpath.h>
 
 #include <2geom/bezier-to-sbasis.h>

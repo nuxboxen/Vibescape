@@ -12,7 +12,7 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 #include <glib.h> // g_error
 #include <2geom/sbasis-geometric.h>

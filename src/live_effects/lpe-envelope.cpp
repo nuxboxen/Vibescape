@@ -9,7 +9,7 @@
 
 #include <glibmm/i18n.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "object/sp-lpe-item.h"
 
 

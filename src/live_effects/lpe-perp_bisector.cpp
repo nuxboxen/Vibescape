@@ -13,7 +13,7 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 #include "live_effects/lpe-perp_bisector.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "line-geometry.h"
 
 #include "object/sp-path.h"

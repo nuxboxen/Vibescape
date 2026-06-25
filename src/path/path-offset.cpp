@@ -15,6 +15,7 @@
  * contains lots of stitched pieces of path-chemistry.c
  */
 
+#include "path-curve.h"
 #include "path-offset.h"
 
 #include <vector>
@@ -28,8 +29,6 @@
 #include "path-util.h"
 #include "preferences.h"
 #include "selection.h"
-
-#include "display/curve.h"
 
 #include "livarot/Path.h"
 #include "livarot/Shape.h"

@@ -9,7 +9,7 @@
  */
 #include <gtest/gtest.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include <2geom/curves.h>
 #include <2geom/path.h>
 #include <2geom/pathvector.h>

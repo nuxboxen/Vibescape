@@ -33,7 +33,7 @@
 #include "sp-text.h"
 #include "sp-use.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/drawing-group.h"
 #include "libnrtype/font-factory.h"
 #include "libnrtype/font-instance.h"

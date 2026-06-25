@@ -11,7 +11,7 @@
 #include <gtkmm/enums.h>                    // for Orientation
 #include <gtkmm/widget.h>                   // for Widget
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "live_effects/lpe-bspline.h"
 #include "object/sp-path.h"
 #include "preferences.h"
