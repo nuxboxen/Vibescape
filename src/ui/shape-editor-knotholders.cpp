@@ -17,7 +17,7 @@
 #include <iomanip>
 #include <glibmm/i18n.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "knot/knot.h"
 #include "livarot/Path.h"
 #include "live_effects/effect.h"

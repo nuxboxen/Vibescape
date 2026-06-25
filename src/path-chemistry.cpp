@@ -27,7 +27,7 @@
 #include "path-chemistry.h"
 #include "text-editing.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 #include "object/box3d.h"
 #include "object/object-set.h"

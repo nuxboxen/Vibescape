@@ -19,7 +19,7 @@
 
 #include "desktop-style.h"
 #include "display/control/canvas-item-bpath.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "id-clash.h"
 #include "live_effects/lpe-bendpath.h"
 #include "live_effects/lpe-patternalongpath.h"

@@ -16,7 +16,7 @@
 
 #include "lpe-offset.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "helper/geom-pathstroke.h"
 #include "helper/geom.h"
 #include "live_effects/parameter/enum.h"

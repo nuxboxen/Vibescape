@@ -110,7 +110,6 @@ set(TEST_SOURCES
     sp-glyph-kerning-test
     cairo-utils-test
     svg-extension-test
-    curve-test
     2geom-characterization-test
     test-feDropShadow
     xml-test
@@ -232,6 +231,7 @@ add_unit_tests(TEST_SOURCES "colors/cms-profile-test.cpp"
 include("${CMAKE_SOURCE_DIR}/src/path/CMakeUnit.txt")
 get_path_unit_lib()
 add_unit_tests(TEST_SOURCES "path/path-boolop-test.cpp"
+                            "path/path-curve-test.cpp"
                  EXTRA_LIBS path_unit_lib)
 
 add_unit_test(css-syntactic-decomposition-test TEST_SOURCE "css-syntactic-decomposition-test.cpp"

@@ -18,7 +18,7 @@
 #include <2geom/path-sink.h>
 
 #include "desktop.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "document.h"
 #include "page-manager.h"
 #include "preferences.h"

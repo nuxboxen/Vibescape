@@ -20,7 +20,7 @@
 #include "selection.h"
 
 #include "actions/actions-tools.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "live_effects/parameter/satellite-reference.h"
 #include "object/sp-clippath.h"
 #include "object/sp-item-group.h"

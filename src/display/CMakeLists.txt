@@ -2,7 +2,6 @@
 
 target_sources(inkscape_base PRIVATE
     cairo-utils.cpp
-    curve.cpp
     dispatch-pool.cpp
     drawing-context.cpp
     drawing-group.cpp
@@ -69,7 +68,6 @@ target_sources(inkscape_base PRIVATE
     # Headers
     cairo-templates.h
     cairo-utils.h
-    curve.h
     dispatch-pool.h
     drawing-context.h
     drawing-group.h

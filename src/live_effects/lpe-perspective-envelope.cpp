@@ -26,7 +26,7 @@
 #include <gtkmm/separator.h>
 #include <gtkmm/widget.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "helper/geom.h"
 #include "object/sp-lpe-item.h"
 #include "ui/pack.h"

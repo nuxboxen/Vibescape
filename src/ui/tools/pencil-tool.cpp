@@ -27,7 +27,7 @@
 #include "context-fns.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/snap-indicator.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "layer-manager.h"
 #include "livarot/Path.h" // Simplify paths
 #include "live_effects/lpe-powerstroke.h"

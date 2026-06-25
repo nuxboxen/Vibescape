@@ -60,7 +60,7 @@
 #include "sp-mesh-row.h"
 #include "sp-mesh-patch.h"
 #include "sp-stop.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 // For new mesh creation
 #include "preferences.h"

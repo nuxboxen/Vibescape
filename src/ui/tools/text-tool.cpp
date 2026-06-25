@@ -27,7 +27,7 @@
 #include "display/control/canvas-item-curve.h"
 #include "display/control/canvas-item-quad.h"
 #include "display/control/canvas-item-rect.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "document-undo.h"
 #include "document.h"
 #include "inkscape-window.h"

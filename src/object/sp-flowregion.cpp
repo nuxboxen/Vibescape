@@ -21,7 +21,7 @@
 #include "sp-use.h"
 #include "style.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "livarot/Path.h"
 #include "livarot/Shape.h"
 #include "xml/document.h"

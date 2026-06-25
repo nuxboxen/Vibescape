@@ -11,11 +11,11 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include "path-curve.h"
 #include "path-util.h"
 #include "path/path-boolop.h"
 #include "text-editing.h"
 #include "livarot/Path.h"
-#include "display/curve.h"
 
 #include "object/sp-flowtext.h"
 #include "object/sp-image.h"

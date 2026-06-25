@@ -10,7 +10,7 @@
 #include <gtkmm/box.h>
 #include <gtkmm/entry.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "helper/geom.h"
 #include "object/sp-lpe-item.h"
 #include "path/path-util.h"

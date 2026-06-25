@@ -31,7 +31,7 @@
 #include "extension/output.h"
 #include "display/drawing.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 #include "object/sp-item.h"
 #include "object/sp-root.h"

@@ -16,16 +16,11 @@
  *
  */
 
-#include "path-outline.h"
-
 #include <vector>
 
 #include "document.h"
-#include "path-chemistry.h" // Should be moved to path directory
 #include "selection.h"
 #include "style.h"
-
-#include "display/curve.h"  // Should be moved to path directory
 
 #include "helper/geom.h"    // pathv_to_linear_and_cubic()
 
@@ -40,6 +35,10 @@
 #include "object/sp-shape.h"
 #include "object/sp-text.h"
 #include "object/sp-flowtext.h"
+
+#include "path-chemistry.h"
+#include "path-curve.h"
+#include "path-outline.h"
 
 #include "svg/svg.h"
 

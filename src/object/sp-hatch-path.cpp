@@ -18,7 +18,7 @@
 
 #include "style.h"
 #include "svg/svg.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/drawing.h"
 #include "display/drawing-shape.h"
 #include "helper/geom.h"

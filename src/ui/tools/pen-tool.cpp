@@ -23,7 +23,7 @@
 #include "message-context.h"
 #include "selection.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-ctrl.h"
 #include "display/control/canvas-item-curve.h"

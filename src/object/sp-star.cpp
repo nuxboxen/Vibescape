@@ -26,7 +26,7 @@
 #include "snap-enums.h"           // for SnapTargetType, SnapSourceType
 #include "snap-preferences.h"     // for SnapPreferences
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "svg/svg.h"
 #include "xml/document.h"         // for Document
 #include "xml/node.h"             // for Node

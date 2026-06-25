@@ -16,7 +16,7 @@
 
 #include "lpe-tangent_to_curve.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 #include "object/sp-shape.h"
 #include "object/sp-object-group.h"

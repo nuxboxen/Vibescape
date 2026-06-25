@@ -25,7 +25,7 @@
 #include "bad-uri-exception.h"
 #include "svg/svg.h"
 #include "attributes.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 #include "livarot/Path.h"
 #include "livarot/Shape.h"

@@ -2,10 +2,12 @@
 
 set(path_unit_SRC
     path-boolop.cpp
+    path-curve.cpp
 
     # -------
     # Headers
     path-boolop.h
+    path-curve.h
 )
 
 function(get_path_unit_lib)
