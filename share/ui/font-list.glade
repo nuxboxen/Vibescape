@@ -421,7 +421,7 @@
           </object>
         </child>
         <child>
-          <object class="GtkWidget" id="font-size">
+          <object class="gtkmm__CustomObject_FontSizeSelector" id="font-size">
             <property name="margin-top">2</property>
             <property name="margin-bottom">2</property>
             <property name="valign">center</property>

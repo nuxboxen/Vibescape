@@ -36,6 +36,7 @@
 #include <gtkmm/scrolledwindow.h>
 
 #include "ui/widget/font-selector-interface.h"
+#include "ui/widget/font-size-selector.h"
 #include "ui/widget/font-variations.h"
 
 namespace Gdk {
@@ -92,17 +93,13 @@ protected:
 
     // Font size
     Gtk::Label          size_label;
-    Gtk::ComboBoxText   size_combobox;
+    FontSizeSelector    size_selector;
 
     // Font variations
     Gtk::ScrolledWindow font_variations_scroll;
     FontVariations      font_variations;
 
 private:
-    // Set sizes in font size combobox.
-    void set_sizes();
-    void set_fontsize_tooltip();
-
     // Use font style when listing style names.
     void style_cell_data_func(Gtk::CellRenderer *renderer,
                               Gtk::TreeModel::const_iterator const &iter);
@@ -110,7 +107,7 @@ private:
     // Signal handlers
     void on_family_changed();
     void on_style_changed();
-    void on_size_changed();
+    void on_size_changed(double size, int unit);
     void on_variations_changed();
 
     // Signals
@@ -122,8 +119,6 @@ private:
     sigc::scoped_connection _idle_connection;
 
     // Variables
-    double font_size;
-
     bool initial = true;
 
     // control font variations update and UI element size
@@ -138,9 +133,9 @@ private:
     // font selector interface
     Gtk::Widget* box() override { return this; }
     Glib::ustring get_fontspec() const override { return const_cast<FontSelector*>(this)->get_fontspec(true); }
-    double get_fontsize() const override { return font_size; };
+    double get_fontsize() const override { return size_selector.getSize(); };
     void set_current_font(const Glib::ustring& family, const Glib::ustring& face) override { update_font(); }
-    void set_current_size(double size) override { update_size(size); };
+    void set_current_size(double size) override { size_selector.setSize(size); };
     sigc::signal<void ()>& signal_changed() override { return dummy; }
     sigc::signal<void ()>& signal_apply() override { return _signal_apply; }
     sigc::signal<void (const Glib::ustring&)>& signal_insert_text() override { return dummy2; }
@@ -152,7 +147,6 @@ public:
      * Update GUI based on fontspec
      */
     void update_font ();
-    void update_size (double size);
     void unset_model() override;
     void set_model() override;
 
@@ -164,7 +158,7 @@ public:
     /**
      * Get font size. Could be merged with fontspec.
      */
-    double get_fontsize() { return font_size; };
+    double get_fontsize() { return size_selector.getSize(); };
 
     /**
      * Let others know that user has changed GUI settings.
