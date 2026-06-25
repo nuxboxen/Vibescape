@@ -36,19 +36,31 @@ Inkscape::CSSOStringStream &Inkscape::CSSOStringStream::operator<<(double d)
         return *this;
     }
 
+    // This block is gross yes. But if you switch to a printf-family approach, you have to deal
+    // with locales wanting to use commas vs periods. And if you use std::to_chars, you have to
+    // deal with its different definition of precision (it uses significant digits, the traditional
+    // approach below uses "digits after the period"). So while it would be awesome to clean this
+    // up, do so with caution. Note that the numericprecision preference only goes up to 16, so
+    // that's all we need to handle here.
     char buf[32];  // haven't thought about how much is really required.
     switch (precision()) {
-        case 9: g_ascii_formatd(buf, sizeof(buf), "%.9f", d); break;
-        case 8: g_ascii_formatd(buf, sizeof(buf), "%.8f", d); break;
-        case 7: g_ascii_formatd(buf, sizeof(buf), "%.7f", d); break;
-        case 6: g_ascii_formatd(buf, sizeof(buf), "%.6f", d); break;
-        case 5: g_ascii_formatd(buf, sizeof(buf), "%.5f", d); break;
-        case 4: g_ascii_formatd(buf, sizeof(buf), "%.4f", d); break;
-        case 3: g_ascii_formatd(buf, sizeof(buf), "%.3f", d); break;
-        case 2: g_ascii_formatd(buf, sizeof(buf), "%.2f", d); break;
-        case 1: g_ascii_formatd(buf, sizeof(buf), "%.1f", d); break;
         case 0: g_ascii_formatd(buf, sizeof(buf), "%.0f", d); break;
-        case 10: default: g_ascii_formatd(buf, sizeof(buf), "%.10f", d); break;
+        case 1: g_ascii_formatd(buf, sizeof(buf), "%.1f", d); break;
+        case 2: g_ascii_formatd(buf, sizeof(buf), "%.2f", d); break;
+        case 3: g_ascii_formatd(buf, sizeof(buf), "%.3f", d); break;
+        case 4: g_ascii_formatd(buf, sizeof(buf), "%.4f", d); break;
+        case 5: g_ascii_formatd(buf, sizeof(buf), "%.5f", d); break;
+        case 6: g_ascii_formatd(buf, sizeof(buf), "%.6f", d); break;
+        case 7: g_ascii_formatd(buf, sizeof(buf), "%.7f", d); break;
+        case 8: g_ascii_formatd(buf, sizeof(buf), "%.8f", d); break;
+        case 9: g_ascii_formatd(buf, sizeof(buf), "%.9f", d); break;
+        case 10: g_ascii_formatd(buf, sizeof(buf), "%.10f", d); break;
+        case 11: g_ascii_formatd(buf, sizeof(buf), "%.11f", d); break;
+        case 12: g_ascii_formatd(buf, sizeof(buf), "%.12f", d); break;
+        case 13: g_ascii_formatd(buf, sizeof(buf), "%.13f", d); break;
+        case 14: g_ascii_formatd(buf, sizeof(buf), "%.14f", d); break;
+        case 15: g_ascii_formatd(buf, sizeof(buf), "%.15f", d); break;
+        case 16: default: g_ascii_formatd(buf, sizeof(buf), "%.16f", d); break;
     }
     auto &os = *this;
     os << strip_trailing_zeros(buf);
