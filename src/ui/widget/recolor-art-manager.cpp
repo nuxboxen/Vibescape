@@ -13,6 +13,7 @@
 
 #include "object/sp-gradient.h"
 #include "object/sp-pattern.h"
+#include "object/sp-text.h"
 #include "object/sp-use.h"
 #include "object/sp-marker.h"
 #include "style.h"
@@ -134,6 +135,7 @@ bool RecolorArtManager::checkSelection(Inkscape::Selection *selection)
 
     return is<SPGroup>(item) ||
            is<SPUse>(item) ||
+           is<SPText>(item) ||
            item->getMaskObject() ||
            has_colors_pattern(item);
 }
@@ -150,7 +152,7 @@ bool RecolorArtManager::checkMarkerObject(SPMarker *marker)
 
     MoreThan1ColorChecker check;
     for (auto const &child : marker->children) {
-        
+
         if (auto item = cast<SPItem>(&child)) {
             if (item->style) {
                 if (check(item->style->fill) || check(item->style->stroke)) {
