@@ -694,7 +694,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                             items = _desktop->getDocument()->getItemsPartiallyInBox(_desktop->dkey, (*b) * _desktop->dt2doc());
                         } else if (r->getMode() == Rubberband::Mode::TOUCHPATH) {
                             bool topmost_items_only = prefs->getBool("/options/selection/touchsel_topmost_only");
-                            items = _desktop->getDocument()->getItemsAtPoints(_desktop->dkey, r->getPoints(), true, topmost_items_only);
+                            items = _desktop->getItemsAtPoints(r->getPoints(), true, topmost_items_only);
                         }
 
                         _seltrans->resetState();

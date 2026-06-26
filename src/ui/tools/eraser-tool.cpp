@@ -1100,7 +1100,7 @@ std::vector<EraseTarget> EraserTool::_findItemsToErase()
         // * result     should contain touched items;
         // * _survivors should contain selected but untouched items.
         auto *r = Rubberband::get(_desktop);
-        std::vector<SPItem *> touched = document->getItemsAtPoints(_desktop->dkey, r->getPoints());
+        std::vector<SPItem *> touched = _desktop->getItemsAtPoints(r->getPoints());
         if (selection->isEmpty()) {
             for (auto *item : touched) {
                 result.emplace_back(item, false);

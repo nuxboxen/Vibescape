@@ -352,7 +352,8 @@ Inkscape::UI::Dialog::DialogContainer *SPDesktop::getContainer()
 SPItem *SPDesktop::getItemFromListAtPointBottom(const std::vector<SPItem*> &list, Geom::Point const &p) const
 {
     g_return_val_if_fail (doc() != nullptr, NULL);
-    return SPDocument::getItemFromListAtPointBottom(dkey, doc()->getRoot(), list, p);
+    bool outline = canvas->canvas_point_in_outline_zone(p - canvas->get_pos());
+    return SPDocument::getItemFromListAtPointBottom(dkey, doc()->getRoot(), list, p, outline);
 }
 
 /**
@@ -361,14 +362,19 @@ SPItem *SPDesktop::getItemFromListAtPointBottom(const std::vector<SPItem*> &list
 SPItem *SPDesktop::getItemAtPoint(Geom::Point const &p, bool into_groups, SPItem *upto) const
 {
     g_return_val_if_fail (doc() != nullptr, NULL);
-    return doc()->getItemAtPoint( dkey, p, into_groups, upto);
+    bool outline = canvas->canvas_point_in_outline_zone(p - canvas->get_pos());
+    return doc()->getItemAtPoint( dkey, p, into_groups, upto, outline);
 }
 
 std::vector<SPItem*> SPDesktop::getItemsAtPoints(std::vector<Geom::Point> points, bool all_layers, bool topmost_only, size_t limit, bool active_only) const
 {
     if (!doc())
         return {};
-    return doc()->getItemsAtPoints(dkey, points, all_layers, topmost_only, limit, active_only);
+    bool outline = false;
+    for (auto &p : points) {
+        outline = outline || canvas->canvas_point_in_outline_zone(p - canvas->get_pos());
+    }
+    return doc()->getItemsAtPoints(dkey, points, all_layers, topmost_only, limit, active_only, outline);
 }
 
 /**
@@ -377,7 +383,8 @@ std::vector<SPItem*> SPDesktop::getItemsAtPoints(std::vector<Geom::Point> points
 SPItem *SPDesktop::getGroupAtPoint(Geom::Point const &p) const
 {
     g_return_val_if_fail (doc() != nullptr, NULL);
-    return doc()->getGroupAtPoint(dkey, p);
+    bool outline = canvas->canvas_point_in_outline_zone(p - canvas->get_pos());
+    return doc()->getGroupAtPoint(dkey, p, outline);
 }
 
 /**
