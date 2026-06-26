@@ -188,7 +188,7 @@ void LayerManager::setCurrentLayer(SPObject *object, bool clear) {
         _layer_hierarchy->setBottom(object);
 
         // Reset cache in document for collections of layers
-        _document->clearNodeCache();
+        _desktop->clearNodeCache();
 
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
         if (clear && prefs->getBool("/options/selection/layerdeselect", true)) {
@@ -526,7 +526,7 @@ void LayerManager::toggleLayerSolo(SPObject *object, bool force_hide) {
 /**
  * Return layer that contains \a object.
  */
-SPObject *LayerManager::layerForObject(SPObject *object) {
+SPObject *LayerManager::layerForObject(SPObject *object) const {
     g_return_val_if_fail(object != nullptr, NULL);
     if (isLayer(object)) {
         return object;

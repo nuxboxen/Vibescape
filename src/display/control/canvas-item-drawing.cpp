@@ -56,7 +56,8 @@ bool CanvasItemDrawing::contains(Geom::Point const &p, double tolerance)
         std::cerr << "CanvasItemDrawing::contains: Non-zero tolerance not implemented!" << std::endl;
     }
 
-    _picked_item = _drawing->pick(p, _drawing->cursorTolerance(), _sticky * DrawingItem::PICK_STICKY | _pick_outline * DrawingItem::PICK_OUTLINE);
+
+    _picked_item = _drawing->pick(p, _drawing->cursorTolerance(), get_canvas()->get_area_world(), get_flags());
 
     if (_picked_item) {
         // This will trigger a signal that is handled by our event handler. Seems a bit of a
@@ -89,7 +90,7 @@ void CanvasItemDrawing::_update(bool)
 
     if (_cursor) {
         /* Mess with enter/leave notifiers */
-        auto new_drawing_item = _drawing->pick(_c, _delta, _sticky * DrawingItem::PICK_STICKY | _pick_outline * DrawingItem::PICK_OUTLINE);
+        auto new_drawing_item = _drawing->pick(_c, _delta, get_canvas()->get_area_world(), get_flags());
         if (_active_item != new_drawing_item) {
             // Fixme: These crossing events have no modifier state set.
 
@@ -137,7 +138,7 @@ bool CanvasItemDrawing::handle_event(CanvasEvent const &event)
                 /* TODO ... event -> arena transform? */
                 _c = event.pos;
 
-                _active_item = _drawing->pick(_c, _drawing->cursorTolerance(), _sticky * DrawingItem::PICK_STICKY | _pick_outline * DrawingItem::PICK_OUTLINE);
+                _active_item = _drawing->pick(_c, _drawing->cursorTolerance(), get_canvas()->get_area_world(), get_flags());
                 retval = _drawing_event_signal.emit(event, _active_item);
             }
         },
@@ -154,7 +155,7 @@ bool CanvasItemDrawing::handle_event(CanvasEvent const &event)
             /* TODO ... event -> arena transform? */
             _c = event.pos;
 
-            auto new_drawing_item = _drawing->pick(_c, _drawing->cursorTolerance(), _sticky * DrawingItem::PICK_STICKY | _pick_outline * DrawingItem::PICK_OUTLINE);
+            auto new_drawing_item = _drawing->pick(_c, _drawing->cursorTolerance(), get_canvas()->get_area_world(), get_flags());
             if (_active_item != new_drawing_item) {
 
                 /* fixme: What is wrong? */
@@ -192,6 +193,11 @@ bool CanvasItemDrawing::handle_event(CanvasEvent const &event)
     );
 
     return retval;
+}
+
+unsigned CanvasItemDrawing::get_flags() const
+{
+    return _sticky * DrawingItem::PICK_STICKY | _pick_outline * DrawingItem::PICK_OUTLINE;
 }
 
 } // namespace Inkscape

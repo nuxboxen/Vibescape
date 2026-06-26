@@ -85,7 +85,7 @@ public:
     void update(Geom::IntRect const &area = Geom::IntRect::infinite(), Geom::Affine const &affine = Geom::identity(),
                 unsigned flags = DrawingItem::STATE_ALL, unsigned reset = 0);
     void render(DrawingContext &dc, Geom::IntRect const &area, unsigned flags = 0) const;
-    DrawingItem *pick(Geom::Point const &p, double delta, unsigned flags);
+    DrawingItem *pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags);
 
     void snapshot();
     void unsnapshot();

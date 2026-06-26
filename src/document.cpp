@@ -1485,7 +1485,7 @@ void SPDocument::bindObjectToRepr(Inkscape::XML::Node *repr, SPObject *object)
         g_assert(it != reprdef.end());
         reprdef.erase(it);
     }
-    clearNodeCache();
+    object_bound_signal.emit();
 }
 
 SPObject *SPDocument::getObjectByRepr(Inkscape::XML::Node *repr) const
@@ -1782,141 +1782,6 @@ static std::vector<SPItem*> &find_items_in_area(std::vector<SPItem*> &s,
     return s;
 }
 
-SPItem *SPDocument::getItemFromListAtPointBottom(unsigned dkey, SPGroup *group, std::vector<SPItem*> const &list, Geom::Point const &p, bool take_insensitive, bool outline)
-{
-    if (!group) {
-        return nullptr;
-    }
-
-    double const delta = Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
-
-    for (auto &c: group->children) {
-        if (auto item = cast<SPItem>(&c)) {
-            if (auto di = item->get_arenaitem(dkey)) {
-                if (di->pick(p, delta, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE) && (take_insensitive || item->isVisibleAndUnlocked(dkey))) {
-                    if (std::find(list.begin(), list.end(), item) != list.end()) {
-                        return item;
-                    }
-                }
-            }
-
-            if (auto group = cast<SPGroup>(item)) {
-                if (auto ret = getItemFromListAtPointBottom(dkey, group, list, p, take_insensitive)) {
-                    return ret;
-                }
-            }
-        }
-    }
-
-    return nullptr;
-}
-
-void _build_flat_item_list(std::deque<SPItem*> &cache, SPGroup *group, unsigned int dkey, bool into_groups, bool active_only)
-{
-    for (auto& o: group->children) {
-        if (!is<SPItem>(&o)) {
-            continue;
-        }
-
-        if (is<SPGroup>(&o) && (cast<SPGroup>(&o)->effectiveLayerMode(dkey) == SPGroup::LAYER || into_groups)) {
-            _build_flat_item_list(cache, cast<SPGroup>(&o), dkey, into_groups, active_only);
-        } else {
-            auto child = cast<SPItem>(&o);
-            if (!active_only || child->isVisibleAndUnlocked(dkey)) {
-                cache.push_front(child);
-            }
-        }
-    }
-}
-
-/**
-Turn the SVG DOM into a cached flat list of nodes that can be searched from top-down.
-The list can be persisted, which improves "find at multiple points" speed.
-*/
-std::deque<SPItem*> const &SPDocument::get_flat_item_list(unsigned int dkey, bool into_groups, bool active_only) const
-{
-    // Build a caching key from our inputs
-    using key_t = decltype(_node_cache)::key_type;
-    auto const key = (key_t{dkey} << 2) | (into_groups << 1) | active_only;
-
-    auto const [it, inserted] = _node_cache.try_emplace(key);
-    if (inserted) {
-        _build_flat_item_list(it->second, root, dkey, into_groups, active_only);
-    }
-    return it->second;
-}
-
-/**
-Returns the items from the descendants of group (recursively) which are at the
-point p, or NULL if none. Honors into_groups on whether to recurse into non-layer
-groups or not. Honors take_insensitive on whether to return insensitive items.
-If upto != NULL, then if item upto is encountered (at any level), stops searching
-upwards in z-order and returns what it has found so far (i.e. the found items are
-guaranteed to be lower than upto). Requires a list of nodes built by build_flat_item_list.
-If items_count > 0, it'll return the topmost (in z-order) items_count items.
- */
-static std::vector<SPItem*> find_items_at_point(std::deque<SPItem*> const &nodes, unsigned dkey,
-                                                Geom::Point const &p, int items_count = 0, SPItem *upto = nullptr, bool outline = false)
-{
-    double const delta = Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
-
-    std::vector<SPItem*> result;
-
-    bool seen_upto = !upto;
-    for (auto node : nodes) {
-        if (!seen_upto) {
-            if (node == upto) {
-                seen_upto = true;
-            }
-            continue;
-        }
-        if (auto di = node->get_arenaitem(dkey)) {
-            if (di->pick(p, delta, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE)) {
-                result.emplace_back(node);
-                if (--items_count == 0) {
-                    break;
-                }
-            }
-        }
-    }
-
-    return result;
-}
-
-static SPItem *find_item_at_point(std::deque<SPItem*> const &nodes, unsigned dkey, Geom::Point const &p, SPItem *upto = nullptr, bool outline = false)
-{
-    auto items = find_items_at_point(nodes, dkey, p, 1, upto, outline);
-    if (items.empty()) {
-        return nullptr;
-    }
-    return items.back();
-}
-
-/**
- * Returns the topmost non-layer group from the descendants of group which is at point p,
- * or null if none. Recurses into layers but not into groups.
- */
-static SPItem *find_group_at_point(unsigned dkey, SPGroup *group, Geom::Point const &p, bool outline)
-{
-    double const delta = Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
-
-    for (auto &c : group->children | std::views::reverse) {
-        if (auto group = cast<SPGroup>(&c)) {
-            if (group->effectiveLayerMode(dkey) == SPGroup::LAYER) {
-                if (auto ret = find_group_at_point(dkey, group, p, outline)) {
-                    return ret;
-                }
-            } else if (auto di = group->get_arenaitem(dkey)) {
-                if (di->pick(p, delta, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE)) {
-                    return group;
-                }
-            }
-        }
-    }
-
-    return nullptr;
-}
-
 /**
  * Return list of items, contained in box
  *
@@ -1944,58 +1809,6 @@ std::vector<SPItem*> SPDocument::getItemsPartiallyInBox(unsigned int dkey, Geom:
 {
     std::vector<SPItem*> x;
     return find_items_in_area(x, this->root, dkey, box, overlaps, take_hidden, take_insensitive, take_groups, enter_groups, enter_layers);
-}
-
-std::vector<SPItem*> SPDocument::getItemsAtPoints(unsigned const key, std::vector<Geom::Point> points, bool all_layers, bool topmost_only, size_t limit, bool active_only, bool outline) const
-{
-    std::vector<SPItem*> result;
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-
-    // When picking along the path, we don't want small objects close together
-    // (such as hatching strokes) to obscure each other by their deltas,
-    // so we temporarily set delta to a small value
-    gdouble saved_delta = prefs->getDouble("/options/cursortolerance/value", 1.0);
-    prefs->setDouble("/options/cursortolerance/value", 0.25);
-
-    auto &node_cache = get_flat_item_list(key, true, active_only);
-
-    SPObject *current_layer = nullptr;
-    SPDesktop *desktop = SP_ACTIVE_DESKTOP;
-    if(desktop){
-        current_layer = desktop->layerManager().currentLayer();
-    }
-    size_t item_counter = 0;
-    for(auto point : points) {
-        std::vector<SPItem*> items = find_items_at_point(node_cache, key, point, topmost_only, nullptr, outline);
-        for (SPItem *item : items) {
-            if (item && result.end()==find(result.begin(), result.end(), item))
-                if(all_layers || (desktop && desktop->layerManager().layerForObject(item) == current_layer)){
-                    result.push_back(item);
-                    item_counter++;
-                    //limit 0 = no limit
-                    if(item_counter == limit){
-                        prefs->setDouble("/options/cursortolerance/value", saved_delta);
-                        return result;
-                    }
-                }
-        }
-    }
-
-    // and now we restore it back
-    prefs->setDouble("/options/cursortolerance/value", saved_delta);
-
-    return result;
-}
-
-SPItem *SPDocument::getItemAtPoint( unsigned const key, Geom::Point const &p,
-                                    bool const into_groups, SPItem *upto, bool outline) const
-{
-    return find_item_at_point(get_flat_item_list(key, into_groups, true), key, p, upto, outline);
-}
-
-SPItem *SPDocument::getGroupAtPoint(unsigned int key, Geom::Point const &p, bool outline) const
-{
-    return find_group_at_point(key, this->root, p, outline);
 }
 
 // Resource management
@@ -2385,6 +2198,11 @@ sigc::connection SPDocument::connectModified(SPDocument::ModifiedSignal::slot_ty
     return modified_signal.connect(slot);
 }
 
+sigc::connection SPDocument::connectObjectBound(SPDocument::ObjectBoundSignal::slot_type slot)
+{
+    return object_bound_signal.connect(slot);
+}
+
 sigc::connection SPDocument::connectFilenameSet(SPDocument::FilenameSetSignal::slot_type slot)
 {
     return filename_set_signal.connect(slot);
@@ -2435,7 +2253,6 @@ void SPDocument::_emitModified(unsigned int object_modified_tag) {
     static guint const flags = SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_CHILD_MODIFIED_FLAG | SP_OBJECT_PARENT_MODIFIED_FLAG;
     root->emitModified(object_modified_tag);
     modified_signal.emit(flags);
-    clearNodeCache();
 }
 
 void

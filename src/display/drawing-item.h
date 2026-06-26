@@ -167,7 +167,7 @@ public:
     unsigned render(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags = 0, DrawingItem const *stop_at = nullptr) const;
     unsigned render(DrawingContext &dc, Geom::IntRect const &area, unsigned flags = 0) const;
     void clip(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const;
-    DrawingItem *pick(Geom::Point const &p, double delta, unsigned flags = 0);
+    DrawingItem *pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags = 0);
 
     Glib::ustring name() const; // For debugging
     void recursivePrintTree(unsigned level = 0) const;  // For debugging
@@ -199,7 +199,7 @@ protected:
     virtual unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) { return 0; }
     virtual unsigned _renderItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const { return RENDER_OK; }
     virtual void _clipItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const {}
-    virtual DrawingItem *_pickItem(Geom::Point const &p, double delta, unsigned flags) { return nullptr; }
+    virtual DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) { return nullptr; }
     virtual bool _canClip() const { return false; }
     virtual void _dropPatternCache() {}
 

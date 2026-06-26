@@ -175,6 +175,8 @@ private:
     sigc::scoped_connection _message_idle_connection;
     sigc::connection _document_uri_set_connection;
     sigc::connection _saved_or_modified_conn;
+    sigc::connection _document_modified_conn;
+    sigc::connection _document_object_bound_conn;
 
     std::unique_ptr<Inkscape::UI::Tools::ToolBase> _tool;
     std::unique_ptr<Inkscape::Display::TemporaryItemList> _temporary_item_list;
@@ -577,6 +579,18 @@ private:
     void on_zoom_end(Gdk::EventSequence *sequence);
 
     void onStatusMessage(Inkscape::MessageType type, char const *message);
+
+    std::deque<SPItem*> const &get_flat_item_list(bool into_groups, bool active_only) const;
+    SPItem *_getItemFromListAtPointBottom(SPGroup *group, std::vector<SPItem*> const &list, Geom::Point const &p) const;
+    std::vector<SPItem*> find_items_at_point(std::deque<SPItem*> const &nodes, Geom::Point const &p, int items_count = 0, SPItem *upto = nullptr) const;
+    SPItem *find_item_at_point(std::deque<SPItem*> const &nodes, Geom::Point const &p, SPItem *upto = nullptr) const;
+    SPItem *find_group_at_point(SPGroup *group, Geom::Point const &p) const;
+
+    // Find items by geometry --------------------
+    mutable std::map<unsigned long, std::deque<SPItem*>> _node_cache; // Used to speed up search.
+
+public:
+    void clearNodeCache() { _node_cache.clear(); }
 };
 
 #endif // INKSCAPE_DESKTOP_H

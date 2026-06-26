@@ -984,7 +984,7 @@ Gtk::EventSequenceState Canvas::on_button_pressed(Gtk::GestureClick const &contr
     grab_focus();
 
     if (controller.get_current_button() == 3) {
-        _drawing->getCanvasItemDrawing()->set_sticky(_state & GDK_SHIFT_MASK);
+        _desktop->getCanvasDrawing()->set_sticky(_state & GDK_SHIFT_MASK);
     }
 
     // Drag the split view controller.
@@ -1375,7 +1375,7 @@ CanvasItem *CanvasPrivate::find_item_at(Geom::Point pt)
         pt *= q->_affine.inverse() * canvasitem_ctx->affine();
     }
 
-    q->_drawing->getCanvasItemDrawing()->set_pick_outline(outline);
+    q->get_desktop()->getCanvasDrawing()->set_pick_outline(outline);
     return canvasitem_ctx->root()->pick_item(pt);
 }
 
