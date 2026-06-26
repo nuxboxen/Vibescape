@@ -37,6 +37,7 @@
 #include <glibmm/i18n.h>
 #include <2geom/bezier-utils.h>
 #include <2geom/pathvector.h>
+#include <2geom/path-intersection.h>
 
 #include "context-fns.h"
 #include "desktop-events.h"
@@ -99,7 +100,7 @@ EraserTool::EraserTool(SPDesktop *desktop)
     //TODO not sure why get 0.01 if slider width == 0, maybe a double/int problem
 
     _mode_int.min = 0;
-    _mode_int.max = 2;
+    _mode_int.max = 3;
     _updateMode();
     _mode_int.action = [this]() { _updateMode(); };
 
@@ -119,6 +120,8 @@ void EraserTool::_updateMode()
         mode = EraserToolMode::CUT;
     } else if (mode_idx == 2) {
         mode = EraserToolMode::CLIP;
+    } else if (mode_idx ==3) {
+        mode = EraserToolMode::PATH_SPLIT;
     } else {
         g_printerr("Error: invalid mode setting \"%d\" for Eraser tool!", mode_idx);
         mode = DEFAULT_ERASER_MODE;
@@ -627,6 +630,17 @@ bool EraserTool::_doWork()
 
     std::vector<EraseTarget> to_erase = _findItemsToErase();
 
+    // In PATH_SPLIT mode, any selected item not touched by the eraser should stay selected
+    if (mode == EraserToolMode::PATH_SPLIT && was_selection) {
+        for (auto *selected : selection->items()) {
+            bool in_to_erase = std::any_of(to_erase.begin(), to_erase.end(),
+                [selected](EraseTarget const &t) { return t.item == selected; });
+            if (!in_to_erase) {
+                _survivers.push_back(selected);
+            }
+        }
+    }
+
     bool work_done = false;
     if (!to_erase.empty()) {
         selection->clear();
@@ -835,6 +849,16 @@ bool EraserTool::_performEraseOperation(std::vector<EraseTarget> const &items_to
         }
         for (auto const &target : items_to_erase) {
             _clipErase(target.item);
+        }
+        return true;
+    } else if (mode == EraserToolMode::PATH_SPLIT) {
+        for (auto const &target : items_to_erase) {
+            if (target.item) {
+                auto survivors = _pathSplitErase(target.item);
+                if (store_survivers && target.was_selected) {
+                    _survivers.insert(_survivers.end(), survivors.begin(), survivors.end());
+                }
+            }
         }
         return true;
     } else { // mode == EraserToolMode::DELETE
@@ -1151,8 +1175,11 @@ std::vector<EraseTarget> EraserTool::_findItemsToErase()
         }
         std::vector<SPItem *> candidates = document->getItemsPartiallyInBox(_desktop->dkey, *eraser_bbox,
                                                                             false, false, false, true);
+
+
         std::vector<EraseTarget> allowed; ///< Items we're allowed to erase based on selection
         allowed.reserve(candidates.size());
+
 
         // If selection is empty, we're allowed to erase all items except the eraser stroke itself.
         if (selection->isEmpty()) {
@@ -1163,7 +1190,27 @@ std::vector<EraseTarget> EraserTool::_findItemsToErase()
             }
         } // How we handle non-empty selection further depends on the mode.
 
-        if (mode == EraserToolMode::CUT) {
+        if (mode == EraserToolMode::PATH_SPLIT) {
+            // Erase all candidates (or only selected if selection is non-empty)
+            if (selection->isEmpty()) {
+                for (auto *candidate : candidates) {
+                    if (candidate != _acid && (cast<SPPath>(candidate) || cast<SPShape>(candidate))) {
+                        allowed.emplace_back(candidate, false);
+                    }
+                }
+            } else {
+                for (auto *selected : selection->items()) {
+                    for (auto *candidate : candidates) {
+                        if (selected == candidate && (cast<SPPath>(candidate) || cast<SPShape>(candidate))) {
+                            allowed.emplace_back(candidate, true);
+                        }
+                    }
+                }
+            }
+            // No further collision filtering needed — just add all allowed
+            result.insert(result.end(), allowed.begin(), allowed.end());
+
+        } else if (mode == EraserToolMode::CUT) {
             // In CUT mode, we must unpack groups, since the boolean difference/cut operation
             // doesn't make sense for a group.
             for (auto *selected : selection->items()) {
@@ -1377,6 +1424,151 @@ void EraserTool::_drawTemporaryBox()
     currentcurve.closepath();
     currentshape->set_bpath(&currentcurve, true);
 }
+
+/**
+ * @brief Splits open paths at intersections with the eraser stroke,
+ *        removing the portions that fall within the eraser stroke width.
+ *        This is the "true path eraser" mode for open stroked paths.
+ */
+
+std::vector<SPItem *> EraserTool::_pathSplitErase(SPItem *item)
+{
+    using namespace Geom;
+
+    auto *path = cast<SPPath>(item);
+    if (!path) return {};
+
+    auto const &curve = path->curve();
+    if (!curve) return {};
+    if (accumulated.is_empty()) return {};
+
+    PathVector eraser_pv = accumulated.get_pathvector() * _desktop->dt2doc();
+    Affine item_transform = item->i2doc_affine();
+    PathVector target_pv = curve->get_pathvector() * item_transform;
+
+    if (target_pv.empty()) return {};
+
+    // Test if a point is inside the eraser shape using winding number
+    auto is_inside_eraser = [&](Point const &pt) -> bool {
+        for (auto const &ep : eraser_pv) {
+            if (ep.winding(pt) != 0) return true;
+        }
+        return false;
+    };
+
+    // Safely get a point on a path at a PathTime, clamped to valid range
+    auto safe_point_at = [&](Path const &p, PathTime const &pt) -> Point {
+        if (p.empty()) return Point(0, 0);
+        size_t ci = std::min(pt.curve_index, p.size() - 1);
+        double t = std::max(0.0, std::min(pt.t, 1.0));
+        return p.pointAt(PathTime(ci, t));
+    };
+
+    PathVector result_pv;
+
+    for (auto const &target_path : target_pv) {
+        size_t path_size = target_path.size();
+        if (path_size == 0) continue;
+
+        // Collect intersection PathTimes with all eraser sub-paths
+        std::vector<PathTime> hit_times;
+        for (auto const &eraser_path : eraser_pv) {
+            auto ixs = target_path.intersect(eraser_path);
+            for (auto const &ix : ixs) {
+                PathTime pt = ix.first;
+                // Skip intersections extremely close to endpoints
+                double approx_t = (pt.curve_index + pt.t) / (double)path_size;
+                if (approx_t > 1e-3 && approx_t < 1.0 - 1e-3) {
+                    hit_times.push_back(pt);
+                }
+            }
+        }
+
+        if (hit_times.empty()) {
+            // No crossings — keep whole path if outside eraser
+            Point test_pt = safe_point_at(target_path, PathTime(0, 0.5));
+            if (!is_inside_eraser(test_pt)) {
+                result_pv.push_back(target_path);
+            }
+            continue;
+        }
+
+        // Sort and deduplicate
+        std::sort(hit_times.begin(), hit_times.end());
+        hit_times.erase(
+            std::unique(hit_times.begin(), hit_times.end(),
+                [](PathTime const &a, PathTime const &b) {
+                    return a.curve_index == b.curve_index &&
+                           std::abs(a.t - b.t) < 1e-4;
+                }),
+            hit_times.end());
+
+        // Build split list with sentinels at start and end
+        // Use 0.001 and 0.999 instead of exactly 0.0 and 1.0 to avoid
+        // degenerate portion() calls at exact endpoints
+        std::vector<PathTime> splits;
+        splits.emplace_back(0, 0.001);
+        for (auto const &pt : hit_times) {
+            splits.push_back(pt);
+        }
+        splits.emplace_back(path_size - 1, 0.999);
+
+        for (size_t i = 0; i + 1 < splits.size(); ++i) {
+            PathTime t0 = splits[i];
+            PathTime t1 = splits[i + 1];
+
+            // Skip degenerate segments
+            if (t0.curve_index == t1.curve_index && t1.t - t0.t < 1e-4) continue;
+            if (t1 < t0) continue;
+
+            // Test two points: just inside t0 and just inside t1
+            // Use 10% into the segment from each end
+            double span = (t1.curve_index - t0.curve_index) + (t1.t - t0.t);
+            double offset = std::min(0.1, span * 0.1);
+
+            double tt0 = t0.t + offset;
+            size_t ci0 = t0.curve_index;
+            if (tt0 >= 1.0 && ci0 + 1 < path_size) { ci0++; tt0 = 0.1; }
+            tt0 = std::min(tt0, 0.999);
+
+            double tt1 = t1.t - offset;
+            size_t ci1 = t1.curve_index;
+            if (tt1 <= 0.0 && ci1 > 0) { ci1--; tt1 = 0.9; }
+            tt1 = std::max(tt1, 0.001);
+
+            Point pt0 = safe_point_at(target_path, PathTime(ci0, tt0));
+            Point pt1 = safe_point_at(target_path, PathTime(ci1, tt1));
+
+            // Keep if either end is outside eraser
+            if (!is_inside_eraser(pt0) || !is_inside_eraser(pt1)) {
+                try {
+                    Path segment = target_path.portion(t0, t1);
+                    segment.close(false);
+                    if (!segment.empty()) {
+                        result_pv.push_back(segment);
+                    }
+                } catch (...) {
+                    // If portion() fails for any reason, keep the original
+                    result_pv.push_back(target_path);
+                }
+            }
+        }
+    }
+
+    result_pv *= item_transform.inverse();
+
+    if (result_pv.empty()) {
+        item->deleteObject(true);
+        return {};
+    } else {
+        path->setCurve(SPCurve(result_pv));
+        item->updateRepr();
+        return {item};
+    }
+}
+
+
+
 
 } // namespace Inkscape::UI::Tools
 

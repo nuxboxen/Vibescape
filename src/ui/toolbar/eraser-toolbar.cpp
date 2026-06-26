@@ -190,6 +190,8 @@ unsigned EraserToolbar::_modeAsInt(Tools::EraserToolMode const mode)
         return 1;
     } else if (mode == EraserToolMode::CLIP) {
         return 2;
+    } else if (mode == EraserToolMode::PATH_SPLIT) {
+        return 3;
     } else {
         return _modeAsInt(DEFAULT_ERASER_MODE);
     }
