@@ -223,28 +223,32 @@ struct DumbTab : Gtk::Box
         , BUILD(close)
     {
         set_name("DocumentTab");
+        property_accessible_role().set_value(Gtk::Accessible::Role::TAB);
+
         append(get_widget<Gtk::Box>(builder, "root"));
     }
 
     void set_active()
     {
-        get_style_context()->add_class("tab_active");
+        set_state_flags(Gtk::StateFlags::CHECKED, false);
     }
 
     void set_inactive()
     {
-        get_style_context()->remove_class("tab_active");
+        unset_state_flags(Gtk::StateFlags::CHECKED);
     }
 };
 
 /// The actual tabs that are shown in the tab bar.
-struct Tab : DumbTab
+struct Tab : CssNameClassInit, DumbTab
 {
     SPDesktop *const desktop;
     TabsWidget *const parent;
 
     Tab(SPDesktop *desktop, TabsWidget *parent)
-        : desktop{desktop}
+        : Glib::ObjectBase("Tab")
+        , CssNameClassInit{"tab"}
+        , desktop{desktop}
         , parent{parent}
     {
         set_has_tooltip(true);
@@ -491,12 +495,15 @@ static SPDesktop *consume_tab_return_desktop(std::shared_ptr<Tab> tab)
 }
 
 TabsWidget::TabsWidget(SPDesktopWidget *desktop_widget)
-    : _desktop_widget{desktop_widget}
+    : Glib::ObjectBase("TabsWidget")
+    , CssNameClassInit{"tabs"}
+    , _desktop_widget{desktop_widget}
     , _overlay{Gtk::make_managed<PointerTransparentWidget>()}
 {
     set_name("DocumentTabsWidget");
     set_overflow(Gtk::Overflow::HIDDEN);
     containerize(*this);
+    property_accessible_role().set_value(Gtk::Accessible::Role::TAB_LIST);
 
     _overlay->insert_at_end(*this); // always kept topmost
     _overlay->set_name("Overlay");

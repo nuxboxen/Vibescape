@@ -54,7 +54,6 @@ struct SimpleTab : Gtk::Widget
     Gtk::Button _close;
     Gtk::Image _handle;
     Gtk::Image _icon;
-    Gtk::DrawingArea _mask;
     TabStrip::ShowLabels _show_labels = TabStrip::ShowLabels::Never;
     bool _show_close_btn = true;
 
@@ -68,26 +67,13 @@ struct SimpleTab : Gtk::Widget
         _show_close_btn = src._show_close_btn;
     }
 
-    SimpleTab() {
+    SimpleTab()
+    {
         _name.set_halign(Gtk::Align::START);
         _name.set_xalign(0);
         _handle.set_from_icon_name("dnd");
         _handle.set_visible(false);
 
-        // a fade-out mask for overflowing text
-        _mask.set_draw_func([this](auto& ctx, auto w, auto h) {
-            ctx->rectangle(0, 0, w, h);
-            auto g = Cairo::LinearGradient::create(0, 0, w, 1);
-            auto style = get_style_context();
-            Gdk::RGBA bg(1,1,1);
-            // look up our background color; this is fragile as we need to stay in sync with style.css
-            style->lookup_color(has_css_class("tab-active") ? "theme_base_color" : "theme_bg_color", bg);
-            g->add_color_stop_rgba(0.0, bg.get_red(), bg.get_green(), bg.get_blue(), 0.0);
-            g->add_color_stop_rgba(1.0, bg.get_red(), bg.get_green(), bg.get_blue(), 1.0);
-            ctx->set_source(g);
-            ctx->fill();
-        });
-        _mask.set_can_target(false);
         _handle.set_can_target(false);
         _icon.set_can_target(false);
         _name.set_can_target(false);
@@ -103,15 +89,15 @@ struct SimpleTab : Gtk::Widget
         _handle.insert_at_end(*this);
         _icon.insert_at_end(*this);
         _name.insert_at_end(*this);
-        _mask.insert_at_end(*this);
         _close.insert_at_end(*this);
         containerize(*this);
         set_name("SimpleTab");
         set_overflow(Gtk::Overflow::HIDDEN);
+        property_accessible_role().set_value(Gtk::Accessible::Role::TAB);
     }
 
     void set_active() {
-        get_style_context()->add_class("tab-active");
+        set_state_flags(Gtk::StateFlags::CHECKED, false);
         if (_show_close_btn) {
             _close.set_visible();
         }
@@ -120,7 +106,7 @@ struct SimpleTab : Gtk::Widget
         }
     }
     void set_inactive() {
-        get_style_context()->remove_class("tab-active");
+        unset_state_flags(Gtk::StateFlags::CHECKED);
         if (_show_close_btn) {
             _close.set_visible(false);
         }
@@ -174,8 +160,6 @@ struct SimpleTab : Gtk::Widget
             nat += sizes.natural + 2 * MARGIN;
         }
 
-        (void)_mask.measure(orientation);
-
         if (min > nat) {
             nat = min;
         }
@@ -214,10 +198,6 @@ struct SimpleTab : Gtk::Widget
             }
         }
 
-        // hide fade-out mask
-        _mask.size_allocate(Gtk::Allocation(0, 0, 0, 0), -1);
-        _mask.set_opacity(0);
-
         // text label, if any
         if (_name.get_visible()) {
             auto name_w = _name.measure(Gtk::Orientation::HORIZONTAL, -1).sizes.natural;
@@ -239,13 +219,6 @@ struct SimpleTab : Gtk::Widget
                 _name.size_allocate(Gtk::Allocation(x, y, w, height), -1);
                 x += w;
                 width -= w;
-
-                if (w < name_w) {
-                    // text doesn't fit; add a fade-out mask
-                    int mask_size = 20;
-                    _mask.set_opacity(1);
-                    _mask.size_allocate(Gtk::Allocation(full_width - handle_w - mask_size, y, mask_size, height - 8), -1);
-                }
             }
             else {
                 // not enough space - hide text using 0 opacity (cannot use visibility; it would trigger re-alloc)
@@ -278,11 +251,14 @@ struct SimpleTab : Gtk::Widget
 };
 
 /// The actual tabs that are shown in the tab bar.
-struct TabWidget : SimpleTab
+struct TabWidget : CssNameClassInit, SimpleTab
 {
     TabStrip *const parent;
 
-    TabWidget(TabStrip* parent) : parent{parent}
+    TabWidget(TabStrip* parent)
+        : Glib::ObjectBase("TabWidget")
+        , CssNameClassInit{"tab"}
+        , parent{parent}
     {
         set_has_tooltip(true);
     }
@@ -550,6 +526,7 @@ void TabStrip::construct()
     set_name("TabStrip");
     set_overflow(Gtk::Overflow::HIDDEN);
     containerize(*this);
+    property_accessible_role().set_value(Gtk::Accessible::Role::TAB_LIST);
 
     _plus_btn.set_name("NewTabButton");
     _plus_btn.set_valign(Gtk::Align::CENTER);
@@ -673,6 +650,7 @@ void TabStrip::construct()
 
 TabStrip::TabStrip(Gtk::Orientation orientation)
     : Glib::ObjectBase("TabStrip")
+    , CssNameClassInit{"tabs"}
     , _overlay{Gtk::make_managed<PointerTransparentWidget>()}
 {
     set_orientation(orientation);
@@ -681,6 +659,7 @@ TabStrip::TabStrip(Gtk::Orientation orientation)
 
 TabStrip::TabStrip(GtkWidget* cobject, const Glib::RefPtr<Gtk::Builder>& builder)
     : Glib::ObjectBase("TabStrip")
+    , CssNameClassInit{"tabs"}
     , BuildableWidget(cobject, builder)
     , _overlay{Gtk::make_managed<PointerTransparentWidget>()}
 {

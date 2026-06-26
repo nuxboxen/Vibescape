@@ -23,6 +23,7 @@
 
 #include "display/control/canvas-item-ptr.h"
 #include "preferences.h"
+#include "ui/widget/generic/css-name-class-init.h"
 #include "ui/widget/generic/popover-bin.h"
 #include "util/action-accel.h"
 
@@ -62,7 +63,7 @@ class TabsWidget;
  * A Gtk::Grid widget that contains rulers, scrollbars, buttons, and, of course, the canvas.
  * Canvas has an overlay to let us put stuff on the canvas.
  */
-class CanvasGrid : public Gtk::Grid
+class CanvasGrid : public CssNameClassInit, public Gtk::Grid
 {
     using parent_type = Gtk::Grid;
 
