@@ -17,7 +17,7 @@ All available properties:
     size-extra: 1px; -> extra space to fine-tune handle size with relation to other handles
     stroke-scale: 0.10; -> factor for scaling stroke with handle size or 0 to disable scaling
 
-Where 'shape' is one of: 
+Where 'shape' is one of:
     'square'
     'diamond'
     'circle'
@@ -223,7 +223,7 @@ Notes:
 .inkscape-guide-handle {
     /* guide lines handles are tiny and unobtrusive */
     scale: 0.5;
-    size-extra: 3px;
+    size-extra: 5px;
     stroke-width: 1.0px;
     stroke-scale: 0;
     outline-width: 0px;
