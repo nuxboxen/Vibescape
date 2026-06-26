@@ -101,6 +101,8 @@ PangoFontDescription *ink_font_description_from_style(SPStyle const *style)
         pango_font_description_set_variations(descr, style->font_variation_settings.toString().c_str());
     }
 
+    pango_font_description_set_size(descr, style->font_size * PANGO_SCALE);
+
     return descr;
 }
 
