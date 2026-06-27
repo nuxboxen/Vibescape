@@ -95,14 +95,7 @@ DrawingItem::DrawingItem(Drawing &drawing)
 
 DrawingItem::~DrawingItem()
 {
-    // Unactivate if active.
-    if (auto itemdrawing = _drawing.getCanvasItemDrawing()) {
-        if (itemdrawing->get_active() == this) {
-            itemdrawing->set_active(nullptr);
-        }
-    } else {
-        // Typically happens, e.g. for any non-Canvas Drawing.
-    }
+    _drawing._item_deleted_signal.emit(_key);
 
     // Remove caching candidate entry.
     if (_has_cache_iterator) {
@@ -1132,9 +1125,7 @@ void DrawingItem::_markForRendering()
         bkg_root->_invalidateFilterBackground(*dirty);
     }
 
-    if (auto canvasitem = drawing().getCanvasItemDrawing()) {
-        canvasitem->get_canvas()->redraw_area(*dirty);
-    }
+    _drawing._redraw_area_signal.emit(*dirty);
 }
 
 void DrawingItem::_invalidateFilterBackground(Geom::IntRect const &area)
@@ -1182,11 +1173,7 @@ void DrawingItem::_markForUpdate(unsigned flags, bool propagate)
             // up to the root. Do not bother recursing, because it won't change anything.
             // Also do this if we are the root item, because we have no more ancestors
             // to invalidate.
-            if (drawing().getCanvasItemDrawing()) {
-                drawing().getCanvasItemDrawing()->request_update();
-            } else {
-                // Typically happens, e.g. for any non-Canvas Drawing.
-            }
+            _drawing._drawing_updated_signal.emit();
         }
     }
 }

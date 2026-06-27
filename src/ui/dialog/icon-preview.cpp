@@ -30,6 +30,7 @@
 #include "display/drawing.h"
 #include "object/sp-root.h"
 #include "page-manager.h"
+#include "preferences.h"
 #include "selection.h"
 #include "ui/util.h"
 #include "ui/widget/frame.h"

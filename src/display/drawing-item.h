@@ -25,6 +25,8 @@
 #include <boost/operators.hpp>
 #include <2geom/affine.h>
 #include <2geom/rect.h>
+#include <sigc++/signal.h>
+#include <sigc++/connection.h>
 
 #include "colors/color.h"
 #include "style-enums.h"
@@ -172,6 +174,8 @@ public:
     Glib::ustring name() const; // For debugging
     void recursivePrintTree(unsigned level = 0) const;  // For debugging
 
+    sigc::connection connectItemDeleted(sigc::slot<void ()> const &slot) { return _delete_item_signal.connect(slot); }
+
 protected:
     enum class ChildType : unsigned char
     {
@@ -270,6 +274,8 @@ protected:
         auto &drawing = static_cast<std::enable_if_t<(sizeof(F) > 0), Drawing&>>(_drawing);
         drawing.defer(std::forward<F>(f));
     }
+
+    sigc::signal<void()> _delete_item_signal;
 
     friend class Drawing;
 };

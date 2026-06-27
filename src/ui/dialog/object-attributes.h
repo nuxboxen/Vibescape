@@ -24,6 +24,7 @@
 
 #include "desktop.h"
 #include "object/sp-object.h"
+#include "preferences.h"
 #include "ui/dialog/dialog-base.h"
 #include "ui/dialog/object-properties.h"
 #include "ui/operation-blocker.h"
