@@ -402,9 +402,10 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
           if (askTo < 0 || askTo >= numberOfEdges() ) {
             parentContour=-1;
           } else {
-            if (getEdge(askTo).prevS >= 0) {
-                parentContour = swdData[askTo].misc;
-                parentContour-=1; // to compensate for the discrepancy
+            parentContour = swdData[askTo].misc;
+            parentContour-=1; // to compensate for the discrepancy
+            if (parentContour >= 0 && parentContour < nbNest && nesting[parentContour] != -1) {
+              parentContour = nesting[parentContour];
             }
             childEdge = getPoint(fi).incidentEdge[FIRST];
           }

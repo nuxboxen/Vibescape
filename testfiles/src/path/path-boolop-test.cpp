@@ -7,6 +7,8 @@
 
 #include "path/path-boolop.h"
 
+#include <glib.h>
+
 // This functionality is duplicated from svg/svg-path.cpp, which ultimately
 // pulls in preferences. We avoid this by not writing the path on exception.
 Geom::PathVector read_pathv(const char *str)
@@ -23,6 +25,58 @@ Geom::PathVector read_pathv(const char *str)
     parser.parse(str);
 
     return pathv;
+}
+
+static Geom::Point rand_pt()
+{
+    return {g_random_double(), g_random_double()};
+}
+
+static Geom::Point rand_pt(Geom::Rect const &rect)
+{
+    return rect.min() + rand_pt() * rect.dimensions();
+}
+
+/// Check that @a parts can be put together to form @a whole. Nonzero fill-rule assumed.
+static bool check_jigsaw(Geom::PathVector const &whole, std::span<Geom::PathVector const> parts)
+{
+    // Compute the bounds
+    auto bounds = whole.boundsExact();
+
+    for (auto const &pathv : parts) {
+        bounds |= pathv.boundsExact();
+    }
+
+    if (!bounds) {
+        return true;
+    }
+
+    // Check using random points that pathvs union to path without overlap.
+    for (int i = 0; i < 100; i++) {
+        auto pt = rand_pt(*bounds);
+
+        // Allow retries with perturbation in case pt somehow lands exactly on a boundary.
+        for (int j = 0; j < 5; j++) {
+            pt += rand_pt() * Geom::EPSILON;
+
+            bool const in_whole = whole.winding(pt) != 0;
+
+            int in_parts = 0;
+            for (auto const &pathv : parts) {
+                in_parts += pathv.winding(pt) != 0;
+            }
+
+            if (in_whole == in_parts) {
+                goto nested_continue;
+            }
+        }
+
+        return false;
+
+    nested_continue:;
+    }
+
+    return true;
 }
 
 class PathBoolopTest : public ::testing::Test
@@ -174,4 +228,29 @@ TEST_F(PathBoolopTest, CutDisjoint) {
 
     auto actual = sp_pathvector_boolop(rectangle_bigger, rectangle_outside, bool_op_cut, fill_oddEven, fill_oddEven);
     comparePaths(actual, expected);
+}
+
+TEST_F(PathBoolopTest, CutNesting)
+{
+    // Test the examples from https://gitlab.com/inkscape/inkscape/-/work_items/4477
+
+    g_random_set_seed(0xdeadbeef);
+
+    {
+        auto const rect = Geom::Path{Geom::IntRect::from_xywh(0, 0, 8, 7)};
+        auto const path = read_pathv("M 4,4 H 7 V 6 H 4 Z M 1,5 6,1 5,3 Z");
+        auto const shapes = pathvector_cut(rect, path);
+
+        EXPECT_EQ(shapes.size(), 3);
+        EXPECT_TRUE(check_jigsaw(rect, shapes));
+    }
+
+    {
+        auto const rect = Geom::Path{Geom::IntRect::from_xywh(0, 0, 8, 9)};
+        auto const path = read_pathv("M 1 8 4 3 1 1 Z M 3 7 4 5 6 4 Z M 2 2 H 7 V 8 H 2 Z");
+        auto const shapes = pathvector_cut(rect, path);
+
+        EXPECT_EQ(shapes.size(), 5);
+        EXPECT_TRUE(check_jigsaw(rect, shapes));
+    }
 }
