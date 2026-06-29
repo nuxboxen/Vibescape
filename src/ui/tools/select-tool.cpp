@@ -215,13 +215,16 @@ bool SelectTool::item_handler(SPItem *local_item, CanvasEvent const &event)
                 // remember what modifiers were on before button press
                 button_press_state = event.modifiers;
                 bool in_groups = mod_select_in_groups->active(button_press_state);
-                bool force_drag = mod_select_force_drag->active(button_press_state);
                 bool always_box = mod_select_always_box->active(button_press_state);
                 bool touch_path = mod_select_touch_path->active(button_press_state);
+                bool duplicate_drag = mod_select_duplicate->active(button_press_state);
 
-                // if shift or ctrl was pressed, do not move objects;
-                // pass the event to root handler which will perform rubberband, shift-click, ctrl-click, ctrl-drag
-                if (!(always_box || in_groups || touch_path)) {
+                bool is_modified_click = always_box || in_groups || touch_path || duplicate_drag;
+
+                // If a modifier is pressed to perform an action other than
+                // dragging, pass the event to the root handler to perform
+                // rubberband and other actions.
+                if (!is_modified_click) {
                     dragging = true;
                     moved = false;
 
@@ -233,6 +236,7 @@ bool SelectTool::item_handler(SPItem *local_item, CanvasEvent const &event)
                         item = nullptr;
                     }
 
+                    bool force_drag = mod_select_force_drag->active(button_press_state);
                     item = sp_event_context_find_item (_desktop, event.pos, force_drag, false);
                     sp_object_ref(item, nullptr);
 
