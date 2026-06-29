@@ -4,12 +4,12 @@
 <svg
    version="2.0"
    id="svg1"
-   width="1122.5197"
-   height="793.70079"
-   viewBox="0 0 1122.5197 793.70079"
+   width="1122.519685"
+   height="793.700788"
+   viewBox="0 0 1122.519685 793.700788"
    sodipodi:docname="rotated-gradients.pdf"
    standalone="no"
-   inkscape:version="1.5-dev (98413dd718, 2026-02-08, custom)"
+   inkscape:version="1.5-dev (6f35fa1fa1, 2026-06-26, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -22,16 +22,16 @@
     <view
        inkscape:label="1"
        id="view1"
-       viewBox="0 0 1122.5197 793.70079"
+       viewBox="0 0 1122.519685 793.700788"
        inkscape:margin="0"
        inkscape:bleed="0" />
     <linearGradient
        x1="49.271114"
        y1="38.464291"
-       x2="105.33476"
-       y2="100.78111"
+       x2="105.334763"
+       y2="100.781113"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(0,-3.779528,3.779528,0,0,793.70079)"
+       gradientTransform="matrix(0,-3.779528,3.779528,0,0,793.700788)"
        spreadMethod="pad"
        id="linearGradient4">
       <stop
@@ -45,11 +45,11 @@
     </linearGradient>
     <linearGradient
        x1="48.681511"
-       y1="169.41367"
-       x2="111.22161"
-       y2="233.85242"
+       y1="169.413666"
+       x2="111.221611"
+       y2="233.852417"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(0,-3.779528,3.779528,0,0,793.70079)"
+       gradientTransform="matrix(0,-3.779528,3.779528,0,0,793.700788)"
        spreadMethod="pad"
        id="linearGradient9">
       <stop
@@ -76,7 +76,7 @@
      inkscape:groupmode="layer"
      inkscape:label="1">
     <path
-       d="M 108.792,665.11679 V 331.61145 h 319.18267 v 333.50534 z"
+       d="M 108.792,665.116788 V 331.6114547 H 427.9746667 V 665.116788 Z"
        style="fill:url(#linearGradient4);fill-rule:evenodd;stroke:none"
        opacity="1"
        id="path4" />
@@ -84,14 +84,14 @@
        id="path5"
        d="M 96.438,81.594 H 346.567 V 320.981 H 96.438 Z"
        style="fill:none;stroke:#000000;stroke-width:30.9832;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0,-1.3333333,1.3333333,0,0,793.70079)" />
+       transform="matrix(0,-1.333333333,1.333333333,0,0,793.700788)" />
     <path
        id="path6"
        d="M 92.969,454.07 H 343.094 V 693.457 H 92.969 Z"
        style="fill:none;stroke:#000000;stroke-width:30.9832;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0,-1.3333333,1.3333333,0,0,793.70079)" />
+       transform="matrix(0,-1.333333333,1.333333333,0,0,793.700788)" />
     <path
-       d="m 605.42667,669.74212 v -333.5 h 319.18266 v 333.5 z"
+       d="m 605.4266667,669.7421213 v -333.5 h 319.1826666 v 333.5 z"
        style="fill:url(#linearGradient9);fill-rule:evenodd;stroke:none"
        opacity="1"
        id="path9" />

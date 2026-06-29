@@ -6,7 +6,7 @@ namespace Inkscape::Util {
 
 int get_default_numeric_precision()
 {
-    return 8;
+    return 10;
 }
 
 } // namespace Inkscape::Util

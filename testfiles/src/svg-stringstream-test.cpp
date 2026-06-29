@@ -24,7 +24,6 @@ static void assert_tostring_eq(T value, const char *expected)
 {
     S os;
 
-    // default of /options/svgoutput/numericprecision
     os.precision(8);
 
     os << value;

@@ -4,11 +4,12 @@
 <svg
    version="2.0"
    id="svg1"
-   width="793.70133"
+   width="793.7013333"
    height="1122.52"
-   viewBox="0 0 793.70133 1122.52"
+   viewBox="0 0 793.7013333 1122.52"
    sodipodi:docname="multiple-style-same-text-block.pdf"
    standalone="no"
+   inkscape:version="1.5-dev (6f35fa1fa1, 2026-06-26, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -21,7 +22,7 @@
     <view
        inkscape:label="1"
        id="view1"
-       viewBox="0 0 793.70133 1122.52"
+       viewBox="0 0 793.7013333 1122.52"
        inkscape:margin="0"
        inkscape:bleed="0" />
   </defs>
@@ -41,30 +42,30 @@
     <text
        id="text1"
        xml:space="preserve"
-       transform="matrix(1.3333333,0,0,1.3333333,79.369333,101.43733)"><tspan
+       transform="matrix(1.333333333,0,0,1.333333333,79.36933333,101.4373333)"><tspan
          id="tspan1"
          style="font-variant:normal;font-weight:normal;font-size:33.873px;font-family:'Latin Modern Sans';writing-mode:lr-tb;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
          x="0"
-         dx="0 0 0 10.602243"
+         dx="0 0 0 10.60224274"
          y="0">SamSammington</tspan></text>
     <text
        id="text2"
        xml:space="preserve"
-       transform="matrix(1.3333333,0,0,1.3333333,79.369333,145.908)"><tspan
+       transform="matrix(1.333333333,0,0,1.333333333,79.36933333,145.908)"><tspan
          id="tspan2"
          style="font-style:oblique;font-variant:normal;font-weight:normal;font-size:17.2154px;font-family:'Latin Modern Sans';writing-mode:lr-tb;fill:#737373;fill-opacity:1;fill-rule:nonzero;stroke:none"
          x="0"
-         dx="0 0 0 0 0 0 0 0 0 0 5.3884327"
+         dx="0 0 0 0 0 0 0 0 0 0 5.38843272"
          y="0">CurriculumVitae</tspan></text>
     <path
        id="path2"
        d="M 0,0 H 83.34 V 4.606 H 0 Z"
        style="fill:#3873b2;fill-opacity:1;fill-rule:nonzero;stroke:none"
-       transform="matrix(1.3333333,0,0,-1.3333333,79.369333,196.44267)" />
+       transform="matrix(1.333333333,0,0,-1.333333333,79.36933333,196.4426667)" />
     <text
        id="text3"
        xml:space="preserve"
-       transform="matrix(1.3333333,0,0,1.3333333,206.36,198.728)"><tspan
+       transform="matrix(1.333333333,0,0,1.333333333,206.36,198.728)"><tspan
          id="tspan3"
          style="font-variant:normal;font-weight:normal;font-size:14.3462px;font-family:'Latin Modern Sans';writing-mode:lr-tb;fill:#3873b2;fill-opacity:1;fill-rule:nonzero;stroke:none"
          x="0"
@@ -72,7 +73,7 @@
     <text
        id="text4"
        xml:space="preserve"
-       transform="matrix(1.3333333,0,0,1.3333333,161.39867,224.58667)"><tspan
+       transform="matrix(1.333333333,0,0,1.333333333,161.3986667,224.5866667)"><tspan
          id="tspan4"
          style="font-variant:normal;font-weight:normal;font-size:10.9091px;font-family:'Latin Modern Sans';writing-mode:lr-tb;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
          x="0"
@@ -80,11 +81,11 @@
     <text
        id="text5"
        xml:space="preserve"
-       transform="matrix(1.3333333,0,0,1.3333333,206.36,224.58667)"><tspan
+       transform="matrix(1.333333333,0,0,1.333333333,206.36,224.5866667)"><tspan
          id="tspan5"
          style="font-variant:normal;font-weight:normal;font-size:10.9091px;font-family:'Latin Modern Sans';writing-mode:lr-tb;fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
          x="0"
-         dx="0 0 0 0 0 0 0 0.29454543 3.6436361 0 0 0 0.29454543 0 3.6436361 0 3.632727"
+         dx="0 0 0 0 0 0 0 0.29454543 3.64363606 0 0 0 0.29454543 0 3.64363606 0 3.63272697"
          y="0">Inkscapeschoolofdesign</tspan></text>
   </g>
   <metadata

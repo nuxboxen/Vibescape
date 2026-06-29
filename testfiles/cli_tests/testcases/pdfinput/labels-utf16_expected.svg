@@ -9,7 +9,7 @@
    viewBox="0 0 816 1056"
    sodipodi:docname="labels-utf16.pdf"
    standalone="no"
-   inkscape:version="1.5-dev (98413dd718, 2026-02-08, custom)"
+   inkscape:version="1.5-dev (6f35fa1fa1, 2026-06-26, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -56,12 +56,12 @@
        id="path1"
        d="M 0,0 H 165.09554 V -130.24204 H 0 Z"
        style="fill:none;stroke:#181715;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(1.3333333,0,0,-1.3333333,249.64756,352.81528)" />
+       transform="matrix(1.333333333,0,0,-1.333333333,249.64756,352.81528)" />
     <path
        id="path2"
        d="M 0,0 H 84.38217 V -201.78344 H 0 Z"
        style="fill:none;stroke:#181715;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(1.3333333,0,0,-1.3333333,159.78768,452.89172)" />
+       transform="matrix(1.333333333,0,0,-1.333333333,159.78768,452.89172)" />
   </g>
   <g
      id="layer-oc2"

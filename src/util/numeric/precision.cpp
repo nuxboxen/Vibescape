@@ -19,10 +19,10 @@ int get_default_numeric_precision()
 {
 // Make this function usable in a unit test environment.
 #ifdef INKSCAPE_UNIT_TEST
-    return 8;
+    return 10;
 #else
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    return prefs->getInt("/options/svgoutput/numericprecision", 8);
+    return prefs->getInt("/options/svgoutput/numericprecision", 10);
 #endif
 }
 
