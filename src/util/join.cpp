@@ -62,6 +62,23 @@ Glib::ustring join_with_separator(std::set<Glib::ustring> const &items)
         auto d = *iter++;
         // Translators: this is a list of four elements
         return Glib::ustring::compose(_("%1, %2, %3, %4"), a, b, c, d);
+    } else if (len == 5) {
+        auto a = *iter++;
+        auto b = *iter++;
+        auto c = *iter++;
+        auto d = *iter++;
+        auto e = *iter++;
+        // Translators: this is a list of five elements
+        return Glib::ustring::compose(_("%1, %2, %3, %4, %5"), a, b, c, d, e);
+    } else if (len == 6) {
+        auto a = *iter++;
+        auto b = *iter++;
+        auto c = *iter++;
+        auto d = *iter++;
+        auto e = *iter++;
+        auto f = *iter++;
+        // Translators: this is a list of six elements
+        return Glib::ustring::compose(_("%1, %2, %3, %4, %5, %6"), a, b, c, d, e, f);
     } else {
         // If you need to handle larger sets, add more translation lines above.
         assert(false);

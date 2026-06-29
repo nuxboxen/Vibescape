@@ -1672,8 +1672,18 @@ Glib::ustring Node::_getTip(unsigned state) const
     auto const mod_cycle_type = Modifiers::Modifier::get(Modifiers::Type::NODE_CYCLE_TYPE);
     auto const mod_delete = Modifiers::Modifier::get(Modifiers::Type::NODE_DELETE);
     auto const mod_drag_handle = Modifiers::Modifier::get(Modifiers::Type::NODE_DRAG_HANDLE);
+    auto const mod_grow_linear = Modifiers::Modifier::get(Modifiers::Type::NODE_GROW_LINEAR);
+    auto const mod_grow_spatial = Modifiers::Modifier::get(Modifiers::Type::NODE_GROW_SPATIAL);
 
-    if (mod_drag_handle->active(state)) {
+    if (mod_grow_linear->active(state)) {
+        s = Glib::ustring::compose(C_("Path node tip",
+            "<b>%1</b>: scroll to select nodes along the path"), mod_grow_linear->get_label());
+    }
+    else if (mod_grow_spatial->active(state)) {
+        s = Glib::ustring::compose(C_("Path node tip",
+            "<b>%1</b>: scroll to select nearby nodes"), mod_grow_spatial->get_label());
+    }
+    else if (mod_drag_handle->active(state)) {
         bool can_drag_out = (_next() && _front.isDegenerate()) || (_prev() && _back.isDegenerate());
 
         if (can_drag_out) {
@@ -1708,6 +1718,8 @@ Glib::ustring Node::_getTip(unsigned state) const
         labels.insert(mod_cycle_type->get_label());
         labels.insert(mod_delete->get_label());
         labels.insert(mod_drag_handle->get_label());
+        labels.insert(mod_grow_linear->get_label());
+        labels.insert(mod_grow_spatial->get_label());
         auto const more_labels = Inkscape::Util::join_with_separator(labels);
 
         if (_selection.transformHandlesEnabled() && selected()) {
