@@ -35,10 +35,12 @@
 #include <goo/gmem.h>
 #endif
 
+#include <gtk/gtk.h>
 #include <gdkmm/general.h>
 #include <glibmm/convert.h>
 #include <glibmm/i18n.h>
 #include <glibmm/miscutils.h>
+#include <gtkmm/accessible.h>
 #include <gtkmm/builder.h>
 #include <gtkmm/button.h>
 #include <gtkmm/cellrenderercombo.h>
@@ -61,7 +63,6 @@
 #include "inkscape.h"
 #include "object/sp-root.h"
 #include "pdf-parser.h"
-#include "preferences.h"
 #include "ui/builder-utils.h"
 #include "ui/dialog-events.h"
 #include "ui/dialog-run.h"
@@ -145,6 +146,7 @@ PdfImportDialog::PdfImportDialog(std::shared_ptr<PDFDoc> doc, const gchar * /*ur
     : _pdf_doc(std::move(doc))
     , _mod(mod)
     , _builder(UI::create_builder("extension-pdfinput.glade"))
+    , _notebook(UI::get_widget<Gtk::Notebook>(_builder, "import-type"))
     , _page_numbers(UI::get_widget<Gtk::Entry>(_builder, "page-numbers"))
     , _preview_area(UI::get_widget<Gtk::DrawingArea>(_builder, "preview-area"))
     , _clip_to(UI::get_widget<Gtk::ComboBox>(_builder, "clip-to"))
@@ -159,12 +161,11 @@ PdfImportDialog::PdfImportDialog(std::shared_ptr<PDFDoc> doc, const gchar * /*ur
     , _current_page(UI::get_widget<Gtk::Label>(_builder, "current-page"))
     , _font_model(UI::get_object<Gtk::ListStore>(_builder, "font-list"))
     , _font_col(new FontModelColumns())
+    , _ok_button(*Gtk::make_managed<Gtk::Button>(_("_OK"), true))
 {
     assert(_pdf_doc);
 
     _setFonts(getPdfFonts(_pdf_doc));
-
-    auto const okbutton = Gtk::make_managed<Gtk::Button>(_("_OK"), true);
 
     get_content_area()->set_homogeneous(false);
     get_content_area()->set_spacing(0);
@@ -177,11 +178,12 @@ PdfImportDialog::PdfImportDialog(std::shared_ptr<PDFDoc> doc, const gchar * /*ur
     this->property_destroy_with_parent().set_value(false);
 
     this->add_action_widget(*Gtk::make_managed<Gtk::Button>(_("_Cancel"), true), -6);
-    this->add_action_widget(*okbutton, -5);
+    this->add_action_widget(_ok_button, -5);
 
     _render_thumb = false;
 
     // Connect signals
+    _notebook.signal_switch_page().connect(sigc::mem_fun(*this, &PdfImportDialog::_onNotebookPageChanged));
     _next_page.signal_clicked().connect([this] { _setPreviewPage(_preview_page + 1); });
     _prev_page.signal_clicked().connect([this] { _setPreviewPage(_preview_page - 1); });
     _preview_area.set_draw_func(sigc::mem_fun(*this, &PdfImportDialog::_drawFunc));
@@ -200,7 +202,7 @@ PdfImportDialog::PdfImportDialog(std::shared_ptr<PDFDoc> doc, const gchar * /*ur
         filename = Glib::build_filename(Glib::get_current_dir(),filename);
     }
     Glib::ustring full_uri = Glib::filename_to_uri(filename);
-    
+
     if (!full_uri.empty()) {
         _poppler_doc = poppler_document_new_from_file(full_uri.c_str(), NULL, NULL);
     }
@@ -216,9 +218,9 @@ PdfImportDialog::PdfImportDialog(std::shared_ptr<PDFDoc> doc, const gchar * /*ur
     _current_pages = "all";
     _setPreviewPage(1);
 
-    okbutton->set_focusable();
-    set_default_widget(*okbutton);
-    set_focus(*okbutton);
+    _ok_button.set_focusable();
+    set_default_widget(_ok_button);
+    set_focus(_ok_button);
 
     auto &font_strat = UI::get_object_raw<Gtk::CellRendererCombo>(_builder, "cell-strat");
     font_strat.signal_changed().connect([this](const Glib::ustring &path, const Gtk::TreeModel::iterator &source) {
@@ -316,16 +318,44 @@ std::string PdfImportDialog::getSelectedPages()
 
 PdfImportType PdfImportDialog::getImportMethod()
 {
-    auto &import_type = UI::get_widget<Gtk::Notebook>(_builder, "import-type");
-    return (PdfImportType)import_type.get_current_page();
+    return (PdfImportType)_notebook.get_current_page();
 }
 
 void PdfImportDialog::_onPageNumberChanged()
 {
     _current_pages = _page_numbers.get_text();
+
     auto nums = parseIntRange(_current_pages, 1, _total_pages);
     if (!nums.empty()) {
         _setPreviewPage(*nums.begin());
+
+        // The input is valid; treat it as such.
+        _page_numbers.remove_css_class("error");
+        _page_numbers.reset_state(Gtk::Accessible::State::INVALID);
+
+        _ok_button.set_sensitive(true);
+    } else {
+        // Mark the entry as invalid.
+        _page_numbers.add_css_class("error");
+
+        // gtkmm doesn't seem to have a working version of this.
+        gtk_accessible_update_state(GTK_ACCESSIBLE(_page_numbers.gobj()), GTK_ACCESSIBLE_STATE_INVALID, GTK_ACCESSIBLE_INVALID_TRUE, -1);
+
+        // Disable OK button to ensure the user doesn't use an invalid page
+        // selection.
+        _ok_button.set_sensitive(false);
+    }
+}
+
+void PdfImportDialog::_onNotebookPageChanged(Gtk::Widget *page, guint pageNum) {
+    // If we're on the internal import tab, set OK sensitivity based on whether
+    // inputs are valid.
+    if (getImportMethod() == PdfImportType::PDF_IMPORT_INTERNAL) {
+        auto page_nums = parseIntRange(_page_numbers.get_text(), 1, _total_pages);
+
+        _ok_button.set_sensitive(!page_nums.empty());
+    } else {
+        _ok_button.set_sensitive(true);
     }
 }
 
@@ -688,11 +718,7 @@ std::unique_ptr<SPDocument> PdfInput::open(Input *mod, char const *uri, bool)
     }
     // Both poppler and poppler+cairo can get page num info from poppler.
     auto pages = parseIntRange(page_nums, 1, pdf_doc->getCatalog()->getNumPages());
-
-    if (pages.empty()) {
-        g_warning("No pages selected, getting first page only.");
-        pages.insert(1);
-    }
+    g_assert(!pages.empty());
 
     // Create Inkscape document from file
     std::unique_ptr<SPDocument> doc;
@@ -719,7 +745,7 @@ std::unique_ptr<SPDocument> PdfInput::open(Input *mod, char const *uri, bool)
         builder->setConvertColors(dlg ? mod->get_param_bool("convertColors", true) : convert_colors);
         builder->setGroupBy(dlg ? mod->get_param_optiongroup("groupBy") : group_by);
         std::string crop_to = mod->get_param_optiongroup("clipTo", "none");
-        
+
         double color_delta = mod->get_param_float("approximationPrecision", 2.0);
 
         for (auto p : pages) {
