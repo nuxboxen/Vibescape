@@ -32,8 +32,8 @@ void CellRendererItemIcon::update_shape()
 {
     std::string shape_type = _property_shape_type.get_value();
     if (shape_type == "-") { // "-" is an explicit request not to draw any icon
-        _shape = nullptr;
-        _overlay = nullptr;
+        _shape.reset();
+        _overlay.reset();
         return;
     }
 
@@ -53,7 +53,7 @@ void CellRendererItemIcon::update_overlay()
     } else if (clipmask == OVERLAY_BOTH) {
         _overlay = icon_theme->lookup_icon("overlay-clipmask-symbolic", ICON_SIZE);
     } else {
-        _overlay = nullptr;
+        _overlay.reset();
     }
 }
 
@@ -81,7 +81,7 @@ void CellRendererItemIcon::paint_icon(Gtk::IconPaintable *icon,
                                       const Gdk::Rectangle &area)
 {
     // Directly paint the icons ourselves, since we want to be dynamic based on the widget colors,
-    // but we can't change properties are add/remove css classes to the widget dynamically in this
+    // but we can't change properties or add/remove css classes to the widget dynamically in this
     // method or GTK will crash.
     // Note: this approach doesn't easily let us handle any state flags (like focused, insensitive).
     // The long term fix for rendering these icons with colors the "right way" is porting to

@@ -819,22 +819,49 @@ ObjectsPanel::ObjectsPanel()
         _blend_mode_column = col;
     }
 
+    _tree.set_has_tooltip(true);
     _tree.signal_query_tooltip().connect([this](int x, int y, bool kbd, const Glib::RefPtr<Gtk::Tooltip>& tooltip){
         Gtk::TreeModel::iterator iter;
         if (!_tree.get_tooltip_context_iter(x, y, kbd, iter) || !iter) {
             return false;
         }
-        auto blend = (*iter)[_model->_colBlendMode];
-        auto opacity = (*iter)[_model->_colOpacity];
-        auto templt = !pango_version_check(1, 50, 0) ?
-            "<span>%1 %2%%\n</span><span line_height=\"0.5\">\n</span><span>%3\n<i>%4</i></span>" :
-            "<span>%1 %2%%\n</span><span>\n</span><span>%3\n<i>%4</i></span>";
-        auto label = Glib::ustring::compose(templt,
-            _("Opacity:"), Util::format_number(opacity * 100.0, 1),
-            _("Blend mode:"), _blend_mode_names[blend]
-        );
-        tooltip->set_markup(label);
-        _tree.set_tooltip_cell(tooltip, nullptr, _blend_mode_column, _item_state_toggler);
+
+        // Get column we are hovering over (would be nice if the above method gave that to us)
+        int rel_x, rel_y, cell_x, cell_y;
+        Gtk::TreeModel::Path path;
+        Gtk::TreeViewColumn *column;
+        _tree.convert_widget_to_bin_window_coords(x, y, rel_x, rel_y);
+        if (!_tree.get_path_at_pos(rel_x, rel_y, path, column, cell_x, cell_y)) {
+            return false;
+        }
+
+        if (column == _blend_mode_column) {
+            auto blend = (*iter)[_model->_colBlendMode];
+            auto opacity = (*iter)[_model->_colOpacity];
+            auto templt = !pango_version_check(1, 50, 0) ?
+                "<span>%1 %2%%\n</span><span line_height=\"0.5\">\n</span><span>%3\n<i>%4</i></span>" :
+                "<span>%1 %2%%\n</span><span>\n</span><span>%3\n<i>%4</i></span>";
+            auto label = Glib::ustring::compose(templt,
+                _("Opacity:"), Util::format_number(opacity * 100.0, 1),
+                _("Blend mode:"), _blend_mode_names[blend]
+            );
+            tooltip->set_markup(label);
+        }
+        else if (column == _eye_column) {
+            auto invisible = (*iter)[_model->_colInvisible];
+            auto label = invisible ? _("Hidden") : _("Visible");
+            tooltip->set_text(label);
+        }
+        else if (column == _lock_column) {
+            auto locked = (*iter)[_model->_colLocked];
+            auto label = locked ? _("Locked") :  _("Unlocked");
+            tooltip->set_text(label);
+        }
+        else {
+            return false;
+        }
+
+        _tree.set_tooltip_cell(tooltip, nullptr, column, nullptr);
         return true;
     }, false); // before
 
