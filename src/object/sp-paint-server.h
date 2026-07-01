@@ -50,7 +50,7 @@ public:
     // Provide the paint server rendering data in a neutral format that rendering
     // code can consume without needing to import sp-object (and limit unit testing)
     virtual Colors::Color    const  getSolidColor() const { return Colors::Color(0x0); }
-    virtual SPGradientMesh   const *getGradientMesh() const { return nullptr; }
+    virtual SPGradientMesh   const getGradientMesh() const { return {}; }
     virtual SPGradientVector const *getGradientVector() const { return nullptr; }
     virtual SPGradientSpread getSpread() const { return SP_GRADIENT_SPREAD_UNDEFINED; }
     virtual SPGradientUnits  getUnits() const { return SP_GRADIENT_UNITS_OBJECTBOUNDINGBOX; }

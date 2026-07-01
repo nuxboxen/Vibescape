@@ -145,17 +145,13 @@ class DrawingMeshGradient final
 {
 public:
     DrawingMeshGradient(SPGradientSpread spread, SPGradientUnits units, Geom::Affine const &transform,
-                        SPGradientMesh const *mesh)
+                        SPGradientMesh const mesh)
         : DrawingGradient(spread, units, transform)
-        , rows(mesh->rows)
-        , cols(mesh->cols)
-        , patchdata(mesh->patches) {}
+        , patchdata(mesh.patches) {}
 
     cairo_pattern_t *create_pattern(cairo_t*, Geom::OptRect const &bbox, double opacity) const override;
 
 private:
-    int rows;
-    int cols;
     std::vector<std::vector<SPGradientPatch>> patchdata;
 };
 
