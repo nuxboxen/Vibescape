@@ -17,6 +17,7 @@
 
 #include <glibmm/refptr.h>
 #include <gtkmm/dialog.h>
+#include <gtkmm/notebook.h>
 #include <unordered_map>
 
 #include "extension/implementation/implementation.h"
@@ -124,11 +125,13 @@ private:
     // Signal handlers
     void _drawFunc(const Cairo::RefPtr<Cairo::Context>& cr, int width, int height);
     void _onPageNumberChanged();
+    void _onNotebookPageChanged(Gtk::Widget *page, guint pageNum);
 
     Input *_mod; // The input module being used, stores prefs
 
     Glib::RefPtr<Gtk::Builder> _builder;
 
+    Gtk::Notebook &_notebook;
     Gtk::Entry &_page_numbers;
     Gtk::DrawingArea &_preview_area;
     Gtk::ComboBox &_clip_to;
@@ -143,6 +146,7 @@ private:
     Gtk::Label &_current_page;
     Glib::RefPtr<Gtk::ListStore> _font_model;
     FontModelColumns *_font_col;
+    Gtk::Button &_ok_button;
 
     std::shared_ptr<PDFDoc> _pdf_doc;   // Document to be imported
     std::string _current_pages;  // Current selected pages
