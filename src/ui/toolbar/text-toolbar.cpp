@@ -640,6 +640,32 @@ SPCSSTextAlign text_align_to_side(SPCSSTextAlign const &align, SPCSSDirection co
     return new_align;
 }
 
+SPCSSAttr *TextToolbar::cssForTextAlignment(int align_mode, int direction)
+{
+    auto css = sp_repr_css_attr_new();
+
+    if ((align_mode == 0 && direction == SP_CSS_DIRECTION_LTR) ||
+        (align_mode == 2 && direction == SP_CSS_DIRECTION_RTL)) {
+        sp_repr_css_set_property(css, "text-anchor", "start");
+        sp_repr_css_set_property(css, "text-align",  "start");
+    }
+    if ((align_mode == 0 && direction == SP_CSS_DIRECTION_RTL) ||
+        (align_mode == 2 && direction == SP_CSS_DIRECTION_LTR)) {
+        sp_repr_css_set_property(css, "text-anchor", "end");
+        sp_repr_css_set_property(css, "text-align",  "end");
+    }
+    if (align_mode == 1) {
+        sp_repr_css_set_property(css, "text-anchor", "middle");
+        sp_repr_css_set_property(css, "text-align",  "center");
+    }
+    if (align_mode == 3) {
+        sp_repr_css_set_property(css, "text-anchor", "start");
+        sp_repr_css_set_property(css, "text-align",  "justify");
+    }
+
+    return css;
+}
+
 void TextToolbar::align_mode_changed(int align_mode)
 {
     // quit if run by the _changed callbacks
@@ -648,9 +674,12 @@ void TextToolbar::align_mode_changed(int align_mode)
     }
     _freeze = true;
 
-    Preferences::get()->setInt("/tools/text/align_mode", align_mode);
+    auto prefs = Preferences::get();
+    prefs->setInt("/tools/text/align_mode", align_mode);
 
     // Move the alignment point of all texts to preserve the same bbox.
+    // Because align_mode interpretation depends on text direction, we don't simply us
+    // mergeDefaultStyle like other "button changed" handlers. We need to query each selection.
     bool changed = false;
     Selection *selection = _desktop->getSelection();
     for (auto i : selection->items()) {
@@ -743,25 +772,7 @@ void TextToolbar::align_mode_changed(int align_mode)
                 changed = true;
             }
 
-            SPCSSAttr *css = sp_repr_css_attr_new ();
-            if ((align_mode == 0 && direction == SP_CSS_DIRECTION_LTR) ||
-                (align_mode == 2 && direction == SP_CSS_DIRECTION_RTL)) {
-                sp_repr_css_set_property (css, "text-anchor", "start");
-                sp_repr_css_set_property (css, "text-align",  "start");
-            }
-            if ((align_mode == 0 && direction == SP_CSS_DIRECTION_RTL) ||
-                (align_mode == 2 && direction == SP_CSS_DIRECTION_LTR)) {
-                sp_repr_css_set_property (css, "text-anchor", "end");
-                sp_repr_css_set_property (css, "text-align",  "end");
-            }
-            if (align_mode == 1) {
-                sp_repr_css_set_property (css, "text-anchor", "middle");
-                sp_repr_css_set_property (css, "text-align",  "center");
-            }
-            if (align_mode == 3) {
-                sp_repr_css_set_property (css, "text-anchor", "start");
-                sp_repr_css_set_property (css, "text-align",  "justify");
-            }
+            auto css = cssForTextAlignment(align_mode, direction);
             text->changeCSS(css, "style");
             sp_repr_css_attr_unref(css);
 
@@ -775,6 +786,14 @@ void TextToolbar::align_mode_changed(int align_mode)
             text->updateRepr();
             text->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
         } // if(text)
+    }
+
+    // Update the default style css if nothing is selected, based off of the default direction.
+    if (selection->isEmpty()) {
+        auto direction = prefs->getInt("/tools/text/direction_mode", SP_CSS_DIRECTION_LTR);
+        auto css = cssForTextAlignment(align_mode, direction);
+        changed = mergeDefaultStyle(css);
+        sp_repr_css_attr_unref(css);
     }
 
     if (changed) {
@@ -863,7 +882,9 @@ void TextToolbar::direction_changed(int mode)
     }
     _freeze = true;
 
-    Preferences::get()->setInt("/tools/text/direction_mode", mode);
+    auto prefs = Preferences::get();
+    auto has_new_default_direction = prefs->getInt("/tools/text/direction_mode", SP_CSS_DIRECTION_LTR) != mode;
+    prefs->setInt("/tools/text/direction_mode", mode);
 
     auto css = sp_repr_css_attr_new();
     switch (mode) {
@@ -875,6 +896,23 @@ void TextToolbar::direction_changed(int mode)
             break;
         default:
             break;
+    }
+
+    // Because align_mode interpretation depends on direction_mode, we update the global default
+    // style's align_mode if nothing is selected (just like a selected text's style would
+    // swap alignment as direction changes).
+    if (_desktop->getSelection()->isEmpty() && has_new_default_direction) {
+        auto alignment = prefs->getInt("/tools/text/align_mode", 0);
+        auto new_alignment = alignment;
+        if (alignment == 0) {
+            new_alignment = 2;
+        } else if (alignment == 2) {
+            new_alignment = 0;
+        }
+        if (alignment != new_alignment) {
+            prefs->setInt("/tools/text/align_mode", new_alignment);
+            _alignment_buttons[new_alignment]->set_active(true);
+        }
     }
 
     if (mergeDefaultStyle(css)) {
