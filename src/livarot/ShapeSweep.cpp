@@ -3206,7 +3206,7 @@ void Shape::AddChgt(int lastPointNo, int lastChgtPt, Shape * &shapeHead,
       lS->swsData[lB].nextBo = edgeHead;
       edgeHead = lB;
       shapeHead = lS;
-    } else { // If an event occured to the edge after lastChgtPt (which is possible, for example, a horizontal edge
+    } else { // If an event occurred to the edge after lastChgtPt (which is possible, for example, a horizontal edge
              // that intersects with other edges.
       // get the leftRnd already
       int old = lS->swsData[lB].leftRnd;
@@ -3353,7 +3353,7 @@ Shape::CheckEdges (int lastPointNo, int lastChgtPt, Shape * a, Shape * b,
     {
       Shape *nSrc = chgt.lSrc;
       int nBrd = chgt.lBrd;
-      while (nSrc->swsData[nBrd].leftRnd >= // <-- if yes, means some event occured to this event after lastChgtPt or an adjacency was detected
+      while (nSrc->swsData[nBrd].leftRnd >= // <-- if yes, means some event occurred to this event after lastChgtPt or an adjacency was detected
           lastChgtPt /*&& nSrc->swsData[nBrd].doneTo < lastChgtPt */ )
       {
         Avance (lastPointNo, lastChgtPt, nSrc, nBrd, a, b, mod);
