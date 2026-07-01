@@ -209,7 +209,7 @@ static double distance_to_segment(Geom::Point const &p, Geom::Point const &a1, G
     return Geom::distance(np, p);
 }
 
-DrawingItem *DrawingImage::_pickItem(Geom::Point const &p, double delta, unsigned flags)
+DrawingItem *DrawingImage::_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
     if (!_pixbuf) return nullptr;
 

@@ -41,7 +41,7 @@ protected:
     ~DrawingGlyphs() override = default;
 
     unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) override;
-    DrawingItem *_pickItem(Geom::Point const &p, double delta, unsigned flags) override;
+    DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) override;
 
     std::shared_ptr<Pixbuf> _get_svg_glyph(std::shared_ptr<FontInstance> const &font, unsigned int glyph_id) const;
 
@@ -85,7 +85,7 @@ protected:
     unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) override;
     unsigned _renderItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const override;
     void _clipItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const override;
-    DrawingItem *_pickItem(Geom::Point const &p, double delta, unsigned flags) override;
+    DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) override;
     bool _canClip() const override { return true; }
 
     void decorateItem(DrawingContext &dc, double phase_length, bool under) const;

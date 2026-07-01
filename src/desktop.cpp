@@ -346,38 +346,204 @@ Inkscape::UI::Dialog::DialogContainer *SPDesktop::getContainer()
     return _widget->getDialogContainer();
 }
 
+static void _build_flat_item_list(std::deque<SPItem*> &cache, SPGroup *group, unsigned int dkey, bool into_groups, bool active_only)
+{
+    for (auto& o: group->children) {
+        if (!is<SPItem>(&o)) {
+            continue;
+        }
+
+        if (is<SPGroup>(&o) && (cast<SPGroup>(&o)->effectiveLayerMode(dkey) == SPGroup::LAYER || into_groups)) {
+            _build_flat_item_list(cache, cast<SPGroup>(&o), dkey, into_groups, active_only);
+        } else {
+            auto child = cast<SPItem>(&o);
+            if (!active_only || child->isVisibleAndUnlocked(dkey)) {
+                cache.push_front(child);
+            }
+        }
+    }
+}
+
 /**
- * \see SPDocument::getItemFromListAtPointBottom()
+Turn the SVG DOM into a cached flat list of nodes that can be searched from top-down.
+The list can be persisted, which improves "find at multiple points" speed.
+*/
+std::deque<SPItem*> const &SPDesktop::get_flat_item_list(bool into_groups, bool active_only) const
+{
+    // Build a caching key from our inputs
+    using key_t = decltype(_node_cache)::key_type;
+    auto const key = (key_t{dkey} << 2) | (into_groups << 1) | active_only;
+
+    auto const [it, inserted] = _node_cache.try_emplace(key);
+    if (inserted) {
+        _build_flat_item_list(it->second, doc()->getRoot(), dkey, into_groups, active_only);
+    }
+    return it->second;
+}
+
+SPItem *SPDesktop::_getItemFromListAtPointBottom(SPGroup *group, std::vector<SPItem*> const &list, Geom::Point const &p) const
+{
+    if (!group) {
+        return nullptr;
+    }
+
+    auto area_world = canvas->get_area_world();
+    bool outline = canvas->canvas_point_in_outline_zone(p - canvas->get_pos());
+    double const delta = Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
+
+    for (auto &c: group->children) {
+        if (auto item = cast<SPItem>(&c)) {
+            if (auto di = item->get_arenaitem(dkey)) {
+                if (di->pick(p, delta, area_world, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE) && item->isVisibleAndUnlocked(dkey)) {
+                    if (std::find(list.begin(), list.end(), item) != list.end()) {
+                        return item;
+                    }
+                }
+            }
+
+            if (auto group = cast<SPGroup>(item)) {
+                if (auto ret = _getItemFromListAtPointBottom(group, list, p)) {
+                    return ret;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+/**
+Returns the items from the descendants of group (recursively) which are at the
+point p, or NULL if none. Honors into_groups on whether to recurse into non-layer
+groups or not. Honors take_insensitive on whether to return insensitive items.
+If upto != NULL, then if item upto is encountered (at any level), stops searching
+upwards in z-order and returns what it has found so far (i.e. the found items are
+guaranteed to be lower than upto). Requires a list of nodes built by build_flat_item_list.
+If items_count > 0, it'll return the topmost (in z-order) items_count items.
+ */
+std::vector<SPItem*> SPDesktop::find_items_at_point(std::deque<SPItem*> const &nodes, Geom::Point const &p, int items_count, SPItem *upto) const
+{
+    double const delta = Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
+
+    std::vector<SPItem*> result;
+
+    auto area_world = canvas->get_area_world();
+    bool outline = canvas->canvas_point_in_outline_zone(p - canvas->get_pos());
+
+    bool seen_upto = !upto;
+    for (auto node : nodes) {
+        if (!seen_upto) {
+            if (node == upto) {
+                seen_upto = true;
+            }
+            continue;
+        }
+        if (auto di = node->get_arenaitem(dkey)) {
+            if (di->pick(p, delta, area_world, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE)) {
+                result.emplace_back(node);
+                if (--items_count == 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+SPItem *SPDesktop::find_item_at_point(std::deque<SPItem*> const &nodes, Geom::Point const &p, SPItem *upto) const
+{
+    auto items = find_items_at_point(nodes, p, 1, upto);
+    if (items.empty()) {
+        return nullptr;
+    }
+    return items.back();
+}
+
+/**
+ * Returns the topmost non-layer group from the descendants of group which is at point p,
+ * or null if none. Recurses into layers but not into groups.
+ */
+SPItem *SPDesktop::find_group_at_point(SPGroup *group, Geom::Point const &p) const
+{
+    double const delta = Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
+
+    auto area_world = canvas->get_area_world();
+    bool outline = canvas->canvas_point_in_outline_zone(p - canvas->get_pos());
+
+    for (auto &c : group->children | std::views::reverse) {
+        if (auto group = cast<SPGroup>(&c)) {
+            if (group->effectiveLayerMode(dkey) == SPGroup::LAYER) {
+                if (auto ret = find_group_at_point(group, p)) {
+                    return ret;
+                }
+            } else if (auto di = group->get_arenaitem(dkey)) {
+                if (di->pick(p, delta, area_world, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE)) {
+                    return group;
+                }
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+/**
+ * Returns the bottommost item from the list which is at the point, or NULL if none.
  */
 SPItem *SPDesktop::getItemFromListAtPointBottom(const std::vector<SPItem*> &list, Geom::Point const &p) const
 {
     g_return_val_if_fail (doc() != nullptr, NULL);
-    return SPDocument::getItemFromListAtPointBottom(dkey, doc()->getRoot(), list, p);
+    return _getItemFromListAtPointBottom(doc()->getRoot(), list, p);
 }
 
-/**
- * \see SPDocument::getItemAtPoint()
- */
 SPItem *SPDesktop::getItemAtPoint(Geom::Point const &p, bool into_groups, SPItem *upto) const
 {
+    return find_item_at_point(get_flat_item_list(into_groups, true), p, upto);
+}
+
+SPItem *SPDesktop::getGroupAtPoint(Geom::Point const &p) const
+{
     g_return_val_if_fail (doc() != nullptr, NULL);
-    return doc()->getItemAtPoint( dkey, p, into_groups, upto);
+    return find_group_at_point(doc()->getRoot(), p);
 }
 
 std::vector<SPItem*> SPDesktop::getItemsAtPoints(std::vector<Geom::Point> points, bool all_layers, bool topmost_only, size_t limit, bool active_only) const
 {
-    if (!doc())
-        return {};
-    return doc()->getItemsAtPoints(dkey, points, all_layers, topmost_only, limit, active_only);
-}
+    std::vector<SPItem*> result;
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
 
-/**
- * \see SPDocument::getGroupAtPoint()
- */
-SPItem *SPDesktop::getGroupAtPoint(Geom::Point const &p) const
-{
-    g_return_val_if_fail (doc() != nullptr, NULL);
-    return doc()->getGroupAtPoint(dkey, p);
+    // When picking along the path, we don't want small objects close together
+    // (such as hatching strokes) to obscure each other by their deltas,
+    // so we temporarily set delta to a small value
+    gdouble saved_delta = prefs->getDouble("/options/cursortolerance/value", 1.0);
+    prefs->setDouble("/options/cursortolerance/value", 0.25);
+
+    auto &node_cache = get_flat_item_list(true, active_only);
+
+    SPObject *current_layer = nullptr;
+    current_layer = layerManager().currentLayer();
+    size_t item_counter = 0;
+    for(auto point : points) {
+        std::vector<SPItem*> items = find_items_at_point(node_cache, point, topmost_only, nullptr);
+        for (SPItem *item : items) {
+            if (item && result.end()==find(result.begin(), result.end(), item))
+                if(all_layers || layerManager().layerForObject(item) == current_layer) {
+                    result.push_back(item);
+                    item_counter++;
+                    //limit 0 = no limit
+                    if(item_counter == limit){
+                        prefs->setDouble("/options/cursortolerance/value", saved_delta);
+                        return result;
+                    }
+                }
+        }
+    }
+
+    // and now we restore it back
+    prefs->setDouble("/options/cursortolerance/value", saved_delta);
+
+    return result;
 }
 
 /**
@@ -1313,6 +1479,12 @@ void SPDesktop::_attachDocument()
     _saved_or_modified_conn = document->connectSavedOrModified([this] {
         _widget->desktopChangedTitle(this);
     });
+    _document_modified_conn = document->connectModified([this](int flags) {
+        clearNodeCache();
+    });
+    _document_object_bound_conn = document->connectObjectBound([this]() {
+        clearNodeCache();
+    });
 
     // set new document before firing signal, so handlers can see new value if they query desktop
     _document_replaced_signal.emit(this, document);
@@ -1327,6 +1499,8 @@ void SPDesktop::_detachDocument()
 
     _document_uri_set_connection.disconnect();
     _saved_or_modified_conn.disconnect();
+    _document_modified_conn.disconnect();
+    _document_object_bound_conn.disconnect();
     _reconstruction_start_connection.disconnect();
     _reconstruction_finish_connection.disconnect();
     _schedule_zoom_from_document_connection.disconnect();

@@ -1021,7 +1021,7 @@ void DrawingItem::clip(DrawingContext &dc, Inkscape::RenderContext &rc, Geom::In
  *               When false, only visible and sensitive objects are considered.
  *               When true, invisible and insensitive objects can also be picked.
  */
-DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, unsigned flags)
+DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
     // Sometimes there's no BBOX in state, reason unknown (bug 992817)
     // I made this not an assert to remove the warning
@@ -1039,14 +1039,14 @@ DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, unsigned flag
     if (!outline) {
         // pick inside clipping path; if NULL, it means the object is clipped away there
         if (_clip) {
-            DrawingItem *cpick = _clip->pick(p, delta, flags | PICK_AS_CLIP);
+            DrawingItem *cpick = _clip->pick(p, delta, area_world, flags | PICK_AS_CLIP);
             if (!cpick) {
                 return nullptr;
             }
         }
         // same for mask
         if (_mask) {
-            DrawingItem *mpick = _mask->pick(p, delta, flags);
+            DrawingItem *mpick = _mask->pick(p, delta, area_world, flags);
             if (!mpick) {
                 return nullptr;
             }
@@ -1066,7 +1066,7 @@ DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, unsigned flag
     }
 
     if (expanded.contains(p)) {
-        return _pickItem(p, delta, flags);
+        return _pickItem(p, delta, area_world, flags);
     }
     return nullptr;
 }

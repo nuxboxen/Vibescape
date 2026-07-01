@@ -106,10 +106,10 @@ void DrawingGroup::_clipItem(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     }
 }
 
-DrawingItem *DrawingGroup::_pickItem(Geom::Point const &p, double delta, unsigned flags)
+DrawingItem *DrawingGroup::_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
     for (auto &i : _children) {
-        DrawingItem *picked = i.pick(p, delta, flags);
+        DrawingItem *picked = i.pick(p, delta, area_world, flags);
         if (picked) {
             return _pick_children ? picked : this;
         }

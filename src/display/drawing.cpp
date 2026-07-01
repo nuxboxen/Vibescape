@@ -270,9 +270,9 @@ void Drawing::render(DrawingContext &dc, Geom::IntRect const &area, unsigned fla
     }
 }
 
-DrawingItem *Drawing::pick(Geom::Point const &p, double delta, unsigned flags)
+DrawingItem *Drawing::pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
-    return _root->pick(p, delta, flags);
+    return _root->pick(p, delta, area_world, flags);
 }
 
 void Drawing::snapshot()

@@ -332,7 +332,7 @@ void DrawingShape::_clipItem(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     dc.fill();
 }
 
-DrawingItem *DrawingShape::_pickItem(Geom::Point const &p, double delta, unsigned flags)
+DrawingItem *DrawingShape::_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
     if (_repick_after > 0)
         --_repick_after;
@@ -373,8 +373,8 @@ DrawingItem *DrawingShape::_pickItem(Geom::Point const &p, double delta, unsigne
     bool wind_evenodd = (pick_as_clip ? style_clip_rule : style_fill_rule) == SP_WIND_RULE_EVENODD;
 
     // actual shape picking
-    if (_drawing.getCanvasItemDrawing()) {
-        Geom::Rect viewbox = _drawing.getCanvasItemDrawing()->get_canvas()->get_area_world();
+    if (area_world) {
+        Geom::Rect viewbox = *area_world;
         viewbox.expandBy (width);
         pathv_matrix_point_bbox_wind_distance(*_curve, _ctm, p, nullptr, needfill? &wind : nullptr, &dist, 0.5, &viewbox);
     } else {
@@ -414,7 +414,7 @@ DrawingItem *DrawingShape::_pickItem(Geom::Point const &p, double delta, unsigne
 
     // if not picked on the shape itself, try its markers
     for (auto &i : _children) {
-        DrawingItem *ret = i.pick(p, delta, flags & ~PICK_STICKY);
+        DrawingItem *ret = i.pick(p, delta, area_world, flags & ~PICK_STICKY);
         if (ret) {
             _last_pick = this;
             return this;

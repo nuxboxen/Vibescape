@@ -75,6 +75,9 @@ protected:
 
     // Signals
     sigc::signal<bool(CanvasEvent const &, Inkscape::DrawingItem *)> _drawing_event_signal;
+
+private:
+    unsigned get_flags() const;
 };
 
 } // namespace Inkscape
