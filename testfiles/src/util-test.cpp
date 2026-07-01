@@ -93,7 +93,7 @@ TEST(UtilTest, ParseIntRangeTest)
     ASSERT_EQ(Inkscape::parseIntRange("3", 5, 10), std::set<unsigned int>({}));
     ASSERT_EQ(Inkscape::parseIntRange("3", 5), std::set<unsigned int>({}));
 
-    // Comma seperated in various orders
+    // Comma separated in various orders
     ASSERT_EQ(Inkscape::parseIntRange("1,3,5"), std::set<unsigned int>({1, 3, 5}));
     ASSERT_EQ(Inkscape::parseIntRange("3,1,4"), std::set<unsigned int>({1, 3, 4}));
     ASSERT_EQ(Inkscape::parseIntRange("3,2,9,"), std::set<unsigned int>({2, 3, 9}));
