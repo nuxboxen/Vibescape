@@ -28,6 +28,7 @@
 #include "document.h"
 #include "filter-chemistry.h"
 #include "inkscape.h"
+#include "preferences.h"
 #include "selection.h"
 #include "display/cairo-utils.h"
 #include "display/drawing-context.h"

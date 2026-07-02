@@ -343,6 +343,16 @@ std::vector<Glib::ustring> Preferences::getAllDirs(Glib::ustring const &path)
     return temp;
 }
 
+/**
+ * Is the given path a directory. If false it may be the entry
+ * doesn't exist or is a value instead.
+ */
+bool Preferences::isDir(Glib::ustring const &path)
+{
+    Inkscape::XML::Node *node = _getNode(path, false);
+    return node && node->attribute("id") != nullptr;
+}
+
 // getter methods
 
 Preferences::Entry const Preferences::getEntry(Glib::ustring const &pref_path)
@@ -1199,9 +1209,25 @@ void Preferences::PreferencesObserver::notify(Preferences::Entry const& new_val)
     _callback(new_val);
 }
 
+void Preferences::PreferencesObserver::call_recursive(Glib::ustring const &path) {
+    auto prefs = Inkscape::Preferences::get();
+
+    for (auto &e : prefs->getAllEntries(path)) {
+        _callback(e);
+    }
+    for (auto &d : prefs->getAllDirs(path)) {
+        call_recursive(d);
+    }
+}
+
 void Preferences::PreferencesObserver::call() {
     auto prefs = Inkscape::Preferences::get();
-    _callback(prefs->getEntry(observed_path));
+
+    if (!prefs->isDir(observed_path)) {
+        _callback(prefs->getEntry(observed_path));
+    } else {
+        call_recursive(observed_path);
+    }
 }
 
 PrefObserver Preferences::createObserver(Glib::ustring path, std::function<void (const Preferences::Entry&)> callback) {
