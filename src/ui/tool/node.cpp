@@ -60,7 +60,7 @@ public:
 
     void notify(const Inkscape::Preferences::Entry &new_val) override
     {
-        int digits = new_val.getIntLimited(6, 1, 16);
+        int digits = new_val.getIntLimited(10, 1, 16);
         set_numeric_precision(digits);
     }
 
@@ -70,7 +70,7 @@ private:
         , rel_error(1)
     {
         Inkscape::Preferences::get()->addObserver(*this);
-        int digits = Inkscape::Preferences::get()->getIntLimited("/options/svgoutput/numericprecision", 6, 1, 16);
+        int digits = Inkscape::Preferences::get()->getIntLimited("/options/svgoutput/numericprecision", 10, 1, 16);
         set_numeric_precision(digits);
     }
 

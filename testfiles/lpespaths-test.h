@@ -17,6 +17,7 @@
 #include "document-update.h"
 #include "inkscape.h"
 #include "inkscape-application.h"
+#include "preferences.h"
 
 #include "extension/init.h"
 #include "object/sp-root.h"
@@ -46,6 +47,8 @@ protected:
         Inkscape::Extension::init();
         const testing::TestInfo* const test_info =
         testing::UnitTest::GetInstance()->current_test_info();
+        // Set the same precision used to originally create these files
+        Inkscape::Preferences::get()->setInt("/options/svgoutput/numericprecision", 8);
         svg = test_info->file();
 #ifdef INKSCAPE_TESTS_DIR
         svg = INKSCAPE_TESTS_DIR;
