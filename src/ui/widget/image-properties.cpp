@@ -19,10 +19,11 @@
 #include <gtkmm/label.h>
 #include <gtkmm/window.h>
 
-#include "generic/spin-button.h"
 #include "display/cairo-utils.h"
 #include "document-undo.h"
 #include "enums.h"
+#include "generic/spin-button.h"
+#include "generic/text-entry.h"
 #include "inkscape.h"
 #include "object/sp-image.h"
 #include "ui/builder-utils.h"
@@ -52,32 +53,6 @@ Cairo::RefPtr<Cairo::Surface> draw_preview(SPImage* image, double width, double 
     opt.image_opacity(alpha);
     opt.checkerboard(background);
     return r.render(*image, width, height, device_scale, opt);
-}
-
-bool link_image(Gtk::Window *window, SPImage *image)
-{
-    if (!window || !image) {
-        return false;
-    }
-
-    static std::string current_folder;
-    std::vector<Glib::ustring> mime_types = {
-        "image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff",
-        "image/svg+xml"
-    };
-    auto file = choose_file_open(_("Change Image"), window, mime_types, current_folder);
-    if (!file) {
-        return false;
-    }
-
-    auto uri = file->get_uri();
-    setHrefAttribute(*image->getRepr(), uri);
-
-    // SPImage modifies size when href changes; trigger it now before undo concludes
-    // TODO: this needs to be fixed in SPImage
-    image->document->_updateDocument(0);
-    DocumentUndo::done(image->document, RC_("Undo", "Change image"), INKSCAPE_ICON("shape-image"));
-    return true;
 }
 
 void set_rendering_mode(SPImage* image, int index) {
@@ -114,6 +89,7 @@ ImageProperties::ImageProperties() :
     _stretch(get_widget<Gtk::CheckButton>(_builder, "stretch")),
     _rendering(get_widget<Gtk::DropDown>(_builder, "rendering")),
     _resolution(get_widget<InkSpinButton>(_builder, "dpi")),
+    _url(get_widget<TextEntry>(_builder, "href")),
     _embed(get_widget<Gtk::Button>(_builder, "embed"))
 {
     append(_main);
@@ -132,10 +108,7 @@ ImageProperties::ImageProperties() :
     auto& change = get_widget<Gtk::Button>(_builder, "change-img");
     change.signal_clicked().connect([this]{
         if (_update.pending()) return;
-        auto window = dynamic_cast<Gtk::Window*>(_preview.get_root());
-        if (link_image(window, _image)) {
-            reset_preview();
-        }
+        link_image();
     });
 
     auto& extract = get_widget<Gtk::Button>(_builder, "export");
@@ -143,6 +116,10 @@ ImageProperties::ImageProperties() :
         if (_update.pending()) return;
         auto window = dynamic_cast<Gtk::Window*>(_preview.get_root());
         extract_image(window, _image);
+    });
+
+    _url.signal_commit().connect([this] {
+        set_href(_url.get_text());
     });
 
     _embed.signal_clicked().connect([this]{
@@ -244,7 +221,10 @@ void ImageProperties::update(SPImage* image) {
             info.set_markup(small("-"));
         }
 
-        url.set_text(linked ? href : "");
+        auto new_href = linked ? href : "";
+        if (url.get_text() != new_href) { // avoid losing cursor spot for no reason
+            url.set_text(new_href);
+        }
         url.set_sensitive(linked);
         _embed.set_sensitive(linked && image->pixbuf);
 
@@ -310,6 +290,42 @@ void ImageProperties::update_bg_color() {
 void ImageProperties::reset_preview()
 {
     _preview_image.reset();
+}
+
+void ImageProperties::link_image()
+{
+    auto window = dynamic_cast<Gtk::Window*>(_preview.get_root());
+
+    if (!window || !_image) {
+        return;
+    }
+
+    static std::string current_folder;
+    std::vector<Glib::ustring> mime_types = {
+        "image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff",
+        "image/svg+xml"
+    };
+    auto file = choose_file_open(_("Change Image"), window, mime_types, current_folder);
+    if (file) {
+        set_href(file->get_uri());
+    }
+}
+
+void ImageProperties::set_href(Glib::ustring const &href)
+{
+    auto const repr = _image->getRepr();
+    if (getHrefAttribute(*repr).second == href) {
+        return; // avoid adding an undo entry for nothing
+    }
+
+    setHrefAttribute(*repr, href);
+
+    // SPImage modifies size when href changes; trigger it now before undo concludes
+    // TODO: this needs to be fixed in SPImage
+    _image->document->_updateDocument(0);
+    DocumentUndo::done(_image->document, RC_("Undo", "Change image"), INKSCAPE_ICON("shape-image"));
+
+    reset_preview();
 }
 
 void ImageProperties::css_changed(GtkCssStyleChange * /*change*/)
