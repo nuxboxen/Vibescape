@@ -85,13 +85,11 @@ DialogNotebook::DialogNotebook(DialogContainer* container) : _container(containe
     _notebook.set_scrollable(true);
     _notebook.set_show_tabs(false);
 
-    auto box = dynamic_cast<Gtk::Box*>(_notebook.get_first_child());
-    if (box) {
-        auto scroll_controller = Gtk::EventControllerScroll::create();
-        scroll_controller->set_flags(Gtk::EventControllerScroll::Flags::VERTICAL | Gtk::EventControllerScroll::Flags::DISCRETE);
-        box->add_controller(scroll_controller);
-        scroll_controller->signal_scroll().connect(sigc::mem_fun(*this, &DialogNotebook::on_scroll_event), false);
-    }
+    // Watch for scroll events, to cycle through tabs
+    auto scroll_controller = Gtk::EventControllerScroll::create();
+    scroll_controller->set_flags(Gtk::EventControllerScroll::Flags::VERTICAL | Gtk::EventControllerScroll::Flags::DISCRETE);
+    scroll_controller->signal_scroll().connect(sigc::mem_fun(*this, &DialogNotebook::on_scroll_event), false);
+    _tabs.add_controller(scroll_controller);
 
     build_docking_menu(_menu_dock);
     build_docking_menu(_menu_tab_ctx);
