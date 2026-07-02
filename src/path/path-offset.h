@@ -11,13 +11,16 @@
 #define PATH_OFFSET_H
 
 class SPDesktop;
+namespace Inkscape {
+    class Selection;
+}
 
 // offset/inset of a curve
 // takes the fill-rule in consideration
 // offset amount is the stroke-width of the curve
-void sp_selected_path_offset (SPDesktop *desktop);
+void sp_selected_path_offset (Inkscape::Selection *selection);
 void sp_selected_path_offset_screen (SPDesktop *desktop, double pixels);
-void sp_selected_path_inset (SPDesktop *desktop);
+void sp_selected_path_inset (Inkscape::Selection *selection);
 void sp_selected_path_inset_screen (SPDesktop *desktop, double pixels);
 void sp_selected_path_create_offset (SPDesktop *desktop);
 void sp_selected_path_create_inset (SPDesktop *desktop);

@@ -96,10 +96,10 @@ void BlurEdge::effect(Inkscape::Extension::Effect *module, ExecutionEnv * /*exec
                 /* Doing an inset here folks */
                 offset *= -1.0;
                 prefs->setDoubleUnit("/options/defaultoffsetwidth/value", offset, "px");
-                sp_selected_path_inset(desktop);
+                sp_selected_path_inset(selection);
             } else if (offset > 0.0) {
                 prefs->setDoubleUnit("/options/defaultoffsetwidth/value", offset, "px");
-                sp_selected_path_offset(desktop);
+                sp_selected_path_offset(selection);
             }
 
             selection->clear();
