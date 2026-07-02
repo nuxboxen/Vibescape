@@ -968,8 +968,6 @@ void DocumentProperties::build_scripting()
 
     _EmbeddedContent.get_buffer()->signal_changed().connect(sigc::mem_fun(*this, &DocumentProperties::editEmbeddedScript));
 
-    populate_script_lists();
-
     _ExternalScriptsListScroller.set_child(_ExternalScriptsList);
     _ExternalScriptsListScroller.set_has_frame(true);
     _ExternalScriptsListScroller.set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::ALWAYS);
@@ -990,16 +988,12 @@ void DocumentProperties::build_scripting()
     connect_remove_popup_menu(_ExternalScriptsList, _popoverbin, sigc::mem_fun(*this, &DocumentProperties::removeExternalScript));
     connect_remove_popup_menu(_EmbeddedScriptsList, _popoverbin, sigc::mem_fun(*this, &DocumentProperties::removeEmbeddedScript));
 
-    //TODO: review this observers code:
-    if (auto document = getDocument()) {
-        std::vector<SPObject *> current = document->getResourceList( "script" );
-        if (! current.empty()) {
-            _scripts_observer.set((*(current.begin()))->parent);
-        }
-        _scripts_observer.signal_changed().connect([this](auto, auto){populate_script_lists();});
-        onEmbeddedScriptSelectRow();
-        onExternalScriptSelectRow();
-    }
+    populate_script_lists();
+    _scripts_observer.signal_changed().connect([this](auto, auto){populate_script_lists();});
+
+    // Set initial button sensitivity
+    onEmbeddedScriptSelectRow();
+    onExternalScriptSelectRow();
 }
 
 void DocumentProperties::build_metadata()
@@ -1294,6 +1288,8 @@ void DocumentProperties::editEmbeddedScript(){
 void DocumentProperties::populate_script_lists(){
     _ExternalScriptsListStore->clear();
     _EmbeddedScriptsListStore->clear();
+    _scripts_observer.set(nullptr);
+
     auto document = getDocument();
     if (!document)
         return;
@@ -1597,6 +1593,7 @@ void DocumentProperties::documentReplaced()
             _cms_connection = document->getDocumentCMS().connectChanged(sigc::mem_fun(*this, &DocumentProperties::populate_linked_profiles_box));
         }
         populate_linked_profiles_box();
+        populate_script_lists();
         update_widgets();
         rebuild_gridspage();
     }
