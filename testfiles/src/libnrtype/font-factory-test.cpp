@@ -27,12 +27,6 @@ protected:
     Inkscape::Util::Statics statics;
 };
 
-TEST_F(FontFactoryTest, getSingleton)
-{
-    auto &factory = FontFactory::get();
-    ASSERT_EQ(factory.fontSize, 512);
-}
-
 TEST_F(FontFactoryTest, GetUIFamilies)
 {
     std::vector<std::string> families;

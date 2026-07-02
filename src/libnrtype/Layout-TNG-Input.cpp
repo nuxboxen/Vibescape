@@ -212,8 +212,7 @@ PangoFontDescription *Layout::InputStreamTextSource::styleGetFontDescription() c
     PangoFontDescription *descr = ink_font_description_from_style( style );
 
     // Font size not yet set
-    // mandatory huge size (hinting workaround)
-    pango_font_description_set_size(descr, FontFactory::get().fontSize * PANGO_SCALE);
+    pango_font_description_set_size(descr, PANGO_SCALE);
 
     return descr;
 }

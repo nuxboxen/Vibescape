@@ -443,23 +443,12 @@ std::shared_ptr<FontInstance> FontFactory::FaceFromPangoString(char const *pango
 
 std::shared_ptr<FontInstance> FontFactory::FaceFromFontSpecification(char const *fontSpecification)
 {
-    std::shared_ptr<FontInstance> font;
-
     g_assert(fontSpecification);
-
-    if (fontSpecification) {
-        // How the string is used to reconstruct a font depends on how it
-        // was constructed in ConstructFontSpecification.  As it stands,
-        // the font specification is a pango-created string
-        font = FaceFromPangoString(fontSpecification);
-    }
-
-    return font;
+    return FaceFromPangoString(fontSpecification);
 }
 
 std::unique_ptr<FontInstance> FontFactory::create_face(PangoFontDescription* descr) {
-    // Mandatory huge size (hinting workaround).
-    pango_font_description_set_size(descr, fontSize * PANGO_SCALE);
+    pango_font_description_set_size(descr, PANGO_SCALE);
 
     if (!sp_font_description_get_family(descr)) {
         return {};
@@ -472,7 +461,7 @@ std::unique_ptr<FontInstance> FontFactory::create_face(PangoFontDescription* des
 std::shared_ptr<FontInstance> FontFactory::Face(PangoFontDescription *descr, bool canFail)
 {
     // Mandatory huge size (hinting workaround).
-    pango_font_description_set_size(descr, fontSize * PANGO_SCALE);
+    pango_font_description_set_size(descr, PANGO_SCALE);
 
     // Check if already loaded.
     if (auto res = loaded.lookup(descr)) {

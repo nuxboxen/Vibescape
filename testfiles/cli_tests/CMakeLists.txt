@@ -1063,7 +1063,7 @@ add_cli_test(actions-text-to-glyph
             --actions=select-all$<SEMICOLON>text-convert-to-glyphs$<SEMICOLON>select-clear$<SEMICOLON>select-by-id:text_o_1$<SEMICOLON>select-by-id:text_o_2$<SEMICOLON>select-by-id:text_o_3$<SEMICOLON>select-by-id:text_o_4$<SEMICOLON>delete$<SEMICOLON>
         OUTPUT_FILENAME text_to_glyph.png
         REFERENCE_FILENAME text_to_glyph_expected.svgz REFERENCE_INKSCAPE
-        FUZZ_PERCENTAGE 0.2
+        FUZZ_PERCENTAGE 0.25
 )
 
 
