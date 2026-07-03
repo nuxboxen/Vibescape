@@ -16,6 +16,7 @@
 #include <glibmm/miscutils.h>
 #include <gdkmm/pixbuf.h>
 #include <gtkmm/image.h>
+#include <gtkmm/picture.h>
 
 #include "xml/node.h"
 #include "extension/extension.h"
@@ -73,24 +74,20 @@ Gtk::Widget *WidgetImage::get_widget(sigc::signal<void ()> * /*changeSignal*/)
         return nullptr;
     }
 
-    Gtk::Image *image = nullptr;
     if (!_image_path.empty()) {
         // resize if requested
         if (_width && _height) {
             auto pixbuf = Gdk::Pixbuf::create_from_file(_image_path);
             pixbuf = pixbuf->scale_simple(_width, _height, Gdk::InterpType::BILINEAR);
-            image = Gtk::make_managed<Gtk::Image>(pixbuf);
+            return Gtk::make_managed<Gtk::Picture>(pixbuf);
         } else {
-            image = Gtk::make_managed<Gtk::Image>(_image_path);
+            return Gtk::make_managed<Gtk::Picture>(_image_path);
         }
     } else if (_width || _height) {
-        image = sp_get_icon_image(_icon_name, std::max(_width, _height));
+        return sp_get_icon_image(_icon_name, std::max(_width, _height));
     } else {
-        image = sp_get_icon_image(_icon_name, Gtk::IconSize::LARGE);
+        return sp_get_icon_image(_icon_name, Gtk::IconSize::LARGE);
     }
-
-    image->set_visible(true);
-    return image;
 }
 
 } // namespace Inkscape::Extension
