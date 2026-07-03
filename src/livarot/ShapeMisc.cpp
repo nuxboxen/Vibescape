@@ -348,8 +348,6 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
 
   if (numberOfPoints() <= 1 || numberOfEdges() <= 1)
     return;
-  //  if (Eulerian (true) == false)
-  //    return;
   
   if (_has_back_data == false)
   {
@@ -359,7 +357,6 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
   
   dest->Reset ();
   
-//  MakePointData (true);
   MakeEdgeData (true);
   MakeSweepDestData (true);
   
@@ -405,9 +402,10 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
           if (askTo < 0 || askTo >= numberOfEdges() ) {
             parentContour=-1;
           } else {
-            if (getEdge(askTo).prevS >= 0) {
-                parentContour = swdData[askTo].misc;
-                parentContour-=1; // pour compenser le decalage
+            parentContour = swdData[askTo].misc;
+            parentContour-=1; // to compensate for the discrepancy
+            if (parentContour >= 0 && parentContour < nbNest && nesting[parentContour] != -1) {
+              parentContour = nesting[parentContour];
             }
             childEdge = getPoint(fi).incidentEdge[FIRST];
           }
@@ -432,7 +430,7 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
       if (startBord == childEdge) {
           foundChild = true;
       }
-      //printf("part de %d\n",startBord);
+
       int curBord = startBord;
       bool back = false;
       swdData[curBord].precParc = -1;
@@ -442,7 +440,7 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
 	    {
 	      int cPt = getEdge(curBord).en;
 	      int nb = curBord;
-        //printf("de curBord= %d au point %i  -> ",curBord,cPt);
+
 	      do
         {
           int nnb = CycleNextAt (cPt, nb);
@@ -465,19 +463,9 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
             if (curBord == startBord || curBord < 0)
             {
               // probleme -> on vire le moveto
-              //                                                      dest->descr_nb--;
             }
             else
             {
-//              bool escapePath=false;
-//              int tb=curBord;
-//              while ( tb >= 0 && tb < numberOfEdges() ) {
-//                if ( ebData[tb].pathID == wildPath ) {
-//                  escapePath=true;
-//                  break;
-//                }
-//                tb=swdData[tb].precParc;
-//              }
               nesting=(int*)g_realloc(nesting,(nbNest+1)*sizeof(int));
               contStart=(int*)g_realloc(contStart,(nbNest+1)*sizeof(int));
               contStart[nbNest]=dest->descr_cmd.size();
@@ -490,12 +478,11 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
               swdData[curBord].suivParc = -1;
               AddContour(dest, nbP, orig, startBord, never_split);
             }
-            //                                              dest->Close();
           }
           back = true;
           // retour en arriere
           curBord = swdData[curBord].precParc;
-          //printf("retour vers %d\n",curBord);
+
           if (curBord < 0)
             break;
         }
@@ -508,17 +495,6 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
             curStartPt=getEdge(nb).st;
           } else {
             if ( getEdge(curBord).en == curStartPt ) {
-              //printf("contour %i ",curStartPt);
-              
-//              bool escapePath=false;
-//              int tb=curBord;
-//              while ( tb >= 0 && tb < numberOfEdges() ) {
-//                if ( ebData[tb].pathID == wildPath ) {
-//                  escapePath=true;
-//                  break;
-//                }
-//                tb=swdData[tb].precParc;
-//              }
               nesting=(int*)g_realloc(nesting,(nbNest+1)*sizeof(int));
               contStart=(int*)g_realloc(contStart,(nbNest+1)*sizeof(int));
               contStart[nbNest]=dest->descr_cmd.size();
@@ -541,10 +517,9 @@ void Shape::ConvertToFormeNested(Path *dest, int nbP, Path *const *orig, int &nb
           if (nb == childEdge) {
               foundChild = true;
           }
-          //printf("suite %d\n",curBord);
         }
 	    }
-      while (true /*swdData[curBord].precParc >= 0 */ );
+      while (true);
       // fin du cas non-oriente
     }
   }

@@ -259,9 +259,9 @@ public:
     // calc bounding box and sets leftX,rightX,topY and bottomY to their values
     void CalcBBox(bool strict_degree = false);
     
-    // debug function: plots the graph (mac only)
+    // debug function: plots the graph
     void Plot(double ix, double iy, double ir, double mx, double my, bool doPoint,
-              bool edgesNo, bool pointNo, bool doDir, char *fileName);
+              bool edgesNo, bool pointNo, bool doDir, char const *fileName);
 
     // transforms a polygon in a "forme" structure, ie a set of contours, which can be holes (see ShapeUtils.h)
     // return NULL in case it's not possible
