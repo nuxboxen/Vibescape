@@ -336,14 +336,9 @@ void InkFileExportCmd::fit_to_export_area(SPDocument *doc, SPObject *object)
     }
 
     if (export_margin != 0) {
-        // Note: this doesn't work anymore - it got broken sometime before 1.4 (see issue below),
-        //  but I'm refactoring how we set the export area and have removed the code that tried but
-        //  failed to implement this.
-        //  For future devs looking at fixing export margins, please test that this works for a
-        //  variety of output modes: png, svg, wmf, pdf.
-        //  Issue about this: https://gitlab.com/inkscape/inkscape/-/work_items/4668
-        //  MR that removed the code: https://gitlab.com/inkscape/inkscape/-/merge_requests/7973
-        std::cerr << "The --export-margin argument does not currently work. Ignored." << std::endl;
+        auto unit = doc->getDisplayUnit();
+        auto margin_px = Inkscape::Util::Quantity::convert(export_margin, unit, "px");
+        area.expandBy(margin_px);
     }
 
     // Only adjust the doc if we have to
