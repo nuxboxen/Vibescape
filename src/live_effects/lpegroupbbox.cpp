@@ -16,17 +16,6 @@
 namespace Inkscape {
 namespace LivePathEffect {
 
-/**
- * Updates the \c boundingbox_X and \c boundingbox_Y values from the geometric bounding box of \c lpeitem.
- *
- * @pre   lpeitem must have an existing geometric boundingbox (usually this is guaranteed when: \code cast<SPShape>(lpeitem)->curve != NULL \endcode )
- *        It's not possible to run LPEs on items without their original-d having a bbox.
- * @param lpeitem   This is not allowed to be NULL.
- * @param absolute  Determines whether the bbox should be calculated of the untransformed lpeitem (\c absolute = \c false)
- *                  or of the transformed lpeitem (\c absolute = \c true) using sp_item_i2doc_affine.
- * @post Updated values of boundingbox_X and boundingbox_Y. These intervals are set to empty intervals when the precondition is not met.
- */
-
 Geom::OptRect
 GroupBBoxEffect::clip_mask_bbox(SPLPEItem *item, Geom::Affine transform)
 {
@@ -53,6 +42,18 @@ GroupBBoxEffect::clip_mask_bbox(SPLPEItem *item, Geom::Affine transform)
     return bbox;
 }
 
+/**
+ * Updates the \c boundingbox_X and \c boundingbox_Y values from the geometric bounding box of \c lpeitem.
+ *
+ * @pre   lpeitem must have an existing geometric boundingbox (usually this is guaranteed when: \code cast<SPShape>(lpeitem)->curve != NULL \endcode )
+ *        It's not possible to run LPEs on items without their original-d having a bbox.
+ * @param lpeitem This is not allowed to be NULL.
+ * @param absolute Determines whether the bbox should be calculated of the untransformed lpeitem (\c absolute = \c false)
+ *                 or of the transformed lpeitem (\c absolute = \c true) using sp_item_i2doc_affine.
+ * @param clip_mask Whether to include the clip mask bbox as well
+ * @param base_transform If not absolute, this is the transform used on the bbox
+ * @post Updated values of boundingbox_X and boundingbox_Y. These intervals are set to empty intervals when the precondition is not met.
+ */
 void GroupBBoxEffect::original_bbox(SPLPEItem const* lpeitem, bool absolute, bool clip_mask, Geom::Affine base_transform)
 {
     // Get item bounding box
