@@ -198,7 +198,7 @@ private:
     // Pattern creation
     gchar *_createPattern(GfxPattern *pattern, GfxState *state, bool is_stroke=false);
     gchar *_createGradient(GfxState *state, GfxShading *shading, const Geom::Affine pat_matrix);
-    void _addStopToGradient(Inkscape::XML::Node *gradient, double offset, GfxColor *color, GfxColorSpace *space,
+    void _addStopToGradient(Inkscape::XML::Node *gradient, double offset, GfxColor &color, GfxColorSpace *space,
                             Colors::RenderingIntent intent, double opacity);
     bool _addGradientStops(Inkscape::XML::Node *gradient, GfxState *state, GfxShading *shading,
                            _POPPLER_CONST Function *func);
@@ -251,6 +251,7 @@ private:
     static bool _attrEqual(Inkscape::XML::Node *a, Inkscape::XML::Node *b, char const *attr);
 
     // Colors
+    std::string convertGfxColor(const GfxColor &color, GfxColorSpace *space, Colors::RenderingIntent intent);
     std::string convertGfxColor(const GfxColor *color, GfxColorSpace *space, Colors::RenderingIntent intent);
     std::string _getColorSpace(cmsHPROFILE hp, Colors::RenderingIntent intent);
     std::shared_ptr<Colors::Space::AnySpace> _getColorSpace(std::shared_ptr<Colors::CMS::Profile> const &profile, Colors::RenderingIntent intent);

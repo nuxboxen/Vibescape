@@ -41,6 +41,7 @@
 #include <GlobalParams.h>
 #include <Lexer.h>
 #include <Object.h>
+#include <OptionalContent.h>
 #include <OutputDev.h>
 #include <PDFDoc.h>
 #include <Page.h>
@@ -264,7 +265,7 @@ GfxPatch blankPatch()
 //------------------------------------------------------------------------
 
 PdfParser::PdfParser(std::shared_ptr<PDFDoc> pdf_doc, Inkscape::Extension::Internal::SvgBuilder *builderA, Page *page,
-                     _POPPLER_CONST PDFRectangle *cropBox)
+                     const std::optional<PDFRectangle> &cropBox)
     : _pdf_doc(pdf_doc)
     , xref(pdf_doc->getXRef())
     , builder(builderA)
@@ -303,8 +304,8 @@ PdfParser::PdfParser(std::shared_ptr<PDFDoc> pdf_doc, Inkscape::Extension::Inter
     builder->setMargins(getRect(page->getTrimBox()) * scale,
                         getRect(page->getArtBox()) * scale,
                         getRect(page->getMediaBox()) * scale);
-    if (cropBox && getRect(cropBox) != page_box) {
-        builder->cropPage(getRect(cropBox) * scale);
+    if (cropBox && getRect(*cropBox) != page_box) {
+        builder->cropPage(getRect(*cropBox) * scale);
     }
 
     if (auto meta = pdf_doc->readMetadata()) {
@@ -331,7 +332,7 @@ PdfParser::PdfParser(XRef *xrefA, Inkscape::Extension::Internal::SvgBuilder *bui
     , printCommands(false)
     , res(new GfxResources(xref, resDict, nullptr))
     , // start the resource stack
-    state(new GfxState(72, 72, box, 0, false))
+    state(new _POPPLER_GFX_STATE(72, 72, *box, 0, false))
     , fontChanged(gFalse)
     , clip(clipNone)
     , ignoreUndef(0)
@@ -964,7 +965,7 @@ void PdfParser::opSetFillGray(Object args[], int /*numArgs*/)
   state->setFillPattern(nullptr);
   state->setFillColorSpace(_POPPLER_CONSUME_UNIQPTR_ARG(std::make_unique<GfxDeviceGrayColorSpace>()));
   color.c[0] = dblToCol(args[0].getNum());
-  state->setFillColor(&color);
+  state->_POPPLER_SET_FILL_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -976,7 +977,7 @@ void PdfParser::opSetStrokeGray(Object args[], int /*numArgs*/)
   state->setStrokePattern(nullptr);
   state->setStrokeColorSpace(_POPPLER_CONSUME_UNIQPTR_ARG(std::make_unique<GfxDeviceGrayColorSpace>()));
   color.c[0] = dblToCol(args[0].getNum());
-  state->setStrokeColor(&color);
+  state->_POPPLER_SET_STROKE_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -991,7 +992,7 @@ void PdfParser::opSetFillCMYKColor(Object args[], int /*numArgs*/)
   for (i = 0; i < 4; ++i) {
     color.c[i] = dblToCol(args[i].getNum());
   }
-  state->setFillColor(&color);
+  state->_POPPLER_SET_FILL_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -1005,7 +1006,7 @@ void PdfParser::opSetStrokeCMYKColor(Object args[], int /*numArgs*/)
   for (int i = 0; i < 4; ++i) {
     color.c[i] = dblToCol(args[i].getNum());
   }
-  state->setStrokeColor(&color);
+  state->_POPPLER_SET_STROKE_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -1019,7 +1020,7 @@ void PdfParser::opSetFillRGBColor(Object args[], int /*numArgs*/)
   for (int i = 0; i < 3; ++i) {
     color.c[i] = dblToCol(args[i].getNum());
   }
-  state->setFillColor(&color);
+  state->_POPPLER_SET_FILL_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -1032,7 +1033,7 @@ void PdfParser::opSetStrokeRGBColor(Object args[], int /*numArgs*/) {
   for (int i = 0; i < 3; ++i) {
     color.c[i] = dblToCol(args[i].getNum());
   }
-  state->setStrokeColor(&color);
+  state->_POPPLER_SET_STROKE_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -1048,7 +1049,7 @@ void PdfParser::opSetFillColorSpace(Object args[], int numArgs)
     GfxColor color;
     colorSpace->getDefaultColor(&color);
     state->setFillColorSpace(_POPPLER_CONSUME_UNIQPTR_ARG(colorSpace));
-    state->setFillColor(&color);
+    state->_POPPLER_SET_FILL_COLOR(color);
     builder->updateStyle(state);
   } else {
     error(errSyntaxError, getPos(), "Bad color space (fill)");
@@ -1069,7 +1070,7 @@ void PdfParser::opSetStrokeColorSpace(Object args[], int numArgs)
     GfxColor color;
     colorSpace->getDefaultColor(&color);
     state->setStrokeColorSpace(_POPPLER_CONSUME_UNIQPTR_ARG(colorSpace));
-    state->setStrokeColor(&color);
+    state->_POPPLER_SET_STROKE_COLOR(color);
     builder->updateStyle(state);
   } else {
     error(errSyntaxError, getPos(), "Bad color space (stroke)");
@@ -1089,7 +1090,7 @@ void PdfParser::opSetFillColor(Object args[], int numArgs) {
   for (i = 0; i < numArgs; ++i) {
     color.c[i] = dblToCol(args[i].getNum());
   }
-  state->setFillColor(&color);
+  state->_POPPLER_SET_FILL_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -1106,7 +1107,7 @@ void PdfParser::opSetStrokeColor(Object args[], int numArgs) {
   for (i = 0; i < numArgs; ++i) {
     color.c[i] = dblToCol(args[i].getNum());
   }
-  state->setStrokeColor(&color);
+  state->_POPPLER_SET_STROKE_COLOR(color);
   builder->updateStyle(state);
 }
 
@@ -1127,7 +1128,7 @@ void PdfParser::opSetFillColorN(Object args[], int numArgs) {
 	  color.c[i] = dblToCol(args[i].getNum());
 	}
       }
-      state->setFillColor(&color);
+      state->_POPPLER_SET_FILL_COLOR(color);
       builder->updateStyle(state);
     }
     if (auto pattern = lookupPattern(&(args[numArgs - 1]), state)) {
@@ -1146,7 +1147,7 @@ void PdfParser::opSetFillColorN(Object args[], int numArgs) {
 	color.c[i] = dblToCol(args[i].getNum());
       }
     }
-    state->setFillColor(&color);
+    state->_POPPLER_SET_FILL_COLOR(color);
     builder->updateStyle(state);
   }
 }
@@ -1170,7 +1171,7 @@ void PdfParser::opSetStrokeColorN(Object args[], int numArgs) {
 	  color.c[i] = dblToCol(args[i].getNum());
 	}
       }
-      state->setStrokeColor(&color);
+      state->_POPPLER_SET_STROKE_COLOR(color);
       builder->updateStyle(state);
     }
     if (auto pattern = lookupPattern(&(args[numArgs - 1]), state)) {
@@ -1189,7 +1190,7 @@ void PdfParser::opSetStrokeColorN(Object args[], int numArgs) {
 	color.c[i] = dblToCol(args[i].getNum());
       }
     }
-    state->setStrokeColor(&color);
+    state->_POPPLER_SET_STROKE_COLOR(color);
     builder->updateStyle(state);
   }
 }
@@ -1673,7 +1674,7 @@ void PdfParser::doFunctionShFill1(GfxFunctionShading *shading,
 
     // use the center color
     shading->getColor(xM, yM, &fillColor);
-    state->setFillColor(&fillColor);
+    state->_POPPLER_SET_FILL_COLOR(fillColor);
 
     // fill the rectangle
     state->moveTo(x0 * matrix[0] + y0 * matrix[2] + matrix[4],
@@ -1779,7 +1780,7 @@ void PdfParser::gouraudFillTriangle(double x0, double y0, double color0,
     if (isFineEnough || depth == maxDepth) {
         GfxColor color;
         shading->getParameterizedColor(meanColor, &color);
-        state->setFillColor(&color);
+        state->_POPPLER_SET_FILL_COLOR(color);
         state->moveTo(x0, y0);
         state->lineTo(x1, y1);
         state->lineTo(x2, y2);
@@ -1819,7 +1820,7 @@ void PdfParser::gouraudFillTriangle(double x0, double y0, GfxColor *color0,
     }
   }
   if (i == nComps || depth == maxDepth) {
-    state->setFillColor(color0);
+    state->_POPPLER_SET_FILL_COLOR(*color0);
     state->moveTo(x0, y0);
     state->lineTo(x1, y1);
     state->lineTo(x2, y2);
@@ -1896,7 +1897,7 @@ void PdfParser::fillPatch(_POPPLER_CONST GfxPatch *patch, int nComps, int depth)
     color.c[i] = GfxColorComp(patch->color[0][0].c[i]);
   }
   if (i == nComps || depth == maxDepth) {
-    state->setFillColor(&color);
+    state->_POPPLER_SET_FILL_COLOR(color);
     state->moveTo(patch->x[0][0], patch->y[0][0]);
     state->curveTo(patch->x[0][1], patch->y[0][1],
 		   patch->x[0][2], patch->y[0][2],

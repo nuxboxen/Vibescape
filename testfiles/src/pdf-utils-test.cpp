@@ -15,9 +15,10 @@
 #include <gtest/gtest.h>
 #include <2geom/svg-path-writer.h>
 #include <2geom/rect.h>
-#include <poppler/GfxState.h>
-#include <poppler/Gfx.h>
+#include <GfxState.h>
+#include <Gfx.h>
 #include "extension/internal/pdfinput/pdf-utils.h"
+#include "extension/internal/pdfinput/poppler-transition-api.h"
 #include "svg/svg.h"
 
 class PdfUtilsTest : public ::testing::Test
@@ -47,7 +48,7 @@ public:
     void SetUp() override {
         // A sufficiently large fake page bounding box for Poppler state object use
         page_bbox = new PDFRectangle(0, 0, 30, 30);
-        state = new GfxState(72, 72, page_bbox, 0, false);
+        state = new _POPPLER_GFX_STATE(72, 72, *page_bbox, 0, false);
     }
 
     // Clean up

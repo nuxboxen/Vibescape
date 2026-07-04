@@ -52,6 +52,7 @@ private:
 };
 
 Geom::Rect getRect(_POPPLER_CONST PDFRectangle *box);
+Geom::Rect getRect(_POPPLER_CONST PDFRectangle &box);
 Geom::PathVector getPathV(_POPPLER_CONST GfxPath *gPath);
 Geom::PathVector maybeIntersect(Geom::PathVector const &v1, Geom::PathVector const &v2,
                                 FillRule fill1 = FillRule::fill_nonZero, FillRule fill2 = FillRule::fill_nonZero);
