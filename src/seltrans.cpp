@@ -18,7 +18,7 @@
 #include <cstring>
 #include <string>
 
-#include <gdk/gdkkeysyms.h>
+#include <gdk/gdk.h>
 #include <glibmm/i18n.h>
 #include <giomm/application.h>
 
