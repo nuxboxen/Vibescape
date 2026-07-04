@@ -15,6 +15,12 @@
 #include <glib/poppler-features.h>
 #include <UTF.h>
 
+#if POPPLER_CHECK_VERSION(26, 7, 0)
+#define _POPPLER_STRING_26_7 std::string
+#else
+#define _POPPLER_STRING_26_7 GooString
+#endif
+
 #if POPPLER_CHECK_VERSION(26, 6, 0)
 #define _POPPLER_GET_GRAY(color, gray) getGray(color, gray)
 #define _POPPLER_GET_RGB(color, rgb) getRGB(color, rgb)

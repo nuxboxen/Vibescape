@@ -891,9 +891,10 @@ PdfInput::add_builder_page(std::shared_ptr<PDFDoc>pdf_doc, SvgBuilder *builder, 
 
     // Parse the annotations
     if (auto annots = page->getAnnotsObject(); annots.isArray()) {
-        auto const size = annots.arrayGetLength();
+        auto* annotsArray = annots.getArray();
+        auto const size = annotsArray->getLength();
         for (int i = 0; i < size; i++) {
-            pdf_parser.build_annots(annots.arrayGet(i), page_num);
+            pdf_parser.build_annots(annotsArray->get(i), page_num);
         }
     }
 }
