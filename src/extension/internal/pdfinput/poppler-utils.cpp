@@ -668,7 +668,6 @@ std::string getString(const GooString *value)
 std::string getString(const std::string &value)
 {
     char *str = nullptr;
-    int stringLength;
 
     if (_POPPLER_HAS_UNICODE_BOM(value)) {
         str = g_convert(value.c_str() + 2, value.size() - 2,
@@ -682,7 +681,7 @@ std::string getString(const std::string &value)
         str = g_convert(utf16.c_str(), utf16.length(), "UTF-8", "UTF-16", NULL, NULL, NULL);
     }
 #else
-    else if (auto utf16 = pdfDocEncodingToUTF16(value, &stringLength))  {
+    else if (auto utf16 = pdfDocEncodingToUTF16(value))  {
         str = g_convert(utf16, stringLength, "UTF-8", "UTF-16", NULL, NULL, NULL);
         delete[] utf16;
     }
