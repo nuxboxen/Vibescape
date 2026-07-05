@@ -187,15 +187,16 @@ void InkFontDict::hashFontObject1(const Object *obj, FNVHash *h)
         case objNull:
             h->hash('z');
             break;
-        case objArray:
-            h->hash('a');
-            n = obj->arrayGetLength();
-            h->hash((char *)&n, sizeof(int));
-            for (i = 0; i < n; ++i) {
-                const Object &obj2 = obj->arrayGetNF(i);
-                hashFontObject1(&obj2, h);
-            }
-            break;
+        case objArray: {
+                h->hash('a');
+                Array * objArray = obj->getArray();
+                n = objArray->getLength();
+                h->hash((char *)&n, sizeof(int));
+                for (i = 0; i < n; ++i) {
+                    const Object &obj2 = objArray->getNF(i);
+                    hashFontObject1(&obj2, h);
+                }
+            } break;
         case objDict: {
                 h->hash('d');
                 auto objdict = obj->getDict();
@@ -207,8 +208,7 @@ void InkFontDict::hashFontObject1(const Object *obj, FNVHash *h)
                     const Object &obj2 = objdict->getValNF(i);
                     hashFontObject1(&obj2, h);
                 }
-            }
-            break;
+            } break;
         case objStream:
             // this should never happen - streams must be indirect refs
             break;
@@ -546,7 +546,7 @@ void _getFontsRecursive(std::shared_ptr<PDFDoc> pdf_doc, Dict *resources, const 
                 continue;
 
             Ref resourcesRef;
-            const Object resObj = obj2.streamGetDict()->lookup("Resources", &resourcesRef);
+            const Object resObj = obj2.getStream()->getDict()->lookup("Resources", &resourcesRef);
             if (resourcesRef != Ref::INVALID() && !visitedObjects.insert(resourcesRef.num).second)
                 continue;
 
@@ -659,6 +659,11 @@ std::string getString(const GooString *value)
         return getString(value->toStr());
     }
     return "";
+}
+
+std::string getString(const GooString &value)
+{
+    return getString(value.toStr());
 }
 
 /**
