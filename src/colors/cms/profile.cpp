@@ -33,7 +33,8 @@ bool _cmsWriteTag(cmsHPROFILE hProfile, cmsTagSignature tag, std::string const &
     auto ContextID = cmsGetProfileContextID(hProfile);
     if (auto mlu = cmsMLUalloc(ContextID, 1)) {
         std::wstring wide_string = utf8_to_wstring(value);
-        if (cmsMLUsetWide(mlu,  "en", "US", wide_string.c_str())) {
+        // Todo: Use cmsMLUsetUTF8() when widely available.
+        if (cmsMLUsetWide(mlu, "en", "US", wide_string.c_str())) {
             result = cmsWriteTag(hProfile, tag,  mlu);
         }
         cmsMLUfree(mlu);
@@ -220,7 +221,7 @@ std::string Profile::getName(bool sanitize) const
         // allocate buffer at least byteLen bytes in size
         constexpr int wc = sizeof(wchar_t);
         std::vector<wchar_t> data((byteLen + wc - 1) / wc);
-        // lcms returns nul-terminated wide string
+        // Todo: Use cmsGetProfileInfoUTF8() when widely available.
         auto readLen = cmsGetProfileInfo(_handle, cmsInfoDescription, "en", "US", data.data(), byteLen);
         if (readLen < byteLen) {
             g_warning("Profile::get_name(): icc data read less than expected!");

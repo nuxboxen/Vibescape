@@ -120,7 +120,7 @@ IconPreviewPanel::IconPreviewPanel()
     int avail = 0;
     for (auto i = sizes.size(); i-- > 0;) {
         images[i] = Gtk::make_managed<Gtk::Image>();
-        images[i]->set_size_request(sizes[i], sizes[i]);
+        images[i]->set_pixel_size(sizes[i]);
 
         auto const &label = labels[i];
 

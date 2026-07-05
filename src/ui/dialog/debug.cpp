@@ -12,6 +12,9 @@
 
 #include "debug.h"
 
+#include <glibmm/i18n.h>
+#include <gtkmm/version.h>
+
 namespace Inkscape::UI::Dialog {
 
 Debug::Debug()
@@ -19,6 +22,16 @@ Debug::Debug()
 {
     notebook.append_page(memory, "Memory");
     notebook.append_page(messages, "Messages");
+
+#if GTKMM_CHECK_VERSION(4, 16, 0)
+    auto button = Gtk::make_managed<Gtk::Button>(_("Inspector"));
+    button->signal_clicked().connect([button] {
+        if (auto window = dynamic_cast<Gtk::Window *>(button->get_root())) {
+            window->set_interactive_debugging();
+        }
+    });
+    notebook.set_action_widget(button, Gtk::PackType::END);
+#endif
 
     append(notebook);
 };
