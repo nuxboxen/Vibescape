@@ -747,6 +747,7 @@ void Script::showPopupError (const Glib::ustring &data,
 
 bool Script::cancelProcessing () {
     KILL_PROCESS(_pid);
+
     _canceled = true;
     if (_main_loop) {
         _main_loop->quit();
@@ -900,12 +901,6 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
     _canceled = false;
     _main_loop->run();
 
-    WAIT_PROCESS(local_pid);
-    if (_canceled) {
-        // std::cout << "Script Canceled" << std::endl;
-        return 0;
-    }
-
     if (pipe_diffs && !lost_document) {
         (*watch).disconnect(document);
     }
@@ -922,6 +917,12 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
 
     _main_loop.reset();
     _setAppSensitive(true);
+
+    WAIT_PROCESS(local_pid);
+    if (_canceled) {
+        // std::cout << "Script Canceled" << std::endl;
+        return 0;
+    }
 
     if (pipe_diffs && lost_document) {
         throw Inkscape::Extension::Output::lost_document{};
