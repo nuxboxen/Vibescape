@@ -846,7 +846,7 @@ PdfInput::add_builder_page(std::shared_ptr<PDFDoc>pdf_doc, SvgBuilder *builder, 
     }
 
     // Apply crop settings
-#if POPPLER_CHECK_VERSION(26, 2, 0)
+#if POPPLER_CHECK_VERSION(26, 6, 0)
     std::optional<PDFRectangle> clipToBox;
 #else
     _POPPLER_CONST PDFRectangle *clipToBox = nullptr;
@@ -865,7 +865,7 @@ PdfInput::add_builder_page(std::shared_ptr<PDFDoc>pdf_doc, SvgBuilder *builder, 
     }
 
     std::optional<PDFRectangle> cropBox;
-#if POPPLER_CHECK_VERSION(26, 2, 0)
+#if POPPLER_CHECK_VERSION(26, 6, 0)
     cropBox = clipToBox;
 #else
     if (clipToBox) {
