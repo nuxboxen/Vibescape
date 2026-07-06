@@ -21,8 +21,7 @@
 #endif
 
 #include <string>
-#include <locale>
-#include <codecvt>
+
 
 #include <Function.h>
 #include <GfxFont.h>
@@ -1953,11 +1952,9 @@ void SvgBuilder::addChar(GfxState *state,
     _aria_space = false;
 
     std::string utf8_code;
-    static std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv1;
-    // Note std::wstring_convert and std::codecvt_utf are deprecated and will be removed in C++26.
     if (u) {
         // 'u' maybe null if there is not a "ToUnicode" table in the PDF!
-        utf8_code = conv1.to_bytes(*u);
+        utf8_code = Glib::ustring(1, static_cast<gunichar>(*u)).raw();
         _aria_label += utf8_code;
     }
 

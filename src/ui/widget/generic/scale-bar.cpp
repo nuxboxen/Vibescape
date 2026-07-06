@@ -97,8 +97,6 @@ bool ScaleBar::on_scroll(Gtk::EventControllerScroll& scroll, double dx, double d
 
     // growth direction: up or right
     auto delta = std::abs(dx) > std::abs(dy) ? -dx : dy;
-    //todo: adj speed based on modifiers
-    auto state = scroll.get_current_event_state();
     auto range = _adjustment->get_upper() - _adjustment->get_lower();
     if (range <= 0) return false;
     delta *= range / 100.0;

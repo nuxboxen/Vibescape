@@ -79,15 +79,10 @@ void ExtensionList::setup()
     // See also create_export_filters().
     this->remove_all();
 
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    bool export_all = prefs->getBool("/dialogs/export/show_all_extensions", false);
-
     Inkscape::Extension::DB::OutputList extensions;
     Inkscape::Extension::db.get_output_list(extensions);
     for (auto omod : extensions) {
         auto oid = Glib::ustring(omod->get_id());
-        // if (!export_all && !omod->is_raster() && !omod->is_exported())
-        //     continue;
         // Comboboxes don't have a disabled row property
         if (omod->deactivated())
             continue;
