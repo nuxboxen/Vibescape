@@ -71,6 +71,8 @@
 #define WAIT_PROCESS(pid) WaitForSingleObject(pid, INFINITE)
 #else
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #define KILL_PROCESS(pid) kill(pid, SIGTERM)
 #define WAIT_PROCESS(pid) waitpid(pid, NULL, 0)
 #endif
