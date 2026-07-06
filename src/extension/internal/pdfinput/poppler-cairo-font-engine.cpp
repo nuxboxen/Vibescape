@@ -308,7 +308,7 @@ CairoFreeTypeFont *CairoFreeTypeFont::create(GfxFont *gfxFont, XRef *xref, FT_Li
 {
     std::string fileName;
     std::vector<unsigned char> font_data;
-    int i;
+    int i, [[maybe_unused]] n;
 #if POPPLER_CHECK_VERSION(22, 2, 0)
     std::optional<GfxFontLoc> fontLoc;
 #else
