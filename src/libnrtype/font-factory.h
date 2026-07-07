@@ -77,7 +77,6 @@ public:
     std::vector<Glib::RefPtr<Pango::FontFamily>> get_font_families();
 
     // Various functions to get a FontInstance from different descriptions.
-    std::shared_ptr<FontInstance> FaceFromDescr(char const *family, char const *style);
     std::shared_ptr<FontInstance> FaceFromPangoString(char const *pangoString);
     std::shared_ptr<FontInstance> FaceFromFontSpecification(char const *fontSpecification);
     std::shared_ptr<FontInstance> Face(PangoFontDescription *descr, bool canFail = true);

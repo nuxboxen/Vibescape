@@ -23,7 +23,6 @@
 #include "svg/svg-length.h"
 #include "font-factory.h"
 
-
 namespace Inkscape {
 namespace Text {
 

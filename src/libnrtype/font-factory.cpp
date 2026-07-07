@@ -407,20 +407,9 @@ std::vector<StyleNames> FontFactory::GetUIStyles(PangoFontFamily *in)
     return result;
 }
 
-std::shared_ptr<FontInstance> FontFactory::FaceFromDescr(char const *family, char const *style)
-{
-    PangoFontDescription *temp_descr = pango_font_description_from_string(style);
-    pango_font_description_set_family(temp_descr,family);
-    std::cout << "FontFactory::FaceFromDescr: " << pango_font_description_to_string(temp_descr) << std::endl;
-    auto res = Face(temp_descr);
-    pango_font_description_free(temp_descr);
-    return res;
-}
-
-// Only used by font-list.cpp and in the following function. (Why was this added?)
+// Only used by font-list.cpp and in the function following this one. (Why was this added?)
 std::shared_ptr<FontInstance> FontFactory::FaceFromPangoString(char const *pangoString)
 {
-    std::cout << "FontFactory::FaceFromPangoString: " << pangoString << std::endl;
     std::shared_ptr<FontInstance> fontInstance;
 
     g_assert(pangoString);
@@ -448,9 +437,9 @@ std::shared_ptr<FontInstance> FontFactory::FaceFromFontSpecification(char const 
     return FaceFromPangoString(fontSpecification);
 }
 
-// Called by only by font-discovery.
+// Called by only by font-discovery. WHY?
 std::unique_ptr<FontInstance> FontFactory::create_face(PangoFontDescription* descr) {
-    // REMOVE
+
     pango_font_description_set_size(descr, PANGO_SCALE);
 
     if (!sp_font_description_get_family(descr)) {
@@ -461,6 +450,12 @@ std::unique_ptr<FontInstance> FontFactory::create_face(PangoFontDescription* des
     return std::make_unique<FontInstance>(pango_font_map_load_font(fontServer, fontContext, descr), descr_copy);
 }
 
+// Called by Layout::InputStreamTextSource::styleGetFontInstance() which is called by:
+//   Layout::_buildSpansForPara() to get font line-height metrics.
+//   Layout::_calculateCursorShapeForEmpty() to get line-height metrics and slope.
+// Called by Layout-TNG-Compute to find face after itemizing (which can change description).
+// Called by ink_font_from_style() to get line-height metrics in several places.
+// Called by getSubstituteFontName()
 std::shared_ptr<FontInstance> FontFactory::Face(PangoFontDescription *descr, bool canFail)
 {
     // std::cout << "FontFactory::Face: " << pango_font_description_to_string(descr) << std::endl;
