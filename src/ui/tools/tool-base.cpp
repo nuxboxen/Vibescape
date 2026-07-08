@@ -24,7 +24,6 @@
 #include "actions/actions-tools.h"
 #include "desktop-events.h"
 #include "desktop-style.h"
-#include "desktop.h"
 #include "display/control/canvas-item-catchall.h" // Grab/Ungrab
 #include "display/control/snap-indicator.h"
 #include "gradient-drag.h"

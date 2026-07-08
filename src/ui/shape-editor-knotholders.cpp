@@ -2596,7 +2596,7 @@ void TextPathKnotHolderEntityOffset::set_middle_knot_positional_offset(Geom::Poi
     _direction = -Geom::unit_vector(Geom::rot90(tangent));
     auto const angle = Geom::atan2(-tangent) + M_PI / 2;
     auto const style = _text->style;
-    auto const font_size = style->font_size.computed;
+    auto const font_size = style->font_size.computed / _text->i2dt_affine().descrim();
     _position += font_size * _direction;
     knot->angle = angle;
     knot->updateCtrl();

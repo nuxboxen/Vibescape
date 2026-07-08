@@ -13,7 +13,6 @@
 #include <glibmm/i18n.h>
 
 #include "actions/actions-tools.h" // set_active_tool()
-#include "desktop.h"
 #include "display/control/canvas-item-drawing.h"
 #include "display/drawing.h"
 #include "document-undo.h"

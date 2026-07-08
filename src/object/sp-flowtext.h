@@ -103,7 +103,7 @@ public:
     void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const override;
 };
 
-SPItem *create_flowtext_with_internal_frame (SPDesktop *desktop, Geom::Point p1, Geom::Point p2);
+SPItem *create_flowtext_with_internal_frame (SPGroup *parent, SPCSSAttr *css, Geom::Rect rect_doc);
 
 #endif // SEEN_SP_ITEM_FLOWTEXT_H
 

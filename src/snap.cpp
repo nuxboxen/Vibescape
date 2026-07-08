@@ -158,6 +158,33 @@ Inkscape::SnappedPoint SnapManager::freeSnap(Inkscape::SnapCandidatePoint const 
     return findBestSnap(p, isr, false, false, to_paths_only);
 }
 
+Geom::Point SnapManager::snapToPoints(Geom::Point const &p, Inkscape::SnapSourceType const source_type, std::vector<Inkscape::SnapCandidatePoint> const &points) const
+{
+    auto r = p;
+    if (snapprefs.getSnapEnabledGlobally()) {
+        SnappedPoint s;
+        auto tolerance = getSnapperTolerance(snapprefs.getObjectTolerance());
+
+        for (const auto &k : points) {
+            Geom::Point target_pt = k.getPoint();
+            Geom::Coord dist = Geom::L2(target_pt - p);
+            if (dist < tolerance && dist < s.getSnapDistance()) {
+                s = SnappedPoint(target_pt, source_type, 0, k.getTargetType(), dist, tolerance, false, false, false);
+            }
+        }
+
+        s.getPointIfSnapped(r);
+    }
+    return r;
+}
+
+void SnapManager::hideSnapIndicator()
+{
+    if (_desktop) {
+        _desktop->getSnapIndicator()->remove_snaptarget(true);
+    }
+}
+
 void SnapManager::preSnap(Inkscape::SnapCandidatePoint const &p, bool to_paths_only)
 {
     // setup() must have been called before calling this method!
@@ -725,6 +752,14 @@ SPDocument *SnapManager::getDocument() const
 {
     return _named_view->document;
 }
+
+Geom::Coord SnapManager::getSnapperTolerance(double tolerance) const
+{
+    SPDesktop const *dt = getDesktop();
+    double const zoom =  dt ? dt->current_zoom() : 1;
+    return tolerance / zoom;
+}
+
 
 //Geom::Point SnapManager::_transformPoint(Inkscape::SnapCandidatePoint const &p,
 //                                        Transformation const transformation_type,

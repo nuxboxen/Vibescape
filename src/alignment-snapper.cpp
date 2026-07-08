@@ -309,9 +309,7 @@ bool Inkscape::AlignmentSnapper::getSnapperAlwaysSnap(SnapSourceType const &/*so
 
 Geom::Coord Inkscape::AlignmentSnapper::getSnapperTolerance() const
 {
-    SPDesktop const *dt = _snapmanager->getDesktop();
-    double const zoom =  dt ? dt->current_zoom() : 1;
-    return _snapmanager->snapprefs.getAlignmentTolerance() / zoom;
+    return _snapmanager->getSnapperTolerance(_snapmanager->snapprefs.getAlignmentTolerance());
 }
 
 Inkscape::SnapSourceType Inkscape::AlignmentSnapper::source2alignment(SnapSourceType s) const

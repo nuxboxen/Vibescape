@@ -421,9 +421,9 @@ upwards in z-order and returns what it has found so far (i.e. the found items ar
 guaranteed to be lower than upto). Requires a list of nodes built by build_flat_item_list.
 If items_count > 0, it'll return the topmost (in z-order) items_count items.
  */
-std::vector<SPItem*> SPDesktop::find_items_at_point(std::deque<SPItem*> const &nodes, Geom::Point const &p, int items_count, SPItem *upto) const
+std::vector<SPItem*> SPDesktop::find_items_at_point(std::deque<SPItem*> const &nodes, Geom::Point const &p, int items_count, SPItem *upto, std::optional<double> distance) const
 {
-    double const delta = Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
+    double const delta = distance ? *distance : Inkscape::Preferences::get()->getDouble("/options/cursortolerance/value", 1.0);
 
     std::vector<SPItem*> result;
 
@@ -508,16 +508,16 @@ SPItem *SPDesktop::getGroupAtPoint(Geom::Point const &p) const
     return find_group_at_point(doc()->getRoot(), p);
 }
 
-std::vector<SPItem*> SPDesktop::getItemsAtPoints(std::vector<Geom::Point> points, bool all_layers, bool topmost_only, size_t limit, bool active_only) const
+/**
+ * Get all the items that are near to the given points.
+ *
+ * @arg distance - The distance to the item to allow, default is 0.25 which is useful
+ *                 for picking the path, we don't want small objects close together
+ *                 (such as hatching strokes) to obscure each other by their deltas
+ */
+std::vector<SPItem*> SPDesktop::getItemsAtPoints(std::vector<Geom::Point> points, bool all_layers, bool topmost_only, size_t limit, bool active_only, double distance) const
 {
     std::vector<SPItem*> result;
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-
-    // When picking along the path, we don't want small objects close together
-    // (such as hatching strokes) to obscure each other by their deltas,
-    // so we temporarily set delta to a small value
-    gdouble saved_delta = prefs->getDouble("/options/cursortolerance/value", 1.0);
-    prefs->setDouble("/options/cursortolerance/value", 0.25);
 
     auto &node_cache = get_flat_item_list(true, active_only);
 
@@ -525,7 +525,7 @@ std::vector<SPItem*> SPDesktop::getItemsAtPoints(std::vector<Geom::Point> points
     current_layer = layerManager().currentLayer();
     size_t item_counter = 0;
     for(auto point : points) {
-        std::vector<SPItem*> items = find_items_at_point(node_cache, point, topmost_only, nullptr);
+        std::vector<SPItem*> items = find_items_at_point(node_cache, point, topmost_only, nullptr, distance);
         for (SPItem *item : items) {
             if (item && result.end()==find(result.begin(), result.end(), item))
                 if(all_layers || layerManager().layerForObject(item) == current_layer) {
@@ -533,15 +533,11 @@ std::vector<SPItem*> SPDesktop::getItemsAtPoints(std::vector<Geom::Point> points
                     item_counter++;
                     //limit 0 = no limit
                     if(item_counter == limit){
-                        prefs->setDouble("/options/cursortolerance/value", saved_delta);
                         return result;
                     }
                 }
         }
     }
-
-    // and now we restore it back
-    prefs->setDouble("/options/cursortolerance/value", saved_delta);
 
     return result;
 }

@@ -14,7 +14,7 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "desktop.h"
+#include "sp-item.h"
 #include "sp-string.h"
 #include "text-tag-attributes.h"
 #include "libnrtype/style-attachments.h"
@@ -68,6 +68,9 @@ public:
     std::unique_ptr<Shape> getExclusionShape() const;
     /** Add a single inclusion shape with padding */
     std::unique_ptr<Shape> getInclusionShape(SPShape *shape) const;
+    /** Get the location where the first letter would flow into this shape **/
+    static Geom::Point getFirstInsertionPosition(SPShape *shape, bool ltr = true);
+
     /** Compute the final effective shapes:
      *  All inclusion shapes shrunk by the padding,
      *  from which we subtract the exclusion shapes expanded by their padding.
@@ -94,6 +97,8 @@ private:
     SVGLength* _getFirstXLength();
     SVGLength* _getFirstYLength();
     SPCSSAttr *css;
+
+    static std::unique_ptr<Shape> makeInclusionShape(SPShape *shape, std::optional<double> padding = {});
 
   public:
     /** Optimize textpath text on next set_transform. */
@@ -139,8 +144,9 @@ private:
     double resolve_alignment_offset_multiplier() const;
 };
 
-SPItem *create_text_with_inline_size (SPDesktop *desktop, Geom::Point p0, Geom::Point p1);
-SPItem *create_text_with_rectangle   (SPDesktop *desktop, Geom::Point p0, Geom::Point p1);
+SPText *create_text_at_position(SPGroup *parent, SPCSSAttr *css, Geom::Point pos, std::optional<double> inline_size = {});
+SPText *create_text_in_rectangle(SPGroup *parent, SPCSSAttr *css, Geom::Rect rect);
+SPText *create_text_in_shape(SPGroup *parent, SPCSSAttr *css, SPShape *shape);
 
 #endif
 

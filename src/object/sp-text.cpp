@@ -30,6 +30,7 @@
 
 #include "libnrtype/font-factory.h"
 #include "libnrtype/font-instance.h"
+#include "libnrtype/Layout-TNG-Scanline-Maker.h"
 
 #include "desktop-style.h"
 #include "document.h"
@@ -47,13 +48,15 @@
 #include "sp-title.h"
 #include "sp-tref.h"
 #include "sp-tspan.h"
+#include "sp-defs.h"
 
 #include "display/drawing-text.h"
 #include "path/path-boolop.h"
 #include "svg/svg.h"
 #include "util/units.h"
+#include "util/numeric/converters.h"
+#include "xml/href-attribute-helper.h"
 #include "xml/quote.h"
-
 
 // For SVG 2 text flow
 #include <glibmm/regex.h>
@@ -732,6 +735,15 @@ std::unique_ptr<Shape> SPText::getExclusionShape() const
 
 std::unique_ptr<Shape> SPText::getInclusionShape(SPShape *shape) const
 {
+    std::optional<double> padding = std::abs(style->shape_padding.computed);
+    if (!style->shape_padding.set || *padding < 1e-12) {
+        padding.reset();
+    }
+    return makeInclusionShape(shape, padding);
+}
+
+std::unique_ptr<Shape> SPText::makeInclusionShape(SPShape *shape, std::optional<double> padding)
+{
     if (!shape) {
         return {};
     }
@@ -741,15 +753,6 @@ std::unique_ptr<Shape> SPText::getInclusionShape(SPShape *shape) const
     auto curve = shape->curve();
     if (!curve) {
         return {};
-    }
-
-    bool padding = style->shape_padding.set;
-    double padding_amount = 0.0;
-    if (padding) {
-        padding_amount = std::abs(style->shape_padding.computed);
-        if (padding_amount < 1e-12) {
-            padding = false;
-        }
     }
 
     auto pathvector = *curve;
@@ -769,7 +772,7 @@ std::unique_ptr<Shape> SPText::getInclusionShape(SPShape *shape) const
 
     if (padding) {
         auto outline = std::make_unique<Path>();
-        temp_path->Outline(outline.get(), style->shape_padding.computed, join_round, butt_straight, 20.0);
+        temp_path->Outline(outline.get(), *padding, join_round, butt_straight, 20.0);
 
         auto inclusion_shape = make_nice_shape(temp_path);
         auto thickened_border = make_nice_shape(outline);
@@ -779,6 +782,16 @@ std::unique_ptr<Shape> SPText::getInclusionShape(SPShape *shape) const
         return result;
     }
     return make_nice_shape(temp_path);
+}
+
+Geom::Point SPText::getFirstInsertionPosition(SPShape *shape, bool ltr)
+{
+    auto layout_shape = SPText::makeInclusionShape(shape);
+    // TODO: Layout direction would need to return the value unrotated, since
+    // the scanline maker can return interesting results when not in TTB.
+    auto scan = Inkscape::Text::Layout::ShapeScanlineMaker(layout_shape.get(), Inkscape::Text::Layout::TOP_TO_BOTTOM);
+    auto line = scan.makeScanline({});
+    return Geom::Point(ltr ? line[0].x_start : line[0].x_end, line[0].y);
 }
 
 std::vector<std::unique_ptr<Shape>> SPText::makeEffectiveShapes() const
@@ -1205,97 +1218,98 @@ const std::vector<SPItem *> SPText::get_all_shape_dependencies() const
     return ret;
 }
 
-SPItem *create_text_with_inline_size (SPDesktop *desktop, Geom::Point p0, Geom::Point p1)
+/**
+ * Create a free standing piece of text at the given position, within the given parent.
+ * no style or transform is applied.
+ *
+ * @arg parent      - The parent element to append to
+ * @arg pos         - The position of the new free standing text element in document units
+ * @arg inline_size - Optional inline size for the text.
+ *
+ * @returns the new text object.
+ */
+SPText *create_text_at_position(SPGroup *parent, SPCSSAttr *css, Geom::Point doc_pos, std::optional<double> inline_size)
 {
-    SPDocument *doc = desktop->getDocument();
-
-    Inkscape::XML::Document *xml_doc = doc->getReprDoc();
+    Inkscape::XML::Document *xml_doc = parent->document->getReprDoc();
     Inkscape::XML::Node *text_repr = xml_doc->createElement("svg:text");
     text_repr->setAttribute("xml:space", "preserve"); // we preserve spaces in the text objects we create
 
-    auto layer = desktop->layerManager().currentLayer();
-    g_assert(layer != nullptr);
+    auto pos = doc_pos * parent->i2doc_affine().inverse();
+    text_repr->setAttributeSvgDouble("x", pos.x());
+    text_repr->setAttributeSvgDouble("y", pos.y());
 
-    auto text_object = cast<SPText>(layer->appendChildRepr(text_repr));
-    g_assert(text_object != nullptr);
+    /* Create <tspan> */
+    Inkscape::XML::Node *span_repr = xml_doc->createElement("svg:tspan");
+    span_repr->setAttribute("sodipodi:role", "line"); // otherwise, why bother creating the tspan?
+    text_repr->addChild(span_repr, nullptr);
+    Inkscape::GC::release(span_repr);
 
-    // Invert coordinate system?
-    p0 *= desktop->dt2doc();
-    p1 *= desktop->dt2doc();
-
-    // Pixels to user units
-    p0 *= layer->i2doc_affine().inverse();
-    p1 *= layer->i2doc_affine().inverse();
-
-    text_repr->setAttributeSvgDouble("x", p0[Geom::X]);
-    text_repr->setAttributeSvgDouble("y", p0[Geom::Y]);
-
-    double inline_size = p1[Geom::X] - p0[Geom::X];
-
-    text_object->style->inline_size.setDouble( inline_size );
-    text_object->style->inline_size.set = true;
-
-    Inkscape::XML::Node *text_node = xml_doc->createTextNode("");
-    text_repr->appendChild(text_node);
-
-    //text_object->transform = layer->i2doc_affine().inverse();
-    text_object->updateRepr();
-
+    /* Create TEXT */
+    Inkscape::XML::Node *rstring = xml_doc->createTextNode("");
+    span_repr->addChild(rstring, nullptr);
+    Inkscape::GC::release(rstring);
+    auto text_item = cast<SPText>(parent->appendChildRepr(text_repr));
     Inkscape::GC::release(text_repr);
-    Inkscape::GC::release(text_node);
 
-    return text_object;
+    if (!css) {
+        css = sp_repr_css_attr(text_repr, "style");
+    } else {
+        intrusive_ptr_add_ref(css);
+    }
+    if (inline_size) {
+        sp_repr_css_set_property_double(css, "inline-size", *inline_size);
+    }
+    sp_repr_css_set(text_repr, css, "style");
+    sp_repr_css_attr_unref(css);
+
+    return text_item;
 }
 
-SPItem *create_text_with_rectangle (SPDesktop *desktop, Geom::Point p0, Geom::Point p1)
+SPText *create_text_in_rectangle(SPGroup *parent, SPCSSAttr *css, Geom::Rect doc_rect)
 {
-    SPDocument *doc = desktop->getDocument();
-    auto const parent = desktop->layerManager().currentLayer();
-    assert(parent);
-
-    Inkscape::XML::Document *xml_doc = doc->getReprDoc();
-    Inkscape::XML::Node *text_repr = xml_doc->createElement("svg:text");
-    text_repr->setAttribute("xml:space", "preserve"); // we preserve spaces in the text objects we create
-    text_repr->setAttributeOrRemoveIfEmpty("transform", sp_svg_transform_write(parent->i2doc_affine().inverse()));
-
-    auto text_object = cast<SPText>(parent->appendChildRepr(text_repr));
-    g_assert(text_object != nullptr);
-
-    // Invert coordinate system?
-    p0 *= desktop->dt2doc();
-    p1 *= desktop->dt2doc();
-    auto const rect = Geom::Rect(p0, p1);
+    Inkscape::XML::Document *xml_doc = parent->document->getReprDoc();
 
     // Create rectangle
+    auto rect = doc_rect * parent->i2doc_affine().inverse();
     Inkscape::XML::Node *rect_repr = xml_doc->createElement("svg:rect");
     rect_repr->setAttributeSvgDouble("x", rect.left());
     rect_repr->setAttributeSvgDouble("y", rect.top());
     rect_repr->setAttributeSvgDouble("width", rect.width());
     rect_repr->setAttributeSvgDouble("height", rect.height());
 
-    // Find defs, if does not exist, create.
-    Inkscape::XML::Node *defs_repr = sp_repr_lookup_name (xml_doc->root(), "svg:defs");
-    if (defs_repr == nullptr) {
-        defs_repr = xml_doc->createElement("svg:defs");
-        xml_doc->root()->addChild(defs_repr, nullptr);
-    }
-    else Inkscape::GC::anchor(defs_repr);
-
     // Add rectangle to defs.
-    defs_repr->addChild(rect_repr, nullptr);
+    auto defs = parent->document->getDefs();
+    auto box = cast<SPRect>(defs->appendChildRepr(rect_repr));
+    Inkscape::GC::release(rect_repr);
 
-    // Apply desktop style (do before adding "shape-inside").
-    desktop->applyCurrentOrToolStyle(text_repr, "/tools/text", true);
-    SPCSSAttr *css = sp_repr_css_attr(text_repr, "style" );
-    sp_repr_css_set_property (css, "white-space", "pre");  // Respect new lines.
+    return create_text_in_shape(parent, css, box);
+}
 
-    // Link rectangle to text
-    std::string value("url(#");
-    value += rect_repr->attribute("id");
-    value += ")";
-    sp_repr_css_set_property (css, "shape-inside", value.c_str());
+SPText *create_text_in_shape (SPGroup *parent, SPCSSAttr *css, SPShape *shape)
+{
+    Inkscape::XML::Document *xml_doc = parent->document->getReprDoc();
+
+    Inkscape::XML::Node *text_repr = xml_doc->createElement("svg:text");
+    text_repr->setAttribute("xml:space", "preserve"); // we preserve spaces in the text objects we create
+
+    // Text transform is uneffected by the shape's parent transforms (groups etc) but does already
+    // have the transformation of the shape itself, if any.
+    auto tr = is<SPItem>(shape->parent) ? parent->getRelativeTransform(shape->parent)
+                                        : Geom::identity();
+    text_repr->setAttributeOrRemoveIfEmpty("transform", sp_svg_transform_write(tr.inverse()));
+
+    auto text_item = cast<SPText>(parent->appendChildRepr(text_repr));
+    g_assert(text_item != nullptr);
+
+    if (!css) {
+        css = sp_repr_css_attr(text_repr, "style");
+    } else {
+        intrusive_ptr_add_ref(css);
+    }
+
+    sp_repr_css_set_property (css, "white-space", "pre");
+    sp_repr_css_set_property (css, "shape-inside", shape->getUrl().c_str());
     sp_repr_css_set(text_repr, css, "style");
-
     sp_repr_css_attr_unref(css);
 
     /* Create <tspan> */
@@ -1308,10 +1322,52 @@ SPItem *create_text_with_rectangle (SPDesktop *desktop, Geom::Point p0, Geom::Po
     Inkscape::GC::release(rtspan);
     Inkscape::GC::release(text_repr);
     Inkscape::GC::release(text_node);
-    Inkscape::GC::release(defs_repr);
-    Inkscape::GC::release(rect_repr);
 
-    return text_object;
+    return text_item;
+}
+
+SPText *create_text_on_path (SPGroup *parent, SPCSSAttr *css, SPShape *path, double offset, int align, bool right_side)
+{
+    Inkscape::XML::Document *xml_doc = parent->document->getReprDoc();
+
+    Inkscape::XML::Node *text_repr = xml_doc->createElement("svg:text");
+    text_repr->setAttribute("xml:space", "preserve"); // we preserve spaces in the text objects we create
+
+    auto text_item = cast<SPText>(parent->appendChildRepr(text_repr));
+    g_assert(text_item != nullptr);
+
+    // Create textPath object and link to path
+    auto textpath_repr = xml_doc->createElement("svg:textPath");
+    Inkscape::setHrefAttribute(*textpath_repr, std::string("#") + path->getId());
+    Inkscape::XML::Node *text_node = xml_doc->createTextNode("");
+    textpath_repr->appendChild(text_node);
+    text_repr->appendChild(textpath_repr);
+
+    if (!css) {
+        css = sp_repr_css_attr(text_repr, "style");
+    } else {
+        intrusive_ptr_add_ref(css);
+    }
+    if (align < 0) {
+        sp_repr_css_set_property (css, "text-anchor", "start");
+        sp_repr_css_set_property (css, "text-align",  "start");
+    } else if (align > 0) {
+        sp_repr_css_set_property (css, "text-anchor", "end");
+        sp_repr_css_set_property (css, "text-align",  "end");
+    } else {
+        sp_repr_css_set_property (css, "text-anchor", "middle");
+        sp_repr_css_set_property (css, "text-align",  "center");
+    }
+    textpath_repr->setAttribute("startOffset", Inkscape::Util::format_number(offset * 100.0, 3) + "%");
+    textpath_repr->setAttribute("side", right_side ? "right" : "left");
+
+    sp_repr_css_set(text_repr, css, "style");
+    sp_repr_css_attr_unref(css);
+
+    Inkscape::GC::release(textpath_repr);
+    Inkscape::GC::release(text_repr);
+    Inkscape::GC::release(text_node);
+    return text_item;
 }
 
 /*

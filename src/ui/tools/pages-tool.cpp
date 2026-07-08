@@ -12,7 +12,6 @@
 
 #include "pages-tool.h"
 
-#include "desktop.h"
 #include "document-undo.h"
 #include "pure-transform.h"
 #include "selection.h"

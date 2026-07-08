@@ -20,6 +20,7 @@
 // For updating from selection
 #include <glibmm/main.h>
 
+#include "desktop.h"
 #include "inkscape.h"
 #include "object/sp-text.h"
 #include "preferences.h"

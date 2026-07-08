@@ -52,9 +52,7 @@ Inkscape::ObjectSnapper::~ObjectSnapper()
 
 Geom::Coord Inkscape::ObjectSnapper::getSnapperTolerance() const
 {
-    SPDesktop const *dt = _snapmanager->getDesktop();
-    double const zoom =  dt ? dt->current_zoom() : 1;
-    return _snapmanager->snapprefs.getObjectTolerance() / zoom;
+    return _snapmanager->getSnapperTolerance(_snapmanager->snapprefs.getObjectTolerance());
 }
 
 bool Inkscape::ObjectSnapper::getSnapperAlwaysSnap(SnapSourceType const &/*source*/) const
@@ -658,7 +656,7 @@ void Inkscape::ObjectSnapper::freeSnap(IntermSnapResults &isr,
              * manually when applicable
              */
             SPPath const *path = nullptr;
-            if (it != nullptr) {
+            if (it != nullptr && !it->empty()) {
                 SPPath const *tmpPath = cast<SPPath>(*it->begin());
                 if ((it->size() == 1) && tmpPath) {
                     path = tmpPath;

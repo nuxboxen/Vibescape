@@ -19,6 +19,7 @@
 #include <gtkmm/spinbutton.h>
 #include <gtkmm/togglebutton.h>
 
+#include "desktop.h"
 #include "document-undo.h"
 #include "object/sp-shape.h"
 #include "spinbutton.h"

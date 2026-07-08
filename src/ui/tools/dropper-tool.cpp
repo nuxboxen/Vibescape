@@ -16,7 +16,6 @@
 #include <2geom/circle.h>
 
 #include "desktop-style.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "message-context.h"
 #include "selection.h"
