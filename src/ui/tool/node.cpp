@@ -13,6 +13,7 @@
 #include <glib/gi18n.h>
 
 #include "desktop.h"
+#include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-curve.h"
 #include "object/sp-namedview.h"
 #include "ui/modifiers.h"
@@ -1380,6 +1381,24 @@ bool Node::grabbed(MotionEvent const &event)
         return true;
     }
 
+    if (Modifiers::Modifier::get(Modifiers::Type::NODE_CONFINE_TO_PATH)->active(event.modifiers)) {
+        Geom::PathBuilder builder;
+
+        if (auto prev = _prev()) {
+            builder.moveTo(prev->position());
+            prev->build_segment(builder, this);
+        } else {
+            builder.moveTo(position());
+        }
+        if (auto next = _next()) {
+            this->build_segment(builder, next);
+        }
+        builder.flush();
+        _short_segment_path = builder.peek();
+
+        return true;
+    }
+
     // Dragging out handles with Shift + drag on a node.
     if (!Modifiers::Modifier::get(Modifiers::Type::NODE_DRAG_HANDLE)->active(event.modifiers)) {
         return false;
@@ -1420,6 +1439,7 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
 {
     auto const confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(event.modifiers);
     auto const confine_handles = Modifiers::Modifier::get(Modifiers::Type::NODE_CONFINE_HANDLES)->active(event.modifiers);
+    auto const confine_to_path = Modifiers::Modifier::get(Modifiers::Type::NODE_CONFINE_TO_PATH)->active(event.modifiers);
     auto const no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(event.modifiers);
 
     // For a note on how snapping is implemented in Inkscape, see snap.h.
@@ -1493,7 +1513,25 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
         scp_free.addVector(*back_direction);
     }
 
-    if (confine) {
+    if (confine_to_path && _short_segment_path && !confine_handles && !confine) {
+        double line_distance;
+        // We can't use multipleConstrainedSnaps here because the short_segment_path can be curved
+
+        // 1. Move from the cursor/drag position onto the line
+        auto time_on_line = _short_segment_path->nearestTime(new_pos, &line_distance);
+        new_pos = _short_segment_path->pointAt(*time_on_line);
+
+        // 2. Free snap to move the line point to a grid or guide
+        Inkscape::SnapCandidatePoint scp_mid(new_pos, _snapSourceType());
+        Inkscape::SnappedPoint sp = sm.freeSnap(scp_mid);
+        new_pos = sp.getPoint();
+
+        // 3. And finally move it back to the segment line to aproximate a constrained snap
+        time_on_line = _short_segment_path->nearestTime(new_pos, &line_distance);
+        new_pos = _short_segment_path->pointAt(*time_on_line);
+
+        // TODO: We could update the handle positions here to preserve more bezier shapes
+    } else if (confine || confine_handles) {
         // We're about to consider a constrained snap, which is already limited to 1D
         // Therefore tangential or perpendicular snapping will not be considered, and therefore
         // all calls above to scp_free.addVector() and scp_free.addOrigin() can be neglected
@@ -1530,16 +1568,13 @@ void Node::dragged(Geom::Point &new_pos, MotionEvent const &event)
                     constraints.emplace_back(origin, *back_normal);
                 }
             }
-
-            sp = sm.multipleConstrainedSnaps(Inkscape::SnapCandidatePoint(new_pos, _snapSourceType()), constraints,
-                                             no_snap);
         } else {
             // with Ctrl and no Alt: constrain to axes
             constraints.emplace_back(origin, Geom::Point(1, 0));
             constraints.emplace_back(origin, Geom::Point(0, 1));
-            sp = sm.multipleConstrainedSnaps(Inkscape::SnapCandidatePoint(new_pos, _snapSourceType()), constraints,
-                                             no_snap);
         }
+        sp = sm.multipleConstrainedSnaps(Inkscape::SnapCandidatePoint(new_pos, _snapSourceType()), constraints,
+                                         no_snap);
         new_pos = sp.getPoint();
     } else if (snap) {
         Inkscape::SnappedPoint sp = sm.freeSnap(scp_free);
@@ -1762,6 +1797,24 @@ bool Node::_is_line_segment(Node *first, Node *second)
         return second->_front.isDegenerate() && first->_back.isDegenerate();
     return false;
 }
+
+/** Build one segment of the geometric representation.
+ * @relates PathManipulator */
+void Node::build_segment(Geom::PathBuilder &builder, Node *next_node)
+{
+    if (next_node->back()->isDegenerate() && this->front()->isDegenerate()) {
+        // NOTE: It seems like the renderer cannot correctly handle vline / hline segments,
+        // and trying to display a path using them results in funny artifacts.
+        builder.lineTo(next_node->position());
+    } else {
+        // this is a bezier segment
+        builder.curveTo(
+            this->front()->position(),
+            next_node->back()->position(),
+            next_node->position());
+    }
+}
+
 
 NodeList::NodeList(SubpathList &splist)
     : _list(splist)

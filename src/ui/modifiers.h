@@ -115,7 +115,8 @@ enum class Type {
     MEASURE_SELECT_SEGMENT, // Select just the segment under mouse {CLICK+SHIFT}
 
     NODE_BSPLINE_HANDLES, // Create/move bspline handles {DRAG+SHIFT}
-    NODE_CONFINE_HANDLES, // When confining, use handles as limits {DRAG+ALT}
+    NODE_CONFINE_HANDLES, // When confining, use handles as limits {DRAG+CTRL+ALT}
+    NODE_CONFINE_TO_PATH, // When confining, use handles as limits {DRAG+ALT}
     NODE_CYCLE_TYPE,      // Change node type {CLICK+CTRL}
     NODE_DELETE,          // Delete node {CLICK+CTRL+ALT}
     NODE_DELETE_SEGMENT,  // Delete segment {DOUBLECLICK+CTRL}

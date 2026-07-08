@@ -11,8 +11,6 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include <2geom/path-sink.h>
-
 #include "display/control/canvas-item-bpath.h"
 #include "helper/geom.h"
 #include "live_effects/lpe-powerstroke.h"
@@ -89,7 +87,6 @@ private:
     bool _blocked;
 };
 
-void build_segment(Geom::PathBuilder &, Node *, Node *);
 PathManipulator::PathManipulator(MultiPathManipulator &mpm, SPObject *path,
         Geom::Affine const &et, guint32 outline_color, Glib::ustring lpe_key)
     : PointManipulator(mpm._path_data.node_data.desktop, *mpm._path_data.node_data.selection)
@@ -400,7 +397,7 @@ void PathManipulator::copySelectedPath(Geom::PathBuilder *builder)
                 if (!builder->inPath() || !prev) {
                     builder->moveTo(node.position());
                 } else {
-                    build_segment(*builder, prev, &node);
+                    prev->build_segment(*builder, &node);
                 }
                 prev = &node;
                 is_last_node = true;
@@ -412,7 +409,7 @@ void PathManipulator::copySelectedPath(Geom::PathBuilder *builder)
         // Complete the path, especially for closed sub paths where the last node is selected
         if (subpath->closed() && is_last_node) {
             if (!prev->front()->isDegenerate() || !subpath->begin()->back()->isDegenerate())   {
-                build_segment(*builder, prev, subpath->begin().ptr());
+                prev->build_segment(*builder, subpath->begin().ptr());
             }
             // if that segment is linear, we just call closePath().
             builder->closePath();
@@ -1461,14 +1458,14 @@ void PathManipulator::_createGeometryFromControlPoints(bool alert_LPE)
         NodeList::iterator prev = subpath->begin();
         builder.moveTo(prev->position());
         for (NodeList::iterator i = ++subpath->begin(); i != subpath->end(); ++i) {
-            build_segment(builder, prev.ptr(), i.ptr());
+            prev->build_segment(builder, i.ptr());
             prev = i;
         }
         if (subpath->closed()) {
             // Here we link the last and first node if the path is closed.
             // If the last segment is Bezier, we add it.
             if (!prev->front()->isDegenerate() || !subpath->begin()->back()->isDegenerate()) {
-                build_segment(builder, prev.ptr(), subpath->begin().ptr());
+                prev->build_segment(builder, subpath->begin().ptr());
             }
             // if that segment is linear, we just call closePath().
             builder.closePath();
@@ -1512,24 +1509,6 @@ void PathManipulator::_createGeometryFromControlPoints(bool alert_LPE)
     }
     if (_live_objects) {
         _setGeometry();
-    }
-}
-
-/** Build one segment of the geometric representation.
- * @relates PathManipulator */
-void build_segment(Geom::PathBuilder &builder, Node *prev_node, Node *cur_node)
-{
-    if (cur_node->back()->isDegenerate() && prev_node->front()->isDegenerate())
-    {
-        // NOTE: It seems like the renderer cannot correctly handle vline / hline segments,
-        // and trying to display a path using them results in funny artifacts.
-        builder.lineTo(cur_node->position());
-    } else {
-        // this is a bezier segment
-        builder.curveTo(
-            prev_node->front()->position(),
-            cur_node->back()->position(),
-            cur_node->position());
     }
 }
 
