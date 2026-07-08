@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inkscape-mcp"
+version = "1.0.0"
+description = "MCP server to control Inkscape from any AI agent (opencode, Claude, etc.)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+]
+
+[project.scripts]
+inkscape-mcp = "inkmcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["inkmcp*"]
