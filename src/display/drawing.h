@@ -92,7 +92,7 @@ public:
     Colors::Color averageColor(Geom::IntRect const &area) const;
     Colors::Color averageColor(Geom::PathVector const &path, bool evenodd) const;
     void setExact();
-    void setOpacity(double opacity = 1.0);
+    void setOpacityOverride(std::optional<double> opacity = {});
 
     sigc::connection connectDrawingUpdated(sigc::slot<void ()> const &slot) { return _drawing_updated_signal.connect(slot); }
     sigc::connection connectRedrewArea(sigc::slot<void (Geom::IntRect)> const &slot) { return _redraw_area_signal.connect(slot); }

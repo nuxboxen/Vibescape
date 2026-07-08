@@ -193,10 +193,8 @@ private:
 
     friend class ObjectWatcher;
 
-    bool _translucency_enabled = false;
-    SPItem *_old_solid_item = nullptr;
-
     int _msg_id;
+    unsigned _translucency_key = 0;
     Gtk::Popover& _settings_menu;
     Gtk::Popover& _object_menu;
     std::shared_ptr<Colors::ColorSet> _colors;

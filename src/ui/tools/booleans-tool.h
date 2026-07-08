@@ -67,6 +67,7 @@ private:
     sigc::scoped_connection _sel_changed;
 
     bool to_commit = false;
+    unsigned _translucency_key;
     std::optional<Geom::Point> last_cursor_position;
 
     ObjectSet _items_to_manage;

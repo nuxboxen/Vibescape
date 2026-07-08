@@ -240,6 +240,9 @@ protected:
     UI::Widget::PrefRadioButton _t_sel_cue_none;
     UI::Widget::PrefRadioButton _t_sel_cue_mark;
     UI::Widget::PrefRadioButton _t_sel_cue_box;
+    UI::Widget::PrefRadioButton _t_too_off;
+    UI::Widget::PrefRadioButton _t_too_group;
+    UI::Widget::PrefRadioButton _t_too_layer;
     UI::Widget::PrefRadioButton _t_bbox_visual;
     UI::Widget::PrefRadioButton _t_bbox_geometric;
 
