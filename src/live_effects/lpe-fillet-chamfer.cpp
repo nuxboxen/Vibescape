@@ -49,6 +49,8 @@ LPEFilletChamfer::LPEFilletChamfer(LivePathEffectObject *lpeobject)
              this, 0.0),
       chamfer_steps(_("Chamfer steps:"), _("Chamfer steps"), "chamfer_steps",
                     &wr, this, 1),
+      chamfer_scale(_("Chamfer scale (%):"), _("Scale chamfer steps toward the single-step chamfer line"),
+                   "chamfer_scale", &wr, this, 100.0),
       flexible(_("Radius in %"), _("Flexible radius size (%)"),
                "flexible", &wr, this, false),
       only_selected(_("Change only selected nodes"),
@@ -74,6 +76,7 @@ LPEFilletChamfer::LPEFilletChamfer(LivePathEffectObject *lpeobject)
     registerParameter(&method);
     registerParameter(&mode);
     registerParameter(&chamfer_steps);
+    registerParameter(&chamfer_scale);
     registerParameter(&flexible);
     registerParameter(&use_knot_distance);
     registerParameter(&apply_no_radius);
@@ -87,6 +90,9 @@ LPEFilletChamfer::LPEFilletChamfer(LivePathEffectObject *lpeobject)
     chamfer_steps.param_set_range(1, std::numeric_limits<gint>::max());
     chamfer_steps.param_set_increments(1, 1);
     chamfer_steps.param_make_integer();
+    chamfer_scale.param_set_range(0.0, 100.0);
+    chamfer_scale.param_set_increments(1, 10);
+    chamfer_scale.param_set_digits(2);
     _provides_knotholder_entities = true;
     _provides_path_adjustment = true;
     helperpath = false;
@@ -148,6 +154,7 @@ void LPEFilletChamfer::doOnApply(SPLPEItem const *lpeItem)
     }
     NodeSatellite nodesatellite(nodesatellite_type);
     nodesatellite.setSteps(chamfer_steps);
+    nodesatellite.setAngle(chamfer_scale);
     nodesatellite.setAmount(power);
     nodesatellite.setIsTime(flexible);
     nodesatellite.setHasMirror(true);
@@ -179,6 +186,11 @@ Gtk::Widget *LPEFilletChamfer::newWidget()
             scalar.signal_value_changed().connect(
                 sigc::mem_fun(*this, &LPEFilletChamfer::updateChamferSteps));
             scalar.getSpinButton().set_width_chars(3);
+        } else if (param->param_key == "chamfer_scale") {
+            auto &scalar = dynamic_cast<UI::Widget::Scalar &>(*widg);
+            scalar.signal_value_changed().connect(
+                sigc::mem_fun(*this, &LPEFilletChamfer::updateChamferScale));
+            scalar.getSpinButton().set_width_chars(5);
         }
 
         UI::pack_start(*vbox, *widg, true, true, 2);
@@ -251,6 +263,16 @@ void LPEFilletChamfer::updateChamferSteps()
     nodesatellites_param.setPathVectorNodeSatellites(_pathvector_nodesatellites);
 }
 
+void LPEFilletChamfer::updateChamferScale()
+{
+    if (!_pathvector_nodesatellites) { // empty item
+        return;
+    }
+    setSelected(_pathvector_nodesatellites);
+    _pathvector_nodesatellites->updateAngle(chamfer_scale, apply_no_radius, apply_with_radius, only_selected);
+    nodesatellites_param.setPathVectorNodeSatellites(_pathvector_nodesatellites);
+}
+
 void LPEFilletChamfer::updateNodeSatelliteType(NodeSatelliteType nodesatellitetype)
 {
     if (!_pathvector_nodesatellites) { // empty item
@@ -296,6 +318,7 @@ void LPEFilletChamfer::setSelected(PathVectorNodeSatellites *_pathvector_nodesat
 void LPEFilletChamfer::doBeforeEffect(SPLPEItem const *lpeItem)
 {
     if (!pathvector_before_effect.empty()) {
+        bool const legacy_without_chamfer_scale = is_load && !getLPEObj()->getAttribute("chamfer_scale");
         //fillet chamfer specific calls
         nodesatellites_param.setUseDistance(use_knot_distance);
         nodesatellites_param.setCurrentZoom(current_zoom);
@@ -338,6 +361,9 @@ void LPEFilletChamfer::doBeforeEffect(SPLPEItem const *lpeItem)
                 }
 
                 nodesatellites[i][j].hidden = hide_knots;
+                if (legacy_without_chamfer_scale) {
+                    nodesatellites[i][j].angle = 100.0;
+                }
                 if (only_selected && isNodePointSelected(curve_in.initialPoint()) ){
                     nodesatellites[i][j].setSelected(true);
                 }
@@ -372,6 +398,7 @@ void LPEFilletChamfer::doBeforeEffect(SPLPEItem const *lpeItem)
             }
             NodeSatellite nodesatellite(nodesatellite_type);
             nodesatellite.setSteps(chamfer_steps);
+            nodesatellite.setAngle(chamfer_scale);
             nodesatellite.setAmount(power);
             nodesatellite.setIsTime(flexible);
             nodesatellite.setHasMirror(true);
@@ -402,12 +429,39 @@ LPEFilletChamfer::addCanvasIndicators(SPLPEItem const */*lpeitem*/, std::vector<
 }
 
 void
-LPEFilletChamfer::addChamferSteps(Geom::Path &tmp_path, Geom::Path path_chamfer, Geom::Point end_arc_point, size_t steps)
+LPEFilletChamfer::addChamferSteps(Geom::Path &tmp_path, Geom::Path path_chamfer, Geom::Point end_arc_point, size_t steps, double scale)
 {
     setSelected(_pathvector_nodesatellites);
+    Geom::Point const start_arc_point = tmp_path.finalPoint();
+
+    if (steps <= 1) {
+        tmp_path.appendNew<Geom::LineSegment>(end_arc_point);
+        return;
+    }
+
+    double clamped_scale = scale;
+    if (clamped_scale < 0.0) {
+        clamped_scale = 0.0;
+    } else if (clamped_scale > 100.0) {
+        clamped_scale = 100.0;
+    }
+    double const scale_factor = clamped_scale / 100.0;
+
+    Geom::Point const line = end_arc_point - start_arc_point;
+    double const line_length = Geom::L2(line);
+    bool const can_project = line_length > Geom::EPSILON;
+    Geom::Point normal;
+    if (can_project) {
+        normal = Geom::Point(-line[Geom::Y], line[Geom::X]) / line_length;
+    }
+
     double path_subdivision = 1.0 / steps;
     for (size_t i = 1; i < steps; i++) {
         Geom::Point chamfer_step = path_chamfer.pointAt(path_subdivision * i);
+        if (can_project && scale_factor < 1.0) {
+            double const signed_distance = Geom::dot(chamfer_step - start_arc_point, normal);
+            chamfer_step -= normal * (signed_distance * (1.0 - scale_factor));
+        }
         tmp_path.appendNew<Geom::LineSegment>(chamfer_step);
     }
     tmp_path.appendNew<Geom::LineSegment>(end_arc_point);
@@ -614,7 +668,7 @@ LPEFilletChamfer::doEffect_path(Geom::PathVector const &path_in)
                         } else {
                             path_chamfer.appendNew<Geom::CubicBezier>(handle_1, handle_2, end_arc_point);
                         }
-                        addChamferSteps(tmp_path, path_chamfer, end_arc_point, steps);
+                        addChamferSteps(tmp_path, path_chamfer, end_arc_point, steps, nodesatellite.angle);
                     }
                     break;
                 case INVERSE_CHAMFER:
@@ -626,7 +680,7 @@ LPEFilletChamfer::doEffect_path(Geom::PathVector const &path_in)
                         } else {
                             path_chamfer.appendNew<Geom::CubicBezier>(inverse_handle_1, inverse_handle_2, end_arc_point);
                         }
-                        addChamferSteps(tmp_path, path_chamfer, end_arc_point, steps);
+                        addChamferSteps(tmp_path, path_chamfer, end_arc_point, steps, nodesatellite.angle);
                     }
                     break;
                 case INVERSE_FILLET:

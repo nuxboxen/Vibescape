@@ -40,12 +40,13 @@ public:
     Gtk::Widget *newWidget() override;
     void adjustForNewPath() override;
     Geom::Ray getRay(Geom::Point start, Geom::Point end, Geom::Curve *curve, bool reverse);
-    void addChamferSteps(Geom::Path &tmp_path, Geom::Path path_chamfer, Geom::Point end_arc_point, size_t steps);
+    void addChamferSteps(Geom::Path &tmp_path, Geom::Path path_chamfer, Geom::Point end_arc_point, size_t steps, double scale);
     void addCanvasIndicators(SPLPEItem const */*lpeitem*/, std::vector<Geom::PathVector> &hp_vec) override;
     void updateNodeSatelliteType(NodeSatelliteType nodesatellitetype);
     void setSelected(PathVectorNodeSatellites *_pathvector_nodesatellites);
     //void convertUnit();
     void updateChamferSteps();
+    void updateChamferScale();
     void updateAmount();
     bool helperpath;
     NodeSatelliteArrayParam nodesatellites_param;
@@ -55,6 +56,7 @@ private:
     EnumParam<Filletmethod> method;
     ScalarParam radius;
     ScalarParam chamfer_steps;
+    ScalarParam chamfer_scale;
     BoolParam flexible;
     HiddenParam mode;
     BoolParam only_selected;
