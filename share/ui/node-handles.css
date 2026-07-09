@@ -222,9 +222,11 @@ Notes:
 
 .inkscape-guide-handle {
     /* guide lines handles are tiny and unobtrusive */
+    shape: "circle";
     scale: 0.5;
     size-extra: 5px;
     stroke-width: 1.0px;
+    stroke-opacity: 0; /* real opacity and shape gets toggled at runtime based on lock state */
     stroke-scale: 0;
     outline-width: 0px;
 }

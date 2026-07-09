@@ -748,7 +748,7 @@ SVG element positions are expressed in user units.</property>
               <object class="GtkMenuButton" id="border-color">
                 <property name="focusable">True</property>
                 <property name="receives-default">True</property>
-                <property name="tooltip-text" translatable="yes">Page border and drop shadow color</property>
+                <property name="tooltip-text" translatable="yes">Page border color</property>
                 <property name="halign">center</property>
                 <layout>
                   <property name="column">1</property>

@@ -14,7 +14,9 @@
  */
 
 #include "page-size-preview.h"
+
 #include "display/cairo-utils.h"
+#include "ui/pixel-alignment.h"
 
 namespace Inkscape {
 namespace UI {
@@ -81,6 +83,9 @@ void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int wi
     double oy = std::round(y + (height - h) / 2);
     Geom::Rect rect(ox, oy, ox + w, oy + h);
 
+    auto const scaling_factor = this->get_scale_factor();
+    rect = pixel_align(rect, RectLineAlignment::CenterInside, 0, scaling_factor);
+
     ctx->rectangle(rect.left(), rect.top(), rect.width(), rect.height());
 
     if (_draw_checkerboard) {
@@ -131,16 +136,18 @@ void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int wi
     ctx->fill();
 */
     if (_draw_border) {
-        // stoke; not pixel aligned, just like page on canvas
-        ctx->rectangle(rect.left(), rect.top(), rect.width(), rect.height());
-        set_source_rgba(ctx, _border_color);
-        ctx->set_line_width(1);
-        ctx->stroke();
+        int border_thickness = 1;
+        auto border = pixel_align(rect, RectLineAlignment::Outside, border_thickness * scaling_factor, scaling_factor);
 
         if (_draw_shadow) {
-            const auto a = (exp(-3 * SP_RGBA32_A_F(_border_color)) - 1) / (exp(-3) - 1);
-            ink_cairo_draw_drop_shadow(ctx, rect, 12, _border_color, a);
+            auto const a = SP_RGBA32_A_F(_shadow_color);
+            ink_cairo_draw_drop_shadow(ctx, rect, 12, _shadow_color, a);
         }
+
+        ctx->rectangle(border.left(), border.top(), border.width(), border.height());
+        set_source_rgba(ctx, _border_color);
+        ctx->set_line_width(border_thickness);
+        ctx->stroke();
     }
 }
 
@@ -160,6 +167,13 @@ void PageSizePreview::set_page_color(unsigned int rgba) {
 void PageSizePreview::set_border_color(unsigned int rgba) {
     _border_color = rgba;
     queue_draw();
+}
+
+void PageSizePreview::set_shadow_color(unsigned int rgba) {
+    _shadow_color = rgba;
+    if (_draw_shadow) {
+        queue_draw();
+    }
 }
 
 void PageSizePreview::enable_drop_shadow(bool shadow) {

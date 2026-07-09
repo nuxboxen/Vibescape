@@ -131,6 +131,7 @@ public:
     Colors::Color const &getMarginColor() const { return margin_color; }
     Colors::Color const &getBleedColor() const { return bleed_color; }
     Colors::Color const &getBorderColor() const { return border_color; }
+    Colors::Color const &getShadowColor() const;
 
     void movePages(Geom::Affine tr);
     std::vector<SPItem *> getOverlappingItems(SPDesktop *desktop, SPPage *page, bool hidden = true, bool in_bleed = false, bool in_layers = true);

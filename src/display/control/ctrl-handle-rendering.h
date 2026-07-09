@@ -31,10 +31,10 @@ struct RenderParams
     uint32_t outline;
     float stroke_width;
     float outline_width;
-    int width;  // pixmap size
-    float size; // handle size (size <= width)
+    float size;
     double angle;
     int device_scale;
+    int size_parity; // -1 - disabled, 0, 1 desired parity in physical pixels
 
     auto operator<=>(RenderParams const &) const = default;
 };

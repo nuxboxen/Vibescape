@@ -17,7 +17,7 @@
 namespace Inkscape::Handles {
 namespace {
 
-void draw_darrow(Cairo::Context &cr, double size)
+void draw_darrow(Cairo::Context &cr, double size, double angle)
 {
     // Find points, starting from tip of one arrowhead, working clockwise.
     /*   1        4
@@ -29,12 +29,25 @@ void draw_darrow(Cairo::Context &cr, double size)
         ╲│9      6│╱
     */
 
-    // Length of arrowhead (not including stroke).
-    double delta = (size - 1) / 4.0; // Use unscaled width.
-
     // Tip of arrow (0)
     double tip_x = 0.5;          // At edge, allow room for stroke.
     double tip_y = size / 2.0;   // Center
+
+    // separate pixel alignment logic for 45 deg rotations
+    bool align_45 = std::abs(std::fmod(std::abs(angle), M_PI_2) - M_PI_4) < 0.01;
+    if (align_45) {
+        double half = size * 0.5;
+        double d = half - tip_x; // length from center
+        double xy = d / M_SQRT2;
+        xy = half - std::round(half - xy);
+        tip_x = half - xy * M_SQRT2;
+    }
+
+    // Length of arrowhead (not including stroke).
+    double delta = (size - 1) / 4.0; // Use unscaled width.
+    if (!align_45) {
+        delta = round(delta + tip_x) - tip_x;
+    }
 
     // Outer corner (1)
     double out_x = tip_x + delta;
@@ -43,6 +56,9 @@ void draw_darrow(Cairo::Context &cr, double size)
     // Inner corner (2)
     double in_x = out_x;
     double in_y = out_y + (delta / 2.0);
+    if (!align_45) {
+        in_y = std::round(in_y);
+    }
 
     double x0 = tip_x;
     double y0 = tip_y;
@@ -86,6 +102,7 @@ void draw_carrow(Cairo::Context &cr, double size)
 
     // Tip of arrow
     double tip_x =         1.5;  // Edge, allow room for stroke when rotated.
+    delta = std::round(tip_x + delta) - tip_x; // pixel align edge between outer corners
     double tip_y = delta + 1.5;
 
     // Outer corner (1)
@@ -170,33 +187,38 @@ void draw_pivot(Cairo::Context &cr, double size)
     // Line start
     double center = size / 2.0;
 
-    cr.move_to(center - delta8, center - 2 * delta4 - delta8);
-    cr.rel_line_to(delta4,  0);
-    cr.rel_line_to(0,       delta4);
+    cr.translate(center, center);
 
-    cr.rel_line_to(delta4,  delta4);
+    double x0 = std::round(center - delta8) - center;
+    double y0 = std::round(center - 2 * delta4 - delta8) - center;
+    double x2 = -x0;
+    double y2 = y0 + delta4;
+    // clockwise starting with top left corner
+    cr.move_to(x0, y0); // 0
 
-    cr.rel_line_to(delta4,  0);
-    cr.rel_line_to(0,       delta4);
-    cr.rel_line_to(-delta4,  0);
+    cr.line_to(-x0, y0);
+    cr.line_to(x2, y2);
+    cr.line_to(-y2, x0);
+    cr.line_to(-y0, x0); // 4
 
-    cr.rel_line_to(-delta4,  delta4);
+    cr.line_to(-y0, -x0);
+    cr.line_to(-y2, -x0);
+    cr.line_to(-x0, -y2);
+    cr.line_to(-x0, -y0); // 8
 
-    cr.rel_line_to(0,       delta4);
-    cr.rel_line_to(-delta4,  0);
-    cr.rel_line_to(0,      -delta4);
+    cr.line_to(x0, -y0);
+    cr.line_to(x0, -y2);
+    cr.line_to(y2, -x0);
+    cr.line_to(y0, -x0); // 12
 
-    cr.rel_line_to(-delta4, -delta4);
+    cr.line_to(y0, x0);
+    cr.line_to(y2, x0);
+    cr.line_to(-x2, y2);
 
-    cr.rel_line_to(-delta4,  0);
-    cr.rel_line_to(0,      -delta4);
-    cr.rel_line_to(delta4,  0);
-
-    cr.rel_line_to(delta4, -delta4);
     cr.close_path();
 
     cr.begin_new_sub_path();
-    cr.arc_negative(center, center, delta4, 0, -2 * M_PI);
+    cr.arc_negative(0, 0, delta4, 0, -2 * M_PI);
 }
 
 void draw_salign(Cairo::Context &cr, double size)
@@ -216,13 +238,13 @@ void draw_salign(Cairo::Context &cr, double size)
     double tip_y = size / 2.0;
 
     // Corner triangle position.
-    double outer = size / 2.0 - delta4;
+    double outer = std::round(size / 2.0 - delta4);
 
     // Outer line position
-    double oline = size / 2.0 + (int)delta4;
+    double oline = std::round(size / 2.0 + delta4);
 
     // Inner line position
-    double iline = size / 2.0 + (int)delta8;
+    double iline = std::round(size / 2.0 + delta8);
 
     // Draw triangle
     cr.move_to(tip_x,        tip_y);
@@ -249,20 +271,22 @@ void draw_calign(Cairo::Context &cr, double size)
     }
 
     // Tip of triangle
-    double tip_x = size / 2.0; // Center (also rotation point).
-    double tip_y = size / 2.0;
+    double tip_x = std::round(size / 2.0); // Center (also rotation point).
+    double tip_y = std::round(size / 2.0);
 
     // Corner triangle position.
     double outer = size / 2.0 - delta8 - delta4;
 
     // End of line positin
-    double eline = size / 2.0 - delta8;
+    double eline = std::round(size / 2.0 - delta8);
 
     // Outer line position
-    double oline = size / 2.0 + (int)delta4;
+    double oline = std::round(size / 2.0 + delta4);
 
     // Inner line position
-    double iline = size / 2.0 + (int)delta8;
+    // (int) cast is not strictly required for the purpose of pixel alignment, but it shifts the rounding direction
+    // closer to how previous version looked
+    double iline = std::round(size / 2.0 + (int)delta8);
 
     // Draw triangle
     cr.move_to(tip_x, tip_y);
@@ -294,31 +318,34 @@ void draw_malign(Cairo::Context &cr, double size)
     double tip_0 = size / 2.0;
     double tip_1 = size / 2.0 - delta8;
 
+    double sidexy = tip_1 - std::round(tip_1 - delta4);
+
     // Draw triangles
-    cr.move_to(tip_0,           tip_1);
-    cr.line_to(tip_0 - delta4,  tip_1 - delta4);
-    cr.line_to(tip_0 + delta4,  tip_1 - delta4);
+    cr.move_to(tip_0, tip_1);
+    cr.line_to(tip_0 - sidexy, tip_1 - sidexy);
+    cr.line_to(tip_0 + sidexy, tip_1 - sidexy);
     cr.close_path();
 
-    cr.move_to(size - tip_1,           tip_0);
-    cr.line_to(size - tip_1 + delta4,  tip_0 - delta4);
-    cr.line_to(size - tip_1 + delta4,  tip_0 + delta4);
+    cr.move_to(size - tip_1, tip_0);
+    cr.line_to(size - tip_1 + sidexy, tip_0 - sidexy);
+    cr.line_to(size - tip_1 + sidexy, tip_0 + sidexy);
     cr.close_path();
 
-    cr.move_to(size - tip_0,           size - tip_1);
-    cr.line_to(size - tip_0 + delta4,  size - tip_1 + delta4);
-    cr.line_to(size - tip_0 - delta4,  size - tip_1 + delta4);
+    cr.move_to(size - tip_0, size - tip_1);
+    cr.line_to(size - tip_0 + sidexy, size - tip_1 + sidexy);
+    cr.line_to(size - tip_0 - sidexy, size - tip_1 + sidexy);
     cr.close_path();
 
-    cr.move_to(tip_1,           tip_0);
-    cr.line_to(tip_1 - delta4,  tip_0 + delta4);
-    cr.line_to(tip_1 - delta4,  tip_0 - delta4);
+    cr.move_to(tip_1, tip_0);
+    cr.line_to(tip_1 - sidexy, tip_0 + sidexy);
+    cr.line_to(tip_1 - sidexy, tip_0 - sidexy);
     cr.close_path();
 }
 
-void draw_circle(Cairo::Context &cr, double size)
+void draw_circle(Cairo::Context &cr, double size, double pixel_width)
 {
-    cr.arc(size / 2.0, size / 2.0, size / 2.0, 0, 2 * M_PI);
+    double center = pixel_width * 0.5;
+    cr.arc(center, center, size / 2.0, 0, 2 * M_PI);
 }
 
 void draw_square(Cairo::Context &cr, double size)
@@ -356,12 +383,12 @@ void draw_plus(Cairo::Context &cr, double size)
     cr.line_to(size, half);
 }
 
-void draw_cairo_path(CanvasItemCtrlShape shape, Cairo::Context &cr, double size, bool grid_fit)
+void draw_cairo_path(CanvasItemCtrlShape shape, Cairo::Context &cr, double size, double width, double angle)
 {
     switch (shape) {
         case CANVAS_ITEM_CTRL_SHAPE_DARROW:
         case CANVAS_ITEM_CTRL_SHAPE_SARROW:
-            draw_darrow(cr, size);
+            draw_darrow(cr, size, angle);
             break;
 
         case CANVAS_ITEM_CTRL_SHAPE_TRIANGLE:
@@ -393,7 +420,7 @@ void draw_cairo_path(CanvasItemCtrlShape shape, Cairo::Context &cr, double size,
             break;
 
         case CANVAS_ITEM_CTRL_SHAPE_CIRCLE:
-            draw_circle(cr, size);
+            draw_circle(cr, size, width);
             break;
 
         case CANVAS_ITEM_CTRL_SHAPE_SQUARE:
@@ -425,19 +452,56 @@ std::mutex mutex;
 
 std::shared_ptr<Cairo::ImageSurface const> draw_uncached(RenderParams const &p)
 {
-    // operate on a physical pixel scale, to make pixel grid aligning easier to understand
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, p.width, p.width);
-
     const auto scale = p.device_scale;
+    // to simplify pixel alignment operate in physical pixels
+    float size = p.size * scale;
+    float outline_width = p.outline_width * scale;
+    float stroke_width = p.stroke_width * scale;
+
+    auto effective_outline = 2 * outline_width + stroke_width;
+
+    float total_size = 0;
+    int width = 0;
+
+    if (p.size_parity >= 0) {
+        switch (p.shape) {
+            case CANVAS_ITEM_CTRL_SHAPE_CIRCLE:
+                // for circle edge alignment doesn't matter too much
+                // it can be centered where necessary without affecting size
+                total_size = effective_outline + size;
+                total_size = std::ceil(0.5 * total_size + p.size_parity * 0.5 - 0.01) * 2 - p.size_parity;
+                break;
+            case CANVAS_ITEM_CTRL_SHAPE_PLUS:
+                // plus has no infill, absorb extra size in stroke
+                size = std::round(0.5 * size) * 2; // size must be even
+                total_size = effective_outline + size;
+                total_size = std::ceil(0.5 * total_size + p.size_parity * 0.5 - 0.01) * 2 - p.size_parity;
+                stroke_width = total_size - size - 2 * outline_width;
+                effective_outline = 2 * outline_width + stroke_width;
+                break;
+            default:
+                // For most shapes the main size can be increased to achieve desired parity.
+                // A bit useless for some of them like corner ones, but it shouldn't be requested when not necessary.
+                total_size = effective_outline + size;
+                total_size = std::floor(0.5 * total_size + p.size_parity * 0.3 + 0.8) * 2 - p.size_parity;
+                size = total_size - effective_outline;
+                break;
+        }
+    } else {
+        size = std::floor(size);
+        total_size = effective_outline + size;
+    }
+    width = static_cast<int>(std::lround(total_size));
+
+    // operate on a physical pixel scale, to make pixel grid aligning easier to understand
+    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width, width);
 
     auto cr = Cairo::Context(cairo_create(surface->cobj()), true);
 
     // align stroke to pixel grid; even width stroke needs whole coordinates, odd width needs half a pixel shift
     auto offset_stroke = [&](float stroke) {
-        auto size = static_cast<int>(std::round(stroke * scale));
-        auto half = size / 2;
-        auto half_pixel = size & 1;
-        auto offset = half_pixel ? half + 0.5 : half;
+        auto size = static_cast<int>(std::round(stroke));
+        auto offset = size * 0.5;
         cr.translate(offset, offset);
     };
 
@@ -447,22 +511,18 @@ std::shared_ptr<Cairo::ImageSurface const> draw_uncached(RenderParams const &p)
     // miter limit tweaked to produce sharp draw_darrow(), but blunt draw_triangle_angled() tip
     cr.set_miter_limit(2.9);
 
-    // Rotate around center
-    cr.translate(p.width / 2.0, p.width / 2.0);
+    cr.translate(width / 2.0, width / 2.0);
     cr.rotate(p.angle);
-    cr.translate(-p.width / 2.0, -p.width / 2.0);
+    cr.translate(-width / 2.0, -width / 2.0);
 
     // offset the path to make space for outline and stroke; pixel grid-fit the stroke
-    auto effective_outline = 2 * p.outline_width + p.stroke_width;
     offset_stroke(effective_outline);
 
-    // ask drawing routines to align handle fill to pixel grid (avoid fractional coordinates) if device scale is odd
-    auto grid_fit = !!(scale & 1);
-    draw_cairo_path(p.shape, cr, p.size * scale, grid_fit);
+    draw_cairo_path(p.shape, cr, size, total_size - effective_outline, p.angle);
 
     // Outline.
     ink_cairo_set_source_color(cr.cobj(), Colors::Color(p.outline));
-    cr.set_line_width(effective_outline * scale);
+    cr.set_line_width(effective_outline);
     cr.stroke_preserve();
 
     // Fill.
@@ -471,7 +531,7 @@ std::shared_ptr<Cairo::ImageSurface const> draw_uncached(RenderParams const &p)
 
     // Stroke.
     ink_cairo_set_source_color(cr.cobj(), Colors::Color(p.stroke));
-    cr.set_line_width(p.stroke_width * scale);
+    cr.set_line_width(stroke_width);
     cr.stroke();
 
     cairo_surface_set_device_scale(surface->cobj(), p.device_scale, p.device_scale); // No C++ API!

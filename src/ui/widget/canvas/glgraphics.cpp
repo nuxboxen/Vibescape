@@ -260,42 +260,39 @@ GLGraphics::GLGraphics(Prefs const &prefs, Stores const &stores, PageInfo const 
         smooth out vec2 uv;
         flat out vec2 maxuv;
 
-        void f(vec4 p, vec4 v0, mat2 m)
+        void f(vec2 p, vec2 v0, mat2 m)
         {
-            gl_Position = p;
+            gl_Position = vec4(p, 0.0, 1.0);
             uv = m * (p.xy - v0.xy);
             EmitVertex();
         }
 
-        float push(float x)
-        {
-            return 0.15 * (1.0 + clamp(x / 0.707, -1.0, 1.0));
-        }
-
         void main()
         {
-            vec4 v0 = gl_in[0].gl_Position;
-            vec4 v1 = gl_in[1].gl_Position;
-            vec4 v2 = gl_in[2].gl_Position;
-            vec4 v3 = gl_in[2].gl_Position - gl_in[1].gl_Position + gl_in[0].gl_Position;
+            vec2 v0 = gl_in[0].gl_Position.xy;
+            vec2 v1 = gl_in[1].gl_Position.xy;
+            vec2 v2 = gl_in[2].gl_Position.xy;
+            vec2 v3 = v2 - v1 + v0;
 
-            vec2 a = normalize((v1 - v0).xy * wh);
-            vec2 b = normalize((v3 - v0).xy * wh);
-            float det = a.x * b.y - a.y * b.x;
-            float s = -sign(det);
-            vec2 c = size / abs(det) / wh;
-            vec4 d = vec4(a * c, 0.0, 0.0);
-            vec4 e = vec4(b * c, 0.0, 0.0);
-            mat2 m = s * mat2(a.y, -b.y, -a.x, b.x) * mat2(wh.x, 0.0, 0.0, wh.y) / size;
+            vec2 a = normalize((v1 - v0) * wh); // normalized rectangle side a in pixel coordinates
+            vec2 b = normalize((v3 - v0) * wh); 
+            vec2 c = size * 2.0 / wh; // pixels to (-1, 1) coordinates
+            vec2 d = a * c; // size along a in (-1, 1) coordinates
+            vec2 e = b * c;
+            mat2 m = mat2(a.x, b.x, a.y, b.y) * mat2(1.0 / c.x, 0.0, 0.0, 1.0 / c.y);
 
-            float ap = s * dot(vec2(a.y, -a.x), dir);
-            float bp = s * dot(vec2(-b.y, b.x), dir);
-            v0.xy += (b *  push( ap) + a *  push( bp)) * size / wh;
-            v1.xy += (b *  push( ap) + a * -push(-bp)) * size / wh;
-            v2.xy += (b * -push(-ap) + a * -push(-bp)) * size / wh;
-            v3.xy += (b * -push(-ap) + a *  push( bp)) * size / wh;
+            // assuming dir is at 45deg angle relative to a/b sides these should be +1 -1
+            float ap = dot(a, dir) * sqrt(2); // dir along a
+            float bp = dot(b, dir) * sqrt(2); // dir along b
+            // shrink rect by 0.25 * size (0.5 total) and realign one of the corners
+            vec2 offset = (d * ap + e * bp);
+            v0 += 0.25 * (( d + e) + offset);
+            v1 += 0.25 * ((-d + e) + offset);
+            v2 += 0.25 * ((-d - e) + offset);
+            v3 += 0.25 * (( d - e) + offset);
 
-            maxuv = m * (v2.xy - v0.xy);
+            // expand by shadow size to produce outside of the frame
+            maxuv = m * (v2 - v0);
             f(v0, v0, m);
             f(v0 - d - e, v0, m);
             f(v1, v0, m);
@@ -731,14 +728,19 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
         // Shadows
-        if (SP_RGBA32_A_U(border) != 0) {
+        if (SP_RGBA32_A_U(shadow_color) != 0 && shadow_size > 0) {
             auto dir = (Geom::Point(1.0, a.yaxisdir) * view.affine * Geom::Scale(1.0, -1.0)).normalized(); // Shadow direction rotates with view.
             glUseProgram(shadow.id);
             geom_to_uniform({1.0, 1.0}, shadow.loc("subrect"));
             glUniform2fv(shadow.loc("wh"), 1, std::begin({(GLfloat)view.rect.width(), (GLfloat)view.rect.height()}));
-            glUniform1f(shadow.loc("size"), 40.0 * std::pow(std::abs(view.affine.det()), 0.25));
+
+            float const shadow_scale = 6; // see CanvasItemRect::get_shadow_size
+            float zoom = std::pow(std::abs(view.affine.det()), 0.25);
+            float shadow_size = this->shadow_size * shadow_scale * zoom;
+
+            glUniform1f(shadow.loc("size"), shadow_size);
             glUniform2fv(shadow.loc("dir"), 1, std::begin({(GLfloat)dir.x(), (GLfloat)dir.y()}));
-            glUniform4fv(shadow.loc("shadow_col"), 1, std::begin(premultiplied(rgba_to_array(border))));
+            glUniform4fv(shadow.loc("shadow_col"), 1, std::begin(premultiplied(rgba_to_array(shadow_color))));
             for (auto &rect : pi.pages) {
                 set_page_transform(rect, shadow);
                 glDrawArrays(GL_TRIANGLES, 0, 3);
