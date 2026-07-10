@@ -75,6 +75,7 @@ ModifierIdToTypeMap const &modifier_type_from_id()
         {"measure-select-segment", Type::MEASURE_SELECT_SEGMENT},
         {"node-bspline-handles", Type::NODE_BSPLINE_HANDLES},
         {"node-confine-handles", Type::NODE_CONFINE_HANDLES},
+        {"node-confine-to-path", Type::NODE_CONFINE_TO_PATH},
         {"node-cycle-type", Type::NODE_CYCLE_TYPE},
         {"node-delete", Type::NODE_DELETE},
         {"node-delete-segment", Type::NODE_DELETE_SEGMENT},
@@ -189,7 +190,8 @@ Modifier::Container &Modifier::_modifiers()
         make_modifier("measure-select-segment", _("Select just the one segment"), _("Select a segment rather than a curve"), SHIFT, MEASURE_TOOL, CLICK),
 
         make_modifier("node-bspline-handles", _("Move B-Spline handles"), _("When dragging a B-Spline segment, create and/or move handles instead"), SHIFT, NODE_TOOL, DRAG),
-        make_modifier("node-confine-handles", _("Confine to handles"), _("When dragging, confine to the handle lines"), ALT, NODE_TOOL, DRAG),
+        make_modifier("node-confine-handles", _("Confine to handles"), _("When dragging, confine to the handle lines"), CTRL | ALT, NODE_TOOL, DRAG),
+        make_modifier("node-confine-to-path", _("Confine to to path"), _("When dragging, confine to the path line"), ALT, NODE_TOOL, DRAG),
         make_modifier("node-cycle-type", _("Change node type"), _("Cycle through node types when clicked"), CTRL, NODE_TOOL, CLICK),
         make_modifier("node-delete", _("Delete node"), _("Delete node when clicked"), CTRL | ALT, NODE_TOOL, CLICK),
         make_modifier("node-delete-segment", _("Delete segment"), _("Delete segment when double-clicked"), CTRL | ALT, NODE_TOOL, CLICK),
