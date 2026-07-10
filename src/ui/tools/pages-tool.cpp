@@ -196,15 +196,7 @@ void PagesTool::resizeKnotMoved(SPKnot *knot, Geom::Point const &ppointer, guint
     Geom::Point point = getSnappedResizePoint(knot->position(), state, start, page);
 
     if (point != start) {
-        if (index % 3 == 0)
-            rect[Geom::X].setMin(point[Geom::X]);
-        else
-            rect[Geom::X].setMax(point[Geom::X]);
-
-        if (index < 2)
-            rect[Geom::Y].setMin(point[Geom::Y]);
-        else
-            rect[Geom::Y].setMax(point[Geom::Y]);
+        rect = Geom::Rect(rect.corner((index + 2) % 4), point);
 
         visual_box->set_visible(true);
         visual_box->set_rect(rect);
