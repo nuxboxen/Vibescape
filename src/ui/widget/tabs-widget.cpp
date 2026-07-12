@@ -8,6 +8,7 @@
 #include <gtkmm/dragicon.h>
 #include <gtkmm/droptarget.h>
 #include <gtkmm/eventcontrollermotion.h>
+#include <gtkmm/eventcontrollerscroll.h>
 #include <gtkmm/gestureclick.h>
 #include <gtkmm/picture.h>
 #include <gtkmm/popovermenu.h>
@@ -604,6 +605,36 @@ TabsWidget::TabsWidget(SPDesktopWidget *desktop_widget)
         }
     });
     add_controller(droptarget);
+
+    auto scroll = Gtk::EventControllerScroll::create();
+    scroll->set_flags(Gtk::EventControllerScroll::Flags::VERTICAL | Gtk::EventControllerScroll::Flags::DISCRETE);
+    auto scroll_handler = [this, &scroll = *scroll] (double dx, double dy) {
+        int current;
+        {
+            auto const active = _active.lock();
+            if (!active) {
+                return false;
+            }
+
+            current = positionOfTab(active->desktop);
+            if (current < 0) {
+                return false;
+            }
+        }
+
+        if (dy < 0) {
+            if (current > 0) {
+                switchTab(_tabs[current - 1]->desktop);
+            }
+        } else if (dy > 0) {
+            if (current < _tabs.size() - 1) {
+                switchTab(_tabs[current + 1]->desktop);
+            }
+        }
+        return true;
+    };
+    scroll->signal_scroll().connect(scroll_handler, false);
+    add_controller(scroll);
 
     auto actiongroup = Gio::SimpleActionGroup::create();
     actiongroup->add_action("detach", [this] {
