@@ -83,7 +83,7 @@ private:
     DerivedSpinButton &_rx_item;
     DerivedSpinButton &_ry_item;
     auto _getDerivedSpinButtons() const { return std::to_array({&_rx_item, &_ry_item, &_width_item, &_height_item}); }
-    void _valueChanged(DerivedSpinButton &btn);
+    void _valueChanged(DerivedSpinButton &btn, char const *name);
 
     XML::Node *_repr = nullptr;
     SPRect *_rect = nullptr;

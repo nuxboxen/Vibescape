@@ -384,7 +384,7 @@ void StarToolbar::length_value_changed()
 
         auto adj = _length_item.get_adjustment();
         Preferences::get()->setDouble("/tools/shapes/star/length", adj->get_value());
-        
+
         auto value = Util::Quantity::convert(adj->get_value(), _tracker->getActiveUnit(), "px");
 
         for (auto item : _desktop->getSelection()->items()) {
@@ -392,6 +392,9 @@ void StarToolbar::length_value_changed()
                 star -> setSideLength(value);
             }
         }
+
+        DocumentUndo::maybeDone(_desktop->getDocument(), "star:length", RC_("Undo", "Star: Change edge length"),
+                                INKSCAPE_ICON("draw-polygon-star"));
     }
 }
 
@@ -495,7 +498,7 @@ void StarToolbar::notifyAttributeChanged(XML::Node &, GQuark name_, Util::ptr_sh
     bool isFlatSided = Preferences::get()->getBool("/tools/shapes/star/isflatsided", false);
     auto mag_adj = _magnitude_item.get_adjustment();
     auto spoke_adj = _spoke_item.get_adjustment();
-    auto length_adj = _length_item.get_adjustment(); 
+    auto length_adj = _length_item.get_adjustment();
 
     if (!strcmp(name, "inkscape:randomized")) {
         double randomized = _repr->getAttributeDouble("inkscape:randomized", 0.0);
