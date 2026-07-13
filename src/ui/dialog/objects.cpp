@@ -2158,8 +2158,6 @@ void ObjectsPanel::on_drag_end(Glib::RefPtr<Gdk::Drag> const &/*drag*/, bool /*d
 
 void ObjectsPanel::selectRange(Gtk::TreeModel::Path start, Gtk::TreeModel::Path end)
 {
-    auto &layers = getDesktop()->layerManager();
-
     if (!start || !end) {
         return;
     }
@@ -2187,10 +2185,8 @@ void ObjectsPanel::selectRange(Gtk::TreeModel::Path start, Gtk::TreeModel::Path 
             (gtk_tree_path_compare(end.gobj(), p.gobj()) >= 0)) {
             auto obj = getItem(*it);
             if (obj) {
-                if (!layers.isLayer(obj)) {
-                    _prev_range.emplace_back(obj);
-                    selection->add(obj, false);
-                }
+                _prev_range.emplace_back(obj);
+                selection->add(obj, false);
             }
         }
         return false;
