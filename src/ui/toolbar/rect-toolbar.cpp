@@ -90,7 +90,7 @@ RectToolbar::RectToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
         auto const path = Glib::ustring{"/tools/shapes/rect/"} + sb->name;
         auto const val = Preferences::get()->getDouble(path, 0);
         adj->set_value(Quantity::convert(val, "px", _tracker->getActiveUnit()));
-        adj->signal_value_changed().connect([this, sb] { _valueChanged(*sb); });
+        adj->signal_value_changed().connect([this, sb] { _valueChanged(*sb, sb->name); });
         _tracker->addAdjustment(adj->gobj());
         sb->addUnitTracker(_tracker.get());
         sb->setDefocusTarget(this);
@@ -196,7 +196,7 @@ void RectToolbar::_detachRepr()
     _cancelUpdate();
 }
 
-void RectToolbar::_valueChanged(DerivedSpinButton &btn)
+void RectToolbar::_valueChanged(DerivedSpinButton &btn, char const *name)
 {
     // quit if run by the XML listener or a unit change
     if (_blocker.pending() || _tracker->isUpdating()) {
@@ -228,7 +228,8 @@ void RectToolbar::_valueChanged(DerivedSpinButton &btn)
     _sensitivize();
 
     if (modified) {
-        DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Change rectangle"), INKSCAPE_ICON("draw-rectangle"));
+        DocumentUndo::maybeDone(_desktop->getDocument(), name, RC_("Undo", "Change rectangle"),
+                                INKSCAPE_ICON("draw-rectangle"));
     }
 }
 

@@ -513,7 +513,7 @@ void MultiPathManipulator::move(Geom::Point const &delta)
 {
     if (_selection.empty()) return;
     _selection.transform(Geom::Translate(delta));
-    _done(RC_("Undo", "Move nodes"));
+    _maybeDone("manipulator:move", RC_("Undo", "Move nodes"));
 }
 
 void MultiPathManipulator::scale(Geom::Point const &center, Geom::Point const &scale)
@@ -524,7 +524,7 @@ void MultiPathManipulator::scale(Geom::Point const &center, Geom::Point const &s
     Geom::Translate const d2n(center);
     _selection.transform(n2d * Geom::Scale(scale) * d2n);
 
-    _done(RC_("Undo", "Scale nodes"));
+    _maybeDone("manipulator:scale", RC_("Undo", "Scale nodes"));
 }
 
 void MultiPathManipulator::showOutline(bool show)
@@ -872,6 +872,14 @@ void MultiPathManipulator::_done(Inkscape::Util::Internal::ContextString reason,
     invokeForAll(&PathManipulator::update, alert_LPE);
     invokeForAll(&PathManipulator::writeXML);
     DocumentUndo::done(_desktop->getDocument(), reason, INKSCAPE_ICON("tool-node-editor"));
+    signal_coords_changed.emit();
+}
+
+void MultiPathManipulator::_maybeDone(char const *key, Inkscape::Util::Internal::ContextString reason, bool alert_LPE)
+{
+    invokeForAll(&PathManipulator::update, alert_LPE);
+    invokeForAll(&PathManipulator::writeXML);
+    DocumentUndo::maybeDone(_desktop->getDocument(), key, reason, INKSCAPE_ICON("tool-node-editor"));
     signal_coords_changed.emit();
 }
 
