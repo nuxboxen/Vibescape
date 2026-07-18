@@ -13,6 +13,7 @@ target_sources(inkscape_base PRIVATE
     glyph-draw.cpp
     join.cpp
     share.cpp
+    key-helpers.cpp
     object-renderer.cpp
     object-modified-tags.cpp
     paper.cpp
@@ -54,6 +55,7 @@ target_sources(inkscape_base PRIVATE
     funclog.h
 	glyph-draw.h
     hybrid-pointer.h
+    key-helpers.h
     longest-common-suffix.h
     object-renderer.h
     object-modified-tags.h

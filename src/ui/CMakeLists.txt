@@ -164,6 +164,8 @@ target_sources(inkscape_base PRIVATE
 	dialog/prototype.cpp
 	dialog/save-image.cpp
 	dialog/selectorsdialog.cpp
+	dialog/settings-dialog.cpp
+	dialog/settings-helpers.cpp
 	dialog/startup.cpp
 	dialog/styledialog.cpp
 	dialog/svg-fonts-dialog.cpp
@@ -279,6 +281,9 @@ target_sources(inkscape_base PRIVATE
 	widget/pattern-editor.cpp
 	widget/point.cpp
 	widget/preferences-widget.cpp
+	widget/preference-unit-menu.cpp
+	widget/preference-widgets.cpp
+	widget/property-widget.cpp
 	widget/random.cpp
 	widget/registered-widget.cpp
 	widget/registry.cpp
@@ -405,6 +410,8 @@ target_sources(inkscape_base PRIVATE
 	dialog/prototype.h
 	dialog/save-image.h
 	dialog/selectorsdialog.h
+	dialog/settings-dialog.h
+	dialog/settings-helpers.h
 	dialog/startup.h
 	dialog/styledialog.h
 	dialog/svg-fonts-dialog.h
@@ -615,6 +622,8 @@ target_sources(inkscape_base PRIVATE
 	widget/pattern-editor.h
 	widget/point.h
 	widget/preferences-widget.h
+	widget/preference-widgets.h
+	widget/property-widget.h
 	widget/random.h
 	widget/registered-enums.h
 	widget/registered-widget.h
