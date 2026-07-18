@@ -194,7 +194,7 @@ std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeSpecularLighting::build_
     specularlighting->specularConstant = specularConstant;
     specularlighting->specularExponent = specularExponent;
     specularlighting->surfaceScale = surfaceScale;
-    specularlighting->lighting_color = lighting_color ? lighting_color->toRGBA() : 0x0;
+    specularlighting->lighting_color = lighting_color ? lighting_color->toRGBA() : 0xffffffff;
 
     // We assume there is at most one child
     specularlighting->light_type = Inkscape::Filters::NO_LIGHT;
