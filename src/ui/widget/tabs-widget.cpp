@@ -624,11 +624,11 @@ TabsWidget::TabsWidget(SPDesktopWidget *desktop_widget)
 
         if (dy < 0) {
             if (current > 0) {
-                switchTab(_tabs[current - 1]->desktop);
+                _desktop_widget->switchDesktop(_tabs[current - 1]->desktop);
             }
         } else if (dy > 0) {
             if (current < _tabs.size() - 1) {
-                switchTab(_tabs[current + 1]->desktop);
+                _desktop_widget->switchDesktop(_tabs[current + 1]->desktop);
             }
         }
         return true;
