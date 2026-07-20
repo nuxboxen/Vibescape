@@ -48,7 +48,7 @@ class ToolBase;
 class TextTool;
 } // namespace Tools
 namespace Widget {
-class NumberComboBox;
+class FontSizeSelector;
 class UnitMenu;
 class ComboBoxEntryToolItem;
 class ComboToolItem;
@@ -75,7 +75,6 @@ private:
     using ModeChangedMemFun = void (TextToolbar::*)(int);
 
     std::unique_ptr<UI::Widget::UnitTracker> _tracker;
-    std::unique_ptr<UI::Widget::UnitTracker> _tracker_fs;
 
     std::vector<Gtk::ToggleButton *> _alignment_buttons;
     std::vector<Gtk::ToggleButton *> _writing_buttons;
@@ -86,8 +85,7 @@ private:
     Gtk::Button &_reset_button;
 
     UI::Widget::ComboBoxEntryToolItem *_font_family_item;
-    UI::Widget::NumberComboBox*_font_size_item;
-    UI::Widget::UnitMenu*_font_size_units_item;
+    UI::Widget::FontSizeSelector &_font_size_item;
     UI::Widget::ComboBoxEntryToolItem *_font_style_item;
     UI::Widget::UnitMenu*_line_height_units_item;
     UI::Widget::SpinButton &_line_height_item;
@@ -144,7 +142,6 @@ private:
     void prepare_inner();
     void focus_text();
     void rotation_value_changed();
-    void fontsize_unit_changed();
     void _selectionChanged(Selection *selection);
     void _selectionModified(Selection *selection, guint flags);
     void _cursorMoved(Tools::TextTool *texttool);

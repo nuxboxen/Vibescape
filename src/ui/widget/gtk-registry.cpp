@@ -12,6 +12,7 @@
 #include "generic/tab-strip.h"
 #include "generic/text-entry.h"
 #include "style/paint-order.h"
+#include "ui/widget/font-size-selector.h"
 
 namespace Inkscape::UI::Widget {
 
@@ -24,6 +25,7 @@ void register_all()
     ReorderableStack::register_type();
 
     // Specific widgets
+    FontSizeSelector::register_type();
     PaintOrderWidget::register_type();
 }
 

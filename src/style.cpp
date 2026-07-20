@@ -1379,6 +1379,21 @@ sp_style_css_size_units_to_px(double size, int unit, double font_size)
     return size * (size / sp_style_css_size_px_to_units(size, unit, font_size));;
 }
 
+/*
+ * Avoid rounding errors when, say, converting stored 'px' values to displayed 'pt' values.
+ * We just don't want to confuse the user when they see 12.999 instead of 13.
+ */
+double
+sp_style_css_size_round_for_user_display(double size)
+{
+    int rounded_size = std::round(size);
+    if (std::abs((size - rounded_size)/size) < 0.0001) {
+        return rounded_size;
+    } else {
+        return size;
+    }
+}
+
 /**
  * Create a vector<double> containing the default list of font sizes scaled for the given unit.
  */

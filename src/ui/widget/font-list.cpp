@@ -30,6 +30,7 @@
 #include "ui/dialog/xml-tree.h"
 #include "ui/widget/drop-down-list.h"
 #include "ui/widget/generic/popover-menu.h"
+#include "ui/widget/unit-tracker.h"
 #include "util/font-collections.h"
 
 using Inkscape::UI::create_builder;
@@ -360,26 +361,21 @@ std::unique_ptr<FontSelectorInterface> FontList::create_font_list(Glib::ustring 
     return std::make_unique<FontList>(path);
 }
 
-// list of font sizes for a slider; combo box has its own list
+// list of font sizes (in px) for a slider; combo box has its own list
 static std::array g_font_sizes = {
     4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36,
     44, 56, 64, 72, 80, 96, 112, 128, 144, 160, 192, 224, 256,
     300, 350, 400, 450, 500, 550, 600, 700, 800, 1000
 };
 
-static int index_to_font_size(int index) {
-    if (index < 0) {
-        return g_font_sizes.front();
-    }
-    else if (index >= g_font_sizes.size()) {
-        return g_font_sizes.back();
-    }
-    else {
-        return g_font_sizes[index];
-    }
+static double index_to_font_size(int index, int unit) {
+    index = std::clamp(index, 0, (int)g_font_sizes.size() - 1);
+    auto size = sp_style_css_size_px_to_units(g_font_sizes[index], unit);
+    return sp_style_css_size_round_for_user_display(size);
 }
 
-static int font_size_to_index(double size) {
+static int font_size_to_index(double size, int unit) {
+    size = sp_style_css_size_units_to_px(size, unit);
     auto it = std::lower_bound(begin(g_font_sizes), end(g_font_sizes), static_cast<int>(size));
     return std::distance(begin(g_font_sizes), it);
 }
@@ -415,7 +411,7 @@ FontList::FontList(Glib::ustring preferences_path) :
     _tag_list(get_widget<Gtk::ListBox>(_builder, "categories")),
     _font_list(get_widget<Gtk::ListView>(_builder, "font-list")),
     _font_grid(get_widget<Gtk::GridView>(_builder, "font-grid")),
-    _font_size(get_derived_widget<NumberComboBox>(_builder, "font-size")),
+    _font_size(get_widget<FontSizeSelector>(_builder, "font-size")),
     _font_size_scale(get_widget<Gtk::Scale>(_builder, "font-size-scale")),
     _preview_size_scale(get_widget<Gtk::Scale>(_builder, "preview-font-size")),
     _grid_size_scale(get_widget<Gtk::Scale>(_builder, "grid-font-size")),
@@ -869,31 +865,23 @@ FontList::FontList(Glib::ustring preferences_path) :
         if (_update.pending()) return;
 
         auto scoped = _update.block();
-        auto size = index_to_font_size(_font_size_scale.get_value());
-        _font_size.get_entry().set_value(size);
+        auto size = index_to_font_size(_font_size_scale.get_value(), _font_size.getUnit());
+        _font_size.setSize(size);
         _signal_changed.emit();
     });
 
-    auto& entry = _font_size.get_entry();
-    entry.set_digits(3);
-    int max_size = prefs->getInt("/dialogs/textandfont/maxFontSize", 10000);
-    entry.set_range(0.001, max_size);
-    for (auto size : g_font_sizes) {
-        if (size > 144) break; // add only some useful values to the combobox
-        _font_size.append(size);
-    }
-    _font_size.set_selected_item(font_size_to_index(10));
-    entry.set_min_size("999"); // limit natural size
-
-    _font_size.signal_value_changed().connect([this](auto size) {
+    _font_size.signal_size_changed().connect([this](auto size, auto unit) {
         if (_update.pending()) return;
 
         auto scoped = _update.block();
         if (size > 0) {
-            _font_size_scale.set_value(font_size_to_index(size));
+            _font_size_scale.set_value(font_size_to_index(size, unit));
             _signal_changed.emit();
         }
     });
+    // TODO: pick better default based on prefs and document (like the text toolbar does)
+    //       See https://gitlab.com/inkscape/inkscape/-/work_items/6315
+    _font_size.setSize(sp_style_css_size_px_to_units(10, _font_size.getUnit()));
 
     // restore sorting
     _order = static_cast<FontOrder>(prefs->getIntLimited(_prefs + "/font-order", static_cast<int>(_order), static_cast<int>(FontOrder::_First), static_cast<int>(FontOrder::_Last)));
@@ -1164,7 +1152,7 @@ void FontList::update_font_count() {
 }
 
 double FontList::get_fontsize() const {
-    auto size = _font_size.get_entry().get_value();
+    auto size = _font_size.getSize();
     return size > 0 ? size : _current_fsize;
 }
 
@@ -1236,8 +1224,8 @@ void FontList::set_current_size(double size) {
     if (_update.pending()) return;
 
     auto scoped = _update.block();
-    _font_size_scale.set_value(font_size_to_index(size));
-    _font_size.get_entry().set_value(size);
+    _font_size_scale.set_value(font_size_to_index(size, _font_size.getUnit()));
+    _font_size.setSize(size);
 }
 
 void FontList::add_font(const Glib::ustring& fontspec, bool select) {
@@ -1452,7 +1440,7 @@ void FontList::set_font_size_layout(bool top) {
         separator.set_visible();
     }
     // pop up menu where there is space
-    _font_size.set_popup_position(top ? Gtk::PositionType::BOTTOM : Gtk::PositionType::TOP);
+    _font_size.setPopupPosition(top ? Gtk::PositionType::BOTTOM : Gtk::PositionType::TOP);
 }
 
 void FontList::on_map() {
