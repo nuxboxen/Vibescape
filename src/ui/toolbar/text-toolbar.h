@@ -154,6 +154,7 @@ private:
     void on_reset_button_pressed();
     XML::Node *unindent_node(XML::Node *repr, XML::Node *before);
     bool mergeDefaultStyle(SPCSSAttr *css);
+    SPCSSAttr *cssForTextAlignment(int align_mode, int direction);
 };
 
 } // namespace Inkscape::UI::Toolbar
