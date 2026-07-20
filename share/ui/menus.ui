@@ -321,6 +321,11 @@
           <attribute name="icon">edit-select-invert</attribute>
         </item>
         <item>
+          <attribute name="label" translatable="yes">In_vert Selection in All Layers</attribute>
+          <attribute name="action">win.select-invert-all</attribute>
+          <attribute name="icon">edit-select-invert</attribute>
+        </item>
+        <item>
           <attribute name="label" translatable="yes">D_eselect</attribute>
           <attribute name="action">win.select-none</attribute>
           <attribute name="icon">edit-select-none</attribute>
