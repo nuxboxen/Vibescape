@@ -287,8 +287,8 @@ L<--export-dpi> setting (or the DPI hint if used with L<--export-use-hints>).
 =item B<--export-margin>=I<MARGIN>
 
 Adds a margin around the exported area. The size of the margin is
-specified in units of page size (for SVG) or millimeters (for PS/PDF).
-The option currently has no effect for other export formats.
+specified in units of page size. The option currently has no effect for EPS
+or WMF export formats.
 
 =item B<-i> I<ID>, B<--export-page>=I<all|n[,a-b]*>
 
