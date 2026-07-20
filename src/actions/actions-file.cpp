@@ -59,7 +59,7 @@ file_open_with_window(const Glib::VariantBase& value, InkscapeApplication *app)
     Glib::RefPtr<Gio::File> file = Gio::File::create_for_path(s.get());
     if (!file->query_exists()) {
         show_output(Glib::ustring("file_open: file '") + s.get().raw() + "' does not exist.");
-        return;
+        // Falling through to `app->create_window()` will show the user an error dialog.
     }
     app->create_window(file);
 }
