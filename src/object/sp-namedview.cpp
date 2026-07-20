@@ -548,20 +548,18 @@ void sp_namedview_window_from_document(SPDesktop *desktop)
     int default_size = prefs->getInt("/options/defaultwindowsize/value", PREFS_WINDOW_SIZE_NATURAL);
     bool new_document = (nv->window_width <= 0) || (nv->window_height <= 0);
 
-    // restore window size and position stored with the document
+    // restore window size stored with the document
     auto win = desktop->getInkscapeWindow();
     g_assert(win);
 
     if (window_geometry == PREFS_WINDOW_GEOMETRY_LAST) {
         gint pw = prefs->getInt("/desktop/geometry/width", -1);
         gint ph = prefs->getInt("/desktop/geometry/height", -1);
-        gint px = prefs->getInt("/desktop/geometry/x", -1);
-        gint py = prefs->getInt("/desktop/geometry/y", -1);
         gint full = prefs->getBool("/desktop/geometry/fullscreen");
         gint maxed = prefs->getBool("/desktop/geometry/maximized");
         if (pw>0 && ph>0) {
 
-            Gdk::Rectangle monitor_geometry = Inkscape::UI::get_monitor_geometry_at_point(px, py);
+            Gdk::Rectangle monitor_geometry = Inkscape::UI::get_monitor_geometry_at_point(nv->window_x, nv->window_y);
             pw = std::min(pw, monitor_geometry.get_width());
             ph = std::min(ph, monitor_geometry.get_height());
             desktop->setWindowSize({pw, ph});

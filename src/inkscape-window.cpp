@@ -315,7 +315,7 @@ bool InkscapeWindow::on_close_request()
 }
 
 /**
- * Configure is called when the widget's size, position or stack changes.
+ * Configure is called when the widget's size or stack changes.
  */
 void InkscapeWindow::on_size_changed()
 {
@@ -339,18 +339,6 @@ void InkscapeWindow::on_size_changed()
         get_default_size(w, h);
         prefs->setInt("/desktop/geometry/width", w);
         prefs->setInt("/desktop/geometry/height", h);
-
-        // Frame extends returns real positions, unlike get_position()
-        // TODO: GTK4: get_frame_extents() and Window.get_position() are gone.
-        // We will must add backend-specific code to get the position or give up
-#if 0
-        if (auto const surface = get_surface()) {
-            Gdk::Rectangle rect;
-            surface->get_frame_extents(rect);
-            prefs->setInt("/desktop/geometry/x", rect.get_x());
-            prefs->setInt("/desktop/geometry/y", rect.get_y());
-        }
-#endif
     }
 }
 
