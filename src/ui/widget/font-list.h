@@ -73,6 +73,7 @@ private:
     void add_categories();
     void update_categories(const std::string& tag, bool select);
     void update_filterbar();
+    void filters_updated();
     Gtk::Box* create_pill_box(const Glib::ustring& display_name, const Glib::ustring& tag, bool tags);
     void sync_font_tag(const FontTag* ftag, bool selected);
     void scroll_to_row(int index);
