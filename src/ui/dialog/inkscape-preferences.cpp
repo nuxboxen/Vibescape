@@ -2102,9 +2102,9 @@ void InkscapePreferences::initPageUI()
                            _("Set the default window size"), false);
     }
 
-    _page_windows.add_group_header( _("Saving window size and position"), 4);
+    _page_windows.add_group_header( _("Saving window size"), 4);
     _page_windows.add_line( true, "", _win_save_geom_off, "",
-                            _("Let the window manager determine placement of all windows"));
+                            _("Let the window manager determine sizing of all windows"));
     _page_windows.add_line( true, "", _win_save_geom_prefs, "",
                             _("Remember and use the last window's geometry (saves geometry to user preferences)"));
     _page_windows.add_line( true, "", _win_save_geom, "",
