@@ -20,6 +20,7 @@
 
 #include "dialog-container.h"
 #include "preferences.h"
+#include "ui/widget/generic/css-name-class-init.h"
 #include "ui/widget/generic/tab-strip.h"
 #include "ui/widget/generic/popover-menu.h"
 
@@ -49,7 +50,7 @@ class DialogWindow;
  *
  * A notebook is fixed to a specific DialogContainer which manages the dialogs inside the notebook.
  */
-class DialogNotebook : public Gtk::ScrolledWindow
+class DialogNotebook : public Widget::CssNameClassInit, public Gtk::ScrolledWindow
 {
 public:
     DialogNotebook(DialogContainer *container);
@@ -84,7 +85,6 @@ private:
     UI::Widget::PopoverMenu _menu_tab_ctx{Gtk::PositionType::BOTTOM, true};
     Gtk::Notebook _notebook;
     UI::Widget::TabStrip _tabs;
-    Gtk::Box _content{Gtk::Orientation::VERTICAL};
     void add_notebook_page(Gtk::Widget& page, int position);
     // move page from source notebook to this notebook
     void move_tab_from(DialogNotebook& source, Gtk::Widget& page, int position);

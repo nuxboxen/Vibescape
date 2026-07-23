@@ -1500,15 +1500,6 @@ frame.flat {
 /* Tabs widget */
 #DocumentTab { padding: 3px; }
 
-#DocumentTab:hover {
-    background-color:shade(@theme_bg_color, 0.97);
-}
-
-#DocumentTab.tab_active {
-    box-shadow: inset 0 -2px @theme_selected_bg_color;
-    background-color:@theme_bg_color;
-}
-
 #DocumentTabsWidget { box-shadow: none; }
 
 @keyframes pulse-border {
@@ -1768,27 +1759,6 @@ button.reduced-padding {
 #SimpleTab {
     min-width: 1em;
     min-height: calc(2em + 4px);
-}
-#TabStrip.horizontal #SimpleTab:hover {
-    box-shadow: inset 0 -3px alpha(@theme_fg_color, 0.15);
-}
-#TabStrip.horizontal #SimpleTab.tab-active {
-    background-color: @theme_base_color;
-    box-shadow: inset 0 -3px @theme_selected_bg_color,
-        inset -1px 0 alpha(@theme_fg_color, 0.10),
-        inset  1px 0 alpha(@theme_fg_color, 0.10);
-}
-#TabStrip.horizontal #SimpleTab.tab-active:hover {
-    /*border-bottom-color: @theme_selected_bg_color;*/
-}
-#TabStrip.vertical #SimpleTab:hover {
-    box-shadow: inset 4px 0 alpha(@theme_fg_color, 0.15);
-}
-#TabStrip.vertical #SimpleTab.tab-active {
-    background-color: @theme_base_color;
-    box-shadow: inset 4px 0 @theme_selected_bg_color,
-        inset 0 -1px alpha(@theme_fg_color, 0.10),
-        inset 0  1px alpha(@theme_fg_color, 0.10);
 }
 #NewTabButton {
     margin-left: 3px;

@@ -17,6 +17,8 @@
 #include <gtkmm/widget.h>
 #include <2geom/point.h>
 
+#include "ui/widget/generic/css-name-class-init.h"
+
 namespace Gtk { class Popover; }
 
 class SPDesktop;
@@ -28,7 +30,7 @@ struct Tab;
 class TabDrag;
 
 /// Widget that implements the document tab bar.
-class TabsWidget : public Gtk::Widget
+class TabsWidget : public CssNameClassInit, public Gtk::Widget
 {
 public:
     TabsWidget(SPDesktopWidget *desktop_widget);

@@ -49,8 +49,10 @@ Gtk::Widget* find_dialog_page(Widget::TabStrip* tabs, int position) {
  *
  * @param container the parent DialogContainer of the notebook.
  */
-DialogNotebook::DialogNotebook(DialogContainer* container) : _container(container) {
-
+DialogNotebook::DialogNotebook(DialogContainer* container)
+    : CssNameClassInit{"notebook"}
+    , _container(container)
+{
     set_name("DialogNotebook");
     set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::NEVER);
     set_has_frame(false);
@@ -167,15 +169,29 @@ DialogNotebook::DialogNotebook(DialogContainer* container) : _container(containe
     // remember tabs owner
     _tabs.set_data(dialog_notebook_id, this);
 
-    auto hbox = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
-    hbox->append(_tabs);
-    hbox->append(*menubtn);
-    _content.append(*hbox);
+    // Add wrapper boxes around the tabs widget, to establish the widget hierarchy that css themes
+    // will expect - notebook > header > tabs > tab.
+    // Manually construct this box with C, to easily add a css-name
+    auto content_obj = GTK_BOX(g_object_new(GTK_TYPE_BOX,
+                                            "css-name", "notebook",
+                                            "orientation", GTK_ORIENTATION_VERTICAL,
+                                            NULL));
+    auto content = Gtk::manage(Glib::wrap(content_obj));
+
+    // Manually construct this box with C, to easily add a css-name
+    auto header_obj = GTK_BOX(g_object_new(GTK_TYPE_BOX, "css-name", "header", NULL));
+    auto header = Gtk::manage(Glib::wrap(header_obj));
+    header->add_css_class("top");
+    header->append(_tabs);
+    header->append(*menubtn);
+    content->append(*header);
+
     auto sep = Gtk::make_managed<Gtk::Separator>(Gtk::Orientation::HORIZONTAL);
     sep->set_size_request(-1, 1);
-    _content.append(*sep);
-    _content.append(_notebook);
-    set_child(_content);
+    content->append(*sep);
+
+    content->append(_notebook);
+    set_child(*content);
 
     _instances.push_back(this);
 }
