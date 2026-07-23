@@ -584,8 +584,7 @@ FontList::FontList(Glib::ustring preferences_path) :
             modified = true;
         }
         if (modified) {
-            add_categories();
-            update_filterbar();
+            filters_updated();
         }
     });
 
@@ -899,16 +898,8 @@ FontList::FontList(Glib::ustring preferences_path) :
         update_filterbar();
     }, false);
 
-    _font_collections_update = FontCollections::get()->connect_update([this] {
-        add_categories();
-        update_filterbar();
-        apply_filters_keep_selection();
-    });
-    _font_collections_selection = FontCollections::get()->connect_selection_update([this] {
-        add_categories();
-        update_filterbar();
-        apply_filters_keep_selection();
-    });
+    _font_collections_update = FontCollections::get()->connect_update([this] { filters_updated(); });
+    _font_collections_selection = FontCollections::get()->connect_selection_update([this] { filters_updated(); });
 }
 
 void FontList::set_sort_icon() {
@@ -1094,6 +1085,14 @@ void FontList::apply_filters(bool all_filters) {
     refilter(_text_filter);
 
     update_font_count();
+}
+
+// Respond to a change in filters by refreshing the filterbar and font list.
+void FontList::filters_updated()
+{
+    add_categories();
+    update_filterbar();
+    apply_filters_keep_selection();
 }
 
 void FontList::rebuild_ui() {
