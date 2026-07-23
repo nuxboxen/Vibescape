@@ -137,10 +137,7 @@ void SPGroup::order_changed (Inkscape::XML::Node *child, Inkscape::XML::Node *ol
 
 void SPGroup::update(SPCtx *ctx, unsigned int flags) {
     // std::cout << "SPGroup::update(): " << (getId()?getId():"null") << std::endl;
-    SPItemCtx *ictx, cctx;
-
-    ictx = (SPItemCtx *) ctx;
-    cctx = *ictx;
+    auto ictx = (SPItemCtx *)ctx;
 
     unsigned childflags = flags;
 
@@ -151,14 +148,12 @@ void SPGroup::update(SPCtx *ctx, unsigned int flags) {
     std::vector<SPObject*> l=this->childList(true, SPObject::ActionUpdate);
     for(auto child : l){
         if (childflags || (child->uflags & (SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_CHILD_MODIFIED_FLAG))) {
-            auto item = cast<SPItem>(child);
-            if (item) {
+            auto cctx = *ictx; // reset context between siblings in case one of them alters it
+            if (auto item = cast<SPItem>(child)) {
                 cctx.i2doc = item->transform * ictx->i2doc;
                 cctx.i2vp = item->transform * ictx->i2vp;
-                child->updateDisplay((SPCtx *)&cctx, childflags);
-            } else {
-                child->updateDisplay(ctx, childflags);
             }
+            child->updateDisplay((SPCtx *)&cctx, childflags);
         }
 
         sp_object_unref(child);
