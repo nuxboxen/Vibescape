@@ -2146,10 +2146,10 @@ void InkscapePreferences::initPageUI()
     save_dlg->init(_("Save and restore dialogs' status"), "/options/savedialogposition/value", true);
     _page_windows.add_line(true, "", *save_dlg, "", _("Save and restore dialogs' status (the last open windows dialogs are saved when it closes)"));
 
-#ifndef _WIN32 // FIXME: Temporary Win32 special code to enable transient dialogs
-    _page_windows.add_line( true, "", _win_hide_task, "",
-                            _("Whether dialog windows are to be hidden in the window manager taskbar"));
-#endif
+    if (is_x11_display()) { // This feature is only supported on X11
+        _page_windows.add_line( true, "", _win_hide_task, "",
+                                _("Whether dialog windows are to be hidden in the window manager taskbar"));
+    }
     _page_windows.add_group_header( _("Text and Font dialog"));
     std::vector<PrefItem> lister = {
         { _("List fonts and styles"), 0, _("List fonts and styles separately"), true },

@@ -27,6 +27,10 @@
 #include <gtkmm/tooltip.h>
 #include <2geom/bezier.h>
 
+#ifdef GDK_WINDOWING_X11
+#include <gdk/x11/gdkx.h>
+#endif
+
 #include "defocus-target.h"
 #include "desktop.h"
 #include "inkscape.h"
@@ -630,6 +634,16 @@ Geom::Affine get_event_transform(Glib::RefPtr<Gdk::Surface const> const &event_s
     auto native = Gtk::Native::get_for_surface(event_surface);
     auto &event_widget = dynamic_cast<Gtk::Widget const &>(*native);
     return Geom::Translate{-get_surface_transform(*native)} * compute_transform(event_widget, target);
+}
+
+bool is_x11_display()
+{
+#ifdef GDK_WINDOWING_X11
+    auto display = gdk_display_get_default();
+    return GDK_IS_X11_DISPLAY(display);
+#else
+    return false;
+#endif
 }
 
 /*
