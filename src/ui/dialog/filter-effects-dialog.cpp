@@ -1928,11 +1928,11 @@ FilterEffectsDialog::PrimitiveList::PrimitiveList(FilterEffectsDialog& d)
 
     _model = Gtk::ListStore::create(_columns);
 
+    // Make the list reorderable, which will cause GTK to automatically call insert then remove on
+    // rows as they are dragged. Listen for the removal, so that we can clean up the internal
+    // state after a drag.
     set_reorderable(true);
-
-    auto const drag = Gtk::DragSource::create();
-    drag->signal_drag_end().connect(sigc::mem_fun(*this, &PrimitiveList::on_drag_end));
-    add_controller(drag);
+    _model->signal_row_deleted().connect(sigc::mem_fun(*this, &PrimitiveList::on_row_deleted));
 
     set_model(_model);
     append_column(_("_Effect"), _columns.type);
@@ -2699,17 +2699,27 @@ void FilterEffectsDialog::PrimitiveList::sanitize_connections(const Gtk::TreeMod
     }
 }
 
-// Reorder the filter primitives to match the list order
-void FilterEffectsDialog::PrimitiveList::on_drag_end(Glib::RefPtr<Gdk::Drag> const &/*&drag*/,
-                                                     bool /*delete_data*/)
+// Reorder the filter primitives to match the list order.
+// Will be called after a drag operation by the internal re-ordering GTK does (adds then deletes).
+void FilterEffectsDialog::PrimitiveList::on_row_deleted(const Gtk::TreeModel::Path &path)
 {
+    if (!_drag_prim) {
+        // Skip re-ordering if this deletion didn't come from a drag
+        return;
+    }
+    // to prevent being called again during this handler, save the drag prim and clear it out
+    auto const drag_prim = _drag_prim;
+    _drag_prim = nullptr;
+
     SPFilter* filter = _dialog._filter_modifier.get_selected_filter();
     g_assert(filter);
 
     int ndx = 0;
     for (auto iter = _model->children().begin(); iter != _model->children().end(); ++iter, ++ndx) {
         SPFilterPrimitive* prim = (*iter)[_columns.primitive];
-        if (prim && prim == _drag_prim) {
+        if (prim && prim == drag_prim) {
+            // setPosition will cause row deleted signals to fire, but this handler won't be called
+            // again because of the _drag_prim guard at the top.
             prim->getRepr()->setPosition(ndx);
             break;
         }
@@ -2717,7 +2727,7 @@ void FilterEffectsDialog::PrimitiveList::on_drag_end(Glib::RefPtr<Gdk::Drag> con
 
     for (auto iter = _model->children().begin(); iter != _model->children().end(); ++iter) {
         SPFilterPrimitive* prim = (*iter)[_columns.primitive];
-        if (prim && prim == _drag_prim) {
+        if (prim && prim == drag_prim) {
             sanitize_connections(iter);
             get_selection()->select(iter);
             break;

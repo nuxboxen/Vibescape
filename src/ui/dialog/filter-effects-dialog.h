@@ -230,7 +230,7 @@ private:
         void snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot) override;
         void css_changed(GtkCssStyleChange *change) override;
 
-        void on_drag_end(Glib::RefPtr<Gdk::Drag> const &drag, bool delete_data);
+        void on_row_deleted(const Gtk::TreeModel::Path &path);
 
         Gtk::EventSequenceState on_click_pressed (Gtk::GestureClick const &click,
                                                   int n_press, double x, double y);
