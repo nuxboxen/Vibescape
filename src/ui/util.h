@@ -301,6 +301,9 @@ Geom::Affine compute_transform(Gtk::Widget const &widget, Gtk::Widget const &tar
  */
 Geom::Affine get_event_transform(Glib::RefPtr<Gdk::Surface const> const &event_surface, Gtk::Widget const &target);
 
+// Returns true if running under X11.
+bool is_x11_display();
+
 namespace Inkscape::UI {
 
 /**
