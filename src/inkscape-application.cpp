@@ -1898,18 +1898,18 @@ int InkscapeApplication::get_number_of_windows() const {
  * Adds effect to Gio::Actions
  *
  *  \c effect is Filter or Extension
- *  \c show_prefs is used to show preferences dialog
+ *  \c prefs is a set of preferences to set for `effect`
 */
-void action_effect(Inkscape::Extension::Effect* effect, std::optional<EffectDict> prefs) {
+void action_effect(Inkscape::Extension::Effect* effect, EffectDict prefs) {
     auto desktop = InkscapeApplication::instance()->get_active_desktop();
     if (!effect->check()) {
         auto handler = Inkscape::ErrorReporter((bool)desktop);
         handler.handleError(effect->get_name(), effect->getErrorReason());
-    } else if (effect->_workingDialog && !prefs && desktop) {
+    } else if (effect->_workingDialog && prefs.empty() && desktop) {
         effect->prefs(desktop);
     } else {
         // Set each of the given preferences
-        for (auto const& [key, val] : *prefs) {
+        for (auto const& [key, val] : prefs) {
             effect->set_param_any(key.c_str(), val);
         }
         auto document = InkscapeApplication::instance()->get_active_document();
@@ -1940,7 +1940,7 @@ void InkscapeApplication::init_extension_action_data() {
         auto app = this;
         if (auto gapp = gtk_app()) {
             auto action = gapp->add_action(aid, [effect](){ action_effect(effect, {}); });
-            auto action_noprefs = gapp->add_action(aid + ".noprefs", [effect](){ action_effect(effect, EffectDict()); });
+            auto action_noprefs = gapp->add_action(aid + ".noprefs", [effect](){ action_effect(effect, {}); });
             auto action_prefs = gapp->add_action_with_parameter(aid + ".prefs", Glib::VariantType("a{ss}"), [effect](const Glib::VariantBase& value){
                 auto d = Glib::VariantBase::cast_dynamic<Glib::Variant<EffectDict>>(value);
                 action_effect(effect, d.get());
