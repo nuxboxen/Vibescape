@@ -26,8 +26,10 @@ std::string HSL::toString(std::vector<double> const &values, bool opacity) const
 {
     static constexpr double CSS_SL_SCALE = 100.0;
     auto oo = CssLegacyPrinter(3, "hsl", opacity && values.size() == 4);
-    // First entry is Hue, which is in degrees
-    return oo << (int)(values[0] * 360) << values[1] * CSS_SL_SCALE << values[2] * CSS_SL_SCALE << values.back();
+    return oo << (int)(values[0] * 360)          // hue, in degrees
+              << values[1] * CSS_SL_SCALE << "%" // saturation, as percentage
+              << values[2] * CSS_SL_SCALE << "%" // lightness, as percentage
+              << values.back();                  // optional alpha
 }
 
 }; // namespace Inkscape::Colors::Space
