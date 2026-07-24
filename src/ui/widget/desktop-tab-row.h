@@ -29,20 +29,28 @@ namespace Inkscape::UI::Widget {
 struct Tab;
 class TabDrag;
 
-/// Widget that implements the document tab bar.
-class TabsWidget : public CssNameClassInit, public Gtk::Widget
+// Widget that implements the document tab bar. It handles drag and drop between itself or other
+// tab rows. It holds the actual visual representation of the tabs and nothing more.
+class DesktopTabRow : public CssNameClassInit, public Gtk::Widget
 {
 public:
-    TabsWidget(SPDesktopWidget *desktop_widget);
-    ~TabsWidget() override;
+    DesktopTabRow(SPDesktopWidget *desktop_widget);
+    ~DesktopTabRow() override;
 
     void addTab(SPDesktop *desktop, int pos = -1);
     void removeTab(SPDesktop *desktop);
     void switchTab(SPDesktop *desktop);
     void refreshTitle(SPDesktop *desktop);
 
+    void switchToPrevDesktop();
+    void switchToNextDesktop();
+    void switchToDesktop(SPDesktop *desktop);
+
     int positionOfTab(SPDesktop *desktop) const;
     SPDesktop *tabAtPosition(int i) const;
+    Gtk::Widget *widgetAtPosition(int i) const;
+    Glib::ustring tabName(int i) const;
+    int size() const;
 
 private:
     SPDesktopWidget *const _desktop_widget;
@@ -60,7 +68,6 @@ private:
     std::shared_ptr<TabDrag> _drag_dst;
 
     class Instances;
-    void _updateVisibility();
 
     Gtk::SizeRequestMode get_request_mode_vfunc() const override;
     void measure_vfunc(Gtk::Orientation orientation, int for_size, int &min, int &nat, int &minb, int &natb) const override;
@@ -69,6 +76,7 @@ private:
     void _setTooltip(SPDesktop *desktop, Glib::RefPtr<Gtk::Tooltip> const &tooltip);
     std::pair<std::weak_ptr<Tab>, Geom::Point> _tabAtPoint(Geom::Point const &pos);
     void _reorderTab(int from, int to);
+    int _activeTabPosition();
 };
 
 } // namespace Inkscape::UI::Widget

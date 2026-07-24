@@ -41,34 +41,23 @@
 #include "ui/tools/tool-base.h"
 #include "ui/widget/canvas-notice.h"
 #include "ui/widget/canvas.h"
+#include "ui/widget/desktop-tab-controls.h"
 #include "ui/widget/desktop-widget.h" // Hopefully temp.
 #include "ui/widget/events/canvas-event.h"
 #include "ui/widget/ink-ruler.h"
 #include "ui/widget/stack.h"
-#include "ui/widget/tabs-widget.h"
 #include "util/units.h"
 
 namespace Inkscape::UI::Widget {
 
 CanvasGrid::CanvasGrid(SPDesktopWidget *dtw)
     : Glib::ObjectBase("CanvasGrid")
-    , CssNameClassInit{"notebook"}
 {
     _dtw = dtw;
     set_name("CanvasGrid");
 
     // Tabs widget
-    _tabs_widget = std::make_unique<Inkscape::UI::Widget::TabsWidget>(dtw);
-    _tabs_widget->set_hexpand(true);
-
-    // Add a wrapper box around the tabs widget, to establish the widget hierarchy that css themes
-    // will expect - notebook > header > tabs > tab. We are the "notebook" and TabsWidget is the
-    // "tabs", so we need a "header" inbetween.
-    // Manually construct this box with C, to easily add a css-name
-    auto header_obj = GTK_BOX(g_object_new(GTK_TYPE_BOX, "css-name", "header", NULL));
-    auto header = Gtk::manage(Glib::wrap(header_obj));
-    header->add_css_class("top");
-    header->append(*_tabs_widget);
+    _tabs_widget = std::make_unique<Inkscape::UI::Widget::DesktopTabControls>(dtw);
 
     // Command palette
     _command_palette = std::make_unique<Inkscape::UI::Dialog::CommandPalette>();
@@ -193,7 +182,7 @@ CanvasGrid::CanvasGrid(SPDesktopWidget *dtw)
     });
 
     // Main grid
-    attach(*header,        0, 0);
+    attach(*_tabs_widget,  0, 0, 2, 1);
     attach(_subgrid,       0, 1, 1, 2);
     attach(_hscrollbar,    0, 3, 1, 1);
     attach(_cms_adjust,    1, 3, 1, 1);
