@@ -154,10 +154,10 @@ std::vector<std::vector<Glib::ustring>> raw_data_transform = {
     {"app.transform-scale",         N_("Scale"),              SECTION, N_("Scale selected objects by scale factor")},
     {"app.transform-grow",          N_("Grow/Shrink"),        SECTION, N_("Grow/shrink selected objects")},
     {"app.transform-grow-step",     N_("Grow/Shrink Step"),   SECTION, N_("Grow/shrink selected objects by multiple of step value")},
-    {"app.transform-grow-screen",   N_("Grow/Shrink Screen"), SECTION, N_("Grow/shrink selected objects relative to zoom level")},
+    {"win.transform-grow-screen",   N_("Grow/Shrink Screen"), SECTION, N_("Grow/shrink selected objects relative to zoom level")},
     {"app.transform-rotate",        N_("Rotate"),             SECTION, N_("Rotate selected objects")},
     {"app.transform-rotate-step",   N_("Rotate Step"),        SECTION, N_("Rotate selected objects by multiple of step value")},
-    {"app.transform-rotate-screen", N_("Rotate Screen"),      SECTION, N_("Rotate selected objects relative to zoom level")},
+    {"win.transform-rotate-screen", N_("Rotate Screen"),      SECTION, N_("Rotate selected objects relative to zoom level")},
     {"app.transform-rotate(90.0)",  N_("Object Rotate 90°"),   SECTION, N_("Rotate selected objects 90° clockwise")},
     {"app.transform-rotate(-90.0)", N_("Object Rotate 90° CCW"), SECTION, N_("Rotate selected objects 90° counter-clockwise")},
 

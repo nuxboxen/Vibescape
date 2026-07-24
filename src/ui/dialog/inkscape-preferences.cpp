@@ -21,29 +21,33 @@
 #endif
 
 #include <fstream>
+#include <gio/gio.h>
+#include <giomm/themedicon.h>
 #include <glibmm/i18n.h>
 #include <glibmm/markup.h>
-#include <giomm/themedicon.h>
-#include <gtkmm/binlayout.h>
-#include <gtkmm/messagedialog.h>
-#include <gtkmm/treemodelsort.h>
-#include <gtkmm/treemodelfilter.h>
+#include <glibmm/refptr.h>
+#include <glibmm/ustring.h>
+#include <glibmm/variant.h>
 #include <gtkmm/accelerator.h>
+#include <gtkmm/binlayout.h>
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/eventcontrollerkey.h>
 #include <gtkmm/fontchooserdialog.h>
 #include <gtkmm/icontheme.h>
+#include <gtkmm/messagedialog.h>
 #include <gtkmm/picture.h>
 #include <gtkmm/revealer.h>
 #include <gtkmm/scale.h>
 #include <gtkmm/settings.h>
+#include <gtkmm/treemodelfilter.h>
+#include <gtkmm/treemodelsort.h>
 #include <2geom/path-sink.h>
 
 #include "display/control/ctrl-handle-manager.h"
 #include "display/translucency-group.h"
+#include "ui/icon-loader.h"
 #include "ui/widget/generic/icon-combobox.h"
 #include "ui/widget/handle-preview.h"
-#include "ui/icon-loader.h"
 
 #if WITH_GSOURCEVIEW
 #include <gtksourceview/gtksource.h>
@@ -52,21 +56,23 @@
 #include <glibmm/convert.h>
 #include <glibmm/miscutils.h>
 
+#include "actions/actions-extra-data.h"
 #include "auto-save.h"
 #include "colors/cms/system.h"
 #include "colors/manager.h"
 #include "colors/spaces/base.h"
 #include "display/nr-filter-gaussian.h"
+#include "document.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
 #include "io/recent-files.h"
+#include "object/box3d-side.h"
+#include "object/box3d.h"
 #include "path-prefix.h"
 #include "selcue.h"
 #include "selection-chemistry.h"
 #include "selection.h"
 #include "style.h"
-#include "object/box3d.h"
-#include "object/box3d-side.h"
 #include "ui/builder-utils.h"
 #include "ui/dialog-run.h"
 #include "ui/modifiers.h"
@@ -3674,8 +3680,6 @@ void InkscapePreferences::onKBListKeyboardShortcuts()
     auto iapp = InkscapeApplication::instance();
     auto gapp = iapp->gtk_app();
 
-    // std::vector<Glib::ustring> actions = shortcuts.list_all_actions(); // All actions (app, win, doc)
-
     // Simpler and better to get action list from extra data (contains "detailed action names").
     InkActionExtraData& action_data = iapp->get_action_extra_data();
     std::vector<Glib::ustring> actions = action_data.get_actions();
@@ -3692,6 +3696,15 @@ void InkscapePreferences::onKBListKeyboardShortcuts()
 
     // Fill sections
     for (auto const &action : actions) {
+        // Skip actions which require a parameter but don't have one already
+        // specified.
+        Glib::ustring action_name;
+        Glib::VariantBase target;
+        Gio::Action::parse_detailed_name_variant(action, action_name, target);
+        if (!target && action_requires_parameter(action_name)) {
+            continue;
+        }
+
         Glib::ustring section = action_data.get_section_for_action(action);
         if (section.empty()) section = C_("Action Section", "Misc");
         if (section != old_section) {

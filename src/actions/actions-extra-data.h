@@ -56,6 +56,8 @@ private:
     std::unordered_map<std::string, InkActionExtraDatum> data;
 };
 
+bool action_requires_parameter(Glib::ustring const &action_name);
+
 #endif // INK_ACTIONS_EXTRA_DATA_H
 
 /*
