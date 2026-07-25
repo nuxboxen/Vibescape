@@ -88,9 +88,11 @@ SnapManager::SnapperList SnapManager::getGridSnappers() const
 {
     SnapperList s;
 
-    if (_desktop && _desktop->getNamedView()->getShowGrids() && snapprefs.isTargetSnappable(Inkscape::SNAPTARGET_GRID)) {
-        for(auto grid : _named_view->grids) {
-            s.push_back(grid->snapper());
+    if (snapprefs.isTargetSnappable(Inkscape::SNAPTARGET_GRID)) {
+        for (auto grid : _named_view->grids) {
+            if (grid->isEnabled() && grid->isVisible()) {
+                s.push_back(grid->snapper());
+            }
         }
     }
 
@@ -207,51 +209,52 @@ Geom::Point SnapManager::multipleOfGridPitch(Geom::Point const &t, Geom::Point c
     if (!snapprefs.getSnapEnabledGlobally() || snapprefs.getSnapPostponedGlobally())
         return t;
 
-    // get from pref
-    if (_desktop && _desktop->getNamedView()->getShowGrids()) {
-        bool success = false;
-        Geom::Point nearest_multiple;
-        Geom::Coord nearest_distance = Geom::infinity();
-        Inkscape::SnappedPoint bestSnappedPoint(t);
+    bool success = false;
+    Geom::Point nearest_multiple;
+    Geom::Coord nearest_distance = Geom::infinity();
+    Inkscape::SnappedPoint bestSnappedPoint(t);
 
-        // It will snap to the grid for which we find the closest snap. This might be a different
-        // grid than to which the objects were initially aligned. I don't see an easy way to fix
-        // this, so when using multiple grids one can get unexpected results
+    // It will snap to the grid for which we find the closest snap. This might be a different
+    // grid than to which the objects were initially aligned. I don't see an easy way to fix
+    // this, so when using multiple grids one can get unexpected results
 
-        // Cannot use getGridSnappers() because we need both the grids AND their snappers
-        // Therefore we iterate through all grids manually
-        for (auto grid : _named_view->grids) {
-            const Inkscape::Snapper* snapper = grid->snapper();
-            if (snapper && snapper->ThisSnapperMightSnap()) {
-                // To find the nearest multiple of the grid pitch for a given translation t, we
-                // will use the grid snapper. Simply snapping the value t to the grid will do, but
-                // only if the origin of the grid is at (0,0). If it's not then compensate for this
-                // in the translation t
-                Geom::Point const t_offset = t + grid->getOrigin();
-                IntermSnapResults isr;
-                // Only the first three parameters are being used for grid snappers
-                snapper->freeSnap(isr, Inkscape::SnapCandidatePoint(t_offset, Inkscape::SNAPSOURCE_GRID_PITCH),Geom::OptRect(), nullptr, nullptr);
-                // Find the best snap for this grid, including intersections of the grid-lines
-                bool old_val = _snapindicator;
-                _snapindicator = false;
-                Inkscape::SnappedPoint s = findBestSnap(Inkscape::SnapCandidatePoint(t_offset, Inkscape::SNAPSOURCE_GRID_PITCH), isr, false, true);
-                _snapindicator = old_val;
-                if (s.getSnapped() && (s.getSnapDistance() < nearest_distance)) {
-                    // use getSnapDistance() instead of getWeightedDistance() here because the pointer's position
-                    // doesn't tell us anything about which node to snap
-                    success = true;
-                    nearest_multiple = s.getPoint() - grid->getOrigin();
-                    nearest_distance = s.getSnapDistance();
-                    bestSnappedPoint = s;
-                }
+    // Cannot use getGridSnappers() because we need both the grids AND their snappers
+    // Therefore we iterate through all grids manually
+    for (auto grid : _named_view->grids) {
+        if (!grid->isEnabled() || !grid->isVisible()) {
+            continue;
+        }
+
+        const Inkscape::Snapper* snapper = grid->snapper();
+        if (snapper && snapper->ThisSnapperMightSnap()) {
+            // To find the nearest multiple of the grid pitch for a given translation t, we
+            // will use the grid snapper. Simply snapping the value t to the grid will do, but
+            // only if the origin of the grid is at (0,0). If it's not then compensate for this
+            // in the translation t
+            Geom::Point const t_offset = t + grid->getOrigin();
+            IntermSnapResults isr;
+            // Only the first three parameters are being used for grid snappers
+            snapper->freeSnap(isr, Inkscape::SnapCandidatePoint(t_offset, Inkscape::SNAPSOURCE_GRID_PITCH),Geom::OptRect(), nullptr, nullptr);
+            // Find the best snap for this grid, including intersections of the grid-lines
+            bool old_val = _snapindicator;
+            _snapindicator = false;
+            Inkscape::SnappedPoint s = findBestSnap(Inkscape::SnapCandidatePoint(t_offset, Inkscape::SNAPSOURCE_GRID_PITCH), isr, false, true);
+            _snapindicator = old_val;
+            if (s.getSnapped() && (s.getSnapDistance() < nearest_distance)) {
+                // use getSnapDistance() instead of getWeightedDistance() here because the pointer's position
+                // doesn't tell us anything about which node to snap
+                success = true;
+                nearest_multiple = s.getPoint() - grid->getOrigin();
+                nearest_distance = s.getSnapDistance();
+                bestSnappedPoint = s;
             }
         }
+    }
 
-        if (success) {
-            bestSnappedPoint.setPoint(origin + nearest_multiple);
-            _desktop->getSnapIndicator()->set_new_snaptarget(bestSnappedPoint);
-            return nearest_multiple;
-        }
+    if (success) {
+        bestSnappedPoint.setPoint(origin + nearest_multiple);
+        _desktop->getSnapIndicator()->set_new_snaptarget(bestSnappedPoint);
+        return nearest_multiple;
     }
 
     return t;

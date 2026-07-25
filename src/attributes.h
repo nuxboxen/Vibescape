@@ -66,7 +66,6 @@ enum class SPAttr {
     /* SPNamedView */
     VIEWONLY,
     SHOWGUIDES,
-    SHOWGRIDS,
     GRIDTOLERANCE,
     GUIDETOLERANCE,
     OBJECTTOLERANCE,
@@ -477,7 +476,7 @@ enum class SPAttr {
     SOLID_COLOR,
     SOLID_OPACITY,
     VECTOR_EFFECT,
-    
+
     /* CSS Blending/Compositing */
     MIX_BLEND_MODE,
     ISOLATION,
@@ -544,7 +543,7 @@ enum class SPAttr {
     SHAPE_PADDING,
     SHAPE_MARGIN,
     INLINE_SIZE,
-    
+
     /* Text Decoration */
     TEXT_DECORATION,  // CSS 2/CSS3-Shorthand
     TEXT_DECORATION_LINE,

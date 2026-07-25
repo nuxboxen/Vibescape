@@ -1468,7 +1468,6 @@ void SPDesktop::_attachDocument()
     namedview = document->getNamedView();
     namedview->viewcount++;
     namedview->show(this);
-    namedview->setShowGrids(namedview->getShowGrids());
     namedview->set_desk_color(this); // Background page sits on.
 
     _view_number = namedview->viewcount;
