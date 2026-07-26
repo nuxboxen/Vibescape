@@ -154,7 +154,7 @@
         </item>
       </section>
       <submenu id="paste-size">
-        <attribute name="label" translatable="yes">P_aste...</attribute>
+        <attribute name="label" translatable="yes">P_aste</attribute>
         <section>
           <item>
             <attribute name="label" translatable="yes">_In Place</attribute>
