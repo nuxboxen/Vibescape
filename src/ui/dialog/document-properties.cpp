@@ -1776,29 +1776,29 @@ GridWidget::GridWidget(SPGrid *grid)
                 _("Grid _units:"), "units", _wr, repr, doc);
     _origin_x = Gtk::make_managed<RegisteredScalarUnit>(
                 _("_Origin X:"), _("X coordinate of grid origin"), "originx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _origin_y = Gtk::make_managed<RegisteredScalarUnit>(
                 _("O_rigin Y:"), _("Y coordinate of grid origin"), "originy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
     _spacing_x = Gtk::make_managed<RegisteredScalarUnit>(
                 "-", _("Distance between vertical grid lines"), "spacingx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _spacing_y = Gtk::make_managed<RegisteredScalarUnit>(
                 "-", _("Distance between horizontal grid lines"), "spacingy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
 
     _gap_x = Gtk::make_managed<RegisteredScalarUnit>(
                 _("Gap _X:"), _("Horizontal distance between blocks"), "gapx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _gap_y = Gtk::make_managed<RegisteredScalarUnit>(
                 _("Gap _Y:"), _("Vertical distance between blocks"), "gapy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
     _margin_x = Gtk::make_managed<RegisteredScalarUnit>(
                 _("_Margin X:"), _("Right and left margins"), "marginx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _margin_y = Gtk::make_managed<RegisteredScalarUnit>(
                 _("M_argin Y:"), _("Top and bottom margins"), "marginy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
 
     _angle_x = Gtk::make_managed<RegisteredScalar>(
         _("An_gle of X:"), _("Angle of x-axis relative to horizontal direction"), "gridanglex", _wr, repr, doc);

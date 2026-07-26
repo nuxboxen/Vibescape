@@ -228,7 +228,8 @@ public:
                          Registry &wr,
                          Inkscape::XML::Node *repr_in = nullptr,
                          SPDocument *doc_in = nullptr,
-                         RSU_UserUnits user_units = RSU_none);
+                         RSU_UserUnits user_units = RSU_none,
+                         bool should_convert_limits = false);
 
 protected:
     void on_value_changed();
@@ -352,7 +353,7 @@ public:
 
     /**
      * Changes the widgets text to polar coordinates. The SVG output will still be a normal cartesian vector.
-     * Careful: when calling getValue(), the return value's X-coord will be the angle, Y-value will be the distance/length. 
+     * Careful: when calling getValue(), the return value's X-coord will be the angle, Y-value will be the distance/length.
      * After changing the coords type (polar/non-polar), the value has to be reset (setValue).
      */
     void setPolarCoords(bool polar_coords = true);
