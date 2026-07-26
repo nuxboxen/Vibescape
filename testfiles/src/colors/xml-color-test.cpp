@@ -141,7 +141,7 @@ TEST_F(ColorXmlColor, test_xml_string_to_paint)
 )",
                                   nullptr)
                 ).toString(),
-              "hsl(180, 100, 100)");
+              "hsl(180, 100%, 100%)");
 }
 
 } // namespace

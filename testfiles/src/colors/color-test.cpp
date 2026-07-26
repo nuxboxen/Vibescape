@@ -24,12 +24,12 @@ TEST(ColorsColor, construct_space_obj)
     auto space = Manager::get().find(Space::Type::HSL);
     ASSERT_TRUE(space);
 
-    ASSERT_EQ(Color(space, {0, 1, 0.5}).toString(), "hsl(0, 100, 50)");
+    ASSERT_EQ(Color(space, {0, 1, 0.5}).toString(), "hsl(0, 100%, 50%)");
 }
 
 TEST(ColorsColor, construct_space_type)
 {
-    ASSERT_EQ(Color(Space::Type::HSL, {0, 1, 0.5}).toString(), "hsl(0, 100, 50)");
+    ASSERT_EQ(Color(Space::Type::HSL, {0, 1, 0.5}).toString(), "hsl(0, 100%, 50%)");
 }
 
 TEST(ColorsColor, construct_css_string)
@@ -213,16 +213,16 @@ TEST(ColorsColor, convert_space_obj)
 
     auto color = Color(0xff0000ff, false);
     color.convert(space);
-    ASSERT_EQ(color.toString(), "hsl(0, 100, 50)");
+    ASSERT_EQ(color.toString(), "hsl(0, 100%, 50%)");
 }
 
 TEST(ColorsColor, convert_space_type)
 {
     auto color = Color(0xff0000ff, false);
     ASSERT_TRUE(color.convert(Space::Type::HSL));
-    ASSERT_EQ(color.toString(), "hsl(0, 100, 50)");
+    ASSERT_EQ(color.toString(), "hsl(0, 100%, 50%)");
     ASSERT_FALSE(color.convert(Space::Type::NONE));
-    ASSERT_EQ(color.toString(), "hsl(0, 100, 50)");
+    ASSERT_EQ(color.toString(), "hsl(0, 100%, 50%)");
 }
 
 TEST(ColorsColor, converted_other)
@@ -237,13 +237,13 @@ TEST(ColorsColor, converted_space_obj)
 {
     auto space = Manager::get().find(Space::Type::HSL);
     ASSERT_TRUE(space);
-    ASSERT_EQ(Color::parse("red")->converted(space)->toString(), "hsl(0, 100, 50)");
+    ASSERT_EQ(Color::parse("red")->converted(space)->toString(), "hsl(0, 100%, 50%)");
 }
 
 TEST(ColorsColor, converted_space_type)
 {
     auto color = Color::parse("red");
-    ASSERT_EQ(color->converted(Space::Type::HSL)->toString(), "hsl(0, 100, 50)");
+    ASSERT_EQ(color->converted(Space::Type::HSL)->toString(), "hsl(0, 100%, 50%)");
 
     auto none = color->converted(Space::Type::NONE);
     ASSERT_FALSE(none);
@@ -330,10 +330,10 @@ TEST(ColorsColor, invertColor)
 
     color = *Color::parse("hsl(90,50,10)");
     color.invert();
-    ASSERT_EQ(color.toString(), "hsl(270, 50, 90)");
+    ASSERT_EQ(color.toString(), "hsl(270, 50%, 90%)");
 
     color.invert(2);
-    ASSERT_EQ(color.toString(), "hsl(90, 50, 10)");
+    ASSERT_EQ(color.toString(), "hsl(90, 50%, 10%)");
 
     color = *Color::parse("rgb(255 255 255 0.2)");
     ASSERT_NEAR(color[0], 1, 0.001);
