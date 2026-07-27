@@ -154,53 +154,53 @@
         </item>
       </section>
       <submenu id="paste-size">
-        <attribute name="label" translatable="yes">P_aste...</attribute>
+        <attribute name="label" translatable="yes">P_aste Options</attribute>
         <section>
           <item>
-            <attribute name="label" translatable="yes">_In Place</attribute>
+            <attribute name="label" translatable="yes">Paste _in Place</attribute>
             <attribute name="action">win.paste-in-place</attribute>
             <attribute name="icon">edit-paste-in-place</attribute>
           </item>
           <item>
-            <attribute name="label" translatable="yes">_On Page</attribute>
+            <attribute name="label" translatable="yes">Paste _on Page</attribute>
             <attribute name="action">win.paste-on-page</attribute>
           </item>
           <item>
-            <attribute name="label" translatable="yes">_Style</attribute>
+            <attribute name="label" translatable="yes">Paste _Style</attribute>
             <attribute name="action">app.paste-style</attribute>
             <attribute name="icon">edit-paste-style</attribute>
           </item>
         </section>
         <section>
           <item>
-            <attribute name="label" translatable="yes">Si_ze</attribute>
+            <attribute name="label" translatable="yes">Paste Si_ze Onto Selection</attribute>
             <attribute name="action">app.paste-size</attribute>
             <attribute name="icon">edit-paste-size</attribute>
           </item>
           <item>
-            <attribute name="label" translatable="yes">_Width</attribute>
+            <attribute name="label" translatable="yes">Paste _Width Onto Selection</attribute>
             <attribute name="action">app.paste-width</attribute>
             <attribute name="icon">edit-paste-width</attribute>
           </item>
           <item>
-            <attribute name="label" translatable="yes">_Height</attribute>
+            <attribute name="label" translatable="yes">Paste _Height Onto Selection</attribute>
             <attribute name="action">app.paste-height</attribute>
             <attribute name="icon">edit-paste-height</attribute>
           </item>
         </section>
         <section>
           <item>
-            <attribute name="label" translatable="yes">Size Separately</attribute>
+            <attribute name="label" translatable="yes">Paste Size Onto Selection Separately</attribute>
             <attribute name="action">app.paste-size-separately</attribute>
             <attribute name="icon">edit-paste-size-separately</attribute>
           </item>
           <item>
-            <attribute name="label" translatable="yes">Width Separately</attribute>
+            <attribute name="label" translatable="yes">Paste Width Onto Selection Separately</attribute>
             <attribute name="action">app.paste-width-separately</attribute>
             <attribute name="icon">edit-paste-width-separately</attribute>
           </item>
           <item>
-            <attribute name="label" translatable="yes">Height Separately</attribute>
+            <attribute name="label" translatable="yes">Paste Height Onto Selection Separately</attribute>
             <attribute name="action">app.paste-height-separately</attribute>
             <attribute name="icon">edit-paste-height-separately</attribute>
           </item>
