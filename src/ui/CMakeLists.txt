@@ -215,6 +215,8 @@ target_sources(inkscape_base PRIVATE
 	widget/combo-tool-item.cpp
 	widget/custom-tooltip.cpp
 	widget/dash-selector.cpp
+	widget/desktop-tab-controls.cpp
+	widget/desktop-tab-row.cpp
 	widget/desktop-widget.cpp
 	widget/document-templates.cpp
 	widget/drop-down-list.cpp
@@ -302,7 +304,6 @@ target_sources(inkscape_base PRIVATE
         widget/style/paint-order.cpp
 	widget/swatch-editor.cpp
 	widget/swatch-selector.cpp
-	widget/tabs-widget.cpp
 	widget/template-list.cpp
 	widget/text.cpp
 	widget/textpath-popover.cpp
@@ -549,6 +550,8 @@ target_sources(inkscape_base PRIVATE
 	widget/combo-tool-item.h
 	widget/custom-tooltip.h
 	widget/dash-selector.h
+	widget/desktop-tab-controls.h
+	widget/desktop-tab-row.h
 	widget/desktop-widget.h
 	widget/drop-down-list.h
 	widget/document-templates.h
@@ -641,7 +644,6 @@ target_sources(inkscape_base PRIVATE
         widget/style/paint-order.h
 	widget/swatch-editor.h
 	widget/swatch-selector.h
-	widget/tabs-widget.h
 	widget/template-list.h
 	widget/text.h
 	widget/textpath-popover.h

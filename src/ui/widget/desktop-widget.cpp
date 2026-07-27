@@ -56,10 +56,10 @@
 #include "ui/util.h"
 #include "ui/widget/canvas-grid.h"
 #include "ui/widget/canvas.h"
+#include "ui/widget/desktop-tab-controls.h"
 #include "ui/widget/ink-ruler.h"
 #include "ui/widget/spinbutton.h"
 #include "ui/widget/status-bar.h"
-#include "ui/widget/tabs-widget.h"
 #include "util/units.h"
 
 using namespace Inkscape;
