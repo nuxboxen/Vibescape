@@ -14,6 +14,7 @@
 
 #include "uri-references.h"
 
+#include <glib.h>
 #include <iostream>
 #include <cstring>
 
@@ -56,7 +57,7 @@ URIReference::~URIReference()
  * The main ideas here are:
  * (1) "If we are inside a clone, then we can accept if and only if our "original thing" can accept the reference"
  * (this caused problems when there are clones because a change in ids triggers signals for the object hrefing this id,
- * but also its cloned reprs(descendants of <use> referencing an ancestor of the href'ing object)). 
+ * but also its cloned reprs(descendants of <use> referencing an ancestor of the href'ing object)).
  *
  * (2) Once we have an (potential owner) object, it can accept a href to obj, iff the graph of objects where directed
  * edges are
@@ -77,12 +78,12 @@ bool URIReference::_acceptObject(SPObject *obj) const
     auto lpobj = cast<LivePathEffectObject>(obj);
     if (!owner || lpobj)
         return true;
-    
+
     while (owner->cloned) {
         if(!owner->clone_original)//happens when the clone is existing and linking to something, even before the original objects exists.
-                                  //for instance, it can happen when you paste a filtered object in a already cloned group: The construction of the 
+                                  //for instance, it can happen when you paste a filtered object in a already cloned group: The construction of the
                                   //clone representation of the filtered object will finish before the original object, so the cloned repr will
-                                  //have to _accept the filter even though the original does not exist yet. In that case, we'll accept iff the parent of the 
+                                  //have to _accept the filter even though the original does not exist yet. In that case, we'll accept iff the parent of the
                                   //original can accept it: loops caused by other relations than parent-child would be prevented when created on their base object.
                                   //Fixes bug 1636533.
             owner = owner->parent;
@@ -130,6 +131,11 @@ void URIReference::attach(const URI &uri)
         skip = true;
     }
 
+    if (!uri.isRelative() && !uri.hasScheme("file")) {
+        // We can't attach a file if it's not a file.
+        throw UnsupportedURIException();
+    }
+
     // The path contains references to separate document files to load.
     if (document && uri.getPath() && !skip) {
         char const *base = document->getDocumentBase();
@@ -148,6 +154,7 @@ void URIReference::attach(const URI &uri)
             document = nullptr;
         }
     }
+
     if (!document) {
         g_warning("Can't get document for referenced URI: %s", filename);
         return;
