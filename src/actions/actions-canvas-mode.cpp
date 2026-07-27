@@ -265,7 +265,6 @@ std::vector<std::vector<Glib::ustring>> raw_data_canvas_mode =
     {"win.canvas-display-mode(4)",              N_("Display Mode: Outline Overlay"),    SECTION,    N_("Show objects as outlines, and the actual drawing below them with reduced opacity")},
     {"win.canvas-display-mode-cycle",           N_("Display Mode: Cycle"),              SECTION,    N_("Cycle through display modes")                   },
     {"win.canvas-display-mode-toggle",          N_("Display Mode: Toggle"),             SECTION,    N_("Toggle between normal and last non-normal mode")},
-    {"win.canvas-display-mode-toggle-preview",  N_("Display Mode: Toggle Preview"),     SECTION,    N_("Toggle between preview and previous mode")      },
 
     {"win.canvas-split-mode(0)",                N_("Split Mode: Normal"),               SECTION,    N_("Do not split canvas")                              },
     {"win.canvas-split-mode(1)",                N_("Split Mode: Split"),                SECTION,    N_("Render part of the canvas in outline mode")        },
