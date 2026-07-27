@@ -252,8 +252,9 @@ RegisteredScalarUnit::RegisteredScalarUnit(Glib::ustring const &label, Glib::ust
                                            Glib::ustring const &key,
                                            RegisteredUnitMenu &rum, Registry &wr,
                                            Inkscape::XML::Node * const repr_in, SPDocument * const doc_in,
-                                           RSU_UserUnits const user_units)
-    : RegisteredWidget<ScalarUnit>(label, tip, UNIT_TYPE_LINEAR, Glib::ustring{}, rum.getUnitMenu()),
+                                           RSU_UserUnits const user_units,
+                                           bool should_convert_limits)
+    : RegisteredWidget<ScalarUnit>(label, tip, UNIT_TYPE_LINEAR, Glib::ustring{}, rum.getUnitMenu(), should_convert_limits),
       _um(nullptr)
 {
     init_parent(key, wr, repr_in, doc_in);
@@ -291,7 +292,7 @@ RegisteredScalarUnit::on_value_changed()
                 // check to see if scaling is uniform
                 if(Geom::are_near((root->viewBox.width() * root->height.computed) / (root->width.computed * root->viewBox.height()), 1.0, Geom::EPSILON)) {
                     scale = (root->viewBox.width() / root->width.computed + root->viewBox.height() / root->height.computed)/2.0;
-                } else if (_user_units == RSU_x) { 
+                } else if (_user_units == RSU_x) {
                     scale = root->viewBox.width() / root->width.computed;
                 } else {
                     scale = root->viewBox.height() / root->height.computed;

@@ -21,12 +21,13 @@ ScalarUnit::ScalarUnit(Glib::ustring const &label, Glib::ustring const &tooltip,
                        UnitType unit_type,
                        Glib::ustring const &icon,
                        UnitMenu *unit_menu,
-                       bool mnemonic)
-    : Scalar(label, tooltip, icon, mnemonic),
+                       bool should_convert_limits)
+    : Scalar(label, tooltip, icon, true),
       _unit_menu(unit_menu),
       _hundred_percent(0),
       _absolute_is_increment(false),
-      _percentage_is_increment(false)
+      _percentage_is_increment(false),
+      should_convert_limits(should_convert_limits)
 {
     if (!_unit_menu) {
         _unit_menu = Gtk::make_managed<UnitMenu>();
@@ -55,9 +56,8 @@ ScalarUnit::ScalarUnit(Glib::ustring const &label, Glib::ustring const &tooltip,
 
 ScalarUnit::ScalarUnit(Glib::ustring const &label, Glib::ustring const &tooltip,
                        ScalarUnit &take_unitmenu,
-                       Glib::ustring const &icon,
-                       bool mnemonic)
-    : ScalarUnit{label, tooltip, UnitType{}, icon, take_unitmenu._unit_menu, mnemonic}
+                       Glib::ustring const &icon)
+    : ScalarUnit{label, tooltip, UnitType{}, icon, take_unitmenu._unit_menu}
 {
 }
 
@@ -169,10 +169,10 @@ double ScalarUnit::PercentageToAbsolute(double value)
     // convert from percent to absolute
     double convertedVal = 0;
     double hundred_converted = _hundred_percent / _unit_menu->getConversion("px"); // _hundred_percent is in px
-    if (_percentage_is_increment) 
+    if (_percentage_is_increment)
         value += 100;
     convertedVal = 0.01 * hundred_converted * value;
-    if (_absolute_is_increment) 
+    if (_absolute_is_increment)
         convertedVal -= hundred_converted;
 
     return convertedVal;
@@ -185,14 +185,14 @@ double ScalarUnit::AbsoluteToPercentage(double value)
     if (_hundred_percent == 0) {
         if (_percentage_is_increment)
             convertedVal = 0;
-        else 
+        else
             convertedVal = 100;
     } else {
         double hundred_converted = _hundred_percent / _unit_menu->getConversion("px", lastUnits); // _hundred_percent is in px
-        if (_absolute_is_increment) 
+        if (_absolute_is_increment)
             value += hundred_converted;
         convertedVal = 100 * value / hundred_converted;
-        if (_percentage_is_increment) 
+        if (_percentage_is_increment)
             convertedVal -= 100;
     }
 
@@ -231,9 +231,11 @@ void ScalarUnit::on_unit_changed()
     Inkscape::Util::Unit const *new_unit = unit_table.getUnit(abbr);
     Inkscape::Util::Unit const *old_unit = unit_table.getUnit(lastUnits);
 
-    auto new_min = convertValue(Scalar::getRangeMin(), *old_unit, *new_unit);
-    auto new_max = convertValue(Scalar::getRangeMax(), *old_unit, *new_unit);
-    Scalar::setRange(new_min, new_max);
+    if (should_convert_limits) {
+        auto new_min = convertValue(Scalar::getRangeMin(), *old_unit, *new_unit);
+        auto new_max = convertValue(Scalar::getRangeMax(), *old_unit, *new_unit);
+        Scalar::setRange(new_min, new_max);
+    }
 
     Scalar::setValue(convertValue(Scalar::getValue(), *old_unit, *new_unit));
 
