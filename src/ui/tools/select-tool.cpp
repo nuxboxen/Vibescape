@@ -213,12 +213,11 @@ bool SelectTool::item_handler(SPItem *local_item, CanvasEvent const &event)
 
                 // remember what modifiers were on before button press
                 button_press_state = event.modifiers;
-                bool in_groups = mod_select_in_groups->active(button_press_state);
                 bool always_box = mod_select_always_box->active(button_press_state);
                 bool touch_path = mod_select_touch_path->active(button_press_state);
                 bool duplicate_drag = mod_select_duplicate->active(button_press_state);
 
-                bool is_modified_click = always_box || in_groups || touch_path || duplicate_drag;
+                bool is_modified_click = always_box || touch_path || duplicate_drag;
 
                 // If a modifier is pressed to perform an action other than
                 // dragging, pass the event to the root handler to perform
@@ -638,28 +637,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                         moved = false;
                     } else if (item && !drag_escaped) {
                         // item has not been moved -> simply a click, do selecting
-                        if (!selection->isEmpty()) {
-                            if(mod_select_add_to->active(event.modifiers)) {
-                                // with shift, toggle selection
-                                _seltrans->resetState();
-                                selection->toggle(item);
-                            } else {
-                                SPObject* single = selection->single();
-                                auto singleGroup = cast<SPGroup>(single);
-                                // without shift, increase state (i.e. toggle scale/rotation handles)
-                                if (selection->includes(item)) {
-                                    _seltrans->increaseState();
-                                } else if (singleGroup && (singleGroup->layerMode() == SPGroup::LAYER) && single->isAncestorOf(item)) {
-                                    _seltrans->increaseState();
-                                } else {
-                                    _seltrans->resetState();
-                                    selection->set(item);
-                                }
-                            }
-                        } else { // simple or shift click, no previous selection
-                            _seltrans->resetState();
-                            selection->set(item);
-                        }
+                        handleClick(event, selection);
                     }
 
                     dragging = false;
@@ -718,47 +696,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                     } else { // it was just a click, or a too small rubberband
                         r->stop();
 
-                        bool add_to = mod_select_add_to->active(event.modifiers);
-                        bool in_groups = mod_select_in_groups->active(event.modifiers);
-                        bool force_drag = mod_select_force_drag->active(event.modifiers);
-
-                        if (add_to && !rb_escaped && !drag_escaped) {
-                            // this was a shift+click or alt+shift+click, select what was clicked upon
-
-                            SPItem *local_item = nullptr;
-
-                            if (in_groups) {
-                                // go into groups, honoring force_drag (Alt)
-                                local_item = sp_event_context_find_item (_desktop, event.pos, force_drag, true);
-                            } else {
-                                // don't go into groups, honoring Alt
-                                local_item = sp_event_context_find_item (_desktop, event.pos, force_drag, false);
-                            }
-
-                            if (local_item) {
-                                selection->toggle(local_item);
-                            }
-
-                        } else if ((in_groups || force_drag) && !rb_escaped && !drag_escaped) { // ctrl+click, alt+click
-                            SPItem *local_item = sp_event_context_find_item (_desktop, event.pos, force_drag, in_groups);
-
-                            if (local_item) {
-                                if (selection->includes(local_item)) {
-                                    _seltrans->increaseState();
-                                } else {
-                                    _seltrans->resetState();
-                                    selection->set(local_item);
-                                }
-                            }
-                        } else { // click without shift, simply deselect, unless with Alt or something was cancelled
-                            if (!selection->isEmpty()) {
-                                if (!(rb_escaped) && !(drag_escaped) && !force_drag) {
-                                    selection->clear();
-                                }
-
-                                rb_escaped = 0;
-                            }
-                        }
+                        handleClick(event, selection);
                     }
 
                     ret = true;
@@ -1070,6 +1008,48 @@ bool SelectTool::root_handler(CanvasEvent const &event)
     );
 
     return ret || ToolBase::root_handler(event);
+}
+
+void SelectTool::handleClick(ButtonReleaseEvent const &event, Selection *selection)
+{
+    bool force_drag = mod_select_force_drag->active(event.modifiers);
+    if ((rb_escaped || drag_escaped) && !force_drag) {
+        rb_escaped = 0;
+
+        return;
+    }
+
+    bool in_groups = mod_select_in_groups->active(event.modifiers);
+
+    SPItem *local_item = sp_event_context_find_item(_desktop, event.pos, force_drag, in_groups);
+
+    if (!selection->isEmpty()) {
+        if (local_item) {
+            if (mod_select_add_to->active(event.modifiers)) {
+                // with shift, toggle selection
+                _seltrans->resetState();
+                selection->toggle(local_item);
+            } else {
+                SPObject *single = selection->single();
+                auto singleGroup = cast<SPGroup>(single);
+
+                // without shift, increase state (i.e. toggle scale/rotation handles)
+                if (selection->includes(local_item) ||
+                    (singleGroup && singleGroup->layerMode() == SPGroup::LAYER && single->isAncestorOf(local_item))) {
+                    _seltrans->increaseState();
+                } else {
+                    _seltrans->resetState();
+                    selection->set(local_item);
+                }
+            }
+        } else {
+            selection->clear();
+        }
+    } else if (local_item) {
+        // Simple or shift click, no previous selection
+        _seltrans->resetState();
+        selection->set(local_item);
+    }
 }
 
 void SelectTool::_duplicate_drag(Geom::Point const &p)
