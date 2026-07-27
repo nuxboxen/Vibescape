@@ -252,7 +252,7 @@ geom_line_wind_distance (Geom::Coord x0, Geom::Coord y0, Geom::Coord x1, Geom::C
 
     if (best) {
         s = ((Px - Ax) * Dx + (Py - Ay) * Dy) / (Dx * Dx + Dy * Dy);
-        if (s <= 0.0) {
+        if (std::isnan(s) || s <= 0.0) { // is nan if Dx and Dy are zero ("A point" == "B point")
             dist2 = (Px - Ax) * (Px - Ax) + (Py - Ay) * (Py - Ay);
         } else if (s >= 1.0) {
             dist2 = (Px - Bx) * (Px - Bx) + (Py - By) * (Py - By);
