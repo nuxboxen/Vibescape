@@ -118,7 +118,7 @@ bool SPGradient::isEquivalent(SPGradient *that)
     //TODO Make this work for mesh gradients
 
     bool status = false;
-    
+
     while(true){ // not really a loop, used to avoid deep nesting or multiple exit points from function
         if (this->getStopCount() != that->getStopCount()) { break; }
         if (this->hasStops() != that->hasStops()) { break; }
@@ -143,7 +143,7 @@ bool SPGradient::isEquivalent(SPGradient *that)
             if (!as->getColor().isClose(bs->getColor(), 0.001) || as->offset != bs->offset) {
                 effective = false;
                 break;
-            } 
+            }
             else {
                 as = as->getNextStop();
                 bs = bs->getNextStop();
@@ -165,27 +165,27 @@ bool SPGradient::isEquivalent(SPGradient *that)
 bool SPGradient::isAligned(SPGradient *that)
 {
     bool status = false;
-    
-   /*  Some gradients have coordinates/other values specified, some don't.  
+
+   /*  Some gradients have coordinates/other values specified, some don't.
            yes/yes check the coordinates/other values
            no/no   aligned (because both have all default values)
            yes/no  not aligned
            no/yes  not aligned
        It is NOT safe to just compare the computed values because if that field has
        not been set the computed value could be full of garbage.
-       
+
        In theory the yes/no and no/yes cases could be aligned if the specified value
        matches the default value.
     */
 
     while(true){ // not really a loop, used to avoid deep nesting or multiple exit points from function
         if(this->gradientTransform_set != that->gradientTransform_set) { break; }
-        if(this->gradientTransform_set && 
+        if(this->gradientTransform_set &&
             (this->gradientTransform != that->gradientTransform)) { break; }
         if (is<SPLinearGradient>(this) && is<SPLinearGradient>(that)) {
             auto sg = cast<SPLinearGradient>(this);
             auto tg = cast<SPLinearGradient>(that);
- 
+
             if( sg->x1._set != tg->x1._set) { break; }
             if( sg->y1._set != tg->y1._set) { break; }
             if( sg->x2._set != tg->x2._set) { break; }
@@ -217,10 +217,10 @@ bool SPGradient::isAligned(SPGradient *that)
         } else if (is<SPMeshGradient>(this) && is<SPMeshGradient>(that)) {
             auto sg = cast<SPMeshGradient>(this);
             auto tg = cast<SPMeshGradient>(that);
- 
+
             if( sg->x._set  !=  !tg->x._set) { break; }
             if( sg->y._set  !=  !tg->y._set) { break; }
-            if( sg->x._set  &&  sg->y._set) { 
+            if( sg->x._set  &&  sg->y._set) {
                 if( (sg->x.computed != tg->x.computed) ||
                     (sg->y.computed != tg->y.computed) ) { break; }
             } else if( sg->x._set || sg->y._set) { break; } // some mix of set and not set
@@ -583,7 +583,7 @@ void SPGradient::modified(guint flags)
         sp_object_ref(&child);
         l.push_back(&child);
     }
- 
+
     for (auto child:l) {
         if ((flags & SP_OBJECT_FLAGS_ALL) || (child->mflags & (SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_CHILD_MODIFIED_FLAG))) {
             child->emitModified(flags);
@@ -740,15 +740,13 @@ void SPGradient::ensureArray() const
     }
 }
 
-SPGradientMesh const *SPGradient::getGradientMesh() const
+SPGradientMesh const SPGradient::getGradientMesh() const
 {
     if (!mesh.built) {
         rebuildArray();
-        mesh.rows = array.patch_rows();
-        mesh.cols = array.patch_columns();
         mesh.patches = getGradientPatches();
     }
-    return &mesh;
+    return mesh;
 }
 
 /**
@@ -1267,4 +1265,3 @@ bool SPGradient::isSolid() const
   End:
 */
 // vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:fileencoding=utf-8:textwidth=99 :
-

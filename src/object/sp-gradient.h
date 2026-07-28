@@ -119,7 +119,7 @@ public:
 
     /** State in Inkscape gradient system */
     unsigned int state;
-    
+
     /** Linear and Radial Gradients */
 
     /** Composed vector */
@@ -138,7 +138,7 @@ public:
     bool isAligned(SPGradient *b);
 
     mutable SPGradientMesh mesh;
-    SPGradientMesh const *getGradientMesh() const override;
+    SPGradientMesh const getGradientMesh() const override;
     virtual std::vector<std::vector<SPGradientPatch>> getGradientPatches() const { return {}; }
 
     /** Mesh Gradients **************/
@@ -146,7 +146,7 @@ public:
     /** Composed array (for mesh gradients) */
     mutable SPMeshNodeArray array;
     mutable SPMeshNodeArray array_smoothed; // Smoothed version of array
-    
+
     bool hasPatches() const;
 
     /** All Gradients **************/
