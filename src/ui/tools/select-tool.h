@@ -15,6 +15,7 @@
 
 #include "rubberband.h"
 #include "ui/tools/tool-base.h"
+#include "ui/widget/events/canvas-event.h"
 
 namespace Inkscape {
 struct ScrollEvent;
@@ -61,6 +62,8 @@ private:
     void _duplicate_drag_reset();
     bool _duplicate_drag_on_press = false;
     bool _duplicate_down_on_selected = false;
+
+    void handleClick(ButtonReleaseEvent const &event, Selection *selection);
 
     bool _alt_on = false;
     bool _force_dragging = false;
