@@ -239,7 +239,7 @@ StartScreen::StartScreen()
         if (auto page = templates.get_child_by_name(cat)) {
             page->reference();
             templates.remove(*page);
-            kinds->append_page(*page, cat);
+            kinds->append_page(*page, templates.get_category_label(cat));
             page->unreference();
         }
     }

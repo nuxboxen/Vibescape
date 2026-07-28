@@ -39,7 +39,7 @@ struct TemplateList::TemplateItem : public Glib::Object {
     int priority;
     Glib::ustring category;
 
-    static Glib::RefPtr<TemplateItem> create(const Glib::ustring& name, const Glib::ustring& label, const Glib::ustring& tooltip, 
+    static Glib::RefPtr<TemplateItem> create(const Glib::ustring& name, const Glib::ustring& label, const Glib::ustring& tooltip,
         Glib::RefPtr<Gdk::Texture> icon, Glib::ustring key, int priority, const Glib::ustring& category) {
 
         auto item = Glib::make_refptr_for_instance<TemplateItem>(new TemplateItem());
@@ -62,7 +62,7 @@ TemplateList::TemplateList(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Buil
 {
 }
 
-static Glib::ustring all_templates = "All templates";
+static Glib::ustring all_templates = NC_("TemplateCategory", "All templates");
 
 /**
  * Initialise this template list with categories and icons
@@ -122,12 +122,13 @@ void TemplateList::init(Inkscape::Extension::TemplateShow mode, AddPage add_page
             auto& name = preset->get_name();
             auto& desc = preset->get_description();
             auto& label = preset->get_label();
+
             auto tooltip = _(desc.empty() ? name.c_str() : desc.c_str());
             auto trans_label = label.empty() ? "" : _(label.c_str());
             auto icon = to_texture(icon_to_pixbuf(preset->get_icon_path(), get_scale_factor()));
 
             auto templ = TemplateItem::create(
-                Glib::Markup::escape_text(name),
+                Glib::Markup::escape_text(_(name.c_str())),
                 Glib::Markup::escape_text(trans_label),
                 Glib::Markup::escape_text(tooltip),
                 icon, preset->get_key(), group + preset->get_sort_priority(),
@@ -209,7 +210,8 @@ Glib::RefPtr<Gio::ListStore<TemplateList::TemplateItem>> TemplateList::generate_
     icons.set_model(selection_model);
 
     // This packing keeps the Gtk widget alive, beyond the builder's lifetime
-    add(container, label, g_dpgettext2(nullptr, "TemplateCategory", label.c_str()));
+    add(container, label, get_category_label(label));
+
     _categories.emplace_back(label);
 
     selection_model->signal_selection_changed().connect([this](auto pos, auto count){
@@ -221,6 +223,11 @@ Glib::RefPtr<Gio::ListStore<TemplateList::TemplateItem>> TemplateList::generate_
 
     _factory.emplace_back(std::move(factory));
     return store;
+}
+
+Glib::ustring TemplateList::get_category_label(Glib::ustring const &cat) const
+{
+    return g_dpgettext2(nullptr, "TemplateCategory", cat.c_str());
 }
 
 /**
