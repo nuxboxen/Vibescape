@@ -470,9 +470,9 @@ Geom::Affine sp_item_transform_repr(SPItem *item);
 
 int sp_item_repr_compare_position(SPItem const *first, SPItem const *second);
 
-inline bool sp_item_repr_compare_position_bool(SPObject const *first, SPObject const *second)
+inline bool sp_item_repr_compare_position_bool(SPItem const *first, SPItem const *second)
 {
-    return sp_repr_compare_position(first->getRepr(), second->getRepr()) < 0;
+    return sp_item_repr_compare_position(first, second) < 0;
 }
 
 SPItem *sp_item_first_item_child(SPObject *obj);

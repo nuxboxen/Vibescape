@@ -244,7 +244,29 @@ gchar const *sp_xml_ns_prefix_uri(gchar const *prefix)
  *    0    positions are equivalent
  *    1    first object's position is greater than the second
  *   -1    first object's position is less than the second
- * @todo Rewrite this function's description to be understandable
+ *
+ *  A greater position means that the node is "later" in the XML, i.e. "higher" vertically,
+ *  i.e. topmost.
+ *
+ *  Some examples:
+ *
+ *  parent
+ *  - childA
+ *  - childB
+ *  sp_repr_compare_position(childA, childA) => 0
+ *  sp_repr_compare_position(childA, childB) => -1
+ *  sp_repr_compare_position(childB, childA) => 1
+ *
+ *  parentA
+ *  - childA
+ *  parentB
+ *  - childB
+ *  sp_repr_compare_position(childA, childB) => -1
+ *  sp_repr_compare_position(childB, parentA) => 1
+ *
+ *  parent
+ *  - child
+ *  sp_repr_compare_position(parent, child) => -1
  */
 int sp_repr_compare_position(Inkscape::XML::Node const *first, Inkscape::XML::Node const *second)
 {
@@ -263,9 +285,9 @@ int sp_repr_compare_position(Inkscape::XML::Node const *first, Inkscape::XML::No
         g_assert(ancestor != nullptr);
 
         if (ancestor == first) {
-            return 1;
-        } else if (ancestor == second) {
             return -1;
+        } else if (ancestor == second) {
+            return 1;
         } else {
             Inkscape::XML::Node const *to_first = find_containing_child(first, ancestor);
             Inkscape::XML::Node const *to_second = find_containing_child(second, ancestor);

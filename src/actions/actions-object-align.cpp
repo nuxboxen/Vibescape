@@ -600,7 +600,7 @@ enum SortOrder {
 };
 
 static bool PositionCompare(const SPItem* a, const SPItem* b) {
-    return sp_item_repr_compare_position(a, b) < 0;
+    return sp_item_repr_compare_position_bool(a, b);
 }
 
 void exchange(Inkscape::Selection* selection, SortOrder order)

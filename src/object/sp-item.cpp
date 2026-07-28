@@ -1867,8 +1867,7 @@ Inkscape::DrawingItem *SPItem::get_arenaitem(unsigned key) const
 
 int sp_item_repr_compare_position(SPItem const *first, SPItem const *second)
 {
-    return sp_repr_compare_position(first->getRepr(),
-                                    second->getRepr());
+    return sp_repr_compare_position(first->getRepr(), second->getRepr());
 }
 
 SPItem const *sp_item_first_item_child(SPObject const *obj)

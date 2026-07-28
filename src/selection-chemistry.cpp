@@ -487,7 +487,7 @@ void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer, bool includeHi
         }
         SPObject *old_obj = doc->getObjectByRepr(old_repr);
         SPObject *new_obj = doc->getObjectByRepr(copy);
-        if (old_obj && new_obj) {
+        if (old_obj && new_obj && !old_obj->_tmpsuccessor) {
             old_obj->setTmpSuccessor(new_obj);
         }
         if (relink_clones) {
@@ -771,14 +771,6 @@ Inkscape::XML::Node* ObjectSet::group(bool is_anchor) {
     Inkscape::XML::Node *topmost = p.back();
     Inkscape::XML::Node *topmost_parent = topmost->parent();
 
-    // Find the topmost object first
-    for(auto current : p){
-        if (current->parent() == topmost_parent) {
-            if (current->position() > topmost->position()) {
-                topmost = current;
-            }
-        }
-    }
     // Add as close to the top as we can get it
     topmost_parent->addChild(group, topmost);
 
