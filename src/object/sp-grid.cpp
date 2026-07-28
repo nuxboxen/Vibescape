@@ -100,6 +100,7 @@ void SPGrid::build(SPDocument *doc, Inkscape::XML::Node *repr)
     readAttr(SPAttr::MARGIN_Y);
     readAttr(SPAttr::COLOR);
     readAttr(SPAttr::EMPCOLOR);
+    readAttr(SPAttr::EMPOPACITY);
     readAttr(SPAttr::VISIBLE);
     readAttr(SPAttr::ENABLED);
     readAttr(SPAttr::MAJOR_LINE_INTERVAL);
@@ -304,7 +305,7 @@ void SPGrid::_checkOldGrid(SPDocument *doc, Inkscape::XML::Node *repr)
         repr->appendChild(newnode);
         Inkscape::GC::release(newnode);
 
-        // remove all old settings 
+        // remove all old settings
         repr->removeAttribute("gridoriginx");
         repr->removeAttribute("gridoriginy");
         repr->removeAttribute("gridspacingx");
