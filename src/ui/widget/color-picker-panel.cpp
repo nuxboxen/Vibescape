@@ -162,7 +162,7 @@ ColorPickerPanelImpl::ColorPickerPanelImpl(Space::Type space, PlateType type, st
 
     // list available color space types
     for (auto&& meta : Manager::get().spaces(Space::Traits::Picker)) {
-        _spaces.add_row(meta->getIcon(), meta->getName(), _(meta->getShortName().c_str()), int(meta->getType()));
+        _spaces.add_row(meta->getIcon(), _(meta->getShortName().c_str()), int(meta->getType()));
     }
     _spaces.refilter();
     _spaces.set_tooltip_text(_("Select color picker type"));
