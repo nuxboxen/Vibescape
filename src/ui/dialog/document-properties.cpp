@@ -1616,8 +1616,6 @@ void DocumentProperties::onNewGrid(GridType grid_type)
 
     auto repr = desktop->getNamedView()->getRepr();
     SPGrid::create_new(document, repr, grid_type);
-    // flip global switch, so snapping to grid works
-    desktop->getNamedView()->newGridCreated();
 
     DocumentUndo::done(document, RC_("Undo", "Create new grid"), INKSCAPE_ICON("document-properties"));
 
@@ -1690,7 +1688,7 @@ GridWidget::GridWidget(SPGrid *grid)
             "snapvisiblegridlinesonly", _wr, false, repr, doc);
 
     _visible = Gtk::make_managed<Inkscape::UI::Widget::RegisteredToggleButton>("",
-            _("Determines whether the grid is displayed or not. Objects are still snapped to invisible grids."),
+            _("Determines whether the grid is displayed or not."),
             "visible", _wr, false, repr, doc,
             "object-visible", "object-hidden");
     _visible->set_child(*Gtk::make_managed<Gtk::Image>(Gio::ThemedIcon::create("object-visible")));
