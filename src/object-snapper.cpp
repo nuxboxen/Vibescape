@@ -296,13 +296,14 @@ void Inkscape::ObjectSnapper::_collectPaths(Geom::Point /*p*/,
         auto &pm = document->getPageManager();
         for (auto page : document->getPageManager().getPages()) {
             if (_snapmanager->snapprefs.isTargetSnappable(SNAPTARGET_PAGE_EDGE_BORDER) && _snapmanager->snapprefs.isAnyCategorySnappable()) {
-                auto pathv = _getPathvFromRect(page->getDesktopRect());
+                auto pathv = _getPathvFromRect(page->getDocumentRect());
                 _paths_to_snap_to->emplace_back(pathv, SNAPTARGET_PAGE_EDGE_BORDER, Geom::OptRect());
             }
+
             if (_snapmanager->snapprefs.isTargetSnappable(SNAPTARGET_PAGE_MARGIN_BORDER) && _snapmanager->snapprefs.isAnyCategorySnappable()) {
-                auto margin = _getPathvFromRect(page->getDesktopMargin());
+                auto margin = _getPathvFromRect(page->getDocumentMargin());
                 _paths_to_snap_to->emplace_back(margin, SNAPTARGET_PAGE_MARGIN_BORDER, Geom::OptRect());
-                auto bleed = _getPathvFromRect(page->getDesktopBleed());
+                auto bleed = _getPathvFromRect(page->getDocumentBleed());
                 _paths_to_snap_to->emplace_back(bleed, SNAPTARGET_PAGE_BLEED_BORDER, Geom::OptRect());
             }
         }
