@@ -176,6 +176,7 @@ private:
     void _handleEdited(const Glib::ustring& path, const Glib::ustring& new_text);
     void _handleTransparentHover(bool enabled);
     void _generateTranslucentItems(SPItem *parent);
+    void _updateIconVisibility();
 
     bool select_row( Glib::RefPtr<Gtk::TreeModel> const & model, Gtk::TreeModel::Path const & path, bool b );
 
