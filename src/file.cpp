@@ -649,7 +649,7 @@ SPObject *file_import(SPDocument *in_doc, std::string const &path, Inkscape::Ext
         cancelled = true;
     }
 
-    bool is_svg = key && !strcmp(key->get_id(), SP_MODULE_KEY_INPUT_SVG);
+    bool is_svg = !key || !strcmp(key->get_id(), SP_MODULE_KEY_INPUT_SVG);
 
     if (!doc) {
         // Open failed or canceled
