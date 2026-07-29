@@ -525,18 +525,18 @@ std::vector<std::vector<Glib::ustring>> raw_data_object =
     {"app.object-add-corners-lpe",    N_("Add Corners LPE"),         SECTION, N_("Add Corners Live Path Effect to path")},
     {"app.object-stroke-to-path",     N_("Stroke to Path"),          SECTION, N_("Convert strokes to paths")},
 
-    {"app.object-set-clip",           N_("Object Clip Set"),         SECTION, N_("Apply clipping path to selection (using the topmost object as clipping path)")},
-    {"app.object-set-inverse-clip",   N_("Object Clip Set Inverse"), SECTION, N_("Apply inverse clipping path to selection (Power Clip LPE)")},
-    {"app.object-release-clip",       N_("Object Clip Release"),     SECTION, N_("Remove clipping path from selection")},
-    {"app.object-set-clip-group",     N_("Object Clip Set Group"),   SECTION, N_("Create a self-clipping group to which objects (not contributing to the clip-path) can be added")},
-    {"app.object-set-mask",           N_("Object Mask Set"),         SECTION, N_("Apply mask to selection (using the topmost object as mask)")},
-    {"app.object-set-inverse-mask",   N_("Object Mask Set Inverse"), SECTION, N_("Apply inverse mask to selection (Power Mask LPE)")},
-    {"app.object-release-mask",       N_("Object Mask Release"),     SECTION, N_("Remove mask from selection")},
+    {"app.object-set-clip",           N_("Set Object Clipping"),         SECTION, N_("Apply clipping path to selection (using the topmost object as clipping path)")},
+    {"app.object-set-inverse-clip",   N_("Set Object Inverse Clipping"), SECTION, N_("Apply inverse clipping path to selection (Power Clip LPE)")},
+    {"app.object-release-clip",       N_("Release Object Clipping"),     SECTION, N_("Remove clipping path from selection")},
+    {"app.object-set-clip-group",     N_("Set Object Clipping Group"),   SECTION, N_("Create a self-clipping group to which objects (not contributing to the clip-path) can be added")},
+    {"app.object-set-mask",           N_("Set Object Mask"),         SECTION, N_("Apply mask to selection (using the topmost object as mask)")},
+    {"app.object-set-inverse-mask",   N_("Set Object Inverse Mask"), SECTION, N_("Apply inverse mask to selection (Power Mask LPE)")},
+    {"app.object-release-mask",       N_("Release Object Mask"),     SECTION, N_("Remove mask from selection")},
 
-    {"app.object-rotate-90-cw",       N_("Object Rotate 90"),        SECTION, N_("Rotate selection 90° clockwise")},
-    {"app.object-rotate-90-ccw",      N_("Object Rotate 90 CCW"),    SECTION, N_("Rotate selection 90° counter-clockwise")},
-    {"app.object-flip-horizontal",    N_("Object Flip Horizontal"),  SECTION, N_("Flip selected objects horizontally")},
-    {"app.object-flip-vertical",      N_("Object Flip Vertical"),    SECTION, N_("Flip selected objects vertically")},
+    {"app.object-rotate-90-cw",       N_("Rotate Object 90°"),        SECTION, N_("Rotate selected objects 90° clockwise")},
+    {"app.object-rotate-90-ccw",      N_("Rotate Object 90° CCW"),    SECTION, N_("Rotate selected objects 90° counter-clockwise")},
+    {"app.object-flip-horizontal",    N_("Flip Object Horizontally"),  SECTION, N_("Flip selected objects horizontally")},
+    {"app.object-flip-vertical",      N_("Flip Object Vertically"),    SECTION, N_("Flip selected objects vertically")},
     {"app.object-star-turn-upright",  N_("Turn Stars/Polygons Upright"), SECTION, N_("Turn stars and polygons upright")}
     // clang-format on
 };
