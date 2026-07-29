@@ -18,12 +18,11 @@
 #include "filter-effects-dialog.h"
 
 #include <utility>
-
 #include <gdkmm/general.h>
 #include <gdkmm/seat.h>
-#include <gtkmm/cssprovider.h>
 #include <glibmm/main.h>
 #include <glibmm/stringutils.h>
+#include <gtkmm/cssprovider.h>
 #include <gtkmm/dragsource.h>
 #include <gtkmm/entry.h>
 #include <gtkmm/eventcontrollermotion.h>
@@ -485,10 +484,7 @@ public:
             }
         )");
 
-        _check.get_style_context()->add_provider(
-            css_provider,
-            GTK_STYLE_PROVIDER_PRIORITY_USER
-        );
+        _check.get_style_context()->add_provider(css_provider, GTK_STYLE_PROVIDER_PRIORITY_USER);
         _check.set_margin_bottom(5);
         _check.set_tooltip_markup(_("<b>Defines the subregion for this filter primitive.</b>\n• Unchecked: Defaults to 0%, 0%, 100%, 100% <i>(covers the entire filter region)</i>.\n• Checked: Restricts the effect to the specified X, Y, Width, and Height."));
         append(_check);
@@ -497,10 +493,8 @@ public:
         _grid->set_row_spacing(5);
         _grid->set_column_spacing(10);
 
-        auto add_dual_row = [&](int row, Glib::ustring main_txt,
-                                Glib::ustring l1_txt, Gtk::Widget& w1,
-                                Glib::ustring l2_txt, Gtk::Widget& w2) {
-
+        auto add_dual_row = [&](int row, Glib::ustring main_txt, Glib::ustring l1_txt, Gtk::Widget &w1,
+                                Glib::ustring l2_txt, Gtk::Widget &w2) {
             auto* main_lbl = Gtk::make_managed<Gtk::Label>(main_txt);
             main_lbl->set_xalign(0);
             _grid->attach(*main_lbl, 0, row, 1, 1);
@@ -543,8 +537,8 @@ public:
 
     void set_from_attribute(SPObject* o) override
     {
-        bool has_attr = o->getAttribute("x") || o->getAttribute("y") ||
-                        o->getAttribute("width") || o->getAttribute("height");
+        bool has_attr =
+            o->getAttribute("x") || o->getAttribute("y") || o->getAttribute("width") || o->getAttribute("height");
 
         _check.set_active(has_attr);
         _grid->set_visible(has_attr); // Ensure visibility matches state on load

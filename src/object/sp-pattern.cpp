@@ -15,28 +15,23 @@
 
 #include "sp-pattern.h"
 
-#include <string>
 #include <cstring>
-
-#include <2geom/transforms.h>
-
+#include <string>
 #include <glibmm.h>
+#include <2geom/transforms.h>
 
 #include "attributes.h"
 #include "bad-uri-exception.h"
+#include "display/cairo-utils.h"
+#include "display/drawing-context.h"
+#include "display/drawing-image.h"
+#include "display/drawing-pattern.h"
+#include "display/drawing.h"
 #include "document.h"
-
 #include "object/uri.h"
 #include "sp-defs.h"
 #include "sp-factory.h"
 #include "sp-item.h"
-
-#include "display/cairo-utils.h"
-#include "display/drawing-context.h"
-#include "display/drawing-image.h"
-#include "display/drawing.h"
-#include "display/drawing-pattern.h"
-
 #include "svg/svg.h"
 #include "xml/href-attribute-helper.h"
 

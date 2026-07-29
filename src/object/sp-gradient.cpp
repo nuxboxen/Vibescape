@@ -23,38 +23,31 @@
  */
 
 #define noSP_GRADIENT_VERBOSE
-//#define OBJECT_TRACE
 
 #include "sp-gradient.h"
 
 #include <cstring>
-
-#include <2geom/transforms.h>
-
 #include <cairo.h>
-
-#include <sigc++/functors/ptr_fun.h>
 #include <sigc++/adaptors/bind.h>
+#include <sigc++/functors/ptr_fun.h>
+#include <2geom/transforms.h>
 
 #include "attributes.h"
 #include "bad-uri-exception.h"
-#include "document.h"
-#include "gradient-chemistry.h"
-
-#include "sp-gradient-reference.h"
-#include "sp-linear-gradient.h"
-#include "sp-radial-gradient.h"
-#include "sp-mesh-gradient.h"
-#include "sp-mesh-row.h"
-#include "sp-mesh-patch.h"
-#include "sp-stop.h"
-
 #include "colors/gradient-averager.h"
 #include "display/cairo-utils.h"
+#include "document.h"
+#include "gradient-chemistry.h"
 #include "object/uri.h"
-
-#include "svg/svg.h"
+#include "sp-gradient-reference.h"
+#include "sp-linear-gradient.h"
+#include "sp-mesh-gradient.h"
+#include "sp-mesh-patch.h"
+#include "sp-mesh-row.h"
+#include "sp-radial-gradient.h"
+#include "sp-stop.h"
 #include "svg/css-ostringstream.h"
+#include "svg/svg.h"
 #include "xml/href-attribute-helper.h"
 
 using namespace Inkscape::Colors;
@@ -144,8 +137,7 @@ bool SPGradient::isEquivalent(SPGradient *that)
             if (!as->getColor().isClose(bs->getColor(), 0.001) || as->offset != bs->offset) {
                 effective = false;
                 break;
-            }
-            else {
+            } else {
                 as = as->getNextStop();
                 bs = bs->getNextStop();
             }
@@ -167,66 +159,101 @@ bool SPGradient::isAligned(SPGradient *that)
 {
     bool status = false;
 
-   /*  Some gradients have coordinates/other values specified, some don't.
-           yes/yes check the coordinates/other values
-           no/no   aligned (because both have all default values)
-           yes/no  not aligned
-           no/yes  not aligned
-       It is NOT safe to just compare the computed values because if that field has
-       not been set the computed value could be full of garbage.
+    /*  Some gradients have coordinates/other values specified, some don't.
+            yes/yes check the coordinates/other values
+            no/no   aligned (because both have all default values)
+            yes/no  not aligned
+            no/yes  not aligned
+        It is NOT safe to just compare the computed values because if that field has
+        not been set the computed value could be full of garbage.
 
-       In theory the yes/no and no/yes cases could be aligned if the specified value
-       matches the default value.
-    */
+        In theory the yes/no and no/yes cases could be aligned if the specified value
+        matches the default value.
+        */
 
-    while(true){ // not really a loop, used to avoid deep nesting or multiple exit points from function
-        if(this->gradientTransform_set != that->gradientTransform_set) { break; }
-        if(this->gradientTransform_set &&
-            (this->gradientTransform != that->gradientTransform)) { break; }
+    while (true) { // not really a loop, used to avoid deep nesting or multiple exit points from function
+        if (this->gradientTransform_set != that->gradientTransform_set) {
+            break;
+        }
+        if (this->gradientTransform_set && this->gradientTransform != that->gradientTransform) {
+            break;
+        }
         if (is<SPLinearGradient>(this) && is<SPLinearGradient>(that)) {
             auto sg = cast<SPLinearGradient>(this);
             auto tg = cast<SPLinearGradient>(that);
 
-            if( sg->x1._set != tg->x1._set) { break; }
-            if( sg->y1._set != tg->y1._set) { break; }
-            if( sg->x2._set != tg->x2._set) { break; }
-            if( sg->y2._set != tg->y2._set) { break; }
-            if( sg->x1._set && sg->y1._set && sg->x2._set && sg->y2._set) {
-                if( (sg->x1.computed != tg->x1.computed) ||
-                    (sg->y1.computed != tg->y1.computed) ||
-                    (sg->x2.computed != tg->x2.computed) ||
-                    (sg->y2.computed != tg->y2.computed) )  { break; }
-            } else if( sg->x1._set || sg->y1._set || sg->x2._set || sg->y2._set) { break; } // some mix of set and not set
+            if (sg->x1._set != tg->x1._set) {
+                break;
+            }
+            if (sg->y1._set != tg->y1._set) {
+                break;
+            }
+            if (sg->x2._set != tg->x2._set) {
+                break;
+            }
+            if (sg->y2._set != tg->y2._set) {
+                break;
+            }
+            if (sg->x1._set && sg->y1._set && sg->x2._set && sg->y2._set) {
+                if (sg->x1.computed != tg->x1.computed || sg->y1.computed != tg->y1.computed ||
+                    sg->x2.computed != tg->x2.computed || sg->y2.computed != tg->y2.computed) {
+                    break;
+                }
+            } else if (sg->x1._set || sg->y1._set || sg->x2._set || sg->y2._set) {
+                // some mix of set and not set
+                break;
+            }
             // none set? assume aligned and fall through
         } else if (is<SPRadialGradient>(this) && is<SPLinearGradient>(that)) {
             auto sg = cast<SPRadialGradient>(this);
             auto tg = cast<SPRadialGradient>(that);
 
-            if( sg->cx._set != tg->cx._set) { break; }
-            if( sg->cy._set != tg->cy._set) { break; }
-            if( sg->r._set  != tg->r._set)  { break; }
-            if( sg->fx._set != tg->fx._set) { break; }
-            if( sg->fy._set != tg->fy._set) { break; }
-            if( sg->cx._set && sg->cy._set && sg->fx._set && sg->fy._set && sg->r._set) {
-                if( (sg->cx.computed != tg->cx.computed) ||
-                    (sg->cy.computed != tg->cy.computed) ||
-                    (sg->r.computed  != tg->r.computed ) ||
-                    (sg->fx.computed != tg->fx.computed) ||
-                    (sg->fy.computed != tg->fy.computed)  ) { break; }
-            } else if(  sg->cx._set || sg->cy._set || sg->fx._set || sg->fy._set || sg->r._set ) { break; } // some mix of set and not set
+            if (sg->cx._set != tg->cx._set) {
+                break;
+            }
+            if (sg->cy._set != tg->cy._set) {
+                break;
+            }
+            if (sg->r._set != tg->r._set) {
+                break;
+            }
+            if (sg->fx._set != tg->fx._set) {
+                break;
+            }
+            if (sg->fy._set != tg->fy._set) {
+                break;
+            }
+            if (sg->cx._set && sg->cy._set && sg->fx._set && sg->fy._set && sg->r._set) {
+                if (sg->cx.computed != tg->cx.computed || sg->cy.computed != tg->cy.computed ||
+                    sg->r.computed != tg->r.computed || sg->fx.computed != tg->fx.computed ||
+                    sg->fy.computed != tg->fy.computed) {
+                    break;
+                }
+            } else if (sg->cx._set || sg->cy._set || sg->fx._set || sg->fy._set || sg->r._set) {
+                // some mix of set and not set
+                break;
+            }
             // none set? assume aligned and fall through
         } else if (is<SPMeshGradient>(this) && is<SPMeshGradient>(that)) {
             auto sg = cast<SPMeshGradient>(this);
             auto tg = cast<SPMeshGradient>(that);
 
-            if( sg->x._set  !=  !tg->x._set) { break; }
-            if( sg->y._set  !=  !tg->y._set) { break; }
-            if( sg->x._set  &&  sg->y._set) {
-                if( (sg->x.computed != tg->x.computed) ||
-                    (sg->y.computed != tg->y.computed) ) { break; }
-            } else if( sg->x._set || sg->y._set) { break; } // some mix of set and not set
+            if (sg->x._set != !tg->x._set) {
+                break;
+            }
+            if (sg->y._set != !tg->y._set) {
+                break;
+            }
+            if (sg->x._set && sg->y._set) {
+                if (sg->x.computed != tg->x.computed || sg->y.computed != tg->y.computed) {
+                    break;
+                }
+            } else if (sg->x._set || sg->y._set) {
+                // some mix of set and not set
+                break;
+            }
             // none set? assume aligned and fall through
-         } else {
+        } else {
             break;
         }
         status = true;

@@ -175,9 +175,12 @@ public:
     }
 
 private:
-    FontElement(std::vector<FontInfo> family, FontInfo  font, Glib::ustring alt, Type type):
-        _font(std::move(font)), _family(std::move(family)), _type(type), _alt_fontspec(std::move(alt)) {
-    }
+    FontElement(std::vector<FontInfo> family, FontInfo font, Glib::ustring alt, Type type)
+        : _font(std::move(font))
+        , _family(std::move(family))
+        , _type(type)
+        , _alt_fontspec(std::move(alt))
+    {}
 
     Glib::ustring get_font_name(Type type) const {
         auto present = is_present();

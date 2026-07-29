@@ -23,38 +23,33 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include "style-internal.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <sigc++/bind.h>
 #include <glibmm/regex.h>
 #include <glibmm/ustring.h>
-
-#include "style-enums.h"
-#include "style-internal.h"
-#include "style.h"
-
-#include "colors/color.h"
-#include "colors/manager.h"
-#include "colors/spaces/base.h"
-#include "colors/document-cms.h"
-
-#include "document.h"
+#include <sigc++/bind.h>
 
 #include "bad-uri-exception.h"
+#include "colors/color.h"
+#include "colors/document-cms.h"
+#include "colors/manager.h"
+#include "colors/spaces/base.h"
+#include "document.h"
+#include "object/object-set.h"
+#include "object/uri.h"
 #include "preferences.h"
 #include "streq.h"
 #include "strneq.h"
-
-#include "object/object-set.h"
-#include "object/uri.h"
-
-#include "svg/svg.h"
+#include "style-enums.h"
+#include "style.h"
 #include "svg/css-ostringstream.h"
-
+#include "svg/svg.h"
+#include "util-string/ustring-format.h"
 #include "util/units.h"
 #include "util/uri.h"
-#include "util-string/ustring-format.h"
 
 // TODO REMOVE OR MAKE MEMBER FUNCTIONS
 void sp_style_fill_paint_server_ref_changed(  SPObject *old_ref, SPObject *ref, SPStyle *style);

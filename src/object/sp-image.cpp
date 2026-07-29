@@ -16,34 +16,30 @@
 
 #include "sp-image.h"
 
-#include <cstring>
 #include <algorithm>
+#include <cstring>
 #include <string>
-
 #include <giomm/error.h>
 #include <glib/gstdio.h>
 #include <glibmm/convert.h>
 #include <glibmm/i18n.h>
-
 #include <2geom/rect.h>
 #include <2geom/transforms.h>
 
 // Added for preserveAspectRatio support -- EAF
 #include "attributes.h"
+#include "colors/document-cms.h"
+#include "display/cairo-utils.h"
+#include "display/drawing-image.h"
 #include "document.h"
 #include "object/uri.h"
+#include "path/path-curve.h"
+#include "preferences.h"
 #include "print.h"
 #include "snap-candidate.h"
 #include "snap-preferences.h"
-#include "preferences.h"
-
-#include "display/drawing-image.h"
-#include "display/cairo-utils.h"
-#include "path/path-curve.h"
-#include "xml/quote.h"
 #include "xml/href-attribute-helper.h"
-
-#include "colors/document-cms.h"
+#include "xml/quote.h"
 
 //#define DEBUG_LCMS
 #ifdef DEBUG_LCMS
@@ -598,8 +594,7 @@ Inkscape::Pixbuf *SPImage::getBrokenImage(double width, double height)
     copy.replace(copy.find("{height}"), std::string("{height}").size(), std::to_string(height));
 
     // Aspect attempts to make the image better for different ratios of images we might be dropped into
-    copy.replace(copy.find("{aspect}"), std::string("{aspect}").size(),
-            width > height ? "xMinYMid" : "xMidYMin");
+    copy.replace(copy.find("{aspect}"), std::string("{aspect}").size(), width > height ? "xMinYMid" : "xMidYMin");
 
     auto inkpb = Inkscape::Pixbuf::create_from_buffer(copy, 0, "brokenimage.svg");
 
@@ -823,7 +818,7 @@ void SPImage::refresh_if_outdated()
         GStatBuf st;
         memset(&st, 0, sizeof(st));
         int val = 0;
-        if (g_file_test (pixbuf->originalPath().c_str(), G_FILE_TEST_EXISTS)){
+        if (g_file_test(pixbuf->originalPath().c_str(), G_FILE_TEST_EXISTS)) {
             val = g_stat(pixbuf->originalPath().c_str(), &st);
         }
         if ( !val ) {
