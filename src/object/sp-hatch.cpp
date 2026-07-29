@@ -16,23 +16,19 @@
 #include "sp-hatch.h"
 
 #include <cstring>
-
-#include <2geom/transforms.h>
 #include <sigc++/functors/mem_fun.h>
+#include <2geom/transforms.h>
 
-#include "object/uri.h"
-#include "style.h"
 #include "attributes.h"
 #include "bad-uri-exception.h"
-#include "document.h"
-
-#include "display/drawing.h"
 #include "display/drawing-pattern.h"
-
+#include "display/drawing.h"
+#include "document.h"
+#include "object/uri.h"
 #include "sp-defs.h"
 #include "sp-hatch-path.h"
 #include "sp-item.h"
-
+#include "style.h"
 #include "svg/svg.h"
 #include "xml/href-attribute-helper.h"
 

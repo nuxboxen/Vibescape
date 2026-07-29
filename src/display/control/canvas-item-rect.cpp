@@ -185,7 +185,7 @@ void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
 
     // Get the points we need transformed into window coordinates.
     buf.cr->begin_new_path();
-    for (auto & corner : corners) {
+    for (auto &corner : corners) {
         buf.cr->line_to(corner.x(), corner.y());
     }
     buf.cr->close_path();
@@ -225,7 +225,7 @@ void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
         // semi transparent stroke.
         auto shift = expansion_dir * total_thickness * 0.5;
         buf.cr->begin_new_path();
-        for (auto & corner : corners) {
+        for (auto &corner : corners) {
             corner += shift;
             buf.cr->line_to(corner.x(), corner.y());
             shift = shift.cw();
