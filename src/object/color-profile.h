@@ -12,6 +12,7 @@
 
 #include "colors/cms/system.h"
 #include "colors/spaces/enum.h" // RenderingIntent
+#include "object/uri.h"
 #include "sp-object.h"
 
 namespace Inkscape {

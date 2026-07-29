@@ -18,7 +18,6 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include <utility>
 #include <vector>
 #include <map>
 
@@ -30,10 +29,6 @@
 #include "object/sp-marker.h"
 #include "object/sp-paint-server-reference.h"
 #include "object/sp-shape-reference.h"
-
-#include "object/uri.h"
-
-#include "xml/repr.h"
 
 namespace Inkscape {
 class ObjectSet;
@@ -808,7 +803,7 @@ class SPIColorInterpolation : public SPIBase
 {
 public:
     SPIColorInterpolation() = default;
-    ~SPIColorInterpolation() = default;
+    ~SPIColorInterpolation() override = default;
     SPIColorInterpolation(const SPIColorInterpolation &rhs) = default;
 
     void read( gchar const *str ) override;

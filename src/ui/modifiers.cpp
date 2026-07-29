@@ -447,7 +447,7 @@ void responsive_tooltip(MessageContext *message_context, KeyEvent const &event, 
     va_start(args, num_types);
     for(int i = 0; i < num_types; i++) {
         auto modifier = Modifier::get(va_arg(args, Type));
-        mods.push_back(std::pair(modifier, modifier->get_name()));
+        mods.emplace_back(std::pair(modifier, modifier->get_name()));
     }
     va_end(args);
 
@@ -476,7 +476,7 @@ void responsive_tooltip_with_labels(MessageContext *message_context, KeyEvent co
     for(int i = 0; i < num_types; i++) {
         auto modifier = Modifier::get(va_arg(args, Type));
         auto label = va_arg(args, gchar const *);
-        mods.push_back(std::pair(modifier, label));
+        mods.emplace_back(std::pair(modifier, label));
     }
     va_end(args);
 

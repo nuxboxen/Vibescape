@@ -24,6 +24,7 @@
 #include "bad-uri-exception.h"
 #include "attributes.h"
 #include "document.h"
+#include "object/uri.h"
 #include "sp-factory.h"
 #include "sp-text.h"
 #include "style.h"
@@ -134,7 +135,7 @@ void SPTRef::update(SPCtx *ctx, guint flags) {
     childflags &= SP_OBJECT_MODIFIED_CASCADE;
 
     SPObject *child = this->stringChild;
-    
+
     if (child) {
         if ( childflags || ( child->uflags & SP_OBJECT_MODIFIED_FLAG )) {
             child->updateDisplay(ctx, childflags);
@@ -152,14 +153,14 @@ void SPTRef::modified(unsigned int flags) {
     flags &= SP_OBJECT_MODIFIED_CASCADE;
 
     SPObject *child = this->stringChild;
-    
+
     if (child) {
         sp_object_ref(child);
-        
+
         if (flags || (child->mflags & SP_OBJECT_MODIFIED_FLAG)) {
             child->emitModified(flags);
         }
-        
+
         sp_object_unref(child);
     }
 }

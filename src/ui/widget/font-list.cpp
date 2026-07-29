@@ -26,11 +26,9 @@
 #include "preferences.h"
 #include "ui/builder-utils.h"
 #include "ui/icon-loader.h"
-#include "ui/text_filter.h"
 #include "ui/dialog/xml-tree.h"
 #include "ui/widget/drop-down-list.h"
 #include "ui/widget/generic/popover-menu.h"
-#include "ui/widget/unit-tracker.h"
 #include "util/font-collections.h"
 
 using Inkscape::UI::create_builder;
@@ -177,8 +175,8 @@ public:
     }
 
 private:
-    FontElement(std::vector<FontInfo> family, const FontInfo& font, Glib::ustring alt, Type type):
-        _font(font), _family(std::move(family)), _type(type), _alt_fontspec(std::move(alt)) {
+    FontElement(std::vector<FontInfo> family, FontInfo  font, Glib::ustring alt, Type type):
+        _font(std::move(font)), _family(std::move(family)), _type(type), _alt_fontspec(std::move(alt)) {
     }
 
     Glib::ustring get_font_name(Type type) const {

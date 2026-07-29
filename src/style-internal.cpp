@@ -47,6 +47,7 @@
 #include "strneq.h"
 
 #include "object/object-set.h"
+#include "object/uri.h"
 
 #include "svg/svg.h"
 #include "svg/css-ostringstream.h"
