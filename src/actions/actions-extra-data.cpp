@@ -134,9 +134,7 @@ bool action_requires_parameter(Glib::ustring const &action_name)
     if (action != nullptr) {
         // glibmm's `get_parameter_type()` is invalid if used when the
         // parameter type is null.
-        if (g_action_get_parameter_type(action->gobj()) != nullptr) {
-            return true;
-        }
+        return g_action_get_parameter_type(action->gobj()) != nullptr;
     } else if (action_domain == "tool") {
         // Tools handle their own action shortcuts without parameters.
         return false;
