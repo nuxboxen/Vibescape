@@ -1441,7 +1441,7 @@ sp_style_set_property_url_on_repr(Inkscape::XML::Node *repr, gchar const *proper
         sp_repr_css_set_property(css, property, val);
         g_free(val);
     } else {
-        sp_repr_css_unset_property(css, "filter");
+        sp_repr_css_unset_property(css, property);
     }
 
     if (recursive) {

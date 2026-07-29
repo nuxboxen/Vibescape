@@ -97,6 +97,14 @@ void FillAndStroke::_setupRecolorBtn() {
     box->append(*label);
 }
 
+void remove_opacity(SPObject *item, bool is_fill)
+{
+    SPCSSAttr *css = sp_repr_css_attr_new();
+    sp_repr_css_unset_property(css, is_fill ? "fill-opacity" : "stroke-opacity");
+    sp_repr_css_change_recursive(item->getRepr(), css, "style");
+    sp_repr_css_attr_unref(css);
+}
+
 // Connects signals from the PaintSwitch widget to the document/desktop.
 void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, bool is_fill) {
     paint_switch->get_pattern_changed().connect([this, is_fill](auto pattern, auto color, auto label, auto transform, auto offset, auto uniform, auto gap) {
@@ -108,7 +116,7 @@ void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, 
         auto kind = is_fill ? FILL : STROKE;
         for (auto item : items) {
             sp_item_apply_pattern(item, pattern, kind, color, label, transform, offset, uniform, gap);
-            item->style->clear(is_fill ? SPAttr::FILL_OPACITY : SPAttr::STROKE_OPACITY);
+            remove_opacity(item, is_fill);
         }
 
         DocumentUndo::done(doc, is_fill ? RC_("Undo", "Set pattern on fill") : RC_("Undo", "Set pattern on stroke"), INKSCAPE_ICON("dialog-fill-and-stroke"));
@@ -123,7 +131,7 @@ void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, 
         auto kind = is_fill ? FILL : STROKE;
         for (auto item : items) {
             sp_item_apply_hatch(item, hatch, kind, color, label, transform, offset, pitch, rotation, stroke);
-            item->style->clear(is_fill ? SPAttr::FILL_OPACITY : SPAttr::STROKE_OPACITY);
+            remove_opacity(item, is_fill);
         }
 
         DocumentUndo::done(doc, is_fill ? RC_("Undo", "Set hatch on fill") : RC_("Undo", "Set hatch on stroke"), INKSCAPE_ICON("dialog-fill-and-stroke"));
@@ -138,7 +146,7 @@ void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, 
 
         for (auto item : items) {
             sp_item_apply_gradient(item, vector, getDesktop(), gradient_type, false, kind);
-            item->style->clear(is_fill ? SPAttr::FILL_OPACITY : SPAttr::STROKE_OPACITY); 
+            remove_opacity(item, is_fill);
         }
 
         DocumentUndo::done(doc, 
@@ -155,7 +163,7 @@ void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, 
 
         for (auto item : items) {
             sp_item_apply_mesh(item, mesh, doc, kind);
-            item->style->clear(is_fill ? SPAttr::FILL_OPACITY : SPAttr::STROKE_OPACITY);
+            remove_opacity(item, is_fill);
         }
 
         DocumentUndo::done(doc, 
@@ -184,7 +192,7 @@ void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, 
                     vector = clr ? sp_find_matching_swatch(doc, *clr) : nullptr;
 
                     sp_item_apply_gradient(item, vector, getDesktop(), SP_GRADIENT_TYPE_LINEAR, true, kind);
-                    item->style->clear(is_fill ? SPAttr::FILL_OPACITY : SPAttr::STROKE_OPACITY);
+                    remove_opacity(item, is_fill);
                 }
                 DocumentUndo::done(doc, is_fill ? RC_("Undo", "Set swatch on fill") : RC_("Undo", "Set swatch on stroke"), INKSCAPE_ICON("dialog-fill-and-stroke"));
                 break;
@@ -196,7 +204,7 @@ void FillAndStroke::_ConnectPaintSignals(UI::Widget::PaintSwitch *paint_switch, 
                 } else if (vector) {
                     for (auto item : items) {
                         sp_item_apply_gradient(item, vector, getDesktop(), SP_GRADIENT_TYPE_LINEAR, true, kind);
-                        item->style->clear(is_fill ? SPAttr::FILL_OPACITY : SPAttr::STROKE_OPACITY);
+                        remove_opacity(item, is_fill);
                     }
                     DocumentUndo::maybeDone(doc, "swatch-assign", 
                         is_fill ? RC_("Undo", "Set swatch on fill") : RC_("Undo", "Set swatch on stroke"), 
