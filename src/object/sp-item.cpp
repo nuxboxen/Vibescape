@@ -20,6 +20,7 @@
 
 #include "colors/manager.h"
 #include "helper/geom.h"
+#include "object/uri.h"
 #include "path/path-util.h"
 #include "svg/svg.h"
 #include "print.h"

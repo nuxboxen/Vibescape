@@ -12,7 +12,6 @@
 
 
 #include <iostream>  // For debugging
-#include <iomanip>   // For debugging
 #include <memory>
 #include <unordered_map>
 
@@ -175,7 +174,7 @@ void readOpenTypeGsubTable (hb_font_t* hb_font,
             auto feature_count = hb_ot_layout_language_get_feature_tags(hb_face, HB_OT_TAG_GSUB, i,
                                                                         HB_OT_LAYOUT_DEFAULT_LANGUAGE_INDEX,
                                                                         0, nullptr, nullptr);
-            auto const hb_features = g_new(hb_tag_t, feature_count + 1); 
+            auto const hb_features = g_new(hb_tag_t, feature_count + 1);
             hb_ot_layout_language_get_feature_tags(hb_face, HB_OT_TAG_GSUB, i,
                                                    HB_OT_LAYOUT_DEFAULT_LANGUAGE_INDEX,
                                                    0, &feature_count, hb_features);
@@ -375,7 +374,7 @@ void readOpenTypeFvarNamedInstances(hb_font_t* hb_font, std::map<Glib::ustring, 
         char tag[5];
         hb_tag_to_string(axis.tag, tag);
         tag[4] = 0;
-        tags.push_back(tag);
+        tags.emplace_back(tag);
         defaults.push_back(axis.default_value);
     }
 

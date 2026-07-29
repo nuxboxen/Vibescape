@@ -20,7 +20,6 @@
 #include <cairomm/pattern.h>
 
 #include "display/cairo-utils.h"
-#include "helper/geom.h"
 #include "ui/util.h"
 #include "ui/widget/canvas.h"
 
@@ -186,8 +185,8 @@ void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
 
     // Get the points we need transformed into window coordinates.
     buf.cr->begin_new_path();
-    for (int i = 0; i < 4; ++i) {
-        buf.cr->line_to(corners[i].x(), corners[i].y());
+    for (auto & corner : corners) {
+        buf.cr->line_to(corner.x(), corner.y());
     }
     buf.cr->close_path();
 
@@ -226,9 +225,9 @@ void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
         // semi transparent stroke.
         auto shift = expansion_dir * total_thickness * 0.5;
         buf.cr->begin_new_path();
-        for (int i = 0; i < 4; i++) {
-            corners[i] += shift;
-            buf.cr->line_to(corners[i].x(), corners[i].y());
+        for (auto & corner : corners) {
+            corner += shift;
+            buf.cr->line_to(corner.x(), corner.y());
             shift = shift.cw();
         }
     }

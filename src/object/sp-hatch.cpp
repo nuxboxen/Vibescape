@@ -20,6 +20,7 @@
 #include <2geom/transforms.h>
 #include <sigc++/functors/mem_fun.h>
 
+#include "object/uri.h"
 #include "style.h"
 #include "attributes.h"
 #include "bad-uri-exception.h"

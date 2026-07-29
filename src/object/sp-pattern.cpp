@@ -26,6 +26,7 @@
 #include "bad-uri-exception.h"
 #include "document.h"
 
+#include "object/uri.h"
 #include "sp-defs.h"
 #include "sp-factory.h"
 #include "sp-item.h"
@@ -33,9 +34,7 @@
 #include "display/cairo-utils.h"
 #include "display/drawing-context.h"
 #include "display/drawing-image.h"
-#include "display/drawing-surface.h"
 #include "display/drawing.h"
-#include "display/drawing-group.h"
 #include "display/drawing-pattern.h"
 
 #include "svg/svg.h"
@@ -231,7 +230,7 @@ void SPPattern::update(SPCtx *ctx, unsigned flags)
             c->updateDisplay(ctx, cflags);
         }
         sp_object_unref(c, nullptr);
-    }    
+    }
 
     for (auto &v : views) {
         update_view(v);
