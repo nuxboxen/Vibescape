@@ -158,8 +158,8 @@ std::vector<std::vector<Glib::ustring>> raw_data_transform = {
     {"app.transform-rotate",        N_("Rotate"),             SECTION, N_("Rotate selected objects")},
     {"app.transform-rotate-step",   N_("Rotate Step"),        SECTION, N_("Rotate selected objects by multiple of step value")},
     {"win.transform-rotate-screen", N_("Rotate Screen"),      SECTION, N_("Rotate selected objects relative to zoom level")},
-    {"app.transform-rotate(90.0)",  N_("Object Rotate 90°"),   SECTION, N_("Rotate selected objects 90° clockwise")},
-    {"app.transform-rotate(-90.0)", N_("Object Rotate 90° CCW"), SECTION, N_("Rotate selected objects 90° counter-clockwise")},
+    {"app.transform-rotate(90.0)",  N_("Rotate Object 90°"),   SECTION, N_("Rotate selected objects 90° clockwise")},
+    {"app.transform-rotate(-90.0)", N_("Rotate Object 90° CCW"), SECTION, N_("Rotate selected objects 90° counter-clockwise")},
 
     {"app.transform-remove",        N_("Remove Transforms"),  SECTION, N_("Remove any transforms from selected objects")},
     {"app.transform-reapply",       N_("Reapply Transforms"), SECTION, N_("Reapply the last transformation to the selection")},
