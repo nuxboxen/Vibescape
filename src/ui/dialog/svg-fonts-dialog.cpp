@@ -186,7 +186,7 @@ SvgFontsDialog::AttrSpin::AttrSpin(SvgFontsDialog* d, gchar* lbl, Glib::ustring 
 {
     this->dialog = d;
     this->attr = attr;
-    spin.set_tooltip_text(tooltip);
+    spin.set_tooltip_markup(tooltip);
     spin.set_visible(true);
     _label = Gtk::make_managed<Gtk::Label>(lbl);
     _label->set_visible(true);
@@ -859,7 +859,7 @@ Gtk::Box* SvgFontsDialog::global_settings_tab(){
     _horiz_origin_y_spin = std::make_unique <AttrSpin  >(this, _("Horizontal origin Y:" ), _("Default Y-coordinate of the origin of a glyph (for horizontal text)"), SPAttr::HORIZ_ORIGIN_Y);
     _font_face_label     = Gtk::make_managed<Gtk::Label>(Glib::ustring::compose("<b>%1</b>", _("Font face attributes")), Gtk::Align::START, Gtk::Align::CENTER);
     _familyname_entry    = std::make_unique <AttrEntry >(this, _("Family name:"         ), _("Name of the font as it appears in font selectors and css font-family properties"), SPAttr::FONT_FAMILY );
-    _units_per_em_spin   = std::make_unique <AttrSpin  >(this, _("Em-size:"             ), _("Display units per <italic>em</italic> (nominally width of 'M' character)"       ), SPAttr::UNITS_PER_EM);
+    _units_per_em_spin   = std::make_unique <AttrSpin  >(this, _("Em-size:"             ), _("Display units per <i>em</i> (nominally width of 'M' character)"       ), SPAttr::UNITS_PER_EM);
     _ascent_spin         = std::make_unique <AttrSpin  >(this, _("Ascender:"            ), _("Amount of space taken up by ascenders like the tall line on the letter 'h'"     ), SPAttr::ASCENT      );
     _cap_height_spin     = std::make_unique <AttrSpin  >(this, _("Caps height:"         ), _("The height of a capital letter above the baseline like the letter 'H' or 'I'"   ), SPAttr::CAP_HEIGHT  );
     _x_height_spin       = std::make_unique <AttrSpin  >(this, _("x-height:"            ), _("The height of a lower-case letter above the baseline like the letter 'x'"       ), SPAttr::X_HEIGHT    );
