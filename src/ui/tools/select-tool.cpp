@@ -888,7 +888,12 @@ bool SelectTool::root_handler(CanvasEvent const &event)
 
                 case GDK_KEY_Escape:
                     if (!sp_select_context_abort()) {
-                        selection->clear();
+                        if (mod_ctrl_only(event) || selection->isEmpty()) {
+                            // Escape any current non-layer group we entered (see Ctrl+Enter)
+                            sp_select_context_up_one_layer(_desktop);
+                        } else {
+                            selection->clear();
+                        }
                     }
 
                     ret = true;
@@ -914,11 +919,11 @@ bool SelectTool::root_handler(CanvasEvent const &event)
 
                 case GDK_KEY_Return:
                     if (mod_ctrl_only(event)) {
-                        if (selection->singleItem()) {
-                            SPItem *clicked_item = selection->singleItem();
-                            auto clickedGroup = cast<SPGroup>(clicked_item);
-                            if ( (clickedGroup && (clickedGroup->layerMode() != SPGroup::LAYER)) || is<SPBox3D>(clicked_item)) { // enter group or a 3D box
-                                _desktop->layerManager().setCurrentLayer(clicked_item);
+                        // Enter a group as a layer (get out with Ctrl+Enter or Ctrl+Backspace)
+                        if (auto selected_object = selection->single()) {
+                            auto group = cast<SPGroup>(selected_object);
+                            if (group && group->layerMode() != SPGroup::LAYER) {
+                                _desktop->layerManager().setCurrentLayer(selected_object);
                                 _desktop->getSelection()->clear();
                             } else {
                                 _desktop->messageStack()->flash(Inkscape::NORMAL_MESSAGE, _("Selected object is not a group. Cannot enter."));
