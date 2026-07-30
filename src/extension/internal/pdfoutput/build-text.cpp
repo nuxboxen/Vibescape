@@ -216,7 +216,7 @@ void DrawContext::clip_text_layout(Text::Layout const &layout)
 {
     using Inkscape::Text::Layout;
 
-    if (layout.getActualLength() == 0) {
+    if (!layout.outputExists()) {
         return;
     }
 
@@ -252,7 +252,7 @@ void DrawContext::paint_text_layout(Text::Layout const &layout, SPStyle const *c
 {
     using Inkscape::Text::Layout;
 
-    if (layout.getActualLength() == 0) {
+    if (!layout.outputExists()) {
         return;
     }
 
