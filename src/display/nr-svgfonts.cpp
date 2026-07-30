@@ -316,15 +316,7 @@ SvgFont::glyph_modified(SPObject* /* blah */, unsigned int /* bleh */){
 
 Geom::PathVector
 SvgFont::flip_coordinate_system(SPFont* spfont, Geom::PathVector pathv){
-    double units_per_em = 1024;
-    for(auto& obj: spfont->children) {
-        if (is<SPFontFace>(&obj)) {
-            //XML Tree being directly used here while it shouldn't be.
-            units_per_em = obj.getRepr()->getAttributeDouble("units_per_em", units_per_em);
-        }
-    }
-
-    double baseline_offset = units_per_em - spfont->horiz_origin_y;
+    double baseline_offset = units_per_em() - spfont->horiz_origin_y;
 
     //This matrix flips y-axis and places the origin at baseline
     Geom::Affine m(Geom::Coord(1),Geom::Coord(0),Geom::Coord(0),Geom::Coord(-1),Geom::Coord(0),Geom::Coord(baseline_offset));
