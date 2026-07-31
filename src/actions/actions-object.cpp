@@ -141,7 +141,7 @@ object_get_property(const Glib::VariantBase& value, InkscapeApplication *app)
     }
 }
 
-void 
+void
 object_remove_attribute(Glib::VariantBase const &value, InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
@@ -158,7 +158,7 @@ object_remove_attribute(Glib::VariantBase const &value, InkscapeApplication *app
     Inkscape::DocumentUndo::done(app->get_active_document(), RC_("Undo", "Action remove attribute from objects"), "");
 }
 
-void 
+void
 object_remove_property(Glib::VariantBase const &value, InkscapeApplication *app)
 {
     Inkscape::Selection *selection = app->get_active_selection();
@@ -521,7 +521,7 @@ std::vector<std::vector<Glib::ustring>> raw_data_object =
     {"app.object-remove-property",    N_("Remove Property"),         SECTION, N_("Remove a property on selected objects; usage: object-remove-property:property name;")},
 
     {"app.object-unlink-clones",      N_("Unlink Clones"),           SECTION, N_("Unlink clones and symbols")},
-    {"app.object-to-path",            N_("Object To Path"),          SECTION, N_("Convert shapes to paths")},
+    {"app.object-to-path",            N_("Object to Path"),          SECTION, N_("Convert shapes to paths")},
     {"app.object-add-corners-lpe",    N_("Add Corners LPE"),         SECTION, N_("Add Corners Live Path Effect to path")},
     {"app.object-stroke-to-path",     N_("Stroke to Path"),          SECTION, N_("Convert strokes to paths")},
 
