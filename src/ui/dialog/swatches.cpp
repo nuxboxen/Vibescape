@@ -509,7 +509,7 @@ void SwatchesPanel::update_palettes(PanelType panel_type) {
         // The remaining palettes in the list are the global palettes.
         for (auto &p : GlobalPalettes::get().palettes()) {
             auto palette = to_palette_t(p);
-            _palettes.emplace_back(PaletteLoaded{std::move(palette), false});
+            _palettes.emplace_back(std::move(palette), false);
         }
 
         // If the _saved_palette_path value changed on us and the loaded palette is currently

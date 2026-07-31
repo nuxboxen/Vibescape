@@ -17,7 +17,6 @@
 
 #include <cstring>
 #include <glibmm/i18n.h>
-#include <string>
 
 #include "attributes.h"
 #include "document-undo.h"
@@ -466,7 +465,7 @@ void sp_item_group_ungroup_handle_clones(SPItem *parent, Geom::Affine const g)
     }
 }
 
-/* 
+/*
  * Get bbox of clip/mask if is a rect to fix PDF import issues
  */
 Geom::OptRect bbox_on_rect_clip (SPObject *object) {
@@ -492,7 +491,7 @@ Geom::OptRect bbox_on_rect_clip (SPObject *object) {
     return bbox_clip;
 }
 
-/* 
+/*
  * Get clip and item has the same path, PDF fix
  */
 bool equal_clip (SPItem *item, SPObject *clip) {
@@ -543,7 +542,7 @@ sp_item_group_ungroup (SPGroup *group, std::vector<SPItem*> &children)
     // TODO handle better ungrouping
     // now is used in clipmask LPE on remove
     prefs->setBool("/options/onungroup", true);
-    
+
     // this converts the gradient/pattern fill/stroke on the group, if any, to userSpaceOnUse
     group->adjust_paint_recursive(Geom::identity(), Geom::identity());
 
@@ -576,7 +575,7 @@ sp_item_group_ungroup (SPGroup *group, std::vector<SPItem*> &children)
             clip = tmp_clip_set.singleItem();
             // TODO: handle multiple children of a <clipPath>. Currently,
             // ObjectSet::setMask() can only set a single item as clip.
-        } 
+        }
         if (mask_obj) {
             tmp_mask_set.unsetMask(false, false, true);
             tmp_mask_set.remove(group);
@@ -999,7 +998,7 @@ void SPGroup::update_patheffect(bool write) {
         if (sub_item) {
             // don't need lpe version < 1 (issue only reply on lower LPE on nested LPEs
             // this doesn't happen because it's done at very first stage
-            // we need to be sure performed to inform lpe original bounds ok, 
+            // we need to be sure performed to inform lpe original bounds ok,
             // if not original_bbox function fail on update groups
             auto sub_shape = cast<SPShape>(sub_item);
             if (sub_shape && sub_shape->hasPathEffectRecursive()) {

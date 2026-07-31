@@ -16,35 +16,30 @@
 
 #include "sp-image.h"
 
-#include <cstring>
 #include <algorithm>
+#include <cstring>
 #include <string>
-
 #include <giomm/error.h>
 #include <glib/gstdio.h>
 #include <glibmm/convert.h>
 #include <glibmm/i18n.h>
-
 #include <2geom/rect.h>
 #include <2geom/transforms.h>
 
 // Added for preserveAspectRatio support -- EAF
 #include "attributes.h"
+#include "colors/document-cms.h"
+#include "display/cairo-utils.h"
+#include "display/drawing-image.h"
 #include "document.h"
+#include "object/uri.h"
+#include "path/path-curve.h"
+#include "preferences.h"
 #include "print.h"
 #include "snap-candidate.h"
 #include "snap-preferences.h"
-#include "preferences.h"
-
-#include "display/drawing-image.h"
-#include "display/cairo-utils.h"
-#include "path/path-curve.h"
-#include "xml/quote.h"
 #include "xml/href-attribute-helper.h"
-
-#include "colors/cms/system.h"
-#include "colors/manager.h"
-#include "colors/document-cms.h"
+#include "xml/quote.h"
 
 //#define DEBUG_LCMS
 #ifdef DEBUG_LCMS
@@ -310,7 +305,7 @@ void SPImage::update(SPCtx *ctx, unsigned int flags) {
     // Image creates a new viewport
     ictx->viewport = Geom::Rect::from_xywh(this->x.computed, this->y.computed,
                                            this->width.computed, this->height.computed);
- 
+
     this->clipbox = ictx->viewport;
 
     this->ox = this->x.computed;
@@ -319,7 +314,7 @@ void SPImage::update(SPCtx *ctx, unsigned int flags) {
     if (this->pixbuf) {
 
         // Viewbox is either from SVG (not supported) or dimensions of pixbuf (PNG, JPG)
-        this->viewBox = Geom::Rect::from_xywh(0, 0, this->pixbuf->width(), this->pixbuf->height()); 
+        this->viewBox = Geom::Rect::from_xywh(0, 0, this->pixbuf->width(), this->pixbuf->height());
         this->viewBox_set = true;
 
         // SPItemCtx rctx =
@@ -517,7 +512,7 @@ Inkscape::Pixbuf *SPImage::readImage(gchar const *href, gchar const *absref, gch
     Inkscape::Pixbuf *inkpb = nullptr;
 
     char const *filename = href;
-    
+
     if (filename) {
         if (g_ascii_strncasecmp(filename, "data:", 5) == 0) {
             /* data URI - embedded image */
@@ -599,8 +594,7 @@ Inkscape::Pixbuf *SPImage::getBrokenImage(double width, double height)
     copy.replace(copy.find("{height}"), std::string("{height}").size(), std::to_string(height));
 
     // Aspect attempts to make the image better for different ratios of images we might be dropped into
-    copy.replace(copy.find("{aspect}"), std::string("{aspect}").size(), 
-            width > height ? "xMinYMid" : "xMidYMin");
+    copy.replace(copy.find("{aspect}"), std::string("{aspect}").size(), width > height ? "xMinYMid" : "xMidYMin");
 
     auto inkpb = Inkscape::Pixbuf::create_from_buffer(copy, 0, "brokenimage.svg");
 
@@ -704,7 +698,7 @@ static void sp_image_set_curve( SPImage *image )
     if ((image->height.computed < MAGIC_EPSILON_TOO) || (image->width.computed < MAGIC_EPSILON_TOO) || (image->getClipObject())) {
     } else {
         Geom::OptRect rect = image->bbox(Geom::identity(), SPItem::VISUAL_BBOX);
-        
+
         if (rect->isFinite()) {
             image->curve = rect_to_open_path(*rect);
         }
@@ -764,7 +758,7 @@ void sp_embed_image(Inkscape::XML::Node *image_node, Inkscape::Pixbuf *pb)
 
 void sp_embed_svg(Inkscape::XML::Node *image_node, std::string const &fn)
 {
-    if (!g_file_test(fn.c_str(), G_FILE_TEST_EXISTS)) { 
+    if (!g_file_test(fn.c_str(), G_FILE_TEST_EXISTS)) {
         return;
     }
     GStatBuf stdir;
@@ -824,7 +818,7 @@ void SPImage::refresh_if_outdated()
         GStatBuf st;
         memset(&st, 0, sizeof(st));
         int val = 0;
-        if (g_file_test (pixbuf->originalPath().c_str(), G_FILE_TEST_EXISTS)){ 
+        if (g_file_test(pixbuf->originalPath().c_str(), G_FILE_TEST_EXISTS)) {
             val = g_stat(pixbuf->originalPath().c_str(), &st);
         }
         if ( !val ) {

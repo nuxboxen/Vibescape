@@ -1421,7 +1421,7 @@ bool TextTool::pasteInline(Glib::ustring const clip_text)
 
             return true;
         }
-        
+
     } // FIXME: else create and select a new object under cursor!
 
     return false;
@@ -2062,7 +2062,7 @@ std::unique_ptr<TextTool::TextOnPathMetrics> TextTool::TextOnPathMetrics::getNea
         if (auto shape = cast<SPShape>(item)) {
 
             double line_distance;
-            auto time_on_line = shape->curve()->nearestTime(cursor * shape->dt2i_affine(), &line_distance);
+            shape->curve()->nearestTime(cursor * shape->dt2i_affine(), &line_distance);
             line_distance /= shape->i2dt_affine().inverse().descrim();
 
             if (line_distance < distance && (!path_shape || path_distance > line_distance)) {
@@ -2077,8 +2077,7 @@ std::unique_ptr<TextTool::TextOnPathMetrics> TextTool::TextOnPathMetrics::getNea
         auto rt = tr.inverse();
 
         auto pathv = path_shape->curve();
-        for (unsigned x = 0; x < pathv->size(); x++) {
-            auto path = (*pathv)[x];
+        for (auto path : *pathv) {
             if (!path.closed()) {
                 snaps.emplace_back(path.initialPoint() * rt, SNAPSOURCE_TEXT_ANCHOR, SNAPTARGET_TEXT_ANCHOR);
                 snaps.emplace_back(path.finalPoint() * rt, SNAPSOURCE_TEXT_ANCHOR, SNAPTARGET_TEXT_ANCHOR);
