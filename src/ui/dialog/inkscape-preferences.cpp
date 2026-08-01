@@ -1601,7 +1601,7 @@ void InkscapePreferences::initPageUI()
     Gtk::TreeModel::iterator iter_ui = this->AddPage(_page_ui, _("Interface"), PREFS_PAGE_UI);
 
     Glib::ustring languages[] = {_("System default"),
-        _("Albanian (sq)"), _("Arabic (ar)"), _("Armenian (hy)"), _("Assamese (as)"), _("Azerbaijani (az)"),
+        _("Albanian (sq)"), _("Amharic (am)"), _("Arabic (ar)"), _("Armenian (hy)"), _("Assamese (as)"), _("Azerbaijani (az)"),
         _("Basque (eu)"), _("Belarusian (be)"), _("Bulgarian (bg)"), _("Bengali (bn)"), _("Bengali/Bangladesh (bn_BD)"), _("Bodo (brx)"), _("Breton (br)"),
         _("Catalan (ca)"), _("Valencian Catalan (ca@valencia)"), _("Chinese/China (zh_CN)"),  _("Chinese/Taiwan (zh_TW)"), _("Croatian (hr)"), _("Czech (cs)"),
         _("Danish (da)"), _("Dogri (doi)"), _("Dutch (nl)"), _("Dzongkha (dz)"),
@@ -1625,7 +1625,7 @@ void InkscapePreferences::initPageUI()
         _("Ukrainian (uk)"), _("Urdu (ur)"),
         _("Vietnamese (vi)")};
     Glib::ustring langValues[] = {"",
-        "sq", "ar", "hy", "as", "az",
+        "sq", "am", "ar", "hy", "as", "az",
         "eu", "be", "bg", "bn", "bn_BD", "brx", "br",
         "ca", "ca@valencia", "zh_CN", "zh_TW", "hr", "cs",
         "da", "doi", "nl", "dz",
