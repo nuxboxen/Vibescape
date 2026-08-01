@@ -70,6 +70,10 @@
 #define KILL_PROCESS(pid) kill(pid, SIGTERM)
 #endif
 
+
+// for mouse position
+#include "extension/prefdialog/parameter.h"
+
 namespace Inkscape::Extension::Implementation {
 
 /** \brief  Make GTK+ events continue to come through a little bit
@@ -596,7 +600,15 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
     }
 
     std::list<std::string> params;
+
+    
     if (desktop) {
+        // -----------------------------------------
+        // begin of debugging code for params
+        // -----------------------------------------
+        std::list<std::string> test_list;
+        module->paramListString(test_list);
+        
         if (auto selection = desktop->getSelection()) {
             // Get current selection state
             auto state = selection->getState();
@@ -614,8 +626,49 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
                                                         node.node_index));
             }
         }
+
+
+        // -------------------
+        // tool path
+        // -------------------
+
+        Inkscape::UI::Tools::ToolBase *tool = desktop->getTool();
+        if (tool) {
+            std::string path = tool->getPrefsPath();
+            g_print("Tool name is %s\n", path.c_str());
+            if (auto *p = module->get_param("tool")) {
+                p->set(path);
+            }
+        }
+
+        // -------------------
+        // mouse coords
+        // -------------------
+        Geom::Point m = desktop->point();
+        try {
+            // If this doesn't throw, the param exists in the .inx
+            if (auto *p = module->get_param("mouse-x")) {
+                // We set the value on the parameter object itself
+                // so the standard Inkscape logic picks up the "live" value
+                p->set(std::to_string(m[Geom::X]));
+                // g_message("Set mouse-x to %f", m[Geom::X]);
+            }
+            if (auto *p = module->get_param("mouse-y")) {
+                p->set(std::to_string(m[Geom::Y]));
+                // g_message("Set mouse-y to %f", m[Geom::Y]);
+            }
+        } catch (Inkscape::Extension::Extension::param_not_exist &err) {
+            // Silence is golden
+            g_message("Error on mouse pos");
+        }
+        g_message("Done checking mouse pos");
+        
+        module->paramListString(test_list);
+        
     }
+    // g_message("About to call _change_extension");
     _change_extension(module, executionEnv, desktop->getDocument(), params, module->ignore_stderr, module->pipe_diffs);
+    // g_message("Returned from _change_extension");
 }
 
 /**

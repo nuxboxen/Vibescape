@@ -233,6 +233,8 @@ public:
 private:
     void             make_param       (Inkscape::XML::Node * paramrepr);
 
+
+public:
     /**
      * Looks up the parameter with the specified name.
      *
@@ -245,12 +247,11 @@ private:
      * @param  name Name of the parameter to search for.
      * @return Parameter with matching name.
      */
-     InxParameter *get_param(char const *name);
+    InxParameter *get_param(char const *name);
+    
+    /// @copydoc get_param()
+    InxParameter const *get_param(char const *name) const;
 
-     /// @copydoc get_param()
-     InxParameter const *get_param(char const *name) const;
-
-public:
     bool        get_param_bool          (char const *name) const;
     bool        get_param_bool          (char const *name, bool alt) const;
     int         get_param_int           (char const *name) const;
