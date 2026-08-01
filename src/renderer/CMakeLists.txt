@@ -2,7 +2,10 @@
 
 set(renderer_SRC
     surface-image.cpp
+    surface-texture.cpp
+
     surface-image.h
+    surface-texture.h
 )
 
 include("${CMAKE_CURRENT_LIST_DIR}/CMakeUnit.txt")

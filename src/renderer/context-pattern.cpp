@@ -78,15 +78,9 @@ void Pattern::setExtend(SPGradientSpread spread)
 void Pattern::setMatrix(Geom::Affine const &m, Geom::OptRect const &rect)
 {
     for (auto &pt : _pts) {
-        pt->set_matrix(geom_to_cairo(rect ? (m * rectToMatrix(rect)).inverse() : m));
+        pt->set_matrix(geom_to_cairo(rect ? viewbox_matrix(m, rect).inverse() : m));
     }
 }
-
-Geom::Affine Pattern::rectToMatrix(Geom::OptRect const &bbox)
-{
-    return bbox ? Geom::Affine(bbox->width(), 0, 0, bbox->height(), bbox->left(), bbox->top()) : Geom::identity();
-}
-
 
 void Pattern::setDither(bool enabled)
 {
@@ -275,7 +269,7 @@ void MeshGradientPattern::setCornerColor(int corner, Colors::Color color)
 }
 
 CheckerboardPattern::CheckerboardPattern(Colors::Color color, int size)
-    : CheckerboardPattern(color, darker(color), size)
+    : CheckerboardPattern(color.withoutOpacity(), Colors::make_contrasted_color(color), size)
 {}
 
 CheckerboardPattern::CheckerboardPattern(Colors::Color color1, Colors::Color color2, int size)
@@ -283,13 +277,14 @@ CheckerboardPattern::CheckerboardPattern(Colors::Color color1, Colors::Color col
 {
     _surface = std::make_shared<Surface>(Geom::IntPoint(2 * size, 2 * size), 1.0, _color_space);
     {
-        auto ctx = Context(_surface);
+        auto ctx = Context(*_surface);
+        ctx.set_operator(Cairo::Context::Operator::SOURCE);
         ctx.setSource(color1);
         ctx.paint();
         ctx.setSource(color2);
-        ctx.rectangle(Geom::Rect::from_xywh(0, 0, size, size));
+        ctx.rectangle(0, 0, size, size);
         ctx.fill();
-        ctx.rectangle(Geom::Rect::from_xywh(size, size, size, size));
+        ctx.rectangle(size, size, size, size);
         ctx.fill();
     }
 
@@ -306,7 +301,7 @@ StripesPattern::StripesPattern(Colors::Color color)
 
     _surface = std::make_shared<Surface>(Geom::IntPoint(width, 1), 1.0, _color_space);
     {
-        auto ctx = Context(_surface);
+        auto ctx = Context(*_surface);
         ctx.rectangle(Geom::Rect::from_xywh(0, 0, line_width / 2.0, 1));
         ctx.setSource(color);
         ctx.fill();

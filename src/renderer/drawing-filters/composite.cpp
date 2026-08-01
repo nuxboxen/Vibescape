@@ -33,7 +33,7 @@ void Composite::render(Slot &slot) const
     if (op == CompositeOperator::ARITHMETIC) {
         input1->run_pixel_filter<PixelAccessEdgeMode::WRAP>(PixelFilter::CompositeArithmetic(k1, k2, k3, k4), *input2);
     } else {
-        auto ct = Context(input1);
+        auto ct = Context(*input1);
         ct.setSource(*input2);
         switch(op) {
         case CompositeOperator::IN:

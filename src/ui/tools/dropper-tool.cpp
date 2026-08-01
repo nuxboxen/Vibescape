@@ -22,10 +22,11 @@
 #include "style.h"
 #include "page-manager.h"
 
-#include "display/drawing.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-drawing.h"
 #include "display/translucency-group.h"
+
+#include "renderer/drawing/drawing.h"
 
 #include "ui/cursor-utils.h"
 #include "ui/icon-names.h"

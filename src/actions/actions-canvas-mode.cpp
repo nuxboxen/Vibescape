@@ -23,8 +23,8 @@
 #include "inkscape-application.h"
 #include "inkscape-window.h"
 
-#include "display/rendermode.h"
-#include "display/drawing.h"  // Setting gray scale parameters.
+#include "renderer/drawing/enums.h"
+#include "renderer/drawing/drawing.h"  // Setting gray scale parameters.
 #include "display/control/canvas-item-drawing.h"
 
 #include "ui/widget/canvas.h"
@@ -37,12 +37,12 @@
  * Helper function to set display mode.
  */
 void
-canvas_set_display_mode(Inkscape::RenderMode value, InkscapeWindow *win, Glib::RefPtr<Gio::SimpleAction> saction)
+canvas_set_display_mode(Renderer::RenderMode value, InkscapeWindow *win, Glib::RefPtr<Gio::SimpleAction> saction)
 {
-    g_assert(value != Inkscape::RenderMode::size);
+    g_assert(value != Renderer::RenderMode::size);
     saction->change_state((int)value);
 
-    win->get_desktop()->setRenderMode(Inkscape::RenderMode(value));
+    win->get_desktop()->setRenderMode(Renderer::RenderMode(value));
 }
 
 /**
@@ -51,7 +51,7 @@ canvas_set_display_mode(Inkscape::RenderMode value, InkscapeWindow *win, Glib::R
 void
 canvas_display_mode(int value, InkscapeWindow *win)
 {
-    if (value < 0 || value >= (int)Inkscape::RenderMode::size) {
+    if (value < 0 || value >= (int)Renderer::RenderMode::size) {
         show_output(Glib::ustring("canvas_display_mode: value out of bound! : ") + Glib::ustring::format(value));
         return;
     }
@@ -68,7 +68,7 @@ canvas_display_mode(int value, InkscapeWindow *win)
         return;
     }
 
-    canvas_set_display_mode(Inkscape::RenderMode(value), win, saction);
+    canvas_set_display_mode(Renderer::RenderMode(value), win, saction);
 }
 
 /**
@@ -93,7 +93,7 @@ canvas_display_mode_cycle(InkscapeWindow *win)
     saction->get_state(value);
     // TODO: match order of UI instead
     value++;
-    value %= (int)Inkscape::RenderMode::size;
+    value %= (int)Renderer::RenderMode::size;
 
     saction->activate_variant(Glib::Variant<int>::create(value));
 }
@@ -117,17 +117,17 @@ canvas_display_mode_toggle(InkscapeWindow *win)
         return;
     }
 
-    static Inkscape::RenderMode old_value = Inkscape::RenderMode::OUTLINE;
+    static Renderer::RenderMode old_value = Renderer::RenderMode::OUTLINE;
 
     int value = -1;
     saction->get_state(value);
     int new_value = 0;
-    const int normal = static_cast<int>(Inkscape::RenderMode::NORMAL);
+    const int normal = static_cast<int>(Renderer::RenderMode::NORMAL);
 
     if (value == normal) {
         new_value = static_cast<int>(old_value);
     } else {
-        old_value = Inkscape::RenderMode(value);
+        old_value = Renderer::RenderMode(value);
         new_value = normal;
     }
     saction->activate_variant(Glib::Variant<int>::create(new_value));
@@ -139,7 +139,7 @@ canvas_display_mode_toggle(InkscapeWindow *win)
 void
 canvas_split_mode(int value, InkscapeWindow *win)
 {
-    if (value < 0 || value >= (int)Inkscape::SplitMode::size) {
+    if (value < 0 || value >= (int)Renderer::SplitMode::size) {
         show_output("canvas_split_mode: value out of bound! : " + Glib::ustring::format(value));
         return;
     }
@@ -160,14 +160,14 @@ canvas_split_mode(int value, InkscapeWindow *win)
     int old_value = -1;
     saction->get_state(old_value);
     if (value == old_value) {
-        value = (int)Inkscape::SplitMode::NORMAL;
+        value = (int)Renderer::SplitMode::NORMAL;
     }
 
     saction->change_state(value);
 
     SPDesktop* dt = win->get_desktop();
     auto canvas = dt->getCanvas();
-    canvas->set_split_mode(Inkscape::SplitMode(value));
+    canvas->set_split_mode(Renderer::SplitMode(value));
 }
 
 /**
@@ -217,7 +217,7 @@ canvas_color_mode_toggle(InkscapeWindow *win)
         canvas_color_mode_gray(win);
     }
 
-    win->get_desktop()->setColorMode(state ? Inkscape::ColorMode::GRAYSCALE : Inkscape::ColorMode::NORMAL);
+    win->get_desktop()->setColorMode(state ? Renderer::ColorMode::GRAYSCALE : Renderer::ColorMode::NORMAL);
 }
 
 /**
@@ -279,10 +279,10 @@ void
 add_actions_canvas_mode(InkscapeWindow* win)
 {
     // clang-format off
-    win->add_action_radio_integer ("canvas-display-mode",                 sigc::bind(sigc::ptr_fun(&canvas_display_mode),                win), (int)Inkscape::RenderMode::NORMAL);
+    win->add_action_radio_integer ("canvas-display-mode",                 sigc::bind(sigc::ptr_fun(&canvas_display_mode),                win), (int)Renderer::RenderMode::NORMAL);
     win->add_action(               "canvas-display-mode-cycle",           sigc::bind(sigc::ptr_fun(&canvas_display_mode_cycle),          win));
     win->add_action(               "canvas-display-mode-toggle",          sigc::bind(sigc::ptr_fun(&canvas_display_mode_toggle),         win));
-    win->add_action_radio_integer ("canvas-split-mode",                   sigc::bind(sigc::ptr_fun(&canvas_split_mode),                  win), (int)Inkscape::SplitMode::NORMAL);
+    win->add_action_radio_integer ("canvas-split-mode",                   sigc::bind(sigc::ptr_fun(&canvas_split_mode),                  win), (int)Renderer::SplitMode::NORMAL);
     win->add_action_bool(          "canvas-color-mode",                   sigc::bind(sigc::ptr_fun(&canvas_color_mode_toggle),           win));
     win->add_action_bool(          "canvas-color-manage",                 sigc::bind(sigc::ptr_fun(&canvas_color_manage_toggle),         win), false);
     // clang-format on

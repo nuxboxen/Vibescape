@@ -9,6 +9,7 @@
 
 #include <2geom/bezier-curve.h>
 
+#include "renderer/code-builder.h"
 #include "renderer/context.h"
 #include "renderer/pixel-filters/average-color.h"
 
@@ -21,6 +22,7 @@ DrawingImage::DrawingImage(Drawing &drawing)
     : DrawingItem(drawing)
     , _extend(Cairo::Pattern::Extend::NONE) // NONE prevents artifacts in surrounding empty space
 {
+    if (drawing._code_build) CodeBuilder::Construct(*this, "DrawingImage", "image", "make_drawingitem") << drawing;
 }
 
 void DrawingImage::setImage(std::shared_ptr<Surface const> image)
@@ -33,6 +35,8 @@ void DrawingImage::setImage(std::shared_ptr<Surface const> image)
 
 void DrawingImage::setScale(double sx, double sy)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setScale") << sx << sy;
+
     defer([=, this] {
         _scale = Geom::Scale(sx, sy);
         _markForUpdate(STATE_ALL, false);
@@ -41,6 +45,8 @@ void DrawingImage::setScale(double sx, double sy)
 
 void DrawingImage::setOrigin(Geom::Point const &origin)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setOrigin") << origin;
+
     defer([=, this] {
         _origin = origin;
         _markForUpdate(STATE_ALL, false);
@@ -49,6 +55,8 @@ void DrawingImage::setOrigin(Geom::Point const &origin)
 
 void DrawingImage::setClipbox(Geom::Rect const &box)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setClipbox") << box;
+
     defer([=, this] {
         _clipbox = box;
         _markForUpdate(STATE_ALL, false);
@@ -72,91 +80,98 @@ Geom::Rect DrawingImage::imageBounds() const
 Geom::Rect DrawingImage::bounds() const
 {
     if (!_image) return _clipbox;
-
     Geom::OptRect res = _clipbox & imageBounds();
-    Geom::Rect ret = res ? *res : _clipbox;
-
-    return ret;
+    return res ? *res : _clipbox;
 }
 
 unsigned DrawingImage::_updateItem(Geom::IntRect const &, UpdateContext const &, unsigned, unsigned)
 {
-    // Calculate bbox
-    if (_image) {
-        Geom::Rect r = bounds() * _ctm;
-        _bbox = r.roundOutwards();
-    } else {
-        _bbox = Geom::OptIntRect();
-    }
-
+    _bbox = (bounds() * _ctm).roundOutwards();
     return STATE_ALL;
+}
+
+// Broken image and image outline are the same shapes with a
+// different stroke width and color.
+void DrawingImage::_renderImageOutline(Context dc) const
+{
+    dc.transform(_ctm);
+
+    dc.newPath();
+    Geom::Rect r = bounds();
+    Geom::Point c00 = r.corner(0);
+    Geom::Point c01 = r.corner(3);
+    Geom::Point c11 = r.corner(2);
+    Geom::Point c10 = r.corner(1);
+
+    dc.moveTo(c00);
+    // the box
+    dc.lineTo(c10);
+    dc.lineTo(c11);
+    dc.lineTo(c01);
+    dc.closePath();
+
+    // the diagonals
+    dc.moveTo(c00);
+    dc.lineTo(c11);
+    dc.moveTo(c10);
+    dc.lineTo(c01);
+
+    dc.setLineWidth(0.5);
+    dc.setSource(Colors::Color(_drawing.imageOutlineColor()));
+    dc.stroke();
+}
+
+void DrawingImage::_renderImageBroken(Context dc) const
+{
+    dc.transform(viewbox_matrix(_ctm, bounds()));
+
+    // Red Box
+    dc.rectangle(0, 0, 1, 1);
+    dc.setLineWidth(0.15);
+    dc.setSource(Colors::Color(0xffffffff));
+    dc.fillPreserve();
+    dc.setSource(Colors::Color(0xcc0000ff));
+    dc.stroke();
+    // Red Circle
+    dc.circle({0.5, 0.5}, 0.3);
+    dc.setSource(Colors::Color(0xcc0000ff));
+    dc.fill();
+    // White X
+    dc.setLineWidth(0.075);
+    dc.setSource(Colors::Color(0xffffffff));
+    dc.move_to(0.5 - 0.15, 0.5 - 0.15);
+    dc.line_to(0.5 + 0.15, 0.5 + 0.15);
+    dc.move_to(0.5 + 0.15, 0.5 - 0.15);
+    dc.line_to(0.5 - 0.15, 0.5 + 0.15);
+    dc.stroke();
+}
+
+void DrawingImage::_renderImage(Context dc) const
+{
+    dc.transform(_ctm);
+    dc.newPath();
+    dc.rectangle(_clipbox);
+    dc.clip();
+
+    dc.translate(Geom::Translate(_origin));
+    dc.scale(_scale);
+
+    dc.setSource(*_image, 0, 0, _style.image_rendering, _extend);
+    dc.paint();
 }
 
 unsigned DrawingImage::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &/*area*/, unsigned flags, DrawingItem const */*stop_at*/) const
 {
-    bool const outline = (flags & RENDER_OUTLINE) && !_drawing.imageOutlineMode();
+    if (_scale.vector().x() * _scale.vector().y() == 0.0) return RENDER_OK;
 
-    if (!outline) {
-        if (!_image) return RENDER_OK;
-        if (_scale.vector().x() * _scale.vector().y() == 0.0) return RENDER_OK;
-
-        Context::Save save(dc);
-        dc.transform(_ctm);
-        dc.newPath();
-        dc.rectangle(_clipbox);
-        dc.clip();
-
-        dc.translate(Geom::Translate(_origin));
-        dc.scale(_scale);
-
-        dc.setSource(*_image, 0, 0, _nrstyle.image_rendering, _extend);
-        //_image->write_to_png("/tmp/rendering-image");
-        //dc.getSurface()->write_to_png("/tmp/rendered-image");
-
-        // Handle an exceptional case where the greyscale color mode needs to be applied per-image.
-        bool const greyscale_exception = (flags & RENDER_OUTLINE) && _drawing.colorMode() == ColorMode::GRAYSCALE;
-        if (greyscale_exception) {
-            dc.pushGroup();
-        }
-
-        dc.paint();
-
-        if (greyscale_exception) {
-            // TODO dc.filter(_drawing.grayscaleMatrix());
-            dc.popGroupToSource();
-            dc.paint();
-        }
-
-    } else { // outline; draw a rect instead
-
-        auto rgba = Colors::Color(_drawing.imageOutlineColor());
-
-        {   Context::Save save(dc);
-            dc.transform(_ctm);
-            dc.newPath();
-
-            Geom::Rect r = bounds();
-            Geom::Point c00 = r.corner(0);
-            Geom::Point c01 = r.corner(3);
-            Geom::Point c11 = r.corner(2);
-            Geom::Point c10 = r.corner(1);
-
-            dc.moveTo(c00);
-            // the box
-            dc.lineTo(c10);
-            dc.lineTo(c11);
-            dc.lineTo(c01);
-            dc.lineTo(c00);
-            // the diagonals
-            dc.lineTo(c11);
-            dc.moveTo(c10);
-            dc.lineTo(c01);
-        }
-
-        dc.setLineWidth(0.5);
-        dc.setSource(rgba);
-        dc.stroke();
+    if ((flags & RENDER_OUTLINE) && !_drawing.imageOutlineMode()) {
+        _renderImageOutline(dc);
+    } else if (!_image) {
+        _renderImageBroken(dc);
+    } else {
+        _renderImage(dc);
     }
+
     return RENDER_OK;
 }
 

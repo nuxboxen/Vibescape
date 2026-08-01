@@ -32,6 +32,7 @@
 #include "object/sp-linear-gradient.h"
 #include "object/sp-radial-gradient.h"
 #include "object/sp-stop.h"
+#include "renderer/surface-texture.h"
 #include "selection.h"
 #include "style.h"
 #include "ui/builder-utils.h"
@@ -148,7 +149,7 @@ int gr_vector_list(Glib::RefPtr<Gio::ListStore<GradientItem>> store, SPDesktop *
     for (auto const &[label, gradient] : labels_gradients) {
         auto image = sp_gradient_to_surface(gradient, GradientSize.x(), GradientSize.y());
         auto id = gradient->getId();
-        auto item = GradientItem::create(idx, label, to_texture(image));
+        auto item = GradientItem::create(idx, label, Renderer::build_texture(image));
         item->uid = id ? id : "";
         store->append(item);
 
@@ -793,7 +794,7 @@ int GradientToolbar::update_stop_list(SPGradient *gradient, SPStop *new_stop, bo
                 auto surface = sp_gradstop_to_surface(stop, StopSize.x(), StopSize.y());
                 auto id = stop->getId();
                 auto label = gr_ellipsize_text(id ? id : "", 25);
-                auto item = StopItem::create(index++, label, to_texture(surface));
+                auto item = StopItem::create(index++, label, Renderer::build_texture(surface));
                 item->data = stop;
                 store->append(item);
             }

@@ -16,7 +16,7 @@
 
 #include "sp-filter-primitive.h"
 #include "number-opt-number.h"
-#include "display/nr-filter-turbulence.h"
+#include "renderer/drawing-filters/turbulence.h"
 
 class SPFeTurbulence final
     : public SPFilterPrimitive
@@ -28,7 +28,7 @@ private:
     int numOctaves = 0;
     double seed = 0.0f;
     bool stitchTiles = false;
-    Inkscape::Filters::FilterTurbulenceType type = Inkscape::Filters::TURBULENCE_FRACTALNOISE;
+    Inkscape::Renderer::DrawingFilter::TurbulenceType type = Inkscape::Renderer::DrawingFilter::TurbulenceType::FRACTALNOISE;
     bool updated = false;
 
     NumberOptNumber baseFrequency;
@@ -39,7 +39,7 @@ protected:
     void set(SPAttr key, char const *value) override;
     Inkscape::XML::Node *write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr, unsigned flags) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FETURBULENCE_H_SEEN

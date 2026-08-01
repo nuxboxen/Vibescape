@@ -64,7 +64,7 @@ std::shared_ptr<Surface> Slot::get_copy(int slot) const
 {
     if (auto surface = get(slot)) {
         auto copy = surface->similar();
-        auto context = Context(copy);
+        auto context = Context(*copy);
         context.setSource(*surface);
         context.set_operator(Cairo::Context::Operator::SOURCE);
         context.paint();
@@ -109,7 +109,7 @@ void Slot::set(int slot, std::shared_ptr<Surface> surface)
     if ((slot == SLOT_SOURCE_IMAGE || slot == SLOT_BACKGROUND_IMAGE) && trans) {
         auto sbox = _item_opt.get_slot_box();
         auto tsg = surface->similar(sbox->dimensions().ceil());
-        auto context = Context(tsg);
+        auto context = Context(*tsg);
         context.transform(*trans);
         context.setSource(*surface);
         context.set_operator(Cairo::Context::Operator::SOURCE);
@@ -141,7 +141,7 @@ std::shared_ptr<Surface> Slot::get_result(int slot) const
     // transformation which was added to the source graphic.
     if (auto trans = _item_opt.get_matrix_item2filter()) {
         auto output = get(SLOT_RESULT); // Reuse from set(...)
-        auto context = Context(output);
+        auto context = Context(*output);
         context.transform(trans->inverse());
         context.setSource(*result);
         context.set_operator(Cairo::Context::Operator::SOURCE);

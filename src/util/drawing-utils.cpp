@@ -4,28 +4,6 @@
 
 namespace Inkscape::Util {
 
-Geom::Rect rounded_rectangle(const Cairo::RefPtr<Cairo::Context>& ctx, const Geom::Rect& rect, double radius) {
-    auto x = rect.left();
-    auto y = rect.top();
-    auto width = rect.width();
-    auto height = rect.height();
-    if (radius > 0) {
-        ctx->arc(x + width - radius, y + radius, radius, -M_PI_2, 0);
-        ctx->arc(x + width - radius, y + height - radius, radius, 0, M_PI_2);
-        ctx->arc(x + radius, y + height - radius, radius, M_PI_2, M_PI);
-        ctx->arc(x + radius, y + radius, radius, M_PI, 3 * M_PI_2);
-        ctx->close_path();
-    }
-    else {
-        ctx->move_to(x, y);
-        ctx->line_to(x + width, y);
-        ctx->line_to(x + width, y + height);
-        ctx->line_to(x, y + height);
-        ctx->close_path();
-    }
-    return rect.shrunkBy(1);
-}
-
 void circle(const Cairo::RefPtr<Cairo::Context>& ctx, const Geom::Point& center, double radius) {
     ctx->arc(center.x(), center.y(), radius, 0, 2 * M_PI);
 }
@@ -70,7 +48,7 @@ void draw_border(const Cairo::RefPtr<Cairo::Context>& ctx, Geom::Rect start_rect
             circle(ctx, rect.midpoint(), rect.minExtent() / 2);
         }
         else {
-            rounded_rectangle(ctx, rect, inwards ? radius-- : radius++);
+            // TODO ctx->rectangle(rect, inwards ? radius-- : radius++);
         }
         rect.expandBy(inwards ? -1 : 1);
     });

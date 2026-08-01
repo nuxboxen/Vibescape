@@ -18,26 +18,13 @@
 
 #include "attributes.h"                          // for SPAttr
 
-#include "display/nr-filter-flood.h"             // for FilterFlood
+#include "renderer/drawing-filters/flood.h"
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Node;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeFlood::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::FLOOD_OPACITY);
     readAttr(SPAttr::FLOOD_COLOR);
 }
@@ -77,11 +64,11 @@ void SPFeFlood::set(SPAttr key, char const *value)
     }
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeFlood::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeFlood::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto flood = std::make_unique<Inkscape::Filters::FilterFlood>();
+    auto flood = std::make_unique<Inkscape::Renderer::DrawingFilter::Flood>();
     build_renderer_common(flood.get());
-    flood->set_color(flood_color ? flood_color->toRGBA(opacity) : 0x0);
+    flood->set_color(flood_color ? flood_color->withOpacity(opacity) : Inkscape::Colors::Color(0x0));
     return flood;
 }
 

@@ -43,11 +43,11 @@
 #include <gtkmm/treemodelsort.h>
 #include <2geom/path-sink.h>
 
+#include "display/control/canvas-item-ctrl.h"
 #include "display/control/ctrl-handle-manager.h"
 #include "display/translucency-group.h"
 #include "ui/icon-loader.h"
 #include "ui/widget/generic/icon-combobox.h"
-#include "ui/widget/handle-preview.h"
 
 #if WITH_GSOURCEVIEW
 #include <gtksourceview/gtksource.h>
@@ -61,7 +61,6 @@
 #include "colors/cms/system.h"
 #include "colors/manager.h"
 #include "colors/spaces/base.h"
-#include "display/nr-filter-gaussian.h"
 #include "document.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
@@ -74,6 +73,8 @@
 #include "selection-chemistry.h"
 #include "selection.h"
 #include "style.h"
+#include "renderer/surface.h"
+#include "renderer/surface-texture.h"
 #include "ui/builder-utils.h"
 #include "ui/dialog-run.h"
 #include "ui/modifiers.h"
@@ -1714,10 +1715,10 @@ void InkscapePreferences::initPageUI()
         auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
         auto img = Gtk::make_managed<Gtk::Picture>();
         auto scale = get_scale_factor();
-        auto surface = draw_handles_preview(scale);
+        auto surface = CanvasItemCtrl::draw_handles_preview(scale);
         img->set_layout_manager(Gtk::BinLayout::create());
-        img->set_size_request(surface->get_width() / scale, surface->get_height() / scale);
-        img->set_paintable(to_texture(surface));
+        img->set_size_request(surface->width() / scale, surface->height() / scale);
+        img->set_paintable(Renderer::build_texture(surface));
         img->set_hexpand();
         img->set_halign(Gtk::Align::CENTER);
         box->append(*img);
@@ -1734,14 +1735,14 @@ void InkscapePreferences::initPageUI()
 
         // Update on auto-reload or theme change
         mgr.connectCssUpdated(sigc::track_object(
-            [=, this]() { img->set_paintable(to_texture(draw_handles_preview(get_scale_factor()))); }, *this));
+            [=, this]() { img->set_paintable(Renderer::build_texture(CanvasItemCtrl::draw_handles_preview(get_scale_factor()))); }, *this));
         cb->signal_changed().connect([=, this](int id) {
             Handles::Manager::get().select_theme(id);
         });
 
         box->append(*cb);
         _handle_size = Preferences::PreferencesObserver::create("/options/grabsize/value", [img, this](const Preferences::Entry&){
-            img->set_paintable(to_texture(draw_handles_preview(get_scale_factor())));
+            img->set_paintable(Renderer::build_texture(CanvasItemCtrl::draw_handles_preview(get_scale_factor())));
         });
         _page_ui.add_line(true, _("Handle colors"), *box, "", "Select handle color scheme.");
     }
@@ -3010,15 +3011,15 @@ void InkscapePreferences::initPageRendering()
 
     // blur quality
     _blur_quality_best.init ( _("Best quality (slowest)"), "/options/blurquality/value",
-                                  BLUR_QUALITY_BEST, false, nullptr);
+                                  (int)Renderer::DrawingFilter::BlurQuality::BEST, false, nullptr);
     _blur_quality_better.init ( _("Better quality (slower)"), "/options/blurquality/value",
-                                  BLUR_QUALITY_BETTER, false, &_blur_quality_best);
+                                  (int)Renderer::DrawingFilter::BlurQuality::BETTER, false, &_blur_quality_best);
     _blur_quality_normal.init ( _("Average quality"), "/options/blurquality/value",
-                                  BLUR_QUALITY_NORMAL, true, &_blur_quality_best);
+                                  (int)Renderer::DrawingFilter::BlurQuality::NORMAL, true, &_blur_quality_best);
     _blur_quality_worse.init ( _("Lower quality (faster)"), "/options/blurquality/value",
-                                  BLUR_QUALITY_WORSE, false, &_blur_quality_best);
+                                  (int)Renderer::DrawingFilter::BlurQuality::WORSE, false, &_blur_quality_best);
     _blur_quality_worst.init ( _("Lowest quality (fastest)"), "/options/blurquality/value",
-                                  BLUR_QUALITY_WORST, false, &_blur_quality_best);
+                                  (int)Renderer::DrawingFilter::BlurQuality::WORST, false, &_blur_quality_best);
 
     _page_rendering.add_group_header( _("Gaussian blur quality for display"));
     _page_rendering.add_line( true, "", _blur_quality_best, "",
@@ -3034,15 +3035,15 @@ void InkscapePreferences::initPageRendering()
 
     // filter quality
     _filter_quality_best.init ( _("Best quality (slowest)"), "/options/filterquality/value",
-                                  Inkscape::Filters::FILTER_QUALITY_BEST, false, nullptr);
+                                  (int)Renderer::DrawingFilter::Quality::BEST, false, nullptr);
     _filter_quality_better.init ( _("Better quality (slower)"), "/options/filterquality/value",
-                                  Inkscape::Filters::FILTER_QUALITY_BETTER, false, &_filter_quality_best);
+                                  (int)Renderer::DrawingFilter::Quality::BETTER, false, &_filter_quality_best);
     _filter_quality_normal.init ( _("Average quality"), "/options/filterquality/value",
-                                  Inkscape::Filters::FILTER_QUALITY_NORMAL, true, &_filter_quality_best);
+                                  (int)Renderer::DrawingFilter::Quality::NORMAL, true, &_filter_quality_best);
     _filter_quality_worse.init ( _("Lower quality (faster)"), "/options/filterquality/value",
-                                  Inkscape::Filters::FILTER_QUALITY_WORSE, false, &_filter_quality_best);
+                                  (int)Renderer::DrawingFilter::Quality::WORSE, false, &_filter_quality_best);
     _filter_quality_worst.init ( _("Lowest quality (fastest)"), "/options/filterquality/value",
-                                  Inkscape::Filters::FILTER_QUALITY_WORST, false, &_filter_quality_best);
+                                  (int)Renderer::DrawingFilter::Quality::WORST, false, &_filter_quality_best);
 
     _page_rendering.add_group_header( _("Filter effects quality for display"));
     _page_rendering.add_line( true, "", _filter_quality_best, "",

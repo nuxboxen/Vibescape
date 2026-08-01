@@ -12,15 +12,16 @@
 #include <vector>
 
 #include <cairomm/refptr.h>
-#include "display/rendermode.h"
+#include "renderer/drawing/enums.h"
 #include "fragment.h"
 
-namespace Cairo {
+namespace Inkscape {
+namespace Renderer {
+class Surface;
 class Context;
-class ImageSurface;
-} // namespace Cairo
+}
 
-namespace Inkscape::UI::Widget {
+namespace UI::Widget {
 
 class Stores;
 class Prefs;
@@ -62,37 +63,38 @@ public:
     // Tile drawing.
     /// Return a surface for drawing on. If nogl is true, no GL commands are issued, as is a requirement off-main-thread. All such surfaces must be
     /// returned by passing them either to draw_tile() or junk_tile_surface().
-    virtual Cairo::RefPtr<Cairo::ImageSurface> request_tile_surface(Geom::IntRect const &rect, bool nogl) = 0;
+    virtual std::shared_ptr<Renderer::Surface> request_tile_surface(Geom::IntRect const &rect, bool nogl) = 0;
     /// Commit the contents of a surface previously issued by request_tile_surface() to the canvas. In outline mode, a second surface must be passed
     /// containing the outline content, otherwise it should be null.
-    virtual void draw_tile(Fragment const &fragment, Cairo::RefPtr<Cairo::ImageSurface> surface, Cairo::RefPtr<Cairo::ImageSurface> outline_surface) = 0;
+    virtual void draw_tile(Fragment const &fragment, std::shared_ptr<Renderer::Surface> surface, std::shared_ptr<Renderer::Surface> outline_surface) = 0;
     /// Get rid of a surface previously issued by request_tile_surface() without committing it to the canvas. Usually useful only to dispose of
     /// surfaces which have gone into an error state while rendering, which is irreversible, and therefore we can't do anything useful with them.
-    virtual void junk_tile_surface(Cairo::RefPtr<Cairo::ImageSurface> surface) = 0;
+    virtual void junk_tile_surface(std::shared_ptr<Renderer::Surface> surface) = 0;
 
     // Widget painting.
     struct PaintArgs
     {
         std::optional<Geom::Point> mouse;
-        RenderMode render_mode{};
-        SplitMode splitmode{};
+        Renderer::RenderMode render_mode{};
+        Renderer::SplitMode splitmode{};
         Geom::Point splitfrac;
-        SplitDirection splitdir{};
-        SplitDirection hoverdir{};
+        Renderer::SplitDirection splitdir{};
+        Renderer::SplitDirection hoverdir{};
         double yaxisdir{};
     };
-    virtual void paint_widget(Fragment const &view, PaintArgs const &args, Cairo::RefPtr<Cairo::Context> const &cr) = 0;
+    virtual void paint_widget(Fragment const &view, PaintArgs const &args, std::shared_ptr<Renderer::Context> const &cr) = 0;
 
     // Static functions providing common functionality.
     static bool check_single_page(Fragment const &view, PageInfo const &pi);
-    static std::pair<Geom::IntRect, Geom::IntRect> calc_splitview_cliprects(Geom::IntPoint const &size, Geom::Point const &splitfrac, SplitDirection splitdir);
-    static void paint_splitview_controller(Geom::IntPoint const &size, Geom::Point const &splitfrac, SplitDirection splitdir, SplitDirection hoverdir, Cairo::RefPtr<Cairo::Context> const &cr);
+    static std::pair<Geom::IntRect, Geom::IntRect> calc_splitview_cliprects(Geom::IntPoint const &size, Geom::Point const &splitfrac, Renderer::SplitDirection splitdir);
+    static void paint_splitview_controller(Geom::IntPoint const &size, Geom::Point const &splitfrac, Renderer::SplitDirection splitdir, Renderer::SplitDirection hoverdir, std::shared_ptr<Renderer::Context> const &cr);
     static void paint_background(Fragment const &fragment, PageInfo const &pi,
                                  std::uint32_t page, std::uint32_t desk,
-                                 Cairo::RefPtr<Cairo::Context> const &cr);
+                                 Renderer::Context cr);
 };
 
-} // namespace Inkscape::UI::Widget
+} // namespace UI::Widget
+} // namespace Inkscape
 
 #endif // INKSCAPE_UI_WIDGET_CANVAS_GRAPHICS_H
 

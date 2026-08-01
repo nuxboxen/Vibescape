@@ -31,8 +31,10 @@ class SPHatchPath;
 class SPItem;
 
 namespace Inkscape {
+namespace Renderer {
 class Drawing;
 class DrawingPattern;
+} // namespace Renderer
 namespace XML { class Node; }
 } // namespace Inkscape
 
@@ -95,7 +97,7 @@ public:
 
     bool isValid() const override;
 
-    Inkscape::DrawingPattern *show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox) override;
+    Inkscape::Renderer::DrawingPattern *show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox) override;
     void hide(unsigned key) override;
 
     RenderInfo calculateRenderInfo(unsigned key) const;
@@ -111,7 +113,7 @@ protected:
     void modified(unsigned int flags) override;
 
 private:
-    using View = ObjectView<Inkscape::DrawingPattern>;
+    using View = ObjectView<Inkscape::Renderer::DrawingPattern>;
     std::vector<View> views;
 
     static bool _hasHatchPatchChildren(SPHatch const *hatch);

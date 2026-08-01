@@ -126,7 +126,7 @@ std::shared_ptr<Surface> GaussianBlur::_render(Slot &slot, int input) const
         // Don't copy as we need to resize for this blurquality
         src = slot.get(input, _color_space);
         dest = src->similar(size);
-        auto context = Context(dest);
+        auto context = Context(*dest);
         context.transform(tr);
         context.setSource(*src);
         context.set_operator(Cairo::Context::Operator::SOURCE);
@@ -147,7 +147,7 @@ std::shared_ptr<Surface> GaussianBlur::_render(Slot &slot, int input) const
     }
 
     // Resize it back if we need to
-    auto context = Context(src);
+    auto context = Context(*src);
     context.transform(tr.inverse());
     context.setSource(*dest);
     context.set_operator(Cairo::Context::Operator::SOURCE);

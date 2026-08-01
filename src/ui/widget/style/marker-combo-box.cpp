@@ -34,6 +34,8 @@
 #include "object/sp-marker-loc.h"
 #include "object/sp-marker.h"
 #include "object/sp-root.h"
+#include "renderer/surface.h"
+#include "renderer/surface-texture.h"
 #include "svg/css-ostringstream.h"
 #include "ui/builder-utils.h"
 #include "ui/svg-renderer.h"
@@ -52,13 +54,13 @@ namespace Inkscape::UI::Widget {
 namespace {
 
 // create a "no marker is assigned" image
-Cairo::RefPtr<Cairo::ImageSurface> create_separator(double alpha, int width, int height, int device_scale, int location) {
+std::shared_ptr<Renderer::Surface> create_separator(double alpha, int width, int height, int device_scale, int location) {
     width *= device_scale;
     height *= device_scale;
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width, height);
-    auto ctx = Cairo::Context::create(surface);
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint(width, height), device_scale);
+    auto ctx = std::make_shared<Renderer::Context>(*surface);
     auto x = 0.0;
-    ctx->set_source_rgba(0.5, 0.5, 0.5, alpha);
+    ctx->setSource(Colors::Color(0x808080ff).withOpacity(alpha));
     auto mid = height / 2;
     ctx->move_to(x, mid);
     ctx->line_to(x + width, mid);
@@ -76,15 +78,13 @@ Cairo::RefPtr<Cairo::ImageSurface> create_separator(double alpha, int width, int
         ctx->line_to(x + width - stroke / 2, mid + h);
         ctx->stroke();
     }
-    surface->flush();
-    surface->set_device_scale(device_scale, device_scale);
     return surface;
 }
 
 // empty images; "no marker" for start/middle/end markers
-std::map<int, Cairo::RefPtr<Cairo::ImageSurface>> g_image_none;
+std::map<int, std::shared_ptr<Renderer::Surface>> g_image_none;
 // error extracting/rendering marker; "bad marker"
-Cairo::RefPtr<Cairo::ImageSurface> g_bad_marker;
+std::shared_ptr<Renderer::Surface> g_bad_marker;
 
 Glib::ustring get_attrib(SPMarker* marker, const char* attrib) {
     auto value = marker->getAttribute(attrib);
@@ -190,7 +190,7 @@ MarkerComboBox::MarkerComboBox(Glib::ustring id, int l) :
     if (!g_bad_marker) {
         auto path = Inkscape::IO::Resource::get_filename(Inkscape::IO::Resource::UIS, "bad-marker.svg");
         Inkscape::svg_renderer renderer(path.c_str());
-        g_bad_marker = renderer.render_surface(1.0);
+        //g_bad_marker = renderer.render_surface(1.0);
     }
 
     if (_loc == SP_MARKER_LOC_START) {
@@ -209,8 +209,8 @@ MarkerComboBox::MarkerComboBox(Glib::ustring id, int l) :
         image->set_size_request(ITEM_WIDTH, ITEM_HEIGHT);
         image->set_snapshot_func([this, item](const Glib::RefPtr<Gtk::Snapshot>& snapshot, int width, int height) {
             auto marker = find_marker(item->source, item->id);
-            auto surface = marker ? marker_to_image({width, height}, marker) : g_image_none[_loc];
-            draw_marker_snapshot(snapshot, width, height, get_scale_factor(), to_texture(surface));
+            // TODO auto surface = marker ? marker_to_image({width, height}, marker) : g_image_none[_loc];
+            // draw_marker_snapshot(snapshot, width, height, get_scale_factor(), Renderer::build_texture(surface));
         });
         auto const box = Gtk::make_managed<Gtk::FlowBoxChild>();
         box->set_child(*image);
@@ -569,10 +569,10 @@ void MarkerComboBox::refresh_after_markers_modified() {
     _is_up_to_date = true;
 }
 
-Cairo::RefPtr<Cairo::ImageSurface> MarkerComboBox::marker_to_image(Geom::IntPoint size, SPMarker* marker) {
+std::shared_ptr<Renderer::Surface> MarkerComboBox::marker_to_image(Geom::IntPoint size, SPMarker* marker) {
     if (!marker) return g_bad_marker;
 
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     unsigned const visionkey = SPItem::display_key_new(1);
     drawing.setRoot(_sandbox->getRoot()->invoke_show(drawing, visionkey, SP_ITEM_SHOW_DISPLAY));
     auto surface = create_marker_image(size, marker->getId(), marker->document, drawing, 1.50, false);
@@ -585,20 +585,21 @@ void MarkerComboBox::draw_big_preview(const Glib::RefPtr<Gtk::Snapshot>& snapsho
     auto item = find_marker_item(get_current());
     if (!item || !item->source || item->id.empty()) return;
 
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     unsigned const visionkey = SPItem::display_key_new(1);
     drawing.setRoot(_sandbox->getRoot()->invoke_show(drawing, visionkey, SP_ITEM_SHOW_DISPLAY));
     // generate preview
     auto surface = create_marker_image({width, height}, item->id.c_str(), item->source, drawing, 2.60, true);
     _sandbox->getRoot()->invoke_hide(visionkey);
 
-    draw_marker_snapshot(snapshot, width, height, get_scale_factor(), to_texture(surface));
+    draw_marker_snapshot(snapshot, width, height, get_scale_factor(), Renderer::build_texture(surface));
 }
 
 // small preview inside the MenuButton
 void MarkerComboBox::draw_small_preview(const Glib::RefPtr<Gtk::Snapshot>& snapshot, int width, int height, SPMarker* marker) {
+    
     auto surface = marker ? marker_to_image({ITEM_WIDTH, ITEM_HEIGHT}, marker) : g_image_none[_loc];
-    draw_marker_snapshot(snapshot, width, height, get_scale_factor(), to_texture(surface));
+    draw_marker_snapshot(snapshot, width, height, get_scale_factor(), Renderer::build_texture(surface));
 }
 
 /**
@@ -798,9 +799,9 @@ void MarkerComboBox::add_markers(std::vector<SPMarker *> const& marker_list, SPD
  * area in the bounding box, and then renders it. This allows us to fill in
  * preview images of each marker in the marker combobox.
  */
-Cairo::RefPtr<Cairo::ImageSurface>
+std::shared_ptr<Renderer::Surface>
 MarkerComboBox::create_marker_image(Geom::IntPoint pixel_size, gchar const *mname,
-    SPDocument *source, Inkscape::Drawing &drawing, double scale, bool add_cross)
+    SPDocument *source, Renderer::Drawing &drawing, double scale, bool add_cross)
 {
     auto const fg = get_color();
     bool no_clip = true;

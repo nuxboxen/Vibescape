@@ -31,6 +31,7 @@
 namespace Glib { class ustring; }
 
 class SPItem;
+class SPStyle;
 
 namespace Inkscape::Renderer {
 
@@ -97,28 +98,8 @@ public:
     void setVisible(bool visible);
     bool sensitive() const { return _sensitive; }
     void setSensitive(bool sensitive);
-
-    template <typename StyleSource>
-    void setStyle(StyleSource const *style, StyleSource const *context_style = nullptr)
-    {
-        defer([this, nrstyle = DrawingStyle(style, context_style)] () mutable {
-            _nrstyle = std::move(nrstyle);
-        });
-    }
-
-    // Recursively update context styles in all children
-    template <typename StyleSource>
-    void setChildrenStyle(StyleSource const *style) {
-        defer([this, style] () mutable {
-            _nrstyle.set_context_style(style);
-        });
-        for (auto &i : _children) {
-            i.setChildrenStyle(style);
-        }
-    }
-
-    DrawingStyle _nrstyle;
-
+    void setStyle(SPStyle const *style, SPStyle const *context_style = nullptr);
+    void setChildrenStyle(SPStyle const *style);
     void setOpacity(float opacity);
     void setOpacityOverride(std::optional<double> opacity);
     void setAntialiasing(Antialiasing antialias);
@@ -209,6 +190,7 @@ protected:
                                ///  This is used to compute the filter effect region and render in
                                ///  objectBoundingBox units.
 
+    DrawingStyle _style;
     DrawingItem *_clip;
     DrawingItem *_mask;
     DrawingPattern *_fill_pattern;

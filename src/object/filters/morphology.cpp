@@ -21,18 +21,6 @@
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Node;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeMorphology::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
 	SPFilterPrimitive::build(document, repr);
@@ -41,26 +29,26 @@ void SPFeMorphology::build(SPDocument *document, Inkscape::XML::Node *repr)
     readAttr(SPAttr::RADIUS);
 }
 
-static Inkscape::Filters::FilterMorphologyOperator read_operator(char const *value)
+static Inkscape::Renderer::DrawingFilter::MorphologyOperator read_operator(char const *value)
 {
     if (!value) {
-        return Inkscape::Filters::MORPHOLOGY_OPERATOR_ERODE; // erode is default
+        return Inkscape::Renderer::DrawingFilter::MorphologyOperator::ERODE; // erode is default
     }
     
     switch (value[0]) {
         case 'e':
             if (std::strcmp(value, "erode") == 0) {
-            	return Inkscape::Filters::MORPHOLOGY_OPERATOR_ERODE;
+            	return Inkscape::Renderer::DrawingFilter::MorphologyOperator::ERODE;
             }
             break;
         case 'd':
             if (std::strcmp(value, "dilate") == 0) {
-            	return Inkscape::Filters::MORPHOLOGY_OPERATOR_DILATE;
+            	return Inkscape::Renderer::DrawingFilter::MorphologyOperator::DILATE;
             }
             break;
     }
     
-    return Inkscape::Filters::MORPHOLOGY_OPERATOR_ERODE; // erode is default
+    return Inkscape::Renderer::DrawingFilter::MorphologyOperator::ERODE; // erode is default
 }
 
 void SPFeMorphology::set(SPAttr key, char const *value)
@@ -90,9 +78,9 @@ void SPFeMorphology::set(SPAttr key, char const *value)
     }
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeMorphology::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeMorphology::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto morphology = std::make_unique<Inkscape::Filters::FilterMorphology>();
+    auto morphology = std::make_unique<Inkscape::Renderer::DrawingFilter::Morphology>();
     build_renderer_common(morphology.get());
     
     morphology->set_operator(Operator);
@@ -110,13 +98,13 @@ std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeMorphology::build_render
 Geom::Rect SPFeMorphology::calculate_region(Geom::Rect const &region) const
 {
     auto r = region;
-    if (Operator == Inkscape::Filters::MORPHOLOGY_OPERATOR_DILATE) {
+    if (Operator == Inkscape::Renderer::DrawingFilter::MorphologyOperator::DILATE) {
         if (radius.optNumIsSet()) {
             r.expandBy(radius.getNumber(), radius.getOptNumber());
         } else {
             r.expandBy(radius.getNumber());
         }
-    } else if (Operator == Inkscape::Filters::MORPHOLOGY_OPERATOR_ERODE) {
+    } else if (Operator == Inkscape::Renderer::DrawingFilter::MorphologyOperator::ERODE) {
         if (radius.optNumIsSet()) {
             r.expandBy(-1 * radius.getNumber(), -1 * radius.getOptNumber());
         } else {

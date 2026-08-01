@@ -23,11 +23,11 @@
 #include "uri-references.h"
 #include "xml/node.h"
 
-namespace Inkscape {
+namespace Inkscape::Renderer {
 class Drawing;
 class DrawingItem;
 class DrawingGroup;
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
 class SPMask final
     : public SPObjectGroup
@@ -44,7 +44,7 @@ public:
 
     static char const *create(std::vector<Inkscape::XML::Node*> &reprs, SPDocument *document);
 
-    Inkscape::DrawingItem *show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox);
+    Inkscape::Renderer::DrawingItem *show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox);
     void hide(unsigned key);
     void setBBox(unsigned key, Geom::OptRect const &bbox);
 
@@ -68,7 +68,7 @@ private:
     bool maskContentUnits_set : 1;
     bool maskContentUnits : 1;
 
-    using View = ObjectView<Inkscape::DrawingGroup>;
+    using View = ObjectView<Inkscape::Renderer::DrawingGroup>;
     std::vector<View> views;
     void update_view(View &v);
 };

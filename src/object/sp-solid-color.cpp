@@ -15,7 +15,7 @@
 
 #include "attributes.h"
 #include "style.h"
-#include "display/drawing-paintserver.h"
+#include "renderer/drawing/drawing-paintserver.h"
 
 /*
  * Solid Color

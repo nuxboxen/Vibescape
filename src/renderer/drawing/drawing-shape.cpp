@@ -13,6 +13,7 @@
 #include <2geom/path-sink.h>
 #include <2geom/svg-path-parser.h>
 
+#include "renderer/code-builder.h"
 #include "renderer/context.h"
 
 #include "drawing.h"
@@ -28,10 +29,15 @@ DrawingShape::DrawingShape(Drawing &drawing)
     , _last_pick(nullptr)
     , _repick_after(0)
 {
+    if (drawing._code_build) CodeBuilder::Construct(*this, "DrawingShape", "shape", "make_drawingitem") << drawing;
 }
 
 void DrawingShape::setPath(std::shared_ptr<Geom::PathVector const> curve)
 {
+    if (curve && drawing()._code_build) {
+        CodeBuilder::get().maybeConstruct(*curve);
+        CodeBuilder::Call(*this, "setPath").shared_obj(*curve, "");
+    }
     defer([this, curve = std::move(curve)] () mutable {
         _markForRendering();
         _curve = std::move(curve);
@@ -48,7 +54,7 @@ unsigned DrawingShape::_updateItem(Geom::IntRect const &area, UpdateContext cons
 
     // clear Cairo data to force update
     if (flags & STATE_RENDER) {
-        _nrstyle.invalidate();
+        _style.invalidate();
     }
 
     auto calc_curve_bbox = [&, this] () -> Geom::OptIntRect {
@@ -64,17 +70,17 @@ unsigned DrawingShape::_updateItem(Geom::IntRect const &area, UpdateContext cons
         float stroke_max = 0.0f;
 
         // Get the normal stroke.
-        if (_drawing.renderMode() != RenderMode::OUTLINE && _nrstyle.stroke.type != DrawingStyle::PaintType::NONE) {
+        if (_drawing.renderMode() != RenderMode::OUTLINE && _style.stroke.type != DrawingStyle::PaintType::NONE) {
             // Expand by stroke width.
-            stroke_max = _nrstyle.stroke_width * 0.5f;
+            stroke_max = _style.stroke_width * 0.5f;
 
             // Scale by view transformation, unless vector effect stroke.
-            if (!_nrstyle.vector_effect_stroke) {
+            if (!_style.vector_effect_stroke) {
                 stroke_max *= max_expansion(ctx.ctm);
             }
 
             // Cap minimum line width if asked.
-            if (_drawing.renderMode() == RenderMode::VISIBLE_HAIRLINES || _nrstyle.stroke_extensions_hairline) {
+            if (_drawing.renderMode() == RenderMode::VISIBLE_HAIRLINES || _style.stroke_extensions_hairline) {
                 stroke_max = std::max(stroke_max, 0.5f);
             }
         }
@@ -86,8 +92,8 @@ unsigned DrawingShape::_updateItem(Geom::IntRect const &area, UpdateContext cons
 
         if (stroke_max > 0.0f) {
             // Expand by mitres, if present.
-            if (_nrstyle.line_join == SP_STROKE_LINEJOIN_MITER && _nrstyle.miter_limit >= 1.0f) {
-                stroke_max *= _nrstyle.miter_limit;
+            if (_style.line_join == SP_STROKE_LINEJOIN_MITER && _style.miter_limit >= 1.0f) {
+                stroke_max *= _style.miter_limit;
             }
 
             // Apply expansion if non-zero.
@@ -115,11 +121,11 @@ void DrawingShape::_renderFill(Context &dc, DrawingOptions &rc, Geom::IntRect co
     Context::Save save(dc);
     dc.transform(_ctm);
 
-    auto has_fill = _nrstyle.prepareFill(dc, rc, area, _item_bbox, _fill_pattern);
+    auto has_fill = _style.prepareFill(dc, rc, area, _item_bbox, _fill_pattern);
 
     if (has_fill) {
         dc.path(*_curve);
-        _nrstyle.applyFill(dc, *has_fill);
+        _style.applyFill(dc, *has_fill);
         dc.fillPreserve();
         dc.newPath(); // clear path
     }
@@ -130,25 +136,25 @@ void DrawingShape::_renderStroke(Context &dc, DrawingOptions &rc, Geom::IntRect 
     Context::Save save(dc);
     dc.transform(_ctm);
 
-    auto has_stroke = _nrstyle.prepareStroke(dc, rc, area, _item_bbox, _stroke_pattern);
-    if (!_nrstyle.stroke_extensions_hairline && _nrstyle.stroke_width == 0) {
+    auto has_stroke = _style.prepareStroke(dc, rc, area, _item_bbox, _stroke_pattern);
+    if (!_style.stroke_extensions_hairline && _style.stroke_width == 0) {
         has_stroke.reset();
     }
 
     if (has_stroke) {
         // TODO: remove segments outside of bbox when no dashes present
         dc.path(*_curve);
-        if (_nrstyle.vector_effect_stroke) {
+        if (_style.vector_effect_stroke) {
             dc.restore();
             dc.save();
         }
-        _nrstyle.applyStroke(dc, *has_stroke);
+        _style.applyStroke(dc, *has_stroke);
 
         // If the stroke is a hairline, set it to exactly 1px on screen.
         // If visible hairline mode is on, make sure the line is at least 1px.
-        if (flags & RENDER_VISIBLE_HAIRLINES || _nrstyle.stroke_extensions_hairline) {
+        if (flags & RENDER_VISIBLE_HAIRLINES || _style.stroke_extensions_hairline) {
             auto pixel_size = dc.device_to_user_distance({1.0, 1.0}).length();
-            if (_nrstyle.stroke_extensions_hairline || _nrstyle.stroke_width < pixel_size) {
+            if (_style.stroke_extensions_hairline || _style.stroke_width < pixel_size) {
                 dc.setHairline();
             }
         }
@@ -168,10 +174,14 @@ void DrawingShape::_renderMarkers(Context &dc, DrawingOptions &rc, Geom::IntRect
 
 unsigned DrawingShape::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const
 {
-    if (!_curve) return RENDER_OK;
+    if (!_curve) {
+        return RENDER_OK;
+    }
 
     auto visible = area & _bbox;
-    if (!visible) return RENDER_OK; // skip if not within bounding box
+    if (!visible) {
+        return RENDER_OK; // skip if not within bounding box
+    }
 
     bool outline = flags & RENDER_OUTLINE;
 
@@ -194,7 +204,7 @@ unsigned DrawingShape::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRec
         return RENDER_OK;
     }
 
-    if (_nrstyle.paint_order_layer[0] == DrawingStyle::PAINT_ORDER_NORMAL) {
+    if (_style.paint_order_layer[0] == DrawingStyle::PAINT_ORDER_NORMAL) {
         // This is the most common case, special case so we don't call get_pathvector(), etc. twice
 
         {
@@ -205,30 +215,30 @@ unsigned DrawingShape::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRec
             // update fill and stroke paints.
             // this cannot be done during nr_arena_shape_update, because we need a Cairo context
             // to render svg:pattern
-            auto has_fill   = _nrstyle.prepareFill(dc, rc, *visible, _item_bbox, _fill_pattern);
-            auto has_stroke = _nrstyle.prepareStroke(dc, rc, *visible, _item_bbox, _stroke_pattern);
-            if (!_nrstyle.hairline && _nrstyle.stroke_width == 0) {
+            auto has_fill   = _style.prepareFill(dc, rc, *visible, _item_bbox, _fill_pattern);
+            auto has_stroke = _style.prepareStroke(dc, rc, *visible, _item_bbox, _stroke_pattern);
+            if (!_style.hairline && _style.stroke_width == 0) {
                 has_stroke.reset();
             }
             if (has_fill || has_stroke) {
                 dc.path(*_curve);
                 // TODO: remove segments outside of bbox when no dashes present
                 if (has_fill) {
-                    _nrstyle.applyFill(dc, *has_fill);
+                    _style.applyFill(dc, *has_fill);
                     dc.fillPreserve();
                 }
-                if (_nrstyle.vector_effect_stroke) {
+                if (_style.vector_effect_stroke) {
                     dc.restore();
                     dc.save();
                 }
                 if (has_stroke) {
-                    _nrstyle.applyStroke(dc, *has_stroke);
+                    _style.applyStroke(dc, *has_stroke);
 
                     // If the draw mode is set to visible hairlines, don't let anything get smaller
                     // than half a pixel.
                     if (flags & RENDER_VISIBLE_HAIRLINES) {
                         auto half_pixel_size = dc.device_to_user_distance({1.0, 0.0}).length() * 0.5;
-                        if (_nrstyle.stroke_width < half_pixel_size) {
+                        if (_style.stroke_width < half_pixel_size) {
                             dc.setLineWidth(half_pixel_size);
                         }
                     }
@@ -244,7 +254,7 @@ unsigned DrawingShape::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRec
     }
 
     // Handle different paint orders
-    for (auto &i : _nrstyle.paint_order_layer) {
+    for (auto &i : _style.paint_order_layer) {
         switch (i) {
             case DrawingStyle::PAINT_ORDER_FILL:
                 _renderFill(dc, rc, *visible);
@@ -269,7 +279,7 @@ void DrawingShape::_clipItem(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     if (!_curve) return;
 
     Context::Save save(dc);
-    dc.setFillRule(_nrstyle.clip_rule);
+    dc.setFillRule(_style.clip_rule);
     dc.transform(_ctm);
     dc.path(*_curve);
     dc.fill();
@@ -288,7 +298,7 @@ DrawingItem *DrawingShape::_pickItem(Geom::Point const &p, double delta, Geom::O
     bool outline = flags & PICK_OUTLINE;
     bool pick_as_clip = flags & PICK_AS_CLIP;
 
-    if (_nrstyle.opacity == 0.0 && !outline && !pick_as_clip && !_drawing.selectZeroOpacity()) {
+    if (_style.opacity == 0.0 && !outline && !pick_as_clip && !_drawing.selectZeroOpacity()) {
         // fully transparent, no pick unless outline mode
         return nullptr;
     }
@@ -301,8 +311,8 @@ DrawingItem *DrawingShape::_pickItem(Geom::Point const &p, double delta, Geom::O
                    // this overrides display mode and stroke style considerations
     } else if (outline) {
         width = 0.5; // in outline mode, everything is stroked with the same 0.5px line width
-    } else if (_nrstyle.stroke.type != DrawingStyle::PaintType::NONE && (_nrstyle.stroke.opacity > 1e-3 || _drawing.selectZeroOpacity())) {
-        auto stroke_width = _nrstyle.hairline ? 1 : _nrstyle.stroke_width;
+    } else if (_style.stroke.type != DrawingStyle::PaintType::NONE && (_style.stroke.opacity > 1e-3 || _drawing.selectZeroOpacity())) {
+        auto stroke_width = _style.hairline ? 1 : _style.stroke_width;
         // for normal picking calculate the distance corresponding top the stroke width
         double scale = max_expansion(_ctm);
         width = std::max(0.125, stroke_width * scale) / 2;
@@ -312,8 +322,8 @@ DrawingItem *DrawingShape::_pickItem(Geom::Point const &p, double delta, Geom::O
 
     double dist = Geom::infinity();
     int wind = 0;
-    bool needfill = pick_as_clip || (_nrstyle.fill.type != DrawingStyle::PaintType::NONE && (_nrstyle.fill.opacity > 1e-3  || _drawing.selectZeroOpacity()) && !outline);
-    bool wind_evenodd = (pick_as_clip ? _nrstyle.clip_rule : _nrstyle.fill_rule) == SP_WIND_RULE_EVENODD;
+    bool needfill = pick_as_clip || (_style.fill.type != DrawingStyle::PaintType::NONE && (_style.fill.opacity > 1e-3  || _drawing.selectZeroOpacity()) && !outline);
+    bool wind_evenodd = (pick_as_clip ? _style.clip_rule : _style.fill_rule) == SP_WIND_RULE_EVENODD;
 
     // actual shape picking
     if (area_world) {

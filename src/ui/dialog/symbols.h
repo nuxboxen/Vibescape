@@ -29,7 +29,7 @@
 #include <gtkmm/treemodelfilter.h>             // for TreeModelFilter
 #include <gtkmm/treemodelsort.h>               // for TreeModelSort
 
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "ui/dialog/dialog-base.h"
 #include "ui/iconview-item-factory.h"
 #include "ui/operation-blocker.h"
@@ -178,7 +178,7 @@ private:
 
     /* For rendering the template drawing */
     unsigned key;
-    Inkscape::Drawing renderDrawing;
+    Renderer::Drawing renderDrawing;
     sigc::scoped_connection _defs_modified;
     sigc::scoped_connection _doc_resource_changed;
     sigc::scoped_connection _idle_refresh;

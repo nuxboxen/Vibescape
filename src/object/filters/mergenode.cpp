@@ -21,12 +21,6 @@
 #include "slot-resolver.h"  // for SlotResolver
 #include "util/optstr.h"    // for assign
 
-class SPDocument;
-
-namespace Inkscape::XML {
-class Node;
-} // namespace Inkscape::XML
-
 void SPFeMergeNode::build(SPDocument */*document*/, Inkscape::XML::Node */*repr*/)
 {
     readAttr(SPAttr::IN_);

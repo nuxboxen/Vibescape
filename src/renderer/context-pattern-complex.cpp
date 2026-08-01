@@ -39,7 +39,7 @@ GradientShadow::Gradients GradientShadow::_build_gradients(Colors::Color const &
     rg.addColorStop(1.0, color.withOpacity(0.0), _ease);
     // Linear from the bottom of the unit square
     auto lg = LinearGradientPattern(color.getSpace(), 1, 1, 1, 0);
-    lg.setExtend(Cairo::Pattern::Extend::REPEAT);
+    lg.setExtend(Cairo::Pattern::Extend::PAD);
     lg.copyColorStops(rg);
     return {rg, lg};
 }

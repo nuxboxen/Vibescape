@@ -37,7 +37,7 @@ void Blend::render(Slot &slot) const
     auto input2 = slot.get_copy(_input2, _color_space);
 
     if (input1 && input2) {
-        auto context = Context(input2);
+        auto context = Context(*input2);
         context.setSource(*input1);
         // All of the blend modes are implemented in Cairo as of 1.10.
         // For a detailed description, see:

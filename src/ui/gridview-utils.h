@@ -24,6 +24,10 @@ namespace Gio {
 class ListStoreBase;
 }
 
+namespace Inkscape::Renderer {
+class Pattern;
+}
+
 namespace Inkscape::UI::Utils {
 
 class GridViewList : public Gtk::FlowBox {
@@ -41,7 +45,7 @@ public:
         const Glib::ustring& icon,
         const Glib::ustring& tooltip,
         std::optional<Colors::Color> color,
-        Cairo::RefPtr<Cairo::Pattern> pattern,
+        std::shared_ptr<Renderer::Pattern> pattern,
         bool is_swatch = false,
         bool is_radial = false);
 

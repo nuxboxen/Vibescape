@@ -546,27 +546,19 @@ void PaintAttribute::PaintStrip::set_preview(const SPIPaint& paint, double paint
             unsigned int background = 0xffffffff; // use white background for patterns
             // create a pattern preview with arbitrarily selected width
             auto surface = PatternManager::get().get_preview(server, 200, COLOR_TILE, background, _color_preview.get_scale_factor());
-            auto pat = Cairo::SurfacePattern::create(surface);
-            pat->set_extend(Cairo::Pattern::Extend::REPEAT);
-            _color_preview.setPattern(pat);
+            // TODO auto pat = std::shared_ptr<Renderer::Pattern>(surface);
+            // pat->set_extend(Cairo::Pattern::Extend::REPEAT);
+            // _color_preview.setPattern(pat);
             _color_preview.setIndicator(ColorPreview::None);
         }
         else {
             // gradients
             auto server = cast<SPGradient>(paint.href->getObject());
-            std::vector<ColorPreview::GradientStops> gradient;
             server->ensureVector();
-            for (auto& stop : server->vector.stops) {
-                if (stop.color.has_value()) {
-                    double opacity = 1;
-                    auto c = stop.color->toRGBA(opacity);
-                    gradient.push_back({stop.offset, SP_RGBA32_R_F(c), SP_RGBA32_G_F(c), SP_RGBA32_B_F(c), SP_RGBA32_A_F(c)});
-                }
-            }
+            _color_preview.set_gradient(server->vector.stops);
+            _color_preview.setIndicator(ColorPreview::None);
             _paint_icon.set_from_icon_name(is<SPRadialGradient>(server) ? "paint-gradient-radial" : "paint-gradient-linear");
             _paint_icon.set_visible();
-            _color_preview.set_gradient(gradient);
-            _color_preview.setIndicator(ColorPreview::None);
         }
         show();
     }

@@ -27,6 +27,8 @@
 #include "object/sp-radial-gradient.h"
 #include "style.h"
 
+#include "renderer/surface-image.h"
+
 namespace Inkscape {
 namespace Extension {
 namespace Internal {
@@ -245,10 +247,10 @@ void PrintMetafile::hatch_classify(char *name, int *hatchType, U_COLORREF *hatch
 //    otherwise hatchType is set to -1 and hatchColor is not defined.
 //
 
-void PrintMetafile::brush_classify(SPObject *parent, int depth, Inkscape::Pixbuf const **epixbuf, int *hatchType, U_COLORREF *hatchColor, U_COLORREF *bkColor)
+void PrintMetafile::brush_classify(SPObject *parent, int depth, Cairo::RefPtr<Cairo::ImageSurface> *epixbuf, int *hatchType, U_COLORREF *hatchColor, U_COLORREF *bkColor)
 {
     if (depth == 0) {
-        *epixbuf    = nullptr;
+        *epixbuf    = {};
         *hatchType  = -1;
         *hatchColor = U_RGB(0, 0, 0);
         *bkColor    = U_RGB(255, 255, 255);
@@ -274,7 +276,7 @@ void PrintMetafile::brush_classify(SPObject *parent, int depth, Inkscape::Pixbuf
             }
         }
     } else if (auto img = cast<SPImage>(parent)) {
-        *epixbuf = img->pixbuf.get();
+        *epixbuf = img->image->exportToARGB32(); // Narrows data and destroys color space information
         return;
     } else { // some inkscape rearrangements pass through nodes between pattern and image which are not classified as either.
         for (auto& child: parent->children) {

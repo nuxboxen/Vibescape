@@ -53,7 +53,7 @@ void Image::render(Slot &slot) const
     Geom::Rect sa = *slot.get_item_options().get_slot_box();
     auto out = std::make_shared<Surface>(sa.dimensions().round(), device_scale, _color_space);
 
-    Context dc(out);
+    Context dc(*out);
     Geom::Affine user2pb = slot.get_item_options().get_matrix_user2pb();
     dc.transform(user2pb); // we are now in primitive units
 

@@ -24,7 +24,7 @@
 
 #include "document.h"
 
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 
 #include "extension/print.h"
 #include "extension/system.h"
@@ -106,7 +106,7 @@ void sp_print_document_to_file(SPDocument *doc, gchar const *filename)
     /* fixme: This has to go into module constructor somehow */
     /* Create new drawing */
     mod->base = doc->getRoot();
-    Inkscape::Drawing drawing;
+    Inkscape::Renderer::Drawing drawing;
     mod->dkey = SPItem::display_key_new(1);
     mod->root = (mod->base)->invoke_show(drawing, mod->dkey, SP_ITEM_SHOW_DISPLAY);
     drawing.setRoot(mod->root);

@@ -13,6 +13,7 @@
 #include <glibmm/uriutils.h>
 #include <gtkmm/columnview.h>
 #include <gtkmm/filterlistmodel.h>
+#include <gtkmm/image.h>
 #include <gtkmm/liststore.h>
 #include <gtkmm/noselection.h>
 #include <gtkmm/paned.h>
@@ -40,11 +41,12 @@
 #include "object/sp-symbol.h"
 #include "object/sp-use.h"
 #include "rdf.h"
+#include "renderer/surface.h"
+#include "renderer/surface-texture.h"
 #include "selection.h"
 #include "style.h"
 #include "ui/builder-utils.h"
 #include "ui/dialog/choose-file.h"
-#include "ui/dialog/save-image.h"
 #include "ui/icon-names.h"
 #include "ui/themes.h"
 #include "ui/util.h"
@@ -528,7 +530,7 @@ DocumentResources::DocumentResources()
         case Images:
             // extract selected image
             if (auto rsrc = selected_item()) {
-                extract_image(window, cast<SPImage>(rsrc->object));
+                // TODO WTF does this even do? extract_image(window, cast<SPImage>(rsrc->object));
             }
             break;
         case Colors:
@@ -576,7 +578,7 @@ void DocumentResources::update_buttons() {
 
 Cairo::RefPtr<Cairo::Surface> render_color(uint32_t rgb, double size, double radius, int device_scale) {
     Cairo::RefPtr<Cairo::Surface> nul;
-    return add_background_to_image(nul, rgb, size / 2, radius, device_scale, 0x7f7f7f00);
+    return {}; // TODO add_background_to_image(nul, rgb, size / 2, radius, device_scale, 0x7f7f7f00);
 }
 
 void collect_object_colors(SPObject& obj, Colors::ColorSet &colors) {
@@ -884,7 +886,7 @@ void add_colors(Glib::RefPtr<Gio::ListStoreBase>& item_store, Colors::ColorSet c
 
         int size = 20;
         double radius = 2.0;
-        auto image = to_texture(render_color(rgba32, size, radius, device_scale));
+        auto image = Renderer::build_texture(render_color(rgba32, size, radius, device_scale));
 
         item_store->append(details::ResourceItem::create(name, name, image, nullptr, false, rgb24));
     }
@@ -906,7 +908,7 @@ void _add_items_with_images(Glib::RefPtr<Gio::ListStoreBase>& item_store, const 
             auto labelstr = item->getAttribute("inkscape:label");
             label = label_fmt(labelstr, id);
         }
-        auto image = to_texture(renderer.render(*item, width, height, device_scale, opt));
+        auto image = Renderer::build_texture(renderer.render(*item, width, height, device_scale, opt));
         item_store->append(details::ResourceItem::create(id, label, image, item));
     }
 

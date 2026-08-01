@@ -12,7 +12,10 @@
 
 #include "Layout-TNG.h"
 #include "style-attachments.h"
-#include "display/drawing-text.h"
+
+#include "object/sp-paint-server.h"
+#include "style.h"
+#include "renderer/drawing/drawing-text.h"
 #include "print.h"
 #include "extension/print.h"
 #include "livarot/Path.h"
@@ -141,7 +144,7 @@ Geom::Affine Layout::Glyph::transform(Layout const &layout) const
     return matrix;
 }
 
-void Layout::show(DrawingGroup *parent, StyleAttachments &style_attachments, Geom::OptRect const &paintbox) const
+void Layout::show(Renderer::DrawingGroup *parent, StyleAttachments &style_attachments, Geom::OptRect const &paintbox) const
 {
     int glyph_index = 0;
     double phase0 = 0.0;
@@ -180,7 +183,7 @@ void Layout::show(DrawingGroup *parent, StyleAttachments &style_attachments, Geo
             style->text_decoration_data.line_through_position  = 0.0;
         }
 
-        auto drawing_text = new DrawingText(parent->drawing());
+        auto drawing_text = new Renderer::DrawingText(parent->drawing());
 
         if (style->filter.set) {
             if (auto filter = style->getFilter()) {

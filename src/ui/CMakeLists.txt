@@ -28,8 +28,6 @@ target_sources(inkscape_base PRIVATE
 	util.cpp
 	modifiers.cpp
 
-	cache/svg_preview_cache.cpp
-
 	desktop/document-check.cpp
 	desktop/menubar.cpp
 	desktop/menu-set-tooltips-shift-icons.cpp
@@ -162,7 +160,6 @@ target_sources(inkscape_base PRIVATE
 	dialog/polar-arrange-tab.cpp
 	dialog/print.cpp
 	dialog/prototype.cpp
-	dialog/save-image.cpp
 	dialog/selectorsdialog.cpp
 	dialog/startup.cpp
 	dialog/styledialog.cpp
@@ -254,7 +251,6 @@ target_sources(inkscape_base PRIVATE
 	widget/gradient-with-stops.cpp
         widget/gtk-registry.cpp
         widget/generic/icon-combobox.cpp
-	widget/handle-preview.cpp
 	widget/image-properties.cpp
 	widget/imagetoggler.cpp
 	widget/ink-color-wheel.cpp
@@ -350,8 +346,6 @@ target_sources(inkscape_base PRIVATE
 	util.h
 	modifiers.h
 
-	cache/svg_preview_cache.h
-
 	desktop/document-check.h
 	desktop/menubar.h
 	desktop/menu-set-tooltips-shift-icons.h
@@ -403,7 +397,6 @@ target_sources(inkscape_base PRIVATE
 	dialog/polar-arrange-tab.h
 	dialog/print.h
 	dialog/prototype.h
-	dialog/save-image.h
 	dialog/selectorsdialog.h
 	dialog/startup.h
 	dialog/styledialog.h
@@ -591,7 +584,6 @@ target_sources(inkscape_base PRIVATE
 	widget/gradient-with-stops.h
         widget/gtk-registry.h
         widget/generic/icon-combobox.h
-	widget/handle-preview.h
 	widget/image-properties.h
 	widget/imagetoggler.h
 	widget/ink-color-wheel.h

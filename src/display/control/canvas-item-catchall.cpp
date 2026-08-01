@@ -47,7 +47,7 @@ void CanvasItemCatchall::_update(bool)
 /**
  * Render catchall to screen via Cairo.
  */
-void CanvasItemCatchall::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemCatchall::_render(Inkscape::CanvasItemBuffer buf) const
 {
     // Do nothing! (Needed as CanvasItem is abstract.)
 }

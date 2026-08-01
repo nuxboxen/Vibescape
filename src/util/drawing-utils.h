@@ -9,9 +9,6 @@
 
 namespace Inkscape::Util {
 
-// create a rectangular path with rounded corners
-Geom::Rect rounded_rectangle(const Cairo::RefPtr<Cairo::Context>& ctx, const Geom::Rect& rect, double radius);
-
 // draw a shaded border around given area using draw_path function
 void draw_border_shape(const Cairo::RefPtr<Cairo::Context>& ctx, Geom::Rect rect, const Gdk::RGBA& color, int device_scale, std::function<void (const Cairo::RefPtr<Cairo::Context>&, Geom::Rect&, int)> draw_path);
 

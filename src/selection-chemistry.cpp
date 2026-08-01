@@ -36,16 +36,14 @@
 #include "context-fns.h"
 #include "desktop-style.h"
 #include "desktop.h"
-#include "display/cairo-utils.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-drawing.h"
 #include "path/path-curve.h"
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "document-undo.h"
 #include "file.h"
 #include "filter-chemistry.h"
 #include "gradient-drag.h"
-#include "helper/pixbuf-ops.h"
 #include "layer-manager.h"
 #include "live_effects/effect.h"
 #include "live_effects/lpeobject.h"
@@ -3499,6 +3497,7 @@ void ObjectSet::createBitmapCopy()
     }
 
     // anti-aliasing override
+    /*
     std::optional<Antialiasing> antialias;
     if (auto nv = doc->getNamedView()) {
         // if off, then disable antialiasing; if on, then let SVG dictate what it is
@@ -3510,9 +3509,11 @@ void ObjectSet::createBitmapCopy()
     Inkscape::Pixbuf *pb = sp_generate_internal_bitmap(doc, *bbox, res, items_vec, false, nullptr, 1, antialias);
 
     if (pb) {
+    */
+    if (false) {
         // Create the repr for the image
         Inkscape::XML::Node * repr = xml_doc->createElement("svg:image");
-        sp_embed_image(repr, pb);
+        //sp_embed_image(repr, pb);
         repr->setAttributeSvgDouble("width", bbox->width());
         repr->setAttributeSvgDouble("height", bbox->height());
 
@@ -3532,7 +3533,6 @@ void ObjectSet::createBitmapCopy()
 
         // Clean up
         Inkscape::GC::release(repr);
-        delete pb;
 
         // Complete undoable transaction
         DocumentUndo::done(doc, RC_("Undo", "Create bitmap"), INKSCAPE_ICON("selection-make-bitmap-copy"));
@@ -3648,7 +3648,7 @@ void ObjectSet::chameleonFill()
     doc->ensureUpToDate();
 
     // Build a new drawing so our manipulations don't corupt to canvas
-    Drawing drawing;
+    Renderer::Drawing drawing;
     unsigned dkey = SPItem::display_key_new(1);
     auto root = doc->getRoot()->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY);
     drawing.setRoot(root);

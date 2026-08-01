@@ -14,7 +14,7 @@
 #define SP_FEDISPLACEMENTMAP_H_SEEN
 
 #include "sp-filter-primitive.h"
-#include "display/nr-filter-types.h"
+#include "renderer/drawing-filters/enums.h"
 
 enum FilterDisplacementMapChannelSelector
 {
@@ -39,7 +39,7 @@ protected:
     Inkscape::XML::Node *write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr, unsigned flags) override;
 
     void resolve_slots(SlotResolver &) override;
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 
 private:
     double scale = 0.0;
@@ -47,7 +47,7 @@ private:
     FilterDisplacementMapChannelSelector yChannelSelector = DISPLACEMENTMAP_CHANNEL_ALPHA;
 
     std::optional<std::string> in2_name;
-    int in2_slot = Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
+    int in2_slot = Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
 };
 
 #endif // SP_FEDISPLACEMENTMAP_H_SEEN

@@ -12,6 +12,7 @@
 #include "colors/manager.h"
 #include "colors/spaces/base.h"
 
+#include "renderer/code-builder.h"
 #include "renderer/context.h"
 #include "renderer/drawing-filters/filter.h"
 #include "renderer/drawing-filters/primitive.h"
@@ -71,6 +72,7 @@ DrawingItem::DrawingItem(Drawing &drawing)
     , _isolation(SP_CSS_ISOLATION_AUTO)
     , _blend_mode(SP_CSS_BLEND_NORMAL)
 {
+    if (drawing._code_build) CodeBuilder::Construct(*this, "DrawingItem", "item", {}, {"DrawingGroup", "DrawingImage", "DrawingShape", "DrawingGlyphs"}) << drawing;
 }
 
 DrawingItem::~DrawingItem()
@@ -114,6 +116,8 @@ bool DrawingItem::unisolatedBlend() const
 
 void DrawingItem::appendChild(DrawingItem *item)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "appendChild") << item;
+
     // Ok to perform non-deferred modification of child, because not part of rendering tree yet.
     assert(item->_child_type == ChildType::ORPHAN);
     item->_parent = this;
@@ -134,6 +138,8 @@ void DrawingItem::appendChild(DrawingItem *item)
 
 void DrawingItem::prependChild(DrawingItem *item)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "prependChild") << item;
+
     // See appendChild for explanations.
     assert(item->_child_type == ChildType::ORPHAN);
     item->_parent = this;
@@ -164,6 +170,8 @@ void DrawingItem::setTransform(Geom::Affine const &transform)
         auto current = _transform ? *_transform : Geom::identity();
         if (Geom::are_near(transform, current, EPS)) return;
 
+        if (drawing()._code_build) CodeBuilder::Call(*this, "setTransform") << transform;
+
         _markForRendering();
         _transform = transform.isIdentity(EPS) ? nullptr : std::make_unique<Geom::Affine>(transform);
         _markForUpdate(STATE_ALL, true);
@@ -174,6 +182,9 @@ void DrawingItem::setOpacity(float opacity)
 {
     defer([=, this] {
         if (opacity == _opacity) return;
+
+        if (drawing()._code_build) CodeBuilder::Call(*this, "setOpacity") << opacity;
+
         _opacity = opacity;
         _markForRendering();
     });
@@ -194,6 +205,9 @@ void DrawingItem::setAntialiasing(Antialiasing antialias)
 {
     defer([=, this] {
         if (_antialias == antialias) return;
+
+        if (drawing()._code_build) CodeBuilder::Call(*this, "setAntialiasing") << "Antialiasing::Good";
+
         _antialias = antialias;
         _markForRendering();
     });
@@ -212,6 +226,9 @@ void DrawingItem::setBlendMode(SPBlendMode blend_mode)
 {
     defer([=, this] {
         if (blend_mode == _blend_mode) return;
+
+        if (drawing()._code_build) CodeBuilder::Call(*this, "setBlendMode") << blend_mode;
+
         _blend_mode = blend_mode;
         _markForRendering();
     });
@@ -221,6 +238,9 @@ void DrawingItem::setVisible(bool visible)
 {
     defer([=, this] {
         if (visible == _visible) return;
+
+        if (drawing()._code_build) CodeBuilder::Call(*this, "setVisible") << visible;
+        
         _visible = visible;
         _markForRendering();
     });
@@ -231,6 +251,37 @@ void DrawingItem::setSensitive(bool sensitive)
     defer([=, this] { // Must be deferred, since in bitfield.
         _sensitive = sensitive;
     });
+}
+
+void DrawingItem::setStyle(SPStyle const *style, SPStyle const *context_style)
+{
+    if (style && drawing()._code_build) {
+        CodeBuilder::get().maybeConstruct(*style);
+        if (context_style) {
+            CodeBuilder::get().maybeConstruct(*context_style);
+            CodeBuilder::Call(*this, "setStyle", true) << style << context_style;
+        } else {
+            CodeBuilder::Call(*this, "setStyle", true) << style;
+        }
+    }
+
+    defer([this, style_obj = DrawingStyle(style, context_style)] () mutable {
+        _style = std::move(style_obj);
+    });
+}
+
+void DrawingItem::setChildrenStyle(SPStyle const *style)
+{
+    if (style) {
+        if (drawing()._code_build) CodeBuilder::get().maybeConstruct(*style);
+        CodeBuilder::Call(*this, "setChildrenStyle") << style;
+    }
+    defer([this, style] () mutable {
+        _style.set_context_style(style);
+    });
+    for (auto &i : _children) {
+        i.setChildrenStyle(style);
+    }
 }
 
 /**
@@ -265,6 +316,8 @@ void DrawingItem::_setCached(bool cached, bool persistent)
 
 void DrawingItem::setClip(DrawingItem *item)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setClip") << item;
+
     if (item) {
         assert(item->_child_type == ChildType::ORPHAN);
         item->_parent = this;
@@ -281,6 +334,8 @@ void DrawingItem::setClip(DrawingItem *item)
 
 void DrawingItem::setMask(DrawingItem *item)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setMask") << item;
+
     if (item) {
         assert(item->_child_type == ChildType::ORPHAN);
         item->_parent = this;
@@ -297,6 +352,8 @@ void DrawingItem::setMask(DrawingItem *item)
 
 void DrawingItem::setFillPattern(DrawingPattern *pattern)
 {
+    if (drawing()._code_build && pattern) CodeBuilder::Call(*this, "setFillPattern") << pattern;
+
     if (pattern) {
         assert(pattern->_child_type == ChildType::ORPHAN);
         pattern->_parent = this;
@@ -313,6 +370,8 @@ void DrawingItem::setFillPattern(DrawingPattern *pattern)
 
 void DrawingItem::setStrokePattern(DrawingPattern *pattern)
 {
+    if (drawing()._code_build && pattern) CodeBuilder::Call(*this, "setStrokePattern") << pattern;
+
     if (pattern) {
         assert(pattern->_child_type == ChildType::ORPHAN);
         pattern->_parent = this;
@@ -345,6 +404,8 @@ void DrawingItem::setZOrder(unsigned zorder)
 
 void DrawingItem::setItemBounds(Geom::OptRect const &bounds)
 {
+    if (bounds && drawing()._code_build) CodeBuilder::Call(*this, "setItemBounds") << *bounds;
+
     defer([=, this] {
         _item_bbox = bounds;
     });
@@ -382,6 +443,8 @@ void DrawingItem::setFilterRenderer(std::unique_ptr<DrawingFilter::Filter> filte
  */
 void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "update") << area << ctx.ctm << (int)flags << reset;
+
     // We don't need to update what is not visible
     if (!_visible) {
         _state = STATE_ALL; // Touch the state for future change to this item
@@ -411,7 +474,7 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
 
     // this needs to be called before we recurse into children
     if (to_update & STATE_BACKGROUND) {
-        _background_accumulate = _nrstyle.background_new;
+        _background_accumulate = _style.background_new;
         if (_child_type == ChildType::NORMAL && _parent->_background_accumulate)
             _background_accumulate = true;
     }
@@ -422,11 +485,11 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
     }
 
     // Vector effects
-    if (_nrstyle.vector_effect_fixed) {
+    if (_style.vector_effect_fixed) {
         child_ctx.ctm.setTranslation(Geom::Point(0, 0));
     }
 
-    if (_nrstyle.vector_effect_size) {
+    if (_style.vector_effect_size) {
         double value = child_ctx.ctm.descrim();
         if (value > 0.0) {
             child_ctx.ctm[0] /= value;
@@ -436,7 +499,7 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
         }
     }
 
-    if (_nrstyle.vector_effect_rotate) {
+    if (_style.vector_effect_rotate) {
         double value = child_ctx.ctm.descrim();
         child_ctx.ctm[0] = value;
         child_ctx.ctm[1] = 0.0;
@@ -663,7 +726,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     // When this happens, we want to enforce the use of RGB so the results can
     // be combined correctly. Use of INT8 surface can only combine with other INT8 surfaces
     static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-    auto interp_space = _nrstyle.color_interpolation;
+    auto interp_space = _style.color_interpolation;
     auto target_space = (!interp_space && dc.getColorSpace()) ? srgb : interp_space;
 
     std::unique_lock<std::mutex> lock;
@@ -749,7 +812,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
 
     auto intermediate = std::make_shared<Surface>(carea->dimensions(), device_scale, target_space);
 {
-    Context ict(intermediate, carea->dimensions());
+    Context ict(*intermediate, carea->min());
     ict.set_antialias(dc.get_antialias()); // propagate antialias setting
 
     // This path fails for patterns/hatches when stepping the pattern to handle overflows.
@@ -810,33 +873,46 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
             ) && _background_accumulate) {
             auto bg_root = this;
             for (; bg_root; bg_root = bg_root->_parent) {
-                if (bg_root->_nrstyle.background_new || bg_root->_filter) break;
+                if (bg_root->_style.background_new || bg_root->_filter) break;
             }
             if (bg_root) {
                 bg = std::make_shared<Surface>(carea->dimensions(), device_scale, target_space);
-                Context bgdc(bg);
+                Context bgdc(*bg);
                 bg_root->render(bgdc, rc, *carea, flags | RENDER_FILTER_BACKGROUND, this);
             }
         }
-        _filter->render(*carea, ctm(), itemBounds(), ict.getSurface(), bg, rc);
-    } else {
-        std::cout << "4. No filter\n";
+        _filter->render(*carea, ctm(), itemBounds(), intermediate, bg, rc);
     }
-
 }
 
     // Both may ne null, not not either, see above where a null target_space is
     // converted to sRGB when the dc has a non-null color space set.
-    if (target_space != dc.getColorSpace()) {
+    auto src_space = intermediate->getColorSpace();
+    auto dest_space = dc.getSurfaceColorSpace();
+    if (!src_space && dest_space) {
+        // This means the destination is floating point and the source is integer
+        std::cerr << "Warning: Slowly converting from Integer to Floating point in drawing surface!\n";
+        auto floating_surface = intermediate->convertedToFloat();
+        intermediate = std::make_shared<Renderer::Surface>(std::move(floating_surface));
+        src_space = intermediate->getColorSpace();
+    }
+
+    if (src_space && dest_space && src_space != dest_space) {
         if (target_space->getComponentCount() == dc.getColorSpace()->getComponentCount()) {
+            std::cout << "Converting color space in place\n";
             intermediate->convertToColorSpace(dc.getColorSpace());
         } else {
             // Makes another copy, so not good.
+            std::cout << "Converting color space with copy\n";
             intermediate = intermediate->convertedToColorSpace(dc.getColorSpace());
         }
     }
-    //static int c = 0;
-    //intermediate->write_to_png("/tmp/p/int-color-" + std::to_string(c++) + "-");
+    if (!dest_space && src_space) {
+        // This means the target is integer and the source is floating point
+        std::cerr << "Warning: Slowly converting from Floating point to Integer in drawing surface!\n";
+        auto int_surface = intermediate->convertedToInt();
+        intermediate = std::make_shared<Renderer::Surface>(std::move(int_surface));
+    }
 
     // 6. Paint the completed rendering onto the base context (or into cache)
     if (_cache && !(flags & RENDER_BYPASS_CACHE)) {
@@ -846,7 +922,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
         assert(lock);
         assert(_cache->surface);
 
-        auto cachect = Context(_cache->surface);
+        auto cachect = Context(*_cache->surface);
         cachect.rectangle(*carea);
         cachect.set_operator(Cairo::Context::Operator::SOURCE);
         cachect.setSource(*intermediate);
@@ -857,6 +933,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     dc.save(); // Prevent Translate from accumulating
     dc.translate(Geom::Translate(carea->min()));
     dc.rectangle(Geom::Rect::from_xywh({0, 0}, carea->dimensions()));
+
     dc.setSource(*intermediate);
 
     // 7. Render blend mode

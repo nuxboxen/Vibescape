@@ -66,14 +66,16 @@ public:
 
     // do not call directly; only used for invisible handle
     void _set_size(int size);
+
+    static std::shared_ptr<Renderer::Surface> draw_handles_preview(int device_scale);
 protected:
     ~CanvasItemCtrl() override = default;
 
     void _update(bool propagate) override;
-    void _render(CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
     void _invalidate_ctrl_handles() override;
 
-    void build_cache(int device_scale) const;
+    void build_cache(int device_scale, std::shared_ptr<Colors::Space::AnySpace> const &color_space) const;
     float get_width() const;
     float get_total_width() const;
 
@@ -82,7 +84,7 @@ private:
     Geom::Point _position;
     // Display
     InitLock _built;
-    mutable std::shared_ptr<Cairo::ImageSurface const> _cache;
+    mutable std::shared_ptr<Renderer::Surface const> _cache;
     // Properties
     Handles::TypeState _handle;
     CanvasItemCtrlShape _shape = CANVAS_ITEM_CTRL_SHAPE_SQUARE;

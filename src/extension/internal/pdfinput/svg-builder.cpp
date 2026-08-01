@@ -45,12 +45,11 @@
 #include "colors/document-cms.h"
 #include "colors/manager.h"
 #include "colors/spaces/cms.h"
-#include "display/cairo-utils.h"
-#include "display/nr-filter-utils.h"
 #include "object/color-profile.h"
 #include "object/sp-defs.h"
 #include "object/sp-namedview.h"
 #include "object/sp-text.h"
+#include "renderer/context-paths.h"
 #include "svg/css-ostringstream.h"
 #include "svg/path-string.h"
 #include "svg/svg.h"
@@ -1875,9 +1874,10 @@ Inkscape::XML::Node *SvgBuilder::_renderText(std::shared_ptr<CairoFont> cairo_fo
     cairo_t *cairo = cairo_create(surface);
     cairo_set_font_face(cairo, cairo_font->getFontFace());
     cairo_set_font_size(cairo, font_size);
-    ink_cairo_transform(cairo, transform);
+    auto cm = Cairo::Matrix(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
+    cairo_transform(cairo, &cm);
     cairo_glyph_path(cairo, cairo_glyphs, count);
-    auto pathv = extract_pathvector_from_cairo(cairo);
+    auto pathv = Renderer::extract_pathvector_from_cairo(cairo);
     cairo_destroy(cairo);
     cairo_surface_destroy(surface);
 

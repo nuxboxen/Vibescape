@@ -9,6 +9,7 @@
 
 #include "drawing-group.h"
 
+#include "renderer/code-builder.h"
 #include "renderer/context.h"
 #include "renderer/surface.h"
 
@@ -19,7 +20,10 @@
 namespace Inkscape::Renderer {
 
 DrawingGroup::DrawingGroup(Drawing &drawing)
-    : DrawingItem(drawing) {}
+    : DrawingItem(drawing)
+{
+    if (drawing._code_build) CodeBuilder::Construct(*this, "DrawingGroup", "group", "make_drawingitem", {"DrawingText", "DrawingPattern"}) << drawing;
+}
 
 /**
  * Set whether the group returns children from pick calls.
@@ -39,6 +43,8 @@ void DrawingGroup::setPickChildren(bool pick_children)
  */
 void DrawingGroup::setChildTransform(Geom::Affine const &transform)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setChildTransform") << transform;
+
     defer([=, this] {
         auto constexpr EPS = 1e-18;
         auto current = _child_transform ? *_child_transform : Geom::identity();

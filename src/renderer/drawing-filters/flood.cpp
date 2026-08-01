@@ -47,7 +47,7 @@ void Flood::render(Slot &slot) const
         if (d.x() < 0.0) d.x() = 0.0;
         if (d.y() < 0.0) d.y() = 0.0;
 
-        auto ct = Renderer::Context(out);
+        auto ct = Renderer::Context(*out);
         ct.setSource(color);
         ct.set_operator(Cairo::Context::Operator::SOURCE);
         ct.rectangle(Geom::Rect::from_xywh(d.x(), d.y(), overlap.width(), overlap.height()));

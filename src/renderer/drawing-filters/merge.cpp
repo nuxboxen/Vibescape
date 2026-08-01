@@ -27,7 +27,7 @@ void Merge::render(Slot &slot) const
     slot.set_primitive_area(_output, vp); // Needed for tiling
 
     if (auto out = slot.get(_input_image[0], _color_space)) {
-        auto ct = Context(out);
+        auto ct = Context(*out);
         for (auto &slot_n : _input_image) {
             if (auto in = slot.get(slot_n, _color_space)) {
                 ct.setSource(*in);

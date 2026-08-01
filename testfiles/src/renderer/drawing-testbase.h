@@ -52,7 +52,7 @@ public:
         Geom::IntRect bounds = {{0, 0}, size};
         Geom::Scale scale = {1, 1};
         surface = std::make_shared<Surface>(size, 1, space ? space : rgb);
-        context = std::make_unique<Context>(surface, bounds.min(), scale);
+        context = std::make_unique<Context>(*surface, bounds.min(), scale);
     }
 
     void assert_drawing(std::string const &result, std::optional<std::string> fail_png = {}, unsigned threshold = 10)

@@ -1,2 +1,4 @@
 leak:AddFontConfig
 leak:FcConfigCreate
+leak:pango_cairo_show_layout
+leak:FcFontRenderPrepare

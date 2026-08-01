@@ -208,7 +208,6 @@ public:
 
     void forEachPreviewPatternStop(std::function<void (double offset, Inkscape::Colors::Color const &col)> const &callback);
     Inkscape::Colors::Color getPreviewAverageColor();
-    cairo_pattern_t *create_preview_pattern(double width);
 
     /** Transforms to/from gradient position space in given environment */
     Geom::Affine get_g2d_matrix(Geom::Affine const &ctm,
@@ -237,12 +236,6 @@ protected:
 
     void set(SPAttr key, char const *value) override;
 };
-
-void
-sp_gradient_pattern_common_setup(cairo_pattern_t *cp,
-                                 SPGradient *gr,
-                                 Geom::OptRect const &bbox,
-                                 double opacity);
 
 #endif // SEEN_SP_GRADIENT_H
 

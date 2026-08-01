@@ -35,7 +35,7 @@ void DropShadow::render(Slot &slot) const
     auto offset = _offset;
 
     {
-        auto context = Context(out);
+        auto context = Context(*out);
         context.transform(Geom::Translate(offset));
         context.setSource(color);
         context.mask(*in);
@@ -45,7 +45,7 @@ void DropShadow::render(Slot &slot) const
     out = _render(slot, _output);
 
     {
-        auto context = Context(out);
+        auto context = Context(*out);
         context.setSource(*in);
         context.paint();
     }

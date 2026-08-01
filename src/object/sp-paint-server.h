@@ -24,11 +24,11 @@
 
 #include "object/sp-paint-server-data.h"
 
-namespace Inkscape {
+namespace Inkscape::Renderer {
 class Drawing;
 class DrawingPattern;
 class DrawingPaintServer;
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
 using namespace Inkscape;
 
@@ -56,7 +56,7 @@ public:
     virtual SPGradientUnits  getUnits() const { return SP_GRADIENT_UNITS_OBJECTBOUNDINGBOX; }
     virtual Geom::Affine     getGradientTransform() const { return Geom::identity(); }
 
-    virtual Inkscape::DrawingPattern *show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox);
+    virtual Inkscape::Renderer::DrawingPattern *show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox);
     virtual void hide(unsigned key);
     virtual void setBBox(unsigned key, Geom::OptRect const &bbox);
 

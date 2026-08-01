@@ -31,7 +31,7 @@ void Offset::render(Slot &slot) const
     double y = dy * p2pb.expansionY();
 
     {
-        auto ct = Context(out);
+        auto ct = Context(*out);
         ct.setSource(*in, x, y);
         ct.paint();
     }

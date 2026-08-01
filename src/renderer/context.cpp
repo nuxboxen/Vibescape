@@ -44,6 +44,17 @@ Geom::IntRect cairo_to_geom(const Cairo::RectangleInt &rect)
     return Geom::IntRect::from_xywh(rect.x, rect.y, rect.width, rect.height);
 }
 
+Geom::Affine rect_to_matrix(Geom::OptRect const &bbox)
+{
+    return bbox ? Geom::Affine(bbox->width(), 0, 0, bbox->height(), bbox->left(), bbox->top()) : Geom::identity();
+}
+
+Geom::Affine viewbox_matrix(Geom::Affine const &m, Geom::OptRect const &rect)
+{
+    return m * rect_to_matrix(rect);
+}
+
+
 /**
  * Create a context with a saved state, restores automatically on destruction.
  *
@@ -57,27 +68,28 @@ Context::Context(Context const &parent)
     : _cts(parent._cts)
     , _origin(parent._origin)
     , _format(parent._format)
-    , _surface(parent._surface)
+    , _device_scale(parent._device_scale)
+    , _dimensions(parent._dimensions)
+    , _surface_color_space(parent._surface_color_space)
     , _parent(&parent)
 {
-    save(); // Mirrors ~Context restore
+    save(); // See restore() in ~Context()
     if (parent._child) {
         throw Context::SaveRestoreError();
     }
     parent._child = this;
-    _surface->markInUse();
 }
 
-Context::Context(std::shared_ptr<Surface> surface, Geom::IntPoint origin, Geom::Scale const &logical_scale)
+Context::Context(Surface &surface, Geom::IntPoint origin, Geom::Scale const &logical_scale)
     : _origin(origin)
-    , _format(surface->format())
-    , _surface(surface)
+    , _format(surface.format())
+    , _device_scale(surface.getDeviceScale())
+    , _dimensions(surface.dimensions())
+    , _surface_color_space(surface.getColorSpace())
 {
-    surface->sanityCheckSurface(surface->getColorSpace());
-
-    for (auto cs : surface->getCairoSurfaces()) {
+    for (auto cs : surface.getCairoSurfaces()) {
         _cts.emplace_back(Cairo::Context::create(cs));
-        _cts.back()->save();
+        _cts.back()->save(); // See restore() in ~Context()
     }
     // Allow scale before origin translation
     if (logical_scale != Geom::identity()) {
@@ -86,12 +98,23 @@ Context::Context(std::shared_ptr<Surface> surface, Geom::IntPoint origin, Geom::
     if (origin != Geom::IntPoint()) {
         translate(Geom::Translate(-origin));
     }
-    _surface->markInUse();
+}
+
+std::shared_ptr<Colors::Space::AnySpace> Context::getColorSpace() const
+{
+    // Surfaces can have an unset color-space which means "int32" surface
+    // but a context must always have a color_space as it's used to convert
+    static auto const srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    return _surface_color_space ? _surface_color_space : srgb;
 }
 
 Context::Context(Cairo::RefPtr<Cairo::Context> ct)
     : _cts{std::move(ct)}
+    , _format(cairo_image_surface_get_format(cairo_get_target(_cts[0]->cobj())))
 {
+    if (_format == CAIRO_FORMAT_RGBA128F) {
+        _surface_color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    }
     save(); // See restore() in ~Context()
 }
 
@@ -105,22 +128,6 @@ Context::~Context()
     }
     restore();
     flush();
-    if (_surface) {
-        _surface->markNotInUse();
-    }
-}
-
-int Context::getDeviceScale() const
-{
-    return _surface->getDeviceScale();
-}
-Geom::IntPoint Context::getDimensions() const
-{
-    return _surface->dimensions();
-}
-std::shared_ptr<Colors::Space::AnySpace> Context::getColorSpace() const
-{
-    return _surface->getColorSpace();
 }
 
 void Context::arc(Geom::Point const &center, double radius, Geom::AngleInterval const &angle)
@@ -297,16 +304,24 @@ void Context::setFillRule(SPWindRule rule) {
 }
 
 void Context::setSource(Colors::Color const &color) {
+    bool has_alpha = color.hasOpacity();
     auto c = color.converted(getColorSpace())->getValues();
     auto a = 0.0;
-    std::swap(a, c.back());
+    if (has_alpha) {
+        // Remove the alpha so it's not copied into other channels
+        std::swap(a, c.back());
+    }
     c.resize(_cts.size() * 3);
     int i = 0;
     for (auto ct : _cts) {
         auto r = c[i++];
         auto g = c[i++];
         auto b = c[i++];
-        ct->set_source_rgba(r, g, b, a);
+        if (has_alpha) {
+            ct->set_source_rgba(r, g, b, a);
+        } else {
+            ct->set_source_rgb(r, g, b);
+        }
     }
 }
 
@@ -316,8 +331,12 @@ void Context::setSource(Surface const &surface, double x, double y,
 {
     auto &cairo_surfaces = surface.getCairoSurfaces();
 
-    // We're going to forbid data mixing in this layer; see PixelFilters instead.
-    surface.sanityCheckSurface(getColorSpace());
+    // Invalid surface format types come from GdkSnapshot and we don't know their
+    // format mixing rules so let's just LFDI....
+    if (_format != CAIRO_FORMAT_INVALID) {
+        // We're going to forbid data mixing in this layer; see PixelFilters instead.
+        surface.sanityCheckSurface(getSurfaceColorSpace());
+    }
 
     for (unsigned i = 0; i < _cts.size(); i++) {
         _cts[i]->set_source(cairo_surfaces[i], x, y);

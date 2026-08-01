@@ -26,12 +26,10 @@
 #include "bad-uri-exception.h"                   // for BadURIException
 #include "document.h"                            // for SPDocument
 
-#include "display/cairo-utils.h"                 // for Pixbuf
-#include "display/drawing-image.h"               // for DrawingImage
-#include "display/drawing-item.h"                // for DrawingItem
-#include "display/nr-filter-image.h"             // for FilterImage
-#include "display/nr-filter-primitive.h"         // for FilterPrimitive
-#include "display/nr-filter.h"                   // for Filter
+#include "renderer/drawing-forward.h"
+#include "renderer/drawing-filters/image.h"      // for FilterImage
+#include "renderer/drawing-filters/primitive.h"  // for FilterPrimitive
+#include "renderer/drawing-filters/filter.h"     // for Filter
 
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-item.h"                      // for SPItem, SP_ITEM_SHOW...
@@ -146,6 +144,7 @@ void SPFeImage::try_load_image()
      * (i.e. interpreting it as relative to our current working directory).
      * (See http://www.w3.org/TR/xmlbase/#resolution .) */
 
+    /*
     auto try_assign = [this] (char const *name) {
         if (!g_file_test(name, G_FILE_TEST_IS_REGULAR)) {
             return false;
@@ -174,6 +173,7 @@ void SPFeImage::try_load_image()
         }
         g_free(fullname);
     }
+    */
 }
 
 void SPFeImage::reread_href()
@@ -194,7 +194,7 @@ void SPFeImage::reread_href()
     } catch (Inkscape::BadURIException const &) {
         elemref->detach();
     }
-    pixbuf.reset();
+    // XXX pixbuf.reset();
     if (auto obj = elemref->getObject()) {
         elem = cast<SPItem>(obj);
         if (elem) {
@@ -205,7 +205,7 @@ void SPFeImage::reread_href()
         }
     } else {
         try_load_image();
-        if (pixbuf) {
+        if (false) { //pixbuf) {
             type = IMAGE;
         } else {
             type = NONE;
@@ -235,7 +235,7 @@ void SPFeImage::on_href_changed(SPObject *new_obj)
     }
 
     // Set type and image.
-    pixbuf.reset();
+    // XXX pixbuf.reset();
     if (new_obj) {
         elem = cast<SPItem>(new_obj);
         if (elem) {
@@ -246,7 +246,7 @@ void SPFeImage::on_href_changed(SPObject *new_obj)
         }
     } else {
         try_load_image();
-        if (pixbuf) {
+        if (false) { //pixbuf) {
             type = IMAGE;
         } else {
             type = NONE;
@@ -275,7 +275,7 @@ void SPFeImage::release()
     _href_changed_connection.disconnect();
     _href_modified_connection.disconnect();
     elemref.reset();
-    pixbuf.reset();
+    // XXX pixbuf.reset();
 
     // All views on this element should have been closed prior to release.
     assert(views.empty());
@@ -304,17 +304,17 @@ void SPFeImage::create_view(View &v)
             g_warning("SPFeImage::show: error creating DrawingItem for SVG Element");
         }
     } else if (type == IMAGE) {
-        auto ai = new Inkscape::DrawingImage(v.parent->drawing());
+        auto ai = new Inkscape::Renderer::DrawingImage(v.parent->drawing());
         ai->setStyle(style);
-        ai->setPixbuf(pixbuf);
+        //ai->setPixbuf(pixbuf);
         ai->setOrigin(Geom::Point(0, 0));
         ai->setScale(1.0, 1.0);
-        ai->setClipbox(Geom::Rect(0, 0, pixbuf->width(), pixbuf->height()));
+        //ai->setClipbox(Geom::Rect(0, 0, pixbuf->width(), pixbuf->height()));
         v.child = ai;
     }
 }
 
-void SPFeImage::show(Inkscape::DrawingItem *parent)
+void SPFeImage::show(Inkscape::Renderer::DrawingItem *parent)
 {
     views.emplace_back();
     auto &v = views.back();
@@ -325,7 +325,7 @@ void SPFeImage::show(Inkscape::DrawingItem *parent)
     create_view(v);
 }
 
-void SPFeImage::hide(Inkscape::DrawingItem *parent)
+void SPFeImage::hide(Inkscape::Renderer::DrawingItem *parent)
 {
     auto it = std::find_if(views.begin(), views.end(), [parent] (auto &v) {
         return v.parent == parent;
@@ -348,9 +348,9 @@ bool SPFeImage::valid_for(SPObject const *obj) const
     return obj && cast<SPItem>(obj) != elem;
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeImage::build_renderer(Inkscape::DrawingItem *parent) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeImage::build_renderer(Inkscape::Renderer::DrawingItem *parent) const
 {
-    Inkscape::DrawingItem *child = nullptr;
+    Inkscape::Renderer::DrawingItem *child = nullptr;
 
     if (type != NONE) {
         auto it = std::find_if(views.begin(), views.end(), [parent] (auto &v) {
@@ -360,12 +360,12 @@ std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeImage::build_renderer(In
         child = it->child;
     }
 
-    auto image = std::make_unique<Inkscape::Filters::FilterImage>();
+    auto image = std::make_unique<Inkscape::Renderer::DrawingFilter::Image>();
     build_renderer_common(image.get());
 
-    image->item = child;
-    image->from_element = type == ELEM;
-    image->set_align(aspect_align);
+    //image->item = child;
+    //image->from_element = type == ELEM;
+    //image->set_align(aspect_align);
     image->set_clip(aspect_clip);
 
     return image;

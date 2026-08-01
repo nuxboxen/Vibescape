@@ -22,7 +22,6 @@
 #include "svg-view-widget.h"
 
 #include "document.h"
-#include "display/drawing.h"
 #include "display/control/canvas-item-drawing.h"
 #include "object/sp-root.h"
 #include "object/sp-anchor.h"
@@ -117,9 +116,10 @@ void SVGViewWidget::on_size_allocate(int const width, int const height, int cons
  * Callback connected with drawing_event.
  * Results in a cursor change over <a></a> links, and allows clicking them.
  */
-bool SVGViewWidget::event(CanvasEvent const &event, DrawingItem *drawing_item)
+bool SVGViewWidget::event(CanvasEvent const &event, Renderer::DrawingItem *drawing_item)
 {
-    auto const spanchor = drawing_item ? cast<SPAnchor>(drawing_item->getItem()) : nullptr;
+    SPAnchor *const spanchor = nullptr; // TODO drawing_item ? cast<SPAnchor>(drawing_item->getItem()) : nullptr;
+    std::cerr << "Anchor take hover disabled by new rendering engine changes";
     auto const href = spanchor ? spanchor->href : nullptr;
 
     inspect_event(event,

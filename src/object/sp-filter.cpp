@@ -26,8 +26,9 @@
 
 #include "attributes.h"
 #include "bad-uri-exception.h"
-#include "display/drawing-item.h"
-#include "display/nr-filter.h"
+#include "renderer/drawing-forward.h"
+#include "renderer/drawing-filters/filter.h"
+#include "renderer/drawing-filters/primitive.h"
 #include "document.h"
 #include "filters/sp-filter-primitive.h"
 #include "sp-filter-reference.h"
@@ -480,9 +481,9 @@ void SPFilter::ensure_slots()
     }
 }
 
-std::unique_ptr<Inkscape::Filters::Filter> SPFilter::build_renderer(Inkscape::DrawingItem *item)
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Filter> SPFilter::build_renderer(Inkscape::Renderer::DrawingItem *item)
 {
-    auto nr_filter = std::make_unique<Inkscape::Filters::Filter>(primitive_count());
+    auto nr_filter = std::make_unique<Inkscape::Renderer::DrawingFilter::Filter>(primitive_count());
 
     ensure_slots();
 
@@ -546,7 +547,7 @@ Glib::ustring SPFilter::get_new_result_name() const
     return "result" + Glib::Ascii::dtostr(largest + 1);
 }
 
-void SPFilter::show(Inkscape::DrawingItem *item)
+void SPFilter::show(Inkscape::Renderer::DrawingItem *item)
 {
     views.emplace_back(item);
 
@@ -559,7 +560,7 @@ void SPFilter::show(Inkscape::DrawingItem *item)
     item->setFilterRenderer(build_renderer(item));
 }
 
-void SPFilter::hide(Inkscape::DrawingItem *item)
+void SPFilter::hide(Inkscape::Renderer::DrawingItem *item)
 {
     auto it = std::find(views.begin(), views.end(), item);
     assert(it != views.end());

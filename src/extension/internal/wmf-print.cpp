@@ -41,6 +41,7 @@
 #include "extension/system.h"
 #include "extension/print.h"
 #include "document.h"
+#include "style.h"
 
 #include "object/sp-pattern.h"
 #include "object/sp-image.h"
@@ -51,8 +52,6 @@
 #include "object/sp-item.h"
 
 #include "path/path-boolop.h"
-
-#include "display/cairo-utils.h"   // for Inkscape::Pixbuf::PF_CAIRO
 
 #include "util-string/symbol-convert.h"
 #include "wmf-print.h"
@@ -326,7 +325,7 @@ int PrintWmf::create_brush(SPStyle const *style, U_COLORREF *fcolor)
     U_WLOGBRUSH   lb;
     uint32_t      brush, fmode;
     MFDrawMode    fill_mode;
-    Inkscape::Pixbuf const *pixbuf;
+    Cairo::RefPtr<Cairo::ImageSurface> image;
     uint32_t      brushStyle;
     int           hatchType;
     U_COLORREF    hatchColor;
@@ -369,8 +368,8 @@ int PrintWmf::create_brush(SPStyle const *style, U_COLORREF *fcolor)
             double dheight = pat->height();
             width  = dwidth;
             height = dheight;
-            brush_classify(pat, 0, &pixbuf, &hatchType, &hatchColor, &bkColor);
-            if (pixbuf) {
+            brush_classify(pat, 0, &image, &hatchType, &hatchColor, &bkColor);
+            if (image) {
                 fill_mode = DRAW_IMAGE;
             } else { // pattern
                 fill_mode = DRAW_PATTERN;
@@ -454,11 +453,11 @@ int PrintWmf::create_brush(SPStyle const *style, U_COLORREF *fcolor)
         int                  numCt;
         U_BITMAPINFOHEADER   Bmih;
         U_BITMAPINFO        *Bmi;
-        rgba_px = (char const*)pixbuf->pixels(); // Do NOT free this!!!
+        rgba_px = (const char *)image->get_data(); // Do NOT free this!!!
+        break;
         colortype = U_BCBM_COLOR32;
         (void) RGBA_to_DIB(&px, &cbPx, &ct, &numCt,  rgba_px,  width, height, width * 4, colortype, 0, 1);
-        // pixbuf can be either PF_CAIRO or PF_GDK, and these have R and B bytes swapped
-        if (pixbuf->pixelFormat() == Inkscape::Pixbuf::PF_CAIRO) { swapRBinRGBA(px, width * height); }
+        swapRBinRGBA(px, width * height); // Pixels are always in Cairo format
         Bmih = bitmapinfoheader_set(width, height, 1, colortype, U_BI_RGB, 0, PXPERMETER, PXPERMETER, numCt, 0);
         Bmi = bitmapinfo_set(Bmih, ct);
         rec = wcreatedibpatternbrush_srcdib_set(&brush, wht, U_DIB_RGB_COLORS, Bmi, cbPx, px);

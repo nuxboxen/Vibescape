@@ -75,6 +75,7 @@ enum class PixelAccessEdgeMode
 inline std::string get_cairo_format_name(cairo_format_t format)
 {
     static const std::map<cairo_format_t, std::string> map = {
+        {CAIRO_FORMAT_INVALID, "INVALID"},
         {CAIRO_FORMAT_A8, "A8"},
         {CAIRO_FORMAT_RGB24, "RGB24"},
         {CAIRO_FORMAT_ARGB32, "ARGB32"},
@@ -213,22 +214,24 @@ public:
      * @return - The pre-sized memory for the returned color space including alpha.
      *           We use the same memory so we don't have to re-allocate for every pixel in a filter.
      */
-    inline Color colorAt(int x, int y, bool unmultiply_alpha = false) const
+    template <typename T0 = double>
+    inline std::array<T0, channel_total> colorAt(int x, int y, bool unmultiply_alpha = false) const
     {
-        Color ret;
-        colorAt(x, y, ret, unmultiply_alpha);
+        std::array<T0, channel_total> ret;
+        colorAt<T0>(x, y, ret, unmultiply_alpha);
         return ret;
     }
-    inline Color colorAt(int x, int y, Color &ret, bool unmultiply_alpha = false) const
+    template <typename T0 = double>
+    inline void colorAt(int x, int y, std::array<T0, channel_total> &ret, bool unmultiply_alpha = false) const
     {
         int pos = _pixel_pos(x, y);
         double alpha = _get_alpha(pos);
         double alpha_mult = unmultiply_alpha ? _mult(alpha) : 1.0;
         for (int c = 0; c < channel_count; c++) {
-            ret[c] = _get_channel(pos, c, alpha_mult);
+            ret[c] = _get_channel<T0>(pos, c, alpha_mult);
         }
-        ret[channel_count] = alpha;
-        return ret;
+        // We have to re-request the alpha if we're asking for a different output type
+        ret[channel_count] = std::same_as<T0, double> ? alpha : _get_channel<T0>(pos, channel_count, 1.0);
     }
 
     /**
@@ -242,22 +245,25 @@ public:
      * @return_arg - The pre-sized memory for the returned color space including alpha.
      *               We use the same memory so we don't have to re-allocate for every pixel in a filter.
      */
-    Color colorAt(double x, double y, bool unmultiply_alpha = false) const
+    template <typename T0 = double>
+    inline std::array<T0, channel_total> colorAt(double x, double y, bool unmultiply_alpha = false) const
     {
+        constexpr static double scale = get_scale<double, T0>();
+
         int fx = floor(x), fy = floor(y);
         int cx = ceil(x), cy = ceil(y);
         double weight_x = x - fx, weight_y = y - fy;
+        double alpha_mult = 1.0;
 
-        Color ret;
-        for (int c = 0; c < channel_total; c++) {
-            ret[c] = _bilinear_interpolate(
+        std::array<T0, channel_total> ret;
+        for (int c = channel_count; c >= 0; c--) {
+            double val = _bilinear_interpolate(
                 _get_channel(_pixel_pos(fx, fy), c, 1.0), _get_channel(_pixel_pos(cx, fy), c, 1.0),
                 _get_channel(_pixel_pos(fx, cy), c, 1.0), _get_channel(_pixel_pos(cx, cy), c, 1.0), weight_x, weight_y);
-        }
-        if (unmultiply_alpha) {
-            auto alpha_mult = _mult(ret[channel_count]);
-            for (int c = 0; c < channel_count; c++) {
-                ret[c] *= alpha_mult;
+
+            ret[c] = val * scale * alpha_mult;
+            if (unmultiply_alpha && c == channel_count) {
+                alpha_mult = _mult(val);
             }
         }
         return ret;
@@ -452,6 +458,23 @@ public:
         });
     }
 
+    /**
+     * Simple multi-thread enabled loop for all the pixels in this raster.
+     */
+    template <typename T0 = double, bool unmultiply = false>
+    void forEachPixelColor(std::function<void(int, int, std::array<T0, channel_total> const &)> &&function) const
+    {
+        auto const pool = get_global_dispatch_pool();
+        bool const limit = width() * height() > POOL_THRESHOLD;
+
+        pool->dispatch_threshold(height(), limit, [&](int y, int) {
+            std::array<T0, channel_total> color;
+            for (int x = 0; x < width(); x++) {
+                colorAt<T0>(x, y, color, unmultiply);
+                function(x, y, color);
+            }
+        });
+    }
     /**
      * Dispatch a thread for each of the lines in this and the other pixel surfaces at the
      * same time, this one as cost for reading and the other as mutable for writing.

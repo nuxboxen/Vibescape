@@ -43,7 +43,7 @@
 #include "actions/actions-canvas-transform.h"
 #include "actions/actions-view-mode.h" // To update View menu
 #include "actions/actions-tools.h" // To change tools
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "display/control/canvas-temporary-item-list.h"
 #include "display/control/snap-indicator.h"
 #include "display/control/canvas-item-catchall.h"
@@ -401,7 +401,7 @@ SPItem *SPDesktop::_getItemFromListAtPointBottom(SPGroup *group, std::vector<SPI
     for (auto &c: group->children) {
         if (auto item = cast<SPItem>(&c)) {
             if (auto di = item->get_arenaitem(dkey)) {
-                if (di->pick(p, delta, area_world, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE) && item->isVisibleAndUnlocked(dkey)) {
+                if (di->pick(p, delta, area_world, Inkscape::Renderer::DrawingItem::PICK_STICKY | outline * Inkscape::Renderer::DrawingItem::PICK_OUTLINE) && item->isVisibleAndUnlocked(dkey)) {
                     if (std::find(list.begin(), list.end(), item) != list.end()) {
                         return item;
                     }
@@ -446,7 +446,7 @@ std::vector<SPItem*> SPDesktop::find_items_at_point(std::deque<SPItem*> const &n
             continue;
         }
         if (auto di = node->get_arenaitem(dkey)) {
-            if (di->pick(p, delta, area_world, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE)) {
+            if (di->pick(p, delta, area_world, Inkscape::Renderer::DrawingItem::PICK_STICKY | outline * Inkscape::Renderer::DrawingItem::PICK_OUTLINE)) {
                 result.emplace_back(node);
                 if (--items_count == 0) {
                     break;
@@ -485,7 +485,7 @@ SPItem *SPDesktop::find_group_at_point(SPGroup *group, Geom::Point const &p) con
                     return ret;
                 }
             } else if (auto di = group->get_arenaitem(dkey)) {
-                if (di->pick(p, delta, area_world, Inkscape::DrawingItem::PICK_STICKY | outline * Inkscape::DrawingItem::PICK_OUTLINE)) {
+                if (di->pick(p, delta, area_world, Inkscape::Renderer::DrawingItem::PICK_STICKY | outline * Inkscape::Renderer::DrawingItem::PICK_OUTLINE)) {
                     return group;
                 }
             }
@@ -1178,7 +1178,7 @@ SPDesktop::warnDialog (Glib::ustring const &text)
     return _widget->warnDialog (text);
 }
 
-void SPDesktop::setRenderMode(Inkscape::RenderMode mode)
+void SPDesktop::setRenderMode(Renderer::RenderMode mode)
 {
     canvas->set_render_mode(mode);
     if (_widget) {
@@ -1186,7 +1186,7 @@ void SPDesktop::setRenderMode(Inkscape::RenderMode mode)
     }
 }
 
-void SPDesktop::setColorMode(Inkscape::ColorMode mode)
+void SPDesktop::setColorMode(Renderer::ColorMode mode)
 {
     canvas->set_color_mode(mode);
     if (_widget) {
@@ -1524,7 +1524,7 @@ void SPDesktop::onStatusMessage(Inkscape::MessageType type, char const *message)
 /**
  * Calls event handler of current event context.
  */
-bool SPDesktop::drawing_handler(Inkscape::CanvasEvent const &event, Inkscape::DrawingItem *drawing_item)
+bool SPDesktop::drawing_handler(Inkscape::CanvasEvent const &event, Inkscape::Renderer::DrawingItem *drawing_item)
 {
     auto const tool = getTool();
     if (!tool) return false;

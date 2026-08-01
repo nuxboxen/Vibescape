@@ -19,12 +19,12 @@
 #include <glibmm/i18n.h>
 
 #include "attributes.h"
+#include "colors/document-cms.h"
 #include "colors/manager.h"
+#include "colors/spaces/base.h"
 #include "conditions.h"
 #include "conn-avoid-ref.h"
 #include "desktop.h"
-#include "display/drawing-item.h"
-#include "display/nr-filter.h"
 #include "document.h"
 #include "enums.h"
 #include "filter-chemistry.h"
@@ -38,6 +38,7 @@
 #include "path/path-util.h"
 #include "preferences.h"
 #include "print.h"
+#include "renderer/drawing-forward.h"
 #include "snap-candidate.h"
 #include "snap-preferences.h"
 #include "sp-clippath.h"
@@ -63,7 +64,7 @@
 
 //#define OBJECT_TRACE
 
-SPItemView::SPItemView(unsigned flags, unsigned key, DrawingItemPtr<Inkscape::DrawingItem> drawingitem)
+SPItemView::SPItemView(unsigned flags, unsigned key, DrawingItemPtr<Inkscape::Renderer::DrawingItem> drawingitem)
     : flags(flags)
     , key(key)
     , drawingitem(std::move(drawingitem)) {}
@@ -812,7 +813,9 @@ void SPItem::update(SPCtx *ctx, unsigned flags)
         if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
             for (auto &v : views) {
                 v.drawingitem->setOpacity(style->opacity.as_double());
-                v.drawingitem->setAntialiasing(style->shape_rendering.computed == SP_CSS_SHAPE_RENDERING_CRISPEDGES ? Inkscape::Antialiasing::None : Inkscape::Antialiasing::Good);
+                v.drawingitem->setAntialiasing(style->shape_rendering.computed == SP_CSS_SHAPE_RENDERING_CRISPEDGES
+                        ? Inkscape::Renderer::Antialiasing::None
+                        : Inkscape::Renderer::Antialiasing::Good);
                 v.drawingitem->setIsolation(style->isolation.value);
                 v.drawingitem->setBlendMode(style->mix_blend_mode.value);
                 v.drawingitem->setVisible(!isHidden());
@@ -1256,7 +1259,7 @@ unsigned SPItem::display_key_new(unsigned numkeys)
     return dkey - numkeys;
 }
 
-unsigned SPItem::ensure_key(Inkscape::DrawingItem *di)
+unsigned SPItem::ensure_key(Inkscape::Renderer::DrawingItem *di)
 {
     if (!di->key()) {
         di->setKey(SPItem::display_key_new(ITEM_KEY_SIZE));
@@ -1265,12 +1268,12 @@ unsigned SPItem::ensure_key(Inkscape::DrawingItem *di)
 }
 
 // CPPIFY: make pure virtual
-Inkscape::DrawingItem* SPItem::show(Inkscape::Drawing& /*drawing*/, unsigned int /*key*/, unsigned int /*flags*/) {
+Inkscape::Renderer::DrawingItem* SPItem::show(Inkscape::Renderer::Drawing& /*drawing*/, unsigned int /*key*/, unsigned int /*flags*/) {
     //throw;
     return nullptr;
 }
 
-Inkscape::DrawingItem *SPItem::invoke_show(Inkscape::Drawing &drawing, unsigned key, unsigned flags)
+Inkscape::Renderer::DrawingItem *SPItem::invoke_show(Inkscape::Renderer::Drawing &drawing, unsigned key, unsigned flags)
 {
     auto ai = show(drawing, key, flags);
     if (!ai) {
@@ -1287,7 +1290,7 @@ Inkscape::DrawingItem *SPItem::invoke_show(Inkscape::Drawing &drawing, unsigned 
     ai->setBlendMode(style->mix_blend_mode.value);
     ai->setVisible(!isHidden());
     ai->setSensitive(sensitive);
-    views.emplace_back(flags, key, DrawingItemPtr<Inkscape::DrawingItem>(ai));
+    views.emplace_back(flags, key, DrawingItemPtr<Inkscape::Renderer::DrawingItem>(ai));
 
     if (auto clip = getClipObject()) {
         auto clip_key = SPItem::ensure_key(ai) + ITEM_KEY_CLIP;
@@ -1853,7 +1856,7 @@ Geom::Affine SPItem::dt2i_affine() const
 }
 
 // Item views
-Inkscape::DrawingItem *SPItem::get_arenaitem(unsigned key) const
+Inkscape::Renderer::DrawingItem *SPItem::get_arenaitem(unsigned key) const
 {
     auto const view_it = std::find_if(views.begin(), views.end(), [key](SPItemView const &v) {
         return v.key == key;
@@ -1960,6 +1963,24 @@ void SPItem::move_rel( Geom::Translate const &tr)
     set_i2d_affine(i2dt_affine() * tr);
 
     doWriteTransform(transform);
+}
+
+std::shared_ptr<Inkscape::Colors::Space::AnySpace> SPItem::getColorSpace() const
+{
+    return style->color_interpolation.getInterpolationSpace();
+}
+
+bool SPItem::setColorSpace(std::shared_ptr<Inkscape::Colors::Space::AnySpace> const &space)
+{
+    if (SPCSSAttr *style = sp_css_attr_from_object(this)) {
+        if (auto doc_space = document->getDocumentCMS().ensureColorSpaceIsInstalled(space)) {
+            sp_repr_css_set_property(style, "color-interpolation", doc_space->getSvgName().c_str());
+            sp_repr_css_set(getRepr(), style, "style");
+            sp_repr_css_attr_unref(style);
+            return true;
+        }
+    }
+    return false;
 }
 
 /*

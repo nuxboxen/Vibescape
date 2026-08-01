@@ -19,6 +19,7 @@
 #include "renderer/pixel-filters/average-color.h"
 #include "renderer/surface.h"
 #include "renderer/threading.h"
+#include "renderer/code-builder.h"
 
 namespace Inkscape::Renderer {
 
@@ -44,11 +45,18 @@ Drawing::~Drawing()
     delete _root;
 }
 
+void Drawing::setCodeBuild()
+{
+    _code_build = true;
+    CodeBuilder::Construct(*this, "Drawing");
+}
+
 void Drawing::setRoot(DrawingItem *root)
 {
     delete _root;
     _root = root;
     if (_root) {
+        if (_code_build) CodeBuilder::Call(*this, "setRoot") << root;
         assert(_root->_child_type == DrawingItem::ChildType::ORPHAN);
         _root->_child_type = DrawingItem::ChildType::ROOT;
     }
@@ -205,6 +213,7 @@ void Drawing::setClip(std::optional<Geom::PathVector> &&clip)
 
 void Drawing::setAntialiasingOverride(std::optional<Antialiasing> antialiasing_override)
 {
+    if (_code_build) CodeBuilder::Call(*this, "setAntialiasingOverride") << "Antialiasing::Good";
     defer([=, this] {
         _antialiasing_override = antialiasing_override;
         _root->_markForUpdate(STATE_ALL, true);
@@ -220,6 +229,7 @@ void Drawing::setNumDispatchThreads(int num)
 void Drawing::update(Geom::IntRect const &area, Geom::Affine const &affine, unsigned flags, unsigned reset)
 {
     if (_root) {
+        if (_code_build) CodeBuilder::Call(*this, "update") << area << affine << flags << reset;
         _root->update(area, { affine }, flags, reset);
     }
     if (flags & STATE_CACHE) {
@@ -230,6 +240,8 @@ void Drawing::update(Geom::IntRect const &area, Geom::Affine const &affine, unsi
 
 void Drawing::render(Context &dc, Geom::IntRect const &area, unsigned flags) const
 {
+    if (_code_build) CodeBuilder::Call(*this, "render", true) << "*context" << area << flags;
+
     auto opt = DrawingOptions{
         .outline_color = _outline_color,
         .antialiasing_override = _antialiasing_override,
@@ -318,7 +330,7 @@ Colors::Color Drawing::averageColor(Geom::IntRect const &area) const
     // TODO: Replace color_space with target color space useful for this average
     auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
     auto surface = std::make_shared<Surface>(area.dimensions(), 1, color_space);
-    auto dc = Context(surface, area.min());
+    auto dc = Context(*surface, area.min());
     render(dc, area);
     return Colors::Color(color_space, surface->run_pixel_filter(PixelFilter::AverageColor()));
 }
@@ -342,7 +354,7 @@ Colors::Color Drawing::averageColor(Geom::PathVector const &path, bool evenodd) 
     // Build a mask of pixels to ignore
     auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
     auto mask = std::make_shared<Surface>(Geom::IntPoint(width, height), 1, alpha);
-    auto dc_mask = Context(mask, (*area * affine).roundInwards()->min());
+    auto dc_mask = Context(*mask, (*area * affine).roundInwards()->min());
     dc_mask.scale(affine);
 
     dc_mask.set_fill_rule(evenodd ? Cairo::Context::FillRule::EVEN_ODD : Cairo::Context::FillRule::WINDING);
@@ -355,7 +367,7 @@ Colors::Color Drawing::averageColor(Geom::PathVector const &path, bool evenodd) 
     // Render the output, no need to clip as the mask will say what values to use
     auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
     auto image = std::make_shared<Surface>(Geom::IntPoint(width, height), 1, color_space);
-    auto dc = Context(image, (*area * affine).roundInwards()->min());
+    auto dc = Context(*image, (*area * affine).roundInwards()->min());
     dc.scale(affine);
     render(dc, area->roundOutwards());
     return Colors::Color(color_space, image->run_pixel_filter(PixelFilter::AverageColor(), *mask));

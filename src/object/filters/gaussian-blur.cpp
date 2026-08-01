@@ -15,20 +15,11 @@
 
 #include "gaussian-blur.h"
 #include "attributes.h"                          // for SPAttr
-#include "display/nr-filter-gaussian.h"          // for FilterGaussian
+#include "renderer/drawing-filters/gaussian-blur.h"
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/numeric/converters.h"             // for format_number
 #include "xml/node.h"                            // for Node
-
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-} // namespace Inkscape
 
 void SPGaussianBlur::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
@@ -49,9 +40,9 @@ void SPGaussianBlur::set(SPAttr key, char const *value)
     }
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPGaussianBlur::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPGaussianBlur::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto blur = std::make_unique<Inkscape::Filters::FilterGaussian>();
+    auto blur = std::make_unique<Inkscape::Renderer::DrawingFilter::GaussianBlur>();
     build_renderer_common(blur.get());
 
     float num = stdDeviation.getNumber();

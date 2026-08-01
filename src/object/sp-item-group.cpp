@@ -40,7 +40,7 @@
 #include "sp-title.h"
 #include "sp-use.h"
 
-#include "display/drawing-group.h"
+#include "renderer/drawing-forward.h"
 #include "live_effects/effect.h"
 #include "live_effects/lpe-clone-original.h"
 #include "live_effects/lpeobject-reference.h"
@@ -166,7 +166,7 @@ void SPGroup::update(SPCtx *ctx, unsigned int flags) {
 
     if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
         for (auto &v : views) {
-            auto group = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto group = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             if (parent) {
                 context_style = parent->context_style;
             }
@@ -186,7 +186,7 @@ void SPGroup::modified(guint flags) {
 
     if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
         for (auto &v : views) {
-            auto group = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto group = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             group->setStyle(this->style);
         }
     }
@@ -328,11 +328,11 @@ void SPGroup::set(SPAttr key, gchar const* value) {
     }
 }
 
-Inkscape::DrawingItem *SPGroup::show (Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) {
+Inkscape::Renderer::DrawingItem *SPGroup::show (Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) {
     // std::cout << "SPGroup::set_visible(true): " << (getId()?getId():"null") << std::endl;
-    Inkscape::DrawingGroup *ai;
+    Inkscape::Renderer::DrawingGroup *ai;
 
-    ai = new Inkscape::DrawingGroup(drawing);
+    ai = new Inkscape::Renderer::DrawingGroup(drawing);
     ai->setPickChildren(this->effectiveLayerMode(key) == SPGroup::LAYER);
     if( this->parent ) {
         this->context_style = this->parent->context_style;
@@ -809,7 +809,7 @@ void SPGroup::setLayerDisplayMode(unsigned int dkey, SPGroup::LayerMode mode) {
 void SPGroup::_updateLayerMode(unsigned int display_key) {
     for (auto &v : views) {
         if (!display_key || v.key == display_key) {
-            if (auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get())) {
+            if (auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get())) {
                 g->setPickChildren(effectiveLayerMode(v.key) == SPGroup::LAYER);
             }
         }
@@ -960,8 +960,8 @@ gint SPGroup::getItemCount() const {
     return len;
 }
 
-void SPGroup::_showChildren (Inkscape::Drawing &drawing, Inkscape::DrawingItem *ai, unsigned int key, unsigned int flags) {
-    Inkscape::DrawingItem *ac = nullptr;
+void SPGroup::_showChildren (Inkscape::Renderer::Drawing &drawing, Inkscape::Renderer::DrawingItem *ai, unsigned int key, unsigned int flags) {
+    Inkscape::Renderer::DrawingItem *ac = nullptr;
     std::vector<SPObject*> l=this->childList(false, SPObject::ActionShow);
     for(auto o : l){
         auto child = cast<SPItem>(o);

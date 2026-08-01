@@ -76,10 +76,10 @@ struct TestCustomSurface
 /**
  * Test single pixel getter, double and int modes
  */
-template <typename CoordType, typename Access>
-::testing::AssertionResult ColorIs(Access &d, CoordType x, CoordType y, typename Access::Color const &c, bool unnmultiply = false, double epsilon = 0.01)
+template <typename CoordType, typename ReturnType = double, typename Access>
+::testing::AssertionResult ColorIs(Access &d, CoordType x, CoordType y, std::array<ReturnType, Access::channel_total> const &c, bool unnmultiply = false, double epsilon = 0.01)
 {
-    auto ct = d.colorAt(x, y, unnmultiply);
+    auto ct = d.template colorAt<ReturnType>(x, y, unnmultiply);
     return VectorIsNear(c, ct, epsilon) << "\n    X:" << x << "\n    Y:" << y << "\n\n";
 }
 

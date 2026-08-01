@@ -22,8 +22,8 @@ namespace Inkscape::Renderer {
 using GlyLoad = std::pair<GlyLoader *, GlyImage *>;
 using ImageType = std::variant<std::monostate, GlyLoad, std::unique_ptr<SPDocument>>;
 
-class SurfaceFactory; // Svg loading
-using SvgFactory = std::shared_ptr<SurfaceFactory>;
+class SvgRenderer; // Svg loading
+using SvgFactory = std::shared_ptr<SvgRenderer>;
 
 class Image : public Surface
 {
@@ -45,7 +45,7 @@ public:
      *
      * @arg file - The file object to load from disk.
      * @arg svg_factory - The optinal svg loader which may be set with rendering
-     *                    settings such dpi, antialiasing, etc. See SurfaceFactory
+     *                    settings such dpi, antialiasing, etc. See SvgRenderer
      */
     Image(Glib::RefPtr<Gio::File> const &file, SvgFactory const &svg_factory = {});
 
@@ -54,7 +54,7 @@ public:
      *
      * @arg bytes - The bytes object to use, or the base64 encoded uri.
      * @arg svg_factory - The optinal svg loader which may be set with rendering
-     *                    settings such dpi, antialiasing, etc. See SurfaceFactory
+     *                    settings such dpi, antialiasing, etc. See SvgRenderer
      */
     Image(Glib::RefPtr<Glib::Bytes> bytes, SvgFactory const &svg_factory = {});
     Image(std::string_view const &base64_uri, SvgFactory const &svg_factory = {});

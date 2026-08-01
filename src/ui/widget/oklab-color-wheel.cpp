@@ -16,7 +16,6 @@
 #include <gtkmm/gestureclick.h>
 
 #include "colors/spaces/oklch.h"
-#include "display/cairo-utils.h"
 
 using namespace Inkscape::Colors;
 
@@ -159,7 +158,7 @@ void OKWheel::on_drawing_area_draw(Cairo::RefPtr<Cairo::Context> const &cr, int,
         cr->close_path();
         // Fill the halo with the current color.
         {
-            ink_cairo_set_source_color(cr->cobj(), getColor());
+            // TODO ink_cairo_set_source_color(cr->cobj(), getColor());
         }
         cr->fill_preserve();
 

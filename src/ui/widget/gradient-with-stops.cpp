@@ -22,6 +22,7 @@
 #include "io/resource.h"
 #include "object/sp-gradient.h"
 #include "object/sp-stop.h"
+#include "renderer/surface.h"
 #include "ui/controller.h"
 #include "ui/util.h"
 #include "util/drawing-utils.h"
@@ -426,7 +427,7 @@ void GradientWithStops::set_stop_cursor(Glib::RefPtr<Gdk::Cursor> const * const 
     _cursor_current = cursor;
 }
 
-void GradientWithStops::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int /*width*/, int /*height*/) {
+void GradientWithStops::draw_func(Cairo::RefPtr<Cairo::Context> const &ct, int /*width*/, int /*height*/) {
     const double scale = get_scale_factor();
     const auto layout = get_layout();
 
@@ -437,12 +438,14 @@ void GradientWithStops::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int 
     grad.width += 2;
     int radius = 2;
     auto rect = Geom::Rect::from_xywh(grad.x, grad.y, grad.width, GRADIENT_IMAGE_HEIGHT);
-    Util::rounded_rectangle(ctx, rect, radius);
+
+    auto ctx = std::make_shared<Renderer::Context>(ct);
+    ctx->rectangle(rect, radius);
     ctx->clip();
     // empty gradient checkboard or gradient itself
     ctx->rectangle(grad.x, grad.y, grad.width, GRADIENT_IMAGE_HEIGHT);
     draw_gradient(ctx, _gradient, grad.x, grad.width, GRADIENT_CHECKERBOARD_TILE);
-    Util::draw_standard_border(ctx, rect, Util::is_current_theme_dark(*this), radius, get_scale_factor());
+    // TODO Util::draw_standard_border(ctx, rect, Util::is_current_theme_dark(*this), radius, get_scale_factor());
     ctx->reset_clip();
 
     if (!_gradient) return;
@@ -459,7 +462,7 @@ void GradientWithStops::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int 
     _template.set_style(".inner", "stroke", gdk_to_css_color(bg));
     _template.set_style(".hole", "fill", gdk_to_css_color(bg));
 
-    auto tip = _tip_template.render(scale);
+    auto tip = _tip_template.render_surface(scale);
 
     for (size_t i = 0; i < _stops.size(); ++i) {
         const auto& stop = _stops[i];
@@ -473,7 +476,7 @@ void GradientWithStops::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int 
         _template.set_style(".selected", "opacity", Util::format_number(is_selected ? 1 : 0));
 
         // render stop handle
-        auto pix = _template.render(scale);
+        auto pix = _template.render_surface(scale);
 
         if (!pix) {
             g_warning("Rendering gradient stop failed.");
@@ -488,8 +491,7 @@ void GradientWithStops::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int 
             // scale back to physical pixels
             ctx->scale(1 / scale, 1 / scale);
             // paint tip bitmap
-            Gdk::Cairo::set_source_pixbuf(ctx, tip, round(pos.tip * scale - tip->get_width() / 2),
-                                                   layout.y * scale);
+            ctx->setSource(*tip, round(pos.tip * scale - tip->width() / 2), layout.y * scale);
             ctx->paint();
             ctx->restore();
         }
@@ -501,8 +503,7 @@ void GradientWithStops::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int 
         // scale back to physical pixels
         ctx->scale(1 / scale, 1 / scale);
         // paint bitmap
-        Gdk::Cairo::set_source_pixbuf(ctx, pix, round(pos.tip * scale - pix->get_width() / 2),
-                                               pos.top * scale);
+        ctx->setSource(*pix, round(pos.tip * scale - pix->width() / 2), pos.top * scale);
         ctx->paint();
         ctx->restore();
         ctx->reset_clip();

@@ -7,7 +7,6 @@ target_sources(inkscape_base PRIVATE
 	geom-pathvector_nodesatellites.cpp
 	geom-nodesatellite.cpp
 	gettext.cpp
-	pixbuf-ops.cpp
 	png-write.cpp
 	stock-items.cpp
 
@@ -21,7 +20,6 @@ target_sources(inkscape_base PRIVATE
 	geom.h
 	gettext.h
 	mathfns.h
-	pixbuf-ops.h
 	png-write.h
 	stock-items.h
 )

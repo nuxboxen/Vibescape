@@ -73,7 +73,7 @@ int Filter::render(Geom::Rect const &carea, Geom::Affine const &trans, Geom::Opt
 {
     if (primitives.empty()) {
         // when no primitives are defined, clear source graphic
-        auto graphic = Context(image);
+        auto graphic = Context(*image);
         graphic.resetSource(0.0);
         graphic.set_operator(Cairo::Context::Operator::SOURCE);
         graphic.paint();
@@ -93,7 +93,7 @@ int Filter::render(Geom::Rect const &carea, Geom::Affine const &trans, Geom::Opt
     auto resolution = filter_resolution(*filter_area, trans, draw_opt.filterquality);
     if (!(resolution.first > 0 && resolution.second > 0)) {
         // zero resolution - clear source graphic and return
-        auto graphic = Context(image);
+        auto graphic = Context(*image);
         graphic.resetSource(0.0);
         graphic.set_operator(Cairo::Context::Operator::SOURCE);
         graphic.paint();
@@ -136,7 +136,7 @@ int Filter::render(Geom::Rect const &carea, Geom::Affine const &trans, Geom::Opt
 
     // Sometimes the filter stack will just reuse the image on return, consider moving this to slot
     if (result && image && result != image) {
-        auto graphic = Context(image);
+        auto graphic = Context(*image);
         graphic.setSource(*result);
         graphic.set_operator(Cairo::Context::Operator::SOURCE);
         graphic.paint();

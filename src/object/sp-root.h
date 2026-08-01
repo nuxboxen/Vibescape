@@ -15,7 +15,7 @@
 #ifndef SP_ROOT_H_SEEN
 #define SP_ROOT_H_SEEN
 
-#include "display/drawing-item.h" // for DrawingItem
+#include "renderer/drawing/drawing-item.h" // for DrawingItem
 #include "sp-dimensions.h"        // for SPDimensions
 #include "sp-item-group.h"        // for SPGroup
 #include "util/cast.h"            // for tag_of
@@ -54,7 +54,7 @@ public:
 	void child_added(Inkscape::XML::Node* child, Inkscape::XML::Node* ref) override;
 	void remove_child(Inkscape::XML::Node* child) override;
 
-	Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+	Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
 	void print(SPPrintContext *ctx) override;
         const char* typeName() const override;
         const char* displayName() const override;

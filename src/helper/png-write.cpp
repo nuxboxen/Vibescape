@@ -25,9 +25,8 @@
 #include "png-write.h"
 #include "rdf.h"
 
-#include "display/cairo-utils.h"
-#include "display/drawing-context.h"
-#include "display/drawing.h"
+#include "renderer/context.h"
+#include "renderer/drawing/drawing.h"
 
 #include "io/sys.h"
 
@@ -54,7 +53,7 @@
 struct SPEBP {
     unsigned long int width, height, sheight;
     std::optional<Inkscape::Colors::Color> background;
-    Inkscape::Drawing *drawing; // it is assumed that all unneeded items are hidden
+    Inkscape::Renderer::Drawing *drawing; // it is assumed that all unneeded items are hidden
     guchar *px;
     unsigned (*status)(float, void *);
     void *data;
@@ -351,18 +350,22 @@ sp_export_get_rows(guchar const **rows, void **to_free, int row, int num_rows, v
     /* Update to renderable state */
     ebp->drawing->update(bbox);
 
+    /*
+    TODO: Rip add custom png code out and replace with Glycin
+
     int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, ebp->width);
     unsigned char *px = g_new(guchar, num_rows * stride);
 
     cairo_surface_t *s = cairo_image_surface_create_for_data(
         px, CAIRO_FORMAT_ARGB32, ebp->width, num_rows, stride);
-    Inkscape::DrawingContext dc(s, bbox.min());
-    dc.setSource(*ebp->background);
-    dc.setOperator(CAIRO_OPERATOR_SOURCE);
-    dc.paint();
-    dc.setOperator(CAIRO_OPERATOR_OVER);
+        */
 
-    /* Render */
+    /*
+    Inkscape::Renderer::Context dc(s);
+    dc.transform(Geom::Translate(-bbox.min()));
+    dc.paint(*ebp->background);
+
+    // Render
     ebp->drawing->render(dc, bbox, 0);
     cairo_surface_destroy(s);
 
@@ -374,7 +377,7 @@ sp_export_get_rows(guchar const **rows, void **to_free, int row, int num_rows, v
     const guchar* new_data = pixbuf_to_png(rows, px, num_rows, ebp->width, stride, color_type, bit_depth);
     *to_free = (void*) new_data;
     free(px);
-
+*/
     return num_rows;
 }
 
@@ -446,12 +449,12 @@ ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
     ebp.background = bgcolor;
 
     /* Create new drawing */
-    Inkscape::Drawing drawing(Glib::getenv("RENDER_CODE") == "true");
+    Inkscape::Renderer::Drawing drawing; //Glib::getenv("RENDER_CODE") == "true");
     unsigned const dkey = SPItem::display_key_new(1);
     drawing.setRoot(doc->getRoot()->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY));
     drawing.root()->setTransform(affine);
     drawing.setExact(); // export with maximum blur rendering quality
-    drawing.setAntialiasingOverride(static_cast<Inkscape::Antialiasing>(antialiasing));
+    drawing.setAntialiasingOverride(static_cast<Inkscape::Renderer::Antialiasing>(antialiasing));
     drawing.setCacheLimit(Geom::IntRect::from_xywh(0, 0, width, height)); // enable caching for filtered objects to prevent seams at stripe boundaries #878
 
     ebp.drawing = &drawing;

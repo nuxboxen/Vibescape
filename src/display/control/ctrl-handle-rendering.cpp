@@ -12,12 +12,12 @@
 
 #include "colors/color.h"
 #include "display/control/canvas-item-enums.h"
-#include "display/cairo-utils.h"
+#include "renderer/context.h"
 
 namespace Inkscape::Handles {
 namespace {
 
-void draw_darrow(Cairo::Context &cr, double size, double angle)
+void draw_darrow(Renderer::Context &cr, double size, double angle)
 {
     // Find points, starting from tip of one arrowhead, working clockwise.
     /*   1        4
@@ -95,7 +95,7 @@ void draw_darrow(Cairo::Context &cr, double size, double angle)
     cr.close_path();
 }
 
-void draw_carrow(Cairo::Context &cr, double size)
+void draw_carrow(Renderer::Context &cr, double size)
 {
     // Length of arrowhead (not including stroke).
     double delta = (size - 3) / 4.0; // Use unscaled width.
@@ -146,7 +146,7 @@ void draw_carrow(Cairo::Context &cr, double size)
     cr.close_path();
 }
 
-void draw_triangle(Cairo::Context &cr, double size)
+void draw_triangle(Renderer::Context &cr, double size)
 {
     // Construct an arrowhead (triangle)
     double s = size / 2.0;
@@ -163,7 +163,7 @@ void draw_triangle(Cairo::Context &cr, double size)
     cr.close_path();
 }
 
-void draw_triangle_angled(Cairo::Context &cr, double size)
+void draw_triangle_angled(Renderer::Context &cr, double size)
 {
     // Construct an arrowhead (triangle) of half size.
     double s = size / 2.0;
@@ -179,7 +179,7 @@ void draw_triangle_angled(Cairo::Context &cr, double size)
     cr.close_path();
 }
 
-void draw_pivot(Cairo::Context &cr, double size)
+void draw_pivot(Renderer::Context &cr, double size)
 {
     double delta4 = (size - 5) / 4.0; // Keep away from edge or will clip when rotating.
     double delta8 = delta4 / 2;
@@ -221,7 +221,7 @@ void draw_pivot(Cairo::Context &cr, double size)
     cr.arc_negative(0, 0, delta4, 0, -2 * M_PI);
 }
 
-void draw_salign(Cairo::Context &cr, double size)
+void draw_salign(Renderer::Context &cr, double size)
 {
     // Triangle pointing at line.
 
@@ -260,7 +260,7 @@ void draw_salign(Cairo::Context &cr, double size)
     cr.close_path();
 }
 
-void draw_calign(Cairo::Context &cr, double size)
+void draw_calign(Renderer::Context &cr, double size)
 {
     // Basic units.
     double delta4 = (size - 1) / 4.0; // Use unscaled width.
@@ -304,7 +304,7 @@ void draw_calign(Cairo::Context &cr, double size)
     cr.close_path();
 }
 
-void draw_malign(Cairo::Context &cr, double size)
+void draw_malign(Renderer::Context &cr, double size)
 {
     // Basic units.
     double delta4 = (size - 1) / 4.0; // Use unscaled width.
@@ -342,18 +342,18 @@ void draw_malign(Cairo::Context &cr, double size)
     cr.close_path();
 }
 
-void draw_circle(Cairo::Context &cr, double size, double pixel_width)
+void draw_circle(Renderer::Context &cr, double size, double pixel_width)
 {
     double center = pixel_width * 0.5;
     cr.arc(center, center, size / 2.0, 0, 2 * M_PI);
 }
 
-void draw_square(Cairo::Context &cr, double size)
+void draw_square(Renderer::Context &cr, double size)
 {
     cr.rectangle(0, 0, size, size);
 }
 
-void draw_diamond(Cairo::Context &cr, double size)
+void draw_diamond(Renderer::Context &cr, double size)
 {
     cr.translate(size / 2.0, size / 2.0);
     cr.rotate(M_PI / 4);
@@ -363,7 +363,7 @@ void draw_diamond(Cairo::Context &cr, double size)
     cr.rectangle(0, 0, size2, size2);
 }
 
-void draw_cross(Cairo::Context &cr, double size)
+void draw_cross(Renderer::Context &cr, double size)
 {
     cr.move_to(0, 0);
     cr.line_to(size, size);
@@ -372,7 +372,7 @@ void draw_cross(Cairo::Context &cr, double size)
     cr.line_to(size, 0);
 }
 
-void draw_plus(Cairo::Context &cr, double size)
+void draw_plus(Renderer::Context &cr, double size)
 {
     double const half = size / 2;
 
@@ -383,7 +383,7 @@ void draw_plus(Cairo::Context &cr, double size)
     cr.line_to(size, half);
 }
 
-void draw_cairo_path(CanvasItemCtrlShape shape, Cairo::Context &cr, double size, double width, double angle)
+void draw_cairo_path(CanvasItemCtrlShape shape, Renderer::Context &cr, double size, double width, double angle)
 {
     switch (shape) {
         case CANVAS_ITEM_CTRL_SHAPE_DARROW:
@@ -446,11 +446,11 @@ void draw_cairo_path(CanvasItemCtrlShape shape, Cairo::Context &cr, double size,
     }
 }
 
-std::unordered_map<RenderParams, std::shared_ptr<Cairo::ImageSurface const>> cache;
+std::unordered_map<RenderParams, std::shared_ptr<Renderer::Surface const>> cache;
 std::mutex mutex;
 
 
-std::shared_ptr<Cairo::ImageSurface const> draw_uncached(RenderParams const &p)
+std::shared_ptr<Renderer::Surface const> draw_uncached(RenderParams const &p)
 {
     const auto scale = p.device_scale;
     // to simplify pixel alignment operate in physical pixels
@@ -494,9 +494,9 @@ std::shared_ptr<Cairo::ImageSurface const> draw_uncached(RenderParams const &p)
     width = static_cast<int>(std::lround(total_size));
 
     // operate on a physical pixel scale, to make pixel grid aligning easier to understand
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width, width);
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint(width, width), p.device_scale, p.color_space);
 
-    auto cr = Cairo::Context(cairo_create(surface->cobj()), true);
+    auto cr = Renderer::Context(*surface);
 
     // align stroke to pixel grid; even width stroke needs whole coordinates, odd width needs half a pixel shift
     auto offset_stroke = [&](float stroke) {
@@ -517,30 +517,28 @@ std::shared_ptr<Cairo::ImageSurface const> draw_uncached(RenderParams const &p)
 
     // offset the path to make space for outline and stroke; pixel grid-fit the stroke
     offset_stroke(effective_outline);
-
     draw_cairo_path(p.shape, cr, size, total_size - effective_outline, p.angle);
 
     // Outline.
-    ink_cairo_set_source_color(cr.cobj(), Colors::Color(p.outline));
+    cr.setSource(Colors::Color(p.outline));
     cr.set_line_width(effective_outline);
     cr.stroke_preserve();
 
     // Fill.
-    ink_cairo_set_source_color(cr.cobj(), Colors::Color(p.fill));;
+    cr.setSource(Colors::Color(p.fill));
     cr.fill_preserve();
 
     // Stroke.
-    ink_cairo_set_source_color(cr.cobj(), Colors::Color(p.stroke));
+    cr.setSource(Colors::Color(p.stroke));
     cr.set_line_width(stroke_width);
     cr.stroke();
 
-    cairo_surface_set_device_scale(surface->cobj(), p.device_scale, p.device_scale); // No C++ API!
     return surface;
 }
 
 } // namespace
 
-std::shared_ptr<Cairo::ImageSurface const> draw(RenderParams const &params)
+std::shared_ptr<Renderer::Surface const> draw(RenderParams const &params)
 {
     auto lock = std::unique_lock{mutex};
 
@@ -557,8 +555,8 @@ std::shared_ptr<Cairo::ImageSurface const> draw(RenderParams const &params)
 
 size_t std::hash<Inkscape::Handles::RenderParams>::operator()(Inkscape::Handles::RenderParams const &params) const
 {
-    auto const [a, b, c, d, e, f, g, h, i, j] = params;
-    auto const tuple = std::make_tuple(a, b, c, d, e, f, g, h, i, j);
+    auto const [a, b, c, d, e, f, g, h, i, j, k] = params;
+    auto const tuple = std::make_tuple(a, b, c, d, e, f, g, h, i, j, k);
     return boost::hash<decltype(tuple)>{}(tuple);
 }
 

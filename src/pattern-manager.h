@@ -10,14 +10,13 @@
 #include "util/statics.h"
 #include "style.h"
 
-namespace Cairo {
-class Surface;
-}
-
 class SPPattern;
 class SPDocument;
 
 namespace Inkscape {
+namespace Renderer {
+class Surface;
+}
 
 class PatternManager
     : public Util::EnableSingleton<PatternManager, Util::Depends<StockPaintDocuments>>
@@ -49,10 +48,10 @@ public:
     Glib::RefPtr<Inkscape::UI::Widget::PatternItem> get_item(SPPaintServer* pattern);
 
     // get pattern image on a solid background for use in UI lists
-    Cairo::RefPtr<Cairo::Surface> get_image(SPPaintServer* pattern, int width, int height, double device_scale);
+    std::shared_ptr<Renderer::Surface> get_image(SPPaintServer* pattern, int width, int height, double device_scale);
 
     // get pattern image on a checkerboard background for use as a larger preview
-    Cairo::RefPtr<Cairo::Surface> get_preview(SPPaintServer* pattern, int width, int height, unsigned int rgba_background, double device_scale);
+    std::shared_ptr<Renderer::Surface> get_preview(SPPaintServer* pattern, int width, int height, unsigned int rgba_background, double device_scale);
 
 private:
     PatternManager();

@@ -16,10 +16,11 @@
 #include <gdkmm/pixbuf.h>
 
 #include "document.h"
-#include "display/cairo-utils.h"
-#include "helper/pixbuf-ops.h"
 #include "io/file.h"
 #include "util/units.h"
+#include "object/sp-object.h"
+#include "renderer/drawing/svg-renderer.h"
+#include "xml/repr.h"
 
 namespace Inkscape {
 
@@ -65,32 +66,18 @@ double svg_renderer::get_height_px() const {
     return _document.getHeight().value("px");
 }
 
-Inkscape::Pixbuf* svg_renderer::do_render(double device_scale) {
-    auto dpi = 96 * device_scale * _scale;
-    auto area = *_document.preferredBounds();
-
-    auto checkerboard_ptr = _checkerboard ? &*_checkerboard : nullptr;
-    return sp_generate_internal_bitmap(&_document, area, dpi, {}, false, checkerboard_ptr, device_scale);
+std::shared_ptr<Renderer::Surface> svg_renderer::do_render(double device_scale) {
+    Renderer::SvgRenderer svg_factory;
+    svg_factory.set_dpi(96 * _scale);
+    svg_factory.set_device_scale(device_scale);
+    if (_checkerboard) {
+        svg_factory.set_checkerboard(Colors::Color(*_checkerboard));
+    }
+    return svg_factory.render(&_document);
 }
 
-Glib::RefPtr<Gdk::Pixbuf> svg_renderer::render(double scale) {
-    auto pixbuf = do_render(scale);
-    if (!pixbuf) return {};
-
-    // ref it
-    auto raw = Glib::wrap(pixbuf->getPixbufRaw(), true);
-    delete pixbuf;
-    return raw;
-}
-
-Cairo::RefPtr<Cairo::ImageSurface> svg_renderer::render_surface(double scale) {
-    auto pixbuf = do_render(scale);
-    if (!pixbuf) return Cairo::RefPtr<Cairo::ImageSurface>();
-
-    // ref it by saying that we have no reference
-    auto surface = Cairo::RefPtr<Cairo::ImageSurface>(new Cairo::ImageSurface(pixbuf->getSurfaceRaw(), false));
-    delete pixbuf;
-    return surface;
+std::shared_ptr<Renderer::Surface> svg_renderer::render_surface(double scale) {
+    return do_render(scale);
 }
 
 void svg_renderer::set_scale(double scale) {

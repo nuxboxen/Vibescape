@@ -39,7 +39,9 @@ class ToggleButton;
 
 namespace Inkscape {
 
+namespace Renderer {
 class Drawing;
+}
 
 namespace UI::Dialog {
 
@@ -79,7 +81,7 @@ public:
     void modeToggled();
 
 private:
-    std::unique_ptr<Drawing> drawing;
+    std::unique_ptr<Renderer::Drawing> drawing;
     SPDocument *drawing_doc;
     unsigned int visionkey;
     std::unique_ptr<Glib::Timer> timer;

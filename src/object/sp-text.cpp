@@ -50,7 +50,7 @@
 #include "sp-tspan.h"
 #include "sp-defs.h"
 
-#include "display/drawing-text.h"
+#include "renderer/drawing-forward.h"
 #include "path/path-boolop.h"
 #include "svg/svg.h"
 #include "util/units.h"
@@ -199,7 +199,7 @@ void SPText::update(SPCtx *ctx, guint flags) {
         for (auto &v : views) {
             auto &sa = view_style_attachments[v.key];
             sa.unattachAll();
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             _clearFlow(g);
             g->setStyle(style, parent->style);
             // pass the bbox of this as paintbox (used for paintserver fills)
@@ -227,7 +227,7 @@ void SPText::modified(guint flags) {
         for (auto &v : views) {
             auto &sa = view_style_attachments[v.key];
             sa.unattachAll();
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             _clearFlow(g);
             g->setStyle(style, parent->style);
             layout.show(g, sa, paintbox);
@@ -307,8 +307,8 @@ Geom::OptRect SPText::bbox(Geom::Affine const &transform, SPItem::BBoxType type)
     return this->layout.bounds(transform, type == SPItem::VISUAL_BBOX);
 }
 
-Inkscape::DrawingItem* SPText::show(Inkscape::Drawing &drawing, unsigned key, unsigned /*flags*/) {
-    Inkscape::DrawingGroup *flowed = new Inkscape::DrawingGroup(drawing);
+Inkscape::Renderer::DrawingItem* SPText::show(Inkscape::Renderer::Drawing &drawing, unsigned key, unsigned /*flags*/) {
+    Inkscape::Renderer::DrawingGroup *flowed = new Inkscape::Renderer::DrawingGroup(drawing);
     flowed->setPickChildren(false);
     flowed->setStyle(this->style, this->parent->style);
 
@@ -324,7 +324,7 @@ void SPText::hide(unsigned key)
     view_style_attachments.erase(key);
     for (auto &v : views) {
         if (v.key == key) {
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             _clearFlow(g);
         }
     }
@@ -1016,7 +1016,7 @@ void SPText::_adjustCoordsRecursive(SPItem *item, Geom::Affine const &m, double 
 }
 
 
-void SPText::_clearFlow(Inkscape::DrawingGroup *in_arena)
+void SPText::_clearFlow(Inkscape::Renderer::DrawingGroup *in_arena)
 {
     in_arena->clearChildren();
 }

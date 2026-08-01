@@ -105,7 +105,7 @@ protected:
     void remove_child(Inkscape::XML::Node* child) override;
     void order_changed(Inkscape::XML::Node *child, Inkscape::XML::Node *old_ref, Inkscape::XML::Node *new_ref) override;
 
-    Inkscape::DrawingPattern *show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox) override;
+    Inkscape::Renderer::DrawingPattern *show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox) override;
     void hide(unsigned key) override;
     void setBBox(unsigned key, Geom::OptRect const &bbox) override;
 
@@ -160,14 +160,14 @@ private:
      */
     struct AttachedView
     {
-        Inkscape::DrawingPattern *drawingitem;
+        Inkscape::Renderer::DrawingPattern *drawingitem;
         unsigned key;
     };
     std::vector<AttachedView> attached_views;
-    void attach_view(Inkscape::DrawingPattern *di, unsigned key);
-    void unattach_view(Inkscape::DrawingPattern *di);
+    void attach_view(Inkscape::Renderer::DrawingPattern *di, unsigned key);
+    void unattach_view(Inkscape::Renderer::DrawingPattern *di);
 
-    using View = ObjectView<Inkscape::DrawingPattern>;
+    using View = ObjectView<Inkscape::Renderer::DrawingPattern>;
     std::vector<View> views;
     void update_view(View &v);
 };

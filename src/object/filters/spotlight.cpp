@@ -20,10 +20,6 @@
 #include "document.h"    // for SPDocument
 #include "xml/node.h"    // for Node
 
-namespace Inkscape::XML {
-struct Document;
-} // namespace Inkscape::XML
-
 SPFeSpotLight::SPFeSpotLight()
     : x(0)
     , x_set(false)

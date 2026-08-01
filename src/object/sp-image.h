@@ -27,7 +27,14 @@
 
 #define SP_IMAGE_HREF_MODIFIED_FLAG SP_OBJECT_USER_MODIFIED_FLAG_A
 
-namespace Inkscape { class Pixbuf; class URI; }
+using namespace Inkscape;
+namespace Inkscape {
+namespace Renderer {
+class Image;
+}
+class URI;
+}
+
 class SPImage final : public SPItem, public SPViewBox, public SPDimensions {
 public:
     SPImage();
@@ -45,8 +52,7 @@ public:
     char *href;
     char *color_profile;
 
-    std::shared_ptr<Inkscape::Pixbuf const> pixbuf;
-    bool missing = true;
+    std::shared_ptr<Renderer::Image const> image;
 
     void build(SPDocument *document, Inkscape::XML::Node *repr) override;
     void release() override;
@@ -60,11 +66,11 @@ public:
     const char* typeName() const override;
     const char* displayName() const override;
     char* description() const override;
-    Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+    Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
     void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const override;
     Geom::Affine set_transform(Geom::Affine const &transform) override;
 
-    void apply_profile(Inkscape::Pixbuf *pixbuf);
+    void apply_profile(std::shared_ptr<Renderer::Image> surface);
 
     Geom::PathVector const *get_curve() const;
     void refresh_if_outdated();
@@ -73,12 +79,11 @@ public:
 
     Inkscape::URI getURI() const;
 private:
-    static Inkscape::Pixbuf *readImage(gchar const *href, gchar const *absref, gchar const *base, double svgdpi = 0);
-    static Inkscape::Pixbuf *getBrokenImage(double width, double height);
+    static std::shared_ptr<Renderer::Image> readImage(gchar const *href, gchar const *absref, gchar const *base, double svgdpi = 0);
 };
 
 /* Return duplicate of curve or NULL */
-void sp_embed_image(Inkscape::XML::Node *imgnode, Inkscape::Pixbuf *pb);
+void sp_embed_image(Inkscape::XML::Node *imgnode, std::shared_ptr<Renderer::Image> img);
 void sp_embed_svg(Inkscape::XML::Node *image_node, std::string const &fn);
 
 #endif

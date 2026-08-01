@@ -39,6 +39,11 @@ protected:
 
     unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) override;
     unsigned _renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const override;
+
+    void _renderImage(Context dc) const;
+    void _renderImageOutline(Context dc) const;
+    void _renderImageBroken(Context dc) const;
+
     DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) override;
 
     std::shared_ptr<Surface const> _image;

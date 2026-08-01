@@ -51,9 +51,8 @@
 // For color picking
 #include "colors/color.h"
 #include "colors/utils.h"
-#include "display/drawing.h"
-#include "display/drawing-context.h"
-#include "display/cairo-utils.h"
+#include "renderer/drawing-forward.h"
+#include "renderer/context.h"
 #include "document.h"
 #include "sp-root.h"
 #include "sp-mesh-gradient.h"
@@ -2209,7 +2208,7 @@ unsigned SPMeshNodeArray::color_pick(std::vector<unsigned> const &icorners, SPGr
     // Setup...
 
     // We need a copy of the drawing so we can hide the mesh.
-    Inkscape::Drawing *pick_drawing = new Inkscape::Drawing();
+    Inkscape::Renderer::Drawing *pick_drawing = new Inkscape::Renderer::Drawing();
     unsigned pick_visionkey = SPItem::display_key_new(1);
 
     SPDocument *pick_doc = item->document;
@@ -2292,13 +2291,17 @@ unsigned SPMeshNodeArray::color_pick(std::vector<unsigned> const &icorners, SPGr
         Geom::IntRect ibox = box.roundOutwards();
 
         /* Find visible area */
-        cairo_surface_t *s = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, ibox.width(), ibox.height());
-        Inkscape::DrawingContext dc(s, ibox.min());
+        /*
+        // TODO This need rewriting, it should render the background ONCE
+        // and then use color picking in surface to give a color instead
+        std::make_shared<Renderer::Surface>(ibox, 1.0, srgb);
+        Inkscape::Renderer::Context dc(s, ibox.min());
 
-        /* Render copy and pick color */
+        // Render copy and pick color
         pick_drawing->render(dc, ibox);
         n->color = ink_cairo_surface_average_color(s);
         cairo_surface_destroy(s);
+        */
     }
 
     pick_doc->getRoot()->invoke_hide(pick_visionkey);

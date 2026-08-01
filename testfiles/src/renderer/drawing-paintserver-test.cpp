@@ -15,7 +15,7 @@ public:
         cmyk = Colors::Manager::get().find(Colors::Space::Type::CMYK);
 
         surface = std::make_shared<Surface>(size, 1, cmyk);
-        context = std::make_unique<Context>(surface, bounds.min(), scale);
+        context = std::make_unique<Context>(*surface, bounds.min(), scale);
     }
 
     Geom::IntPoint size = {21, 21};

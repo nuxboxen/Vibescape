@@ -18,8 +18,8 @@
 #include <cairomm/matrix.h>
 #include <cstdint>
 
+#include "colors/color.h"
 #include "path/path-curve.h"
-#include "display/cairo-utils.h"
 #include "helper/geom.h" // bounds_exact_transformed()
 
 namespace Inkscape {
@@ -140,7 +140,7 @@ void CanvasItemBpath::_update(bool)
 /**
  * Render bpath to screen via Cairo.
  */
-void CanvasItemBpath::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemBpath::_render(Inkscape::CanvasItemBuffer buf) const
 {
     bool do_fill   = (_fill   & 0xff) != 0; // Not invisible.
     bool do_stroke = (_stroke & 0xff) != 0; // Not invisible.
@@ -150,61 +150,51 @@ void CanvasItemBpath::_render(Inkscape::CanvasItemBuffer &buf) const
         return;
     }
 
-    buf.cr->save();
+    auto cr = buf.cr;
+    cr.set_tolerance(0.5);
+    cr.begin_new_path();
 
-    // Setup path
-    buf.cr->set_tolerance(0.5);
-    buf.cr->begin_new_path();
+    cr.path(_path, affine(), buf.rect, !(do_fill || _fill_pattern), get_effective_outline());
 
-    feed_pathvector_to_cairo(buf.cr->cobj(), _path, affine(), buf.rect,
-                             /* optimize_stroke */ !(do_fill || _fill_pattern), get_effective_outline());
-
-    // Do fill
     if (do_fill) {
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_fill));
-        buf.cr->set_fill_rule(_fill_rule == SP_WIND_RULE_EVENODD ?
-                               Cairo::Context::FillRule::EVEN_ODD : Cairo::Context::FillRule::WINDING);
-        buf.cr->fill_preserve();
+        cr.setSource(Colors::Color(_fill));
+        cr.setFillRule(_fill_rule);
+        cr.fillPreserve();
     }
 
-    // Do fill pattern
     if (_fill_pattern) {
-        buf.cr->save();
-        buf.cr->translate(-buf.rect.min().x(), -buf.rect.min().y());
-        buf.cr->set_source(_fill_pattern);
-        buf.cr->fill_preserve();
-        buf.cr->restore();
+        cr.save();
+        cr.transform(Geom::Translate(-buf.rect.min()));
+        cr.setSource(*_fill_pattern);
+        cr.fillPreserve();
+        cr.restore();
     }
 
-    // Do outline
     if (SP_RGBA32_A_U(_outline) > 0 && _outline_width > 0) {
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_outline));
-        buf.cr->set_line_width(get_effective_outline());
-        buf.cr->stroke_preserve();
+        cr.setSource(Colors::Color(_outline));
+        cr.set_line_width(get_effective_outline());
+        cr.stroke_preserve();
     }
 
-    // Do stroke
     if (do_stroke && _stroke_width > 0) {
 
         if (!_dashes.empty()) {
-            buf.cr->set_dash(_dashes, 0.0); // 0.0 is offset
+            cr.set_dash(_dashes, 0.0);
         }
 
         if (_phantom_line) {
-            buf.cr->set_source_rgba(1.0, 1.0, 1.0, 0.25);
-            buf.cr->set_line_width(2.0);
-            buf.cr->stroke_preserve();
+            cr.setSource(Colors::Color(0xffffff64));
+            cr.set_line_width(2.0);
+            cr.stroke_preserve();
         }
 
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_stroke));
-        buf.cr->set_line_width(_stroke_width);
-        buf.cr->stroke();
+        cr.setSource(Colors::Color(_stroke));
+        cr.set_line_width(_stroke_width);
+        cr.stroke();
 
     } else {
-        buf.cr->begin_new_path(); // Clears path
+        cr.begin_new_path();
     }
-
-    buf.cr->restore();
 }
 
 } // namespace Inkscape

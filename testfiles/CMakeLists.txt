@@ -80,10 +80,10 @@ set(TEST_SOURCES
     util-expression-evaluator-test
     util-uri-test
     drag-and-drop-svgz
-    drawing-pattern-test
     split-path-test
     attributes-test
     dir-util-test
+    sp-image-test
     sp-item-test
     sp-object-test
     sp-object-lang-test
@@ -96,6 +96,7 @@ set(TEST_SOURCES
     preferences-test
     rebase-hrefs-test
     renderer/drawing-svg-renderer-test
+    renderer/surface-image-test
     stream-test
     style-elem-test
     style-internal-test
@@ -110,15 +111,12 @@ set(TEST_SOURCES
     livarot-pathoutline-test
     object-test
     sp-glyph-kerning-test
-    cairo-utils-test
     svg-extension-test
     2geom-characterization-test
-    test-feDropShadow
     xml-test
     sp-item-group-test
     store-test
     lpe-test
-    ui-util-test
     sp-document-test
     object-colors-test
     multi-marker-color-wheel-test
@@ -186,6 +184,9 @@ add_unit_tests(TEST_SOURCES "svg-length-test.cpp"
                             "util/units-internal.cpp"
                     EXTRA_LIBS GLibmm::GLibmm 2Geom::2geom)
 
+include("${CMAKE_SOURCE_DIR}/src/util/CMakeUnit.txt")
+get_statics_unit_lib()
+
 include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
 get_libnrtype_unit_lib()
 
@@ -227,7 +228,14 @@ add_unit_tests(TEST_SOURCES
                             "renderer/pixel-filter-*-test.cpp"
                             "renderer/surface-filter-*-test.cpp"
                             "renderer/surface-test.cpp"
+                    ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
+                                "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
                     EXTRA_LIBS renderer_unit_lib colors_unit_lib)
+
+add_unit_tests(TEST_SOURCES
+                            "renderer/surface-texture-test.cpp"
+                    SOURCES "renderer/surface-texture.cpp"
+                    EXTRA_LIBS renderer_unit_lib colors_unit_lib GLibmm::GLibmm GTKmm::GTKmm PkgConfig::GTK)
 
 include("${CMAKE_SOURCE_DIR}/src/renderer/drawing-filters/CMakeUnit.txt")
 get_drawing_filters_unit_lib()

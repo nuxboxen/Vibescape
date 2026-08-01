@@ -15,7 +15,7 @@
 #include "colors/cms/profile.h"
 #include "colors/spaces/cms.h"
 
-#include "renderer/surface-factory.h"
+#include "renderer/drawing/svg-renderer.h"
 
 #include "util/uri.h"
 
@@ -151,7 +151,7 @@ static Geom::IntPoint get_image_size(ImageType &image, SvgFactory const &svg_fac
 
 static SvgFactory default_svg_factory()
 {
-    return std::make_shared<SurfaceFactory>();
+    return std::make_shared<SvgRenderer>();
 }
 
 /* ======== OBJECT FUNCTIONS ======== */
@@ -189,7 +189,6 @@ Image::Image(ImageType image, SvgFactory const &svg_factory, Glib::RefPtr<Glib::
 Image::~Image()
 {
     if (_frame) {
-        _surfaces.clear();
         g_object_unref(_frame);
     }
     if (_image) {

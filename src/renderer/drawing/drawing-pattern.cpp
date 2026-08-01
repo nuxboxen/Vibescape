@@ -9,6 +9,7 @@
 
 #include <cairomm/region.h>
 
+#include "renderer/code-builder.h"
 #include "renderer/context.h"
 #include "renderer/context-pattern.h"
 #include "renderer/surface.h"
@@ -33,10 +34,13 @@ DrawingPattern::DrawingPattern(Drawing &drawing)
     : DrawingGroup(drawing)
     , _overflow_steps(1)
 {
+    if (drawing._code_build) CodeBuilder::Construct(*this, "DrawingPattern", "pattern", "make_drawingitem") << drawing;
 }
 
 void DrawingPattern::setPatternToUserTransform(Geom::Affine const &transform)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setPatternToUserTransform") << transform;
+
     defer([=, this] {
         auto current = _pattern_to_user ? *_pattern_to_user : Geom::identity();
         if (Geom::are_near(transform, current, PATTERN_MATRIX_EPSILON)) {
@@ -50,6 +54,8 @@ void DrawingPattern::setPatternToUserTransform(Geom::Affine const &transform)
 
 void DrawingPattern::setTileRect(Geom::Rect const &tile_rect)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setTileRect") << tile_rect;
+
     defer([=, this] {
         _tile_rect = tile_rect;
         _markForUpdate(STATE_ALL, true);
@@ -58,6 +64,8 @@ void DrawingPattern::setTileRect(Geom::Rect const &tile_rect)
 
 void DrawingPattern::setOverflow(Geom::Affine const &initial_transform, int steps, Geom::Affine const &step_transform)
 {
+    if (drawing()._code_build) CodeBuilder::Call(*this, "setOverflow") << initial_transform << steps << step_transform;
+
     defer([=, this] {
         _overflow_initial_transform = initial_transform;
         _overflow_steps = steps;
@@ -187,7 +195,7 @@ std::shared_ptr<Pattern> DrawingPattern::renderPattern(DrawingOptions &rc, Geom:
         // Create a new surface covering the expanded rectangle.
         if (!color_space) throw std::exception();
         auto ps = PatternSurface(expanded, rc.device_scale, color_space);
-        auto cr = Context(ps.surface);
+        auto cr = Context(*ps.surface);
         cr.translate(Geom::Translate(-ps.rect.left(), -ps.rect.top()));
 
         // Paste all the old surfaces into the new surface, tracking the remaining dirty region.
@@ -206,7 +214,7 @@ std::shared_ptr<Pattern> DrawingPattern::renderPattern(DrawingOptions &rc, Geom:
     auto [ps, dirty] = get_surface();
 
     // Draw the pattern contents to the dirty areas of the surface, taking care of possible wrapping.
-    Context dc(ps->surface);
+    Context dc(*ps->surface);
     dc.transform(Geom::Translate(ps->rect.min()).inverse());
     if (rc.antialiasing_override) {
         dc.setAntialiasing(*rc.antialiasing_override);

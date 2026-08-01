@@ -17,7 +17,7 @@
 #include <string>
 #include <2geom/transforms.h>
 
-#include "display/drawing-group.h"
+#include "renderer/drawing-forward.h"
 
 #include "attributes.h"                              // for SPAttr
 #include "document.h"                                // for SPDocument
@@ -214,9 +214,9 @@ char const *SPMask::create(std::vector<Inkscape::XML::Node*> &reprs, SPDocument 
     return mask_id;
 }
 
-Inkscape::DrawingItem *SPMask::show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
+Inkscape::Renderer::DrawingItem *SPMask::show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
 {
-    views.emplace_back(make_drawingitem<Inkscape::DrawingGroup>(drawing), bbox, key);
+    views.emplace_back(make_drawingitem<Inkscape::Renderer::DrawingGroup>(drawing), bbox, key);
     auto &v = views.back();
     auto root = v.drawingitem.get();
 

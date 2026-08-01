@@ -22,13 +22,12 @@
 
 #include "attributes.h"
 #include "bad-uri-exception.h"
-#include "display/cairo-utils.h"
-#include "display/drawing-context.h"
-#include "display/drawing-image.h"
-#include "display/drawing-pattern.h"
-#include "display/drawing.h"
 #include "document.h"
+#include "sp-lpe-item.h"
 #include "object/uri.h"
+#include "renderer/context.h"
+#include "renderer/drawing-forward.h"
+#include "renderer/surface.h"
 #include "sp-defs.h"
 #include "sp-factory.h"
 #include "sp-item.h"
@@ -393,7 +392,7 @@ void SPPattern::set_shown(SPPattern *new_shown)
     }
 }
 
-void SPPattern::attach_view(Inkscape::DrawingPattern *di, unsigned key)
+void SPPattern::attach_view(Inkscape::Renderer::DrawingPattern *di, unsigned key)
 {
     attached_views.push_back({di, key});
 
@@ -402,15 +401,15 @@ void SPPattern::attach_view(Inkscape::DrawingPattern *di, unsigned key)
             auto item = child->invoke_show(di->drawing(), key, SP_ITEM_SHOW_DISPLAY);
             di->appendChild(item);
 
-            if (auto image = cast<Inkscape::DrawingImage>(item)) {
+            if (auto image = cast<Inkscape::Renderer::DrawingImage>(item)) {
                 // Avoid gaps between pattern images
-                image->setExtend(CAIRO_EXTEND_PAD);
+                image->setExtend(Cairo::Pattern::Extend::PAD);
             }
         }
     }
 }
 
-void SPPattern::unattach_view(Inkscape::DrawingPattern *di)
+void SPPattern::unattach_view(Inkscape::Renderer::DrawingPattern *di)
 {
     auto it = std::find_if(attached_views.begin(), attached_views.end(), [di] (auto const &v) {
         return v.drawingitem == di;
@@ -677,9 +676,9 @@ bool SPPattern::isValid() const
     return width() > 0 && height() > 0;
 }
 
-Inkscape::DrawingPattern *SPPattern::show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
+Inkscape::Renderer::DrawingPattern *SPPattern::show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
 {
-    views.emplace_back(make_drawingitem<Inkscape::DrawingPattern>(drawing), bbox, key);
+    views.emplace_back(make_drawingitem<Inkscape::Renderer::DrawingPattern>(drawing), bbox, key);
     auto &v = views.back();
     auto root = v.drawingitem.get();
 

@@ -22,28 +22,14 @@
 #include "spotlight.h"                           // for SPFeSpotLight
 #include "strneq.h"                              // for strneq
 
-#include "display/nr-filter-specularlighting.h"  // for FilterSpecularLighting
-#include "display/nr-light-types.h"              // for SpotLightData, Light...
+#include "renderer/drawing-filters/light.h"
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "xml/node.h"                            // for Node
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Document;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeSpecularLighting::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::SURFACESCALE);
     readAttr(SPAttr::SPECULARCONSTANT);
     readAttr(SPAttr::SPECULAREXPONENT);
@@ -186,30 +172,30 @@ void SPFeSpecularLighting::order_changed(Inkscape::XML::Node *child, Inkscape::X
     requestModified(SP_OBJECT_MODIFIED_FLAG);
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeSpecularLighting::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeSpecularLighting::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto specularlighting = std::make_unique<Inkscape::Filters::FilterSpecularLighting>();
+    auto specularlighting = std::make_unique<Inkscape::Renderer::DrawingFilter::SpecularLighting>();
     build_renderer_common(specularlighting.get());
 
-    specularlighting->specularConstant = specularConstant;
+    specularlighting->diffuseConstant = specularConstant;
     specularlighting->specularExponent = specularExponent;
     specularlighting->surfaceScale = surfaceScale;
-    specularlighting->lighting_color = lighting_color ? lighting_color->toRGBA() : 0xffffffff;
+    specularlighting->lighting_color = lighting_color ? *lighting_color : Inkscape::Colors::Color(0xffffffff);
 
     // We assume there is at most one child
-    specularlighting->light_type = Inkscape::Filters::NO_LIGHT;
+    specularlighting->light_type = Inkscape::Renderer::DrawingFilter::NO_LIGHT;
 
     if (auto l = cast<SPFeDistantLight>(firstChild())) {
-        specularlighting->light_type = Inkscape::Filters::DISTANT_LIGHT;
+        specularlighting->light_type = Inkscape::Renderer::DrawingFilter::DISTANT_LIGHT;
         specularlighting->light.distant.azimuth = l->azimuth;
         specularlighting->light.distant.elevation = l->elevation;
     } else if (auto l = cast<SPFePointLight>(firstChild())) {
-        specularlighting->light_type = Inkscape::Filters::POINT_LIGHT;
+        specularlighting->light_type = Inkscape::Renderer::DrawingFilter::POINT_LIGHT;
         specularlighting->light.point.x = l->x;
         specularlighting->light.point.y = l->y;
         specularlighting->light.point.z = l->z;
     } else if (auto l = cast<SPFeSpotLight>(firstChild())) {
-        specularlighting->light_type = Inkscape::Filters::SPOT_LIGHT;
+        specularlighting->light_type = Inkscape::Renderer::DrawingFilter::SPOT_LIGHT;
         specularlighting->light.spot.x = l->x;
         specularlighting->light.spot.y = l->y;
         specularlighting->light.spot.z = l->z;

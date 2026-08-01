@@ -25,7 +25,7 @@ static void draw_color_plate(const Cairo::RefPtr<Cairo::Context>& ctx, const Geo
         circle(ctx, area.midpoint(), area.minExtent() / 2);
     }
     else {
-        Util::rounded_rectangle(ctx, area, radius);
+        // TODO ctx->rectange(area, radius);
     }
     ctx->clip();
 

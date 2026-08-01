@@ -15,11 +15,10 @@
  */
 
 #include <2geom/line.h>
-#include <pangomm/fontdescription.h>
-#include <pangomm/layout.h>
 
 #include "canvas-item-guideline.h"
 #include "canvas-item-ctrl.h"
+#include "colors/color.h"
 #include "colors/utils.h"
 #include "display/control/canvas-item-enums.h"
 
@@ -127,7 +126,7 @@ void CanvasItemGuideLine::_update(bool)
 /**
  * Render guideLine to screen via Cairo.
  */
-void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer buf) const
 {
     // Document to canvas
     Geom::Point const normal = _normal * affine().withoutTranslation(); // Direction only
@@ -138,32 +137,23 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
 
     // Set up the Cairo rendering context
     auto ctx = buf.cr;
-    ctx->save();
-    ctx->translate(-buf.rect.left(), -buf.rect.top()); // Canvas to screen
-    ctx->set_source_rgba(SP_RGBA32_R_F(_stroke), SP_RGBA32_G_F(_stroke),
-                         SP_RGBA32_B_F(_stroke), SP_RGBA32_A_F(_stroke));
-    ctx->set_line_width(line_width);
+
+    ctx.translate(-buf.rect.left(), -buf.rect.top()); // Canvas to screen
+    ctx.setSource(Colors::Color(_stroke));
+    ctx.set_line_width(line_width);
 
     if (_inverted) {
         // operator not available in cairo C++ bindings
-        cairo_set_operator(ctx->cobj(), CAIRO_OPERATOR_DIFFERENCE);
+        ctx.setOperator(SP_CSS_BLEND_DIFFERENCE);
     }
 
     if (!_label.empty()) { // Render text label
-        ctx->save();
-        ctx->translate(aligned_origin.x(), aligned_origin.y());
-
-        ctx->rotate(atan2(normal.cw()) + M_PI * (_context->yaxisdown() ? 1 : 0));
-        ctx->translate(LABEL_SEP, -(_origin_ctrl->radius() + 2 * FONT_SIZE)); // Offset
-        ctx->move_to(0, 0);
-
-        // Call Pango to render text with fallback fonts
-        auto layout = Pango::Layout::create(ctx);
-        layout->set_font_description(Pango::FontDescription(Glib::ustring::compose("Sans %1", FONT_SIZE)));
-        layout->set_text(_label);
-        layout->show_in_cairo_context(ctx);
-
-        ctx->restore();
+        auto ctx2 = ctx; // save/restore
+        ctx2.translate(aligned_origin.x(), aligned_origin.y());
+        ctx2.rotate(atan2(normal.cw()) + M_PI * (_context->yaxisdown() ? 1 : 0));
+        ctx2.translate(LABEL_SEP, -(_origin_ctrl->radius() + 2 * FONT_SIZE)); // Offset
+        ctx2.move_to(0, 0);
+        ctx2.paintText(Glib::ustring::compose("Sans %1", FONT_SIZE), _label);
     }
 
     // Draw guide.
@@ -173,13 +163,13 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
     if (Geom::are_near(normal.y(), 0.0)) {
         // Vertical
         double const position = aligned_origin.x();
-        ctx->move_to(position, buf.rect.top());
-        ctx->line_to(position, buf.rect.bottom());
+        ctx.move_to(position, buf.rect.top());
+        ctx.line_to(position, buf.rect.bottom());
     } else if (Geom::are_near(normal.x(), 0.0)) {
         // Horizontal
         double position = aligned_origin.y();
-        ctx->move_to(buf.rect.left(), position);
-        ctx->line_to(buf.rect.right(), position);
+        ctx.move_to(buf.rect.left(), position);
+        ctx.line_to(buf.rect.right(), position);
     } else {
         // Angled
         Geom::Line line = Geom::Line::from_origin_and_vector(aligned_origin, Geom::rot90(normal));
@@ -187,13 +177,11 @@ void CanvasItemGuideLine::_render(Inkscape::CanvasItemBuffer &buf) const
         if (auto segment = line.clip(buf.rect)) {
             auto p1 = segment->initialPoint();
             auto p2 = segment->finalPoint();
-            ctx->move_to(p1.x(), p1.y());
-            ctx->line_to(p2.x(), p2.y());
+            ctx.move_to(p1.x(), p1.y());
+            ctx.line_to(p2.x(), p2.y());
         }
     }
-    ctx->stroke();
-
-    ctx->restore();
+    ctx.stroke();
 }
 
 void CanvasItemGuideLine::set_visible(bool visible)

@@ -60,7 +60,7 @@ public:
     void hide_shape_inside();
 
     /** discards the drawing objects representing this text. */
-    void _clearFlow(Inkscape::DrawingGroup *in_arena);
+    void _clearFlow(Inkscape::Renderer::DrawingGroup *in_arena);
 
     bool _optimizeTextpathText = false;
 
@@ -118,7 +118,7 @@ private:
     const char* typeName() const override;
     const char* displayName() const override;
     char* description() const override;
-    Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+    Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
     void hide(unsigned int key) override;
     void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const override;
     Geom::Affine set_transform(Geom::Affine const &transform) override;

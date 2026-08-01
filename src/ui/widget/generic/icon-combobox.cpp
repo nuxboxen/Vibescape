@@ -8,6 +8,7 @@
 #include <gtkmm/label.h>
 #include <gtkmm/picture.h>
 #include <gtkmm/togglebutton.h>
+#include "renderer/surface-texture.h"
 #include "ui/util.h"
 
 namespace Inkscape::UI::Widget {
@@ -206,7 +207,7 @@ void IconComboBox::add_row(const Glib::ustring& icon_name, const Glib::ustring& 
 }
 
 void IconComboBox::add_row(Cairo::RefPtr<Cairo::Surface> image, const Glib::ustring& label, int id) {
-    auto tex = to_texture(image);
+    auto tex = Renderer::build_texture(image);
     _store->append(ListItem::create(id, label, {}, {}, tex));
 }
 

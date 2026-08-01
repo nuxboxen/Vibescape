@@ -52,10 +52,12 @@
 #include "actions/actions-svg-processing.h"
 #include "actions/actions-undo-document.h"
 #include "colors/document-cms.h"
+#include "colors/manager.h"
+#include "colors/spaces/base.h"
 #include "debug/console-output-undo-observer.h"
 #include "desktop.h"
 #include "display/control/canvas-item-drawing.h"
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "document-undo.h"
 #include "document-update.h"
 #include "event-log.h"
@@ -1267,6 +1269,16 @@ void SPDocument::do_change_filename(gchar const *const filename, bool const reba
     // In case of new document the filename is nullptr
     gchar *new_filename = this->document_filename ? this->document_filename : this->document_name;
     this->filename_set_signal.emit(new_filename);
+}
+
+std::shared_ptr<Inkscape::Colors::Space::AnySpace> SPDocument::getColorSpace() const
+{
+    return getRoot()->getColorSpace();
+}
+
+bool SPDocument::setColorSpace(std::shared_ptr<Inkscape::Colors::Space::AnySpace> const &space)
+{
+    return getRoot()->setColorSpace(space);
 }
 
 /**

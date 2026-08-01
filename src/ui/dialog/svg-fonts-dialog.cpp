@@ -24,13 +24,13 @@
 #include <gtkmm/scale.h>
 #include <gtkmm/snapshot.h>
 #include <gtkmm/togglebutton.h>
+#include <2geom/pathvector.h>
 
 #include "desktop.h"
 #include "document.h"
 #include "document-undo.h"
 #include "layer-manager.h"
 #include "selection.h"
-#include "display/nr-svgfonts.h"
 #include "object/sp-defs.h"
 #include "object/sp-font-face.h"
 #include "object/sp-font.h"
@@ -80,7 +80,7 @@ void SvgFontDrawingArea::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
         cr->restore();
         return;
     }
-    cr->set_font_face( Cairo::RefPtr<Cairo::FontFace>(new Cairo::FontFace(_svgfont->get_font_face(), false /* does not have reference */)) );
+    // TODO cr->set_font_face( Cairo::RefPtr<Cairo::FontFace>(new Cairo::FontFace(_svgfont->get_font_face(), false /* does not have reference */)) );
     cr->set_font_size (_y-20);
     cr->move_to (10, 10);
     auto const fg = get_color();
@@ -103,7 +103,9 @@ void SvgGlyphRenderer::snapshot_vfunc(
 
     auto const cr = snapshot->append_cairo(background_area);
 
-    cr->set_font_face(Cairo::RefPtr<Cairo::FontFace>(new Cairo::FontFace(_font->get_font_face(), false /* does not have reference */)));
+    // This is removed as it is extremely bad for the new engine and needs
+    // to be replaced with a whole new system. Sorry font makers.
+    // TODO cr->set_font_face(Cairo::RefPtr<Cairo::FontFace>(new Cairo::FontFace(_font->get_font_face(), false /* does not have reference */)));
     cr->set_font_size(_font_size);
     Glib::ustring glyph = _property_glyph.get_value();
     Cairo::TextExtents ext;
@@ -571,7 +573,7 @@ void SvgFontsDialog::update_fonts(bool document_replaced)
             Gtk::TreeModel::Row row = *_model->append();
             auto f = cast<SPFont>(font);
             row[_columns.spfont] = f;
-            row[_columns.svgfont] = new SvgFont(f);
+            // TODO: rewrite the whole svg-fonts implementation YIKES! row[_columns.svgfont] = new SvgFont(f);
             row[_columns.label] = get_font_label(f);
         }
         if (!fonts.empty()) {
@@ -1019,7 +1021,7 @@ void SvgFontsDialog::update_glyphs(SPGlyph* changed_glyph) {
 
 void SvgFontsDialog::refresh_svgfont() {
     if (auto font = get_selected_svgfont()) {
-        font->refresh();
+        // TODO font->refresh();
     }
     _font_da.redraw();
 }

@@ -14,12 +14,6 @@
 
 #include "sp-filter-primitive.h"
 
-namespace Inkscape {
-namespace Filters {
-class FilterComponentTransfer;
-} // namespace Filters
-} // namespace Inkscape
-
 class SPFeComponentTransfer final
     : public SPFilterPrimitive
 {
@@ -34,7 +28,7 @@ protected:
     void child_added(Inkscape::XML::Node *child, Inkscape::XML::Node *ref) override;
     void remove_child(Inkscape::XML::Node *child) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FECOMPONENTTRANSFER_H_SEEN

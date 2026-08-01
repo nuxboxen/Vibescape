@@ -19,13 +19,10 @@ namespace Glib {
 class ustring;
 } // namespace Glib
 
-namespace Gdk {
-class Pixbuf;
-} // namespace Gdk
-
 namespace Inkscape {
-
-class Pixbuf;
+namespace Renderer {
+class Surface;
+}
 
 class svg_renderer
 {
@@ -42,8 +39,7 @@ public:
     size_t set_style(const Glib::ustring& selector, const char* name, const Glib::ustring& value);
 
     // render document at given scale
-    Glib::RefPtr<Gdk::Pixbuf> render(double scale);
-    Cairo::RefPtr<Cairo::ImageSurface> render_surface(double scale);
+    std::shared_ptr<Renderer::Surface> render_surface(double scale);
 
     // if set, draw checkerboard pattern before image
     void set_checkerboard_color(uint32_t rgba) { _checkerboard = rgba; }
@@ -56,7 +52,7 @@ public:
     double get_height_px() const;
 
 private:
-    Pixbuf *do_render(double device_scale);
+    std::shared_ptr<Renderer::Surface> do_render(double device_scale);
 
     std::unique_ptr<SPDocument> const _optional_storage;
     SPDocument &_document;

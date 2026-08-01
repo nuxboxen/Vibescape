@@ -19,7 +19,7 @@
 #include <optional>
 #include <string>
 #include "object/sp-object.h"
-#include "display/nr-filter-types.h"
+#include "renderer/drawing-filters/enums.h"
 
 class SlotResolver;
 
@@ -40,7 +40,7 @@ protected:
 
 private:
     std::optional<std::string> in_name;
-    int in_slot = Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
+    int in_slot = Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
 };
 
 #endif // SP_FEMERGENODE_H_SEEN

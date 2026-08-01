@@ -29,7 +29,7 @@
 
 #include "actions/actions-tools.h" // set_active_tool()
 
-#include "display/drawing-item.h"
+#include "renderer/drawing/drawing-item.h"
 #include "display/control/canvas-item-catchall.h"
 #include "display/control/canvas-item-drawing.h"
 #include "display/control/snap-indicator.h"
@@ -362,7 +362,7 @@ void SelectTool::sp_select_context_cycle_through_items(Selection *selection, Scr
         return;
     }
 
-    Inkscape::DrawingItem *arenaitem;
+    Inkscape::Renderer::DrawingItem *arenaitem;
 
     if (cycling_cur_item) {
         arenaitem = cycling_cur_item->get_arenaitem(_desktop->dkey);
@@ -386,7 +386,7 @@ void SelectTool::sp_select_context_cycle_through_items(Selection *selection, Scr
 void SelectTool::sp_select_context_reset_opacities() {
     for (auto item : cycling_items_cmp) {
         if (item) {
-            Inkscape::DrawingItem *arenaitem = item->get_arenaitem(_desktop->dkey);
+            Inkscape::Renderer::DrawingItem *arenaitem = item->get_arenaitem(_desktop->dkey);
             arenaitem->setOpacityOverride({});
         } else {
             g_assert_not_reached();
@@ -745,7 +745,7 @@ bool SelectTool::root_handler(CanvasEvent const &event)
                 // set opacities in new stack
                 for(auto cycling_item : cycling_items) {
                     if (cycling_item) {
-                        Inkscape::DrawingItem *arenaitem = cycling_item->get_arenaitem(_desktop->dkey);
+                        Inkscape::Renderer::DrawingItem *arenaitem = cycling_item->get_arenaitem(_desktop->dkey);
                         arenaitem->setOpacityOverride(0.3);
                     }
                 }

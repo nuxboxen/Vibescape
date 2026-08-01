@@ -82,7 +82,7 @@ void DiffuseLighting::render(Slot &slot) const
         ), *input);
         break;
     default: {
-        auto ct = Context(output);
+        auto ct = Context(*output);
         ct.paint(); // Fill with black
         break;
         }

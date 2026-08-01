@@ -11,13 +11,16 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "ui/widget/color-preview.h"
-
-#include "display/cairo-utils.h"
-#include "ui/util.h"
-#include "colors/color.h"
 #include <2geom/rect.h>
+
+#include "colors/color.h"
+#include "colors/manager.h"
+#include "ui/util.h"
+#include "ui/widget/color-preview.h"
 #include "util/theme-utils.h"
+
+#include "renderer/context.h"
+#include "renderer/context-pattern.h"
 
 namespace Inkscape::UI::Widget {
 
@@ -44,15 +47,13 @@ void ColorPreview::construct() {
 void ColorPreview::setRgba32(std::uint32_t const rgba) {
     _rgba = rgba;
     _pattern = {};
-    _gradient.clear();
     queue_draw();
 }
-void ColorPreview::setPattern(Cairo::RefPtr<Cairo::Pattern> pattern)
+void ColorPreview::setPattern(std::shared_ptr<Renderer::Pattern> pattern)
 {
     if (_pattern == pattern) return;
 
     _pattern = pattern;
-    _gradient.clear();
     _rgba = 0;
     queue_draw();
 }
@@ -70,27 +71,23 @@ Geom::Rect round_rect(const Cairo::RefPtr<Cairo::Context>& ctx, Geom::Rect rect,
     return rect.shrunkBy(1);
 }
 
-static Cairo::RefPtr<Cairo::Pattern> _create_checkerboard_pattern(Gtk::Widget& w, double tx, double ty, int size) {
-    auto [col1, col2] = Util::get_checkerboard_colors(w, false);
-    auto pattern = ::create_checkerboard_pattern(col1, col2, size);
-    pattern->set_matrix(Cairo::translation_matrix(tx, ty));
-    return pattern;
-}
-
-void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
+void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ct,
                              int const widget_width, int const widget_height)
 {
+    auto cr = std::make_shared<Renderer::Context>(ct);
+
     double width = widget_width;
     double height = widget_height;
     auto x = 0.0;
     auto y = 0.0;
     double radius = _style == Simple ? 0.0 : 2.0;
     if (_radius >= 0) radius = _radius;
-    double degrees = M_PI / 180.0;
     auto rect = Geom::Rect(x, y, x + width, y + height);
 
-    std::uint32_t outline_color = 0x00000000;
-    std::uint32_t border_color = 0xffffff00;
+    auto white = Colors::Color(0xffffffff);
+    auto black = Colors::Color(0xff);
+    auto outline_color = white;
+    auto border_color = black;
 
     bool dark_theme = Util::is_current_theme_dark(*this);
     auto state = get_state_flags();
@@ -100,81 +97,71 @@ void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
         std::swap(outline_color, border_color);
     }
 
+    Colors::Color check_color(dark_theme ? 0x606060ff : 0xe0e0e0ff, false);
+    auto checkers = Renderer::CheckerboardPattern(check_color, _checkerboard_tile_size);
+    checkers.setMatrix(Geom::Translate(-x, -y));
+
     if (_style == Outlined) {
         // outside outline
-        rect = round_rect(cr, rect, radius--);
+        cr->rectangle(rect, radius--);
+        rect.shrinkBy(1);
         // opacity of outside outline is reduced
-        int alpha = disabled || backdrop ? 0x2f : 0x5f;
-        ink_cairo_set_source_color(cr->cobj(), Colors::Color(outline_color | alpha));
+        cr->setSource(outline_color.withOpacity(disabled || backdrop ? 0.2 : 0.4));
         cr->fill();
 
         // inside border
-        rect = round_rect(cr, rect, radius--);
-        ink_cairo_set_source_color(cr->cobj(), Colors::Color(border_color, false));
+        cr->rectangle(rect, radius--);
+        rect.shrinkBy(1);
+        cr->setSource(border_color);
         cr->fill();
     }
 
-    if (_pattern || !_gradient.empty()) {
+    if (_pattern) {
         // draw pattern-based preview
-        round_rect(cr, rect, radius);
+        cr->rectangle(rect, radius);
 
         // checkers first
-        auto checkers = _create_checkerboard_pattern(*this, -x, -y, _checkerboard_tile_size);
-        cr->set_source(checkers);
+        cr->setSource(checkers);
         cr->fill_preserve();
 
-        if (_pattern) {
-            cr->set_source(_pattern);
-        }
-        else {
-            if (_linear_gradient_width != width) {
-                create_gradient_preview(width);
-            }
-            cr->set_source(_linear_gradient);
-        }
+        // Set the user unit so the existing gradient will paint on any size widget correctly.
+        _pattern->setMatrix(Geom::Affine(), Geom::Rect(0, 0, width, height));
+        cr->setSource(*_pattern);
         cr->fill();
     }
     else {
         // color itself
         auto color = Colors::Color(_rgba);
-        auto opacity = color.stealOpacity();
         // if preview is disabled, render colors with reduced saturation and intensity
         if (disabled) {
             color = make_disabled_color(color, dark_theme);
         }
-
-        width = rect.width() / 2;
-        height = rect.height();
-        x = rect.min().x();
-        y = rect.min().y();
+        auto side_rect = Geom::Rect::from_xywh(rect.min(), Geom::Point(rect.width() / 2, rect.height()));
 
         // solid on the right
-        cairo_new_sub_path(cr->cobj());
-        cairo_line_to(cr->cobj(), x + width, y);
-        cairo_line_to(cr->cobj(), x + width, y + height);
-        cairo_arc(cr->cobj(), x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
-        cairo_arc(cr->cobj(), x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
-        cairo_close_path(cr->cobj());
-        ink_cairo_set_source_color(cr->cobj(), color);
-        cr->fill();
-
-        // semi-transparent on the left
-        x += width;
-        cairo_new_sub_path(cr->cobj());
-        cairo_arc(cr->cobj(), x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
-        cairo_arc(cr->cobj(), x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
-        cairo_line_to(cr->cobj(), x, y + height);
-        cairo_line_to(cr->cobj(), x, y);
-        cairo_close_path(cr->cobj());
-
-        if (opacity < 1.0) {
-            auto checkers = _create_checkerboard_pattern(*this, -x, -y, _checkerboard_tile_size);
-            cr->set_source(checkers);
-            cr->fill_preserve();
+        {
+            auto right = *cr;
+            right.rectangle(side_rect);
+            right.clip();
+            right.rectangle(rect, radius);
+            right.setSource(color);
+            right.fill();
         }
-        color.setOpacity(opacity);
-        ink_cairo_set_source_color(cr->cobj(), color);
-        cr->fill();
+        // Semi-transparent on the left
+        {
+            auto left = *cr;
+            left.rectangle(side_rect * Geom::Translate(side_rect.width(), 0));
+            left.clip();
+            left.rectangle(rect, radius);
+            left.setSource(color);
+            left.fill();
+            if (color.getOpacity() < 1.0) {
+                left.setSource(checkers);
+                left.fill_preserve();
+            }
+            left.setSource(color);
+            left.fill();
+        }
     }
 
     // Draw fill/stroke indicators.
@@ -182,7 +169,7 @@ void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
         auto color = Colors::Color(_rgba);
         double const lightness = Colors::get_perceptual_lightness(color);
         auto [gray, alpha] = Colors::get_contrasting_color(lightness);
-        cr->set_source_rgba(gray, gray, gray, alpha);
+        cr->setSource(Colors::Color(color.getSpace(), {gray, gray, gray, alpha}));
 
         // Scale so that the square -1...1 is the biggest possible square centred in the widget.
         auto w = rect.width();
@@ -216,12 +203,12 @@ void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
             cr->line_to(right, bottom - side + line);
             cr->line_to(right - side + line, bottom);
             cr->line_to(right - side, bottom);
-            cr->set_source_rgb(1, 1, 1); // white separator
+            cr->setSource(white);
             cr->fill();
             cr->move_to(right, bottom - side + line);
             cr->line_to(right, bottom);
             cr->line_to(right - side + line, bottom);
-            cr->set_source_rgb(0, 0, 0); // black
+            cr->setSource(black);
             cr->fill();
         }
         else if (_indicator & SpotColor) {
@@ -229,11 +216,11 @@ void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
             cr->move_to(right, bottom);
             cr->line_to(right, bottom - side);
             cr->line_to(right - side, bottom);
-            cr->set_source_rgb(1, 1, 1); // white background
+            cr->setSource(white);
             cr->fill();
             constexpr double r = 2;
             cr->arc(right - r, bottom - r, r, 0, 2*M_PI);
-            cr->set_source_rgb(0, 0, 0);
+            cr->setSource(black);
             cr->fill();
         }
 
@@ -274,12 +261,11 @@ void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
             cr->close_path();
             cr->set_line_width(2.0);
             cr->set_miter_limit(10);
-            cr->set_source_rgba(1, 1, 1, 1.0);
+            cr->setSource(white);
             cr->stroke_preserve();
             cr->set_line_width(1.0);
-            cr->set_source_rgba(0, 0, 0, 1);
+            cr->setSource(black);
             cr->stroke_preserve();
-            // cr->set_source_rgba(1, 1, 1, 1);
             cr->fill();
         }
     }
@@ -288,7 +274,7 @@ void ColorPreview::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
         // subtle outline
         auto const fg = get_color();
         cr->rectangle(0.5, 0.5, rect.width() - 1, rect.height() - 1);
-        cr->set_source_rgba(fg.get_red(), fg.get_green(), fg.get_blue(), 0.07);
+        cr->setSource(Colors::Color(white.getSpace(), {fg.get_red(), fg.get_green(), fg.get_blue(), 0.07}));
         cr->set_line_width(1);
         cr->stroke();
     }
@@ -343,19 +329,16 @@ void ColorPreview::set_stroke(bool on) {
     queue_draw();
 }
 
-void ColorPreview::set_gradient(std::vector<GradientStops> stops) {
-    _pattern = {};
-    _gradient = std::move(stops);
-    _linear_gradient_width = 0;
-    queue_draw();
-}
-
-void ColorPreview::create_gradient_preview(int width) {
-    _linear_gradient = Cairo::LinearGradient::create(0, 0, width, 0);
-    _linear_gradient_width = width;
-    for (auto& stop : _gradient) {
-        _linear_gradient->add_color_stop_rgba(stop.offset, stop.red, stop.green, stop.blue, stop.alpha);
+void ColorPreview::set_gradient(std::vector<SPGradientStop> const &stops) {
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto lin = std::make_shared<Renderer::LinearGradientPattern>(srgb, 0, 0, 1, 0);
+    for (auto const &stop : stops) {
+        if (stop.color) {
+            lin->addColorStop(stop.offset, *stop.color);
+        }
     }
+    _pattern = lin; // gradients are types of patterns 
+    queue_draw();
 }
 
 } // namespace Inkscape::UI::Widget

@@ -19,6 +19,7 @@
 #include "preferences.h"
 #include "io/resource.h"
 #include "libnrtype/font-instance.h"
+#include "renderer/surface-texture.h"
 #include "ui/builder-utils.h"
 #include "ui/util.h"
 #include "ui/widget/generic/simple-grid.h"
@@ -144,7 +145,7 @@ CharacterViewer::CharacterViewer():
             .draw_metrics = false,
             .draw_background = selected
         });
-        snapshot->append_texture(to_texture(surface), Gdk::Graphene::Rect(rect.left(), rect.top(), rect.width(), rect.height()));
+        snapshot->append_texture(Renderer::build_texture(surface), Gdk::Graphene::Rect(rect.left(), rect.top(), rect.width(), rect.height()));
     });
 
     _char_grid.connect_tooltip([this](int index) {

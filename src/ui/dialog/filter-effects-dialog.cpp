@@ -45,6 +45,7 @@
 #include "layer-manager.h"
 #include "object/filters/blend.h"
 #include "object/filters/colormatrix.h"
+#include "object/filters/composite.h"
 #include "object/filters/componenttransfer-funcnode.h"
 #include "object/filters/componenttransfer.h"
 #include "object/filters/convolvematrix.h"
@@ -71,7 +72,7 @@
 #include "ui/widget/generic/dual-spin-scale.h"
 #include "ui/widget/spinbutton.h"
 
-using namespace Inkscape::Filters;
+using namespace Inkscape::Renderer::DrawingFilter;
 
 namespace Inkscape::UI::Dialog {
 
@@ -719,21 +720,21 @@ public:
             unset_child();
             _type = col->get_type();
             switch(_type) {
-                case COLORMATRIX_SATURATE:
+                case ColorMatrixType::SATURATE:
                     set_child(_saturation);
                     _saturation.set_value(col->get_value());
                     break;
 
-                case COLORMATRIX_HUEROTATE:
+                case ColorMatrixType::HUEROTATE:
                     set_child(_angle);
                     _angle.set_value(col->get_value());
                     break;
 
-                case COLORMATRIX_LUMINANCETOALPHA:
+                case ColorMatrixType::LUMINANCETOALPHA:
                     set_child(_label);
                     break;
 
-                case COLORMATRIX_MATRIX:
+                case ColorMatrixType::MATRIX:
                 default:
                     set_child(_matrix);
                     _matrix.set_from_attribute(o);
@@ -745,13 +746,13 @@ public:
     Glib::ustring get_as_attribute() const override
     {
         switch(_type) {
-            case COLORMATRIX_SATURATE:
+            case ColorMatrixType::SATURATE:
                 return _saturation.as_string();
-            case COLORMATRIX_HUEROTATE:
+            case ColorMatrixType::HUEROTATE:
                 return _angle.as_string();
-            case COLORMATRIX_LUMINANCETOALPHA:
+            case ColorMatrixType::LUMINANCETOALPHA:
                 return "";
-            case COLORMATRIX_MATRIX:
+            case ColorMatrixType::MATRIX:
             default:
                 return _matrix.get_as_attribute();
         }
@@ -759,7 +760,7 @@ public:
     }
 
 private:
-    FilterColorMatrixType _type = COLORMATRIX_SATURATE;
+    ColorMatrixType _type = ColorMatrixType::SATURATE;
     MatrixAttr _matrix;
     SpinScale _saturation;
     SpinScale _angle;
@@ -1137,7 +1138,7 @@ public:
     ComponentTransferValues(FilterEffectsDialog& d, SPFeFuncNode::Channel channel)
         : AttrWidget(SPAttr::INVALID),
           _dialog(d),
-          _settings(d, _box, sigc::mem_fun(*this, &ComponentTransferValues::set_func_attr), COMPONENTTRANSFER_TYPE_ERROR),
+          _settings(d, _box, sigc::mem_fun(*this, &ComponentTransferValues::set_func_attr), ComponentTransferType::ERROR),
           _type(ComponentTransferTypeConverter, SPAttr::TYPE, false),
           _channel(channel),
           _funcNode(nullptr),
@@ -1150,22 +1151,22 @@ public:
 
         _type.signal_changed().connect(sigc::mem_fun(*this, &ComponentTransferValues::on_type_changed));
 
-        _settings.type(COMPONENTTRANSFER_TYPE_LINEAR);
+        _settings.type(ComponentTransferType::LINEAR);
         _settings.add_spinscale(1, SPAttr::SLOPE,     _("Slope"),     -10, 10, 0.1, 0.01, 2);
         _settings.add_spinscale(0, SPAttr::INTERCEPT, _("Intercept"), -10, 10, 0.1, 0.01, 2);
 
-        _settings.type(COMPONENTTRANSFER_TYPE_GAMMA);
+        _settings.type(ComponentTransferType::GAMMA);
         _settings.add_spinscale(1, SPAttr::AMPLITUDE, _("Amplitude"),   0, 10, 0.1, 0.01, 2);
         _settings.add_spinscale(1, SPAttr::EXPONENT,  _("Exponent"),    0, 10, 0.1, 0.01, 2);
         _settings.add_spinscale(0, SPAttr::OFFSET,    _("Offset"),    -10, 10, 0.1, 0.01, 2);
 
-        _settings.type(COMPONENTTRANSFER_TYPE_TABLE);
+        _settings.type(ComponentTransferType::TABLE);
         _settings.add_entry(SPAttr::TABLEVALUES,  _("Values"), _("List of stops with interpolated output"));
 
-        _settings.type(COMPONENTTRANSFER_TYPE_DISCRETE);
+        _settings.type(ComponentTransferType::DISCRETE);
         _settings.add_entry(SPAttr::TABLEVALUES,  _("Values"), _("List of discrete values for a step function"));
 
-        //_settings.type(COMPONENTTRANSFER_TYPE_IDENTITY);
+        //_settings.type(ComponentTransferType::IDENTITY);
         _settings.type(-1); // Force update_and_show() to show/hide windows correctly
     }
 
@@ -1277,7 +1278,7 @@ public:
     FilterEffectsDialog& _dialog;
     Gtk::Box _box;
     Settings _settings;
-    ComboBoxEnum<FilterComponentTransferType> _type;
+    ComboBoxEnum<ComponentTransferType> _type;
     SPFeFuncNode::Channel _channel; // RGBA
     SPFeFuncNode* _funcNode;
 };
@@ -2800,41 +2801,41 @@ struct EffectMetadata {
     Glib::ustring tooltip;
 };
 
-static const std::map<Inkscape::Filters::FilterPrimitiveType, EffectMetadata>& get_effects() {
-    static std::map<Inkscape::Filters::FilterPrimitiveType, EffectMetadata> effects = {
-    { NR_FILTER_GAUSSIANBLUR,      { EffectCategory::Effect,     "feGaussianBlur-icon",
+static const std::map<PrimitiveType, EffectMetadata>& get_effects() {
+    static std::map<PrimitiveType, EffectMetadata> effects = {
+    { PrimitiveType::GAUSSIANBLUR,      { EffectCategory::Effect,     "feGaussianBlur-icon",
         _("Uniformly blurs its input. Commonly used together with Offset to create a drop shadow effect.") }},
-    { NR_FILTER_MORPHOLOGY,        { EffectCategory::Effect,     "feMorphology-icon",
+    { PrimitiveType::MORPHOLOGY,        { EffectCategory::Effect,     "feMorphology-icon",
         _("Provides erode and dilate effects. For single-color objects erode makes the object thinner and dilate makes it thicker.") }},
-    { NR_FILTER_OFFSET,            { EffectCategory::Effect,     "feOffset-icon",
+    { PrimitiveType::OFFSET,            { EffectCategory::Effect,     "feOffset-icon",
         _("Offsets the input by an user-defined amount. Commonly used for drop shadow effects.") }},
-    { NR_FILTER_CONVOLVEMATRIX,    { EffectCategory::Effect,     "feConvolveMatrix-icon",
+    { PrimitiveType::CONVOLVEMATRIX,    { EffectCategory::Effect,     "feConvolveMatrix-icon",
         _("Performs a convolution on the input image enabling effects like blur, sharpening, embossing and edge detection.") }},
-    { NR_FILTER_DISPLACEMENTMAP,   { EffectCategory::Effect,     "feDisplacementMap-icon",
+    { PrimitiveType::DISPLACEMENTMAP,   { EffectCategory::Effect,     "feDisplacementMap-icon",
         _("Displaces pixels from the first input using the second as a map of displacement intensity. Classical examples are whirl and pinch effects.") }},
-    { NR_FILTER_DROPSHADOW,        { EffectCategory::Effect,     "feDropShadow-icon",
+    { PrimitiveType::DROPSHADOW,        { EffectCategory::Effect,     "feDropShadow-icon",
         _("Creates a drop shadow of the input image. Combines offset, blur, and compositing in a single convenient primitive.") }},
-    { NR_FILTER_TILE,              { EffectCategory::Effect,     "feTile-icon",
+    { PrimitiveType::TILE,              { EffectCategory::Effect,     "feTile-icon",
         _("Tiles a region with an input graphic. The source tile is defined by the filter primitive subregion of the input.") }},
-    { NR_FILTER_COMPOSITE,         { EffectCategory::Compose,    "feComposite-icon",
+    { PrimitiveType::COMPOSITE,         { EffectCategory::Compose,    "feComposite-icon",
         _("Composites two images using one of the Porter-Duff blending modes or the arithmetic mode described in SVG standard.") }},
-    { NR_FILTER_BLEND,             { EffectCategory::Compose,    "feBlend-icon",
+    { PrimitiveType::BLEND,             { EffectCategory::Compose,    "feBlend-icon",
         _("Provides image blending modes, such as screen, multiply, darken and lighten.") }},
-    { NR_FILTER_MERGE,             { EffectCategory::Compose,    "feMerge-icon",
+    { PrimitiveType::MERGE,             { EffectCategory::Compose,    "feMerge-icon",
         _("Merges multiple inputs using normal alpha compositing. Equivalent to using several Blend primitives in 'normal' mode or several Composite primitives in 'over' mode.") }},
-    { NR_FILTER_COLORMATRIX,       { EffectCategory::Colors,     "feColorMatrix-icon",
+    { PrimitiveType::COLORMATRIX,       { EffectCategory::Colors,     "feColorMatrix-icon",
         _("Modifies pixel colors based on a transformation matrix. Useful for adjusting color hue and saturation.") }},
-    { NR_FILTER_COMPONENTTRANSFER, { EffectCategory::Colors,     "feComponentTransfer-icon",
+    { PrimitiveType::COMPONENTTRANSFER, { EffectCategory::Colors,     "feComponentTransfer-icon",
         _("Manipulates color components according to particular transfer functions. Useful for brightness and contrast adjustment, color balance, and thresholding.") }},
-    { NR_FILTER_DIFFUSELIGHTING,   { EffectCategory::Colors,     "feDiffuseLighting-icon",
+    { PrimitiveType::DIFFUSELIGHTING,   { EffectCategory::Colors,     "feDiffuseLighting-icon",
         _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.") }},
-    { NR_FILTER_SPECULARLIGHTING,  { EffectCategory::Colors,     "feSpecularLighting-icon",
+    { PrimitiveType::SPECULARLIGHTING,  { EffectCategory::Colors,     "feSpecularLighting-icon",
         _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.") }},
-    { NR_FILTER_FLOOD,             { EffectCategory::Generation, "feFlood-icon",
+    { PrimitiveType::FLOOD,             { EffectCategory::Generation, "feFlood-icon",
         _("Fills the region with a given color and opacity. Often used as input to other filters to apply color to a graphic.") }},
-    { NR_FILTER_IMAGE,             { EffectCategory::Generation, "feImage-icon",
+    { PrimitiveType::IMAGE,             { EffectCategory::Generation, "feImage-icon",
         _("Fills the region with graphics from an external file or from another portion of the document.") }},
-    { NR_FILTER_TURBULENCE,        { EffectCategory::Generation, "feTurbulence-icon",
+    { PrimitiveType::TURBULENCE,        { EffectCategory::Generation, "feTurbulence-icon",
         _("Renders Perlin noise, which is useful to generate textures such as clouds, fire, smoke, marble or granite.") }},
     };
     return effects;
@@ -2845,7 +2846,7 @@ void FilterEffectsDialog::add_effects(Inkscape::UI::Widget::CompletionPopup& pop
     auto& menu = popup.get_menu();
 
     struct Effect {
-        Inkscape::Filters::FilterPrimitiveType type;
+        PrimitiveType type;
         Glib::ustring label;
         EffectCategory category;
         Glib::ustring icon_name;
@@ -2920,7 +2921,7 @@ FilterEffectsDialog::FilterEffectsDialog()
 {
     _settings = std::make_unique<Settings>(*this, _settings_effect,
                                            [this](auto const a){ set_attr_direct(a); },
-                                           NR_FILTER_ENDPRIMITIVETYPE);
+                                           (int)PrimitiveType::ENDPRIMITIVETYPE);
     _cur_effect_name = &get_widget<Gtk::Label>(_builder, "cur-effect");
     _settings->_size_group->add_widget(*_cur_effect_name);
     _filter_general_settings = std::make_unique<Settings>(*this, _settings_filter,
@@ -2935,7 +2936,7 @@ FilterEffectsDialog::FilterEffectsDialog()
     add_effects(_effects_popup, symbolic);
     _effects_popup.get_entry().set_placeholder_text(_("Add effect"));
     _effects_popup.on_match_selected().connect(
-        [this](int const id){ add_filter_primitive(static_cast<FilterPrimitiveType>(id)); });
+        [this](int const id){ add_filter_primitive(static_cast<PrimitiveType>(id)); });
     UI::pack_start(_search_box, _effects_popup);
 
     _settings_effect.set_valign(Gtk::Align::FILL);
@@ -3151,15 +3152,15 @@ void FilterEffectsDialog::init_settings_widgets()
     _region_size = _filter_general_settings->add_multispinbutton(/*default width:*/ (double) 1.2, /*default height:*/ (double) 1.2, SPAttr::WIDTH, SPAttr::HEIGHT, _("Dimensions:"), 0, 1000, 0.01, 0.1, 2, _("Width of filter effects region"), _("Height of filter effects region"));
     _region_auto->signal_attr_changed().connect( sigc::bind(sigc::mem_fun(*this, &FilterEffectsDialog::update_automatic_region), _region_auto));
 
-    _settings->type(NR_FILTER_BLEND);
+    _settings->type((int)PrimitiveType::BLEND);
     _settings->add_combo(SP_CSS_BLEND_NORMAL, SPAttr::MODE, _("Mode:"), SPBlendModeConverter);
 
-    _settings->type(NR_FILTER_COLORMATRIX);
-    ComboBoxEnum<FilterColorMatrixType>* colmat = _settings->add_combo(COLORMATRIX_MATRIX, SPAttr::TYPE, _("Type:"), ColorMatrixTypeConverter, _("Indicates the type of matrix operation. The keyword 'matrix' indicates that a full 5x4 matrix of values will be provided. The other keywords represent convenience shortcuts to allow commonly used color operations to be performed without specifying a complete matrix."));
+    _settings->type((int)PrimitiveType::COLORMATRIX);
+    ComboBoxEnum<ColorMatrixType>* colmat = _settings->add_combo(ColorMatrixType::MATRIX, SPAttr::TYPE, _("Type:"), ColorMatrixTypeConverter, _("Indicates the type of matrix operation. The keyword 'matrix' indicates that a full 5x4 matrix of values will be provided. The other keywords represent convenience shortcuts to allow commonly used color operations to be performed without specifying a complete matrix."));
     _color_matrix_values = _settings->add_colormatrixvalues(_("Value(s):"));
     colmat->signal_attr_changed().connect(sigc::mem_fun(*this, &FilterEffectsDialog::update_color_matrix));
 
-    _settings->type(NR_FILTER_COMPONENTTRANSFER);
+    _settings->type((int)PrimitiveType::COMPONENTTRANSFER);
     // TRANSLATORS: Abbreviation for red color channel in RGBA
     _settings->add_componenttransfervalues(C_("color", "R:"), SPFeFuncNode::R);
     // TRANSLATORS: Abbreviation for green color channel in RGBA
@@ -3169,14 +3170,14 @@ void FilterEffectsDialog::init_settings_widgets()
     // TRANSLATORS: Abbreviation for alpha channel in RGBA
     _settings->add_componenttransfervalues(C_("color", "A:"), SPFeFuncNode::A);
 
-    _settings->type(NR_FILTER_COMPOSITE);
-    _settings->add_combo(COMPOSITE_OVER, SPAttr::OPERATOR, _("Operator:"), CompositeOperatorConverter);
+    _settings->type((int)PrimitiveType::COMPOSITE);
+    _settings->add_combo(CompositeOperator::OVER, SPAttr::OPERATOR, _("Operator:"), CompositeOperatorConverter);
     _k1 = _settings->add_spinscale(0, SPAttr::K1, _("K1:"), -10, 10, 0.1, 0.01, 2, _("If the arithmetic operation is chosen, each result pixel is computed using the formula k1*i1*i2 + k2*i1 + k3*i2 + k4 where i1 and i2 are the pixel values of the first and second inputs respectively."));
     _k2 = _settings->add_spinscale(0, SPAttr::K2, _("K2:"), -10, 10, 0.1, 0.01, 2, _("If the arithmetic operation is chosen, each result pixel is computed using the formula k1*i1*i2 + k2*i1 + k3*i2 + k4 where i1 and i2 are the pixel values of the first and second inputs respectively."));
     _k3 = _settings->add_spinscale(0, SPAttr::K3, _("K3:"), -10, 10, 0.1, 0.01, 2, _("If the arithmetic operation is chosen, each result pixel is computed using the formula k1*i1*i2 + k2*i1 + k3*i2 + k4 where i1 and i2 are the pixel values of the first and second inputs respectively."));
     _k4 = _settings->add_spinscale(0, SPAttr::K4, _("K4:"), -10, 10, 0.1, 0.01, 2, _("If the arithmetic operation is chosen, each result pixel is computed using the formula k1*i1*i2 + k2*i1 + k3*i2 + k4 where i1 and i2 are the pixel values of the first and second inputs respectively."));
 
-    _settings->type(NR_FILTER_CONVOLVEMATRIX);
+    _settings->type((int)PrimitiveType::CONVOLVEMATRIX);
     _convolve_order = _settings->add_dualspinbutton((char*)"3", SPAttr::ORDER, _("Size:"), 1, max_convolution_kernel_size, 1, 1, 0, _("width of the convolve matrix"), _("height of the convolve matrix"));
     _convolve_target = _settings->add_multispinbutton(/*default x:*/ (double) 0, /*default y:*/ (double) 0, SPAttr::TARGETX, SPAttr::TARGETY, _("Target:"), 0, max_convolution_kernel_size - 1, 1, 1, 0, _("X coordinate of the target point in the convolve matrix. The convolution is applied to pixels around this point."), _("Y coordinate of the target point in the convolve matrix. The convolution is applied to pixels around this point."));
     //TRANSLATORS: for info on "Kernel", see http://en.wikipedia.org/wiki/Kernel_(matrix)
@@ -3184,10 +3185,10 @@ void FilterEffectsDialog::init_settings_widgets()
     _convolve_order->signal_attr_changed().connect(sigc::mem_fun(*this, &FilterEffectsDialog::convolve_order_changed));
     _settings->add_spinscale(0, SPAttr::DIVISOR, _("Divisor:"), 0, 1000, 1, 0.1, 2, _("After applying the kernelMatrix to the input image to yield a number, that number is divided by divisor to yield the final destination color value. A divisor that is the sum of all the matrix values tends to have an evening effect on the overall color intensity of the result."));
     _settings->add_spinscale(0, SPAttr::BIAS, _("Bias:"), -10, 10, 0.1, 0.5, 2, _("This value is added to each component. This is useful to define a constant value as the zero response of the filter."));
-    _settings->add_combo(CONVOLVEMATRIX_EDGEMODE_NONE, SPAttr::EDGEMODE, _("Edge Mode:"), ConvolveMatrixEdgeModeConverter, _("Determines how to extend the input image as necessary with color values so that the matrix operations can be applied when the kernel is positioned at or near the edge of the input image."));
+    _settings->add_combo(ConvolveMatrixEdgeMode::NONE, SPAttr::EDGEMODE, _("Edge Mode:"), ConvolveMatrixEdgeModeConverter, _("Determines how to extend the input image as necessary with color values so that the matrix operations can be applied when the kernel is positioned at or near the edge of the input image."));
     _settings->add_checkbutton(false, SPAttr::PRESERVEALPHA, _("Preserve Alpha"), "true", "false", _("If set, the alpha channel won't be altered by this filter primitive."));
 
-    _settings->type(NR_FILTER_DIFFUSELIGHTING);
+    _settings->type((int)PrimitiveType::DIFFUSELIGHTING);
     _settings->add_color(/*default: white*/ 0xffffffff, SPAttr::LIGHTING_COLOR, _("Diffuse Color:"), _("Defines the color of the light source"));
     _settings->add_spinscale(1, SPAttr::SURFACESCALE, _("Surface Scale:"), -5, 5, 0.01, 0.001, 3, _("This value amplifies the heights of the bump map defined by the input alpha channel"));
     _settings->add_spinscale(1, SPAttr::DIFFUSECONSTANT, _("Constant:"), 0, 5, 0.1, 0.01, 2, _("This constant affects the Phong lighting model."));
@@ -3195,35 +3196,35 @@ void FilterEffectsDialog::init_settings_widgets()
     // _settings->add_dualspinscale(SPAttr::KERNELUNITLENGTH, _("Kernel Unit Length:"), 0.01, 10, 1, 0.01, 1);
     _settings->add_lightsource();
 
-    _settings->type(NR_FILTER_DISPLACEMENTMAP);
+    _settings->type((int)PrimitiveType::DISPLACEMENTMAP);
     _settings->add_spinscale(0, SPAttr::SCALE, _("Scale:"), 0, 100, 1, 0.01, 1, _("This defines the intensity of the displacement effect."));
     _settings->add_combo(DISPLACEMENTMAP_CHANNEL_ALPHA, SPAttr::XCHANNELSELECTOR, _("X displacement:"), DisplacementMapChannelConverter, _("Color component that controls the displacement in the X direction"));
     _settings->add_combo(DISPLACEMENTMAP_CHANNEL_ALPHA, SPAttr::YCHANNELSELECTOR, _("Y displacement:"), DisplacementMapChannelConverter, _("Color component that controls the displacement in the Y direction"));
 
-    _settings->type(NR_FILTER_FLOOD);
+    _settings->type((int)PrimitiveType::FLOOD);
     _settings->add_color(/*default: black*/ 0, SPAttr::FLOOD_COLOR, _("Color:"), _("The whole filter region will be filled with this color."));
     _settings->add_spinscale(1, SPAttr::FLOOD_OPACITY, _("Opacity:"), 0, 1, 0.1, 0.01, 2);
 
-    _settings->type(NR_FILTER_GAUSSIANBLUR);
+    _settings->type((int)PrimitiveType::GAUSSIANBLUR);
     _settings->add_dualspinscale(SPAttr::STDDEVIATION, _("Size:"), 0, 100, 1, 0.01, 2, _("The standard deviation for the blur operation."));
 
-    _settings->type(NR_FILTER_MERGE);
+    _settings->type((int)PrimitiveType::MERGE);
     _settings->add_no_params();
 
-    _settings->type(NR_FILTER_MORPHOLOGY);
-    _settings->add_combo(MORPHOLOGY_OPERATOR_ERODE, SPAttr::OPERATOR, _("Operator:"), MorphologyOperatorConverter, _("Erode: performs \"thinning\" of input image.\nDilate: performs \"fattening\" of input image."));
+    _settings->type((int)PrimitiveType::MORPHOLOGY);
+    _settings->add_combo(MorphologyOperator::ERODE, SPAttr::OPERATOR, _("Operator:"), MorphologyOperatorConverter, _("Erode: performs \"thinning\" of input image.\nDilate: performs \"fattening\" of input image."));
     _settings->add_dualspinscale(SPAttr::RADIUS, _("Radius:"), 0, 100, 1, 0.01, 1);
 
-    _settings->type(NR_FILTER_IMAGE);
+    _settings->type((int)PrimitiveType::IMAGE);
     _settings->add_fileorelement(SPAttr::XLINK_HREF, _("Source of Image:"));
     _settings->add_subregion_scale();
 
-    _settings->type(NR_FILTER_OFFSET);
+    _settings->type((int)PrimitiveType::OFFSET);
     _settings->add_checkbutton(false, SPAttr::PRESERVEALPHA, _("Preserve Alpha"), "true", "false", _("If set, the alpha channel won't be altered by this filter primitive."));
     _settings->add_spinscale(0, SPAttr::DX, _("Delta X:"), -100, 100, 1, 0.01, 2, _("This is how far the input image gets shifted to the right"));
     _settings->add_spinscale(0, SPAttr::DY, _("Delta Y:"), -100, 100, 1, 0.01, 2, _("This is how far the input image gets shifted downwards"));
 
-    _settings->type(NR_FILTER_SPECULARLIGHTING);
+    _settings->type((int)PrimitiveType::SPECULARLIGHTING);
     _settings->add_color(/*default: white*/ 0xffffffff, SPAttr::LIGHTING_COLOR, _("Specular Color:"), _("Defines the color of the light source"));
     _settings->add_spinscale(1, SPAttr::SURFACESCALE, _("Surface Scale:"), -5, 5, 0.1, 0.01, 2, _("This value amplifies the heights of the bump map defined by the input alpha channel"));
     _settings->add_spinscale(1, SPAttr::SPECULARCONSTANT, _("Constant:"), 0, 5, 0.1, 0.01, 2, _("This constant affects the Phong lighting model."));
@@ -3232,20 +3233,20 @@ void FilterEffectsDialog::init_settings_widgets()
     // _settings->add_dualspinscale(SPAttr::KERNELUNITLENGTH, _("Kernel Unit Length:"), 0.01, 10, 1, 0.01, 1);
     _settings->add_lightsource();
 
-    _settings->type(NR_FILTER_TILE);
+    _settings->type((int)PrimitiveType::TILE);
     // add some filter primitive attributes: https://drafts.fxtf.org/filter-effects/#feTileElement
     // issue: https://gitlab.com/inkscape/inkscape/-/issues/1417
     _settings->add_subregion_scale();
 
-    _settings->type(NR_FILTER_TURBULENCE);
+    _settings->type((int)PrimitiveType::TURBULENCE);
 //    _settings->add_checkbutton(false, SPAttr::STITCHTILES, _("Stitch Tiles"), "stitch", "noStitch");
-    _settings->add_combo(TURBULENCE_TURBULENCE, SPAttr::TYPE, _("Type:"), TurbulenceTypeConverter, _("Indicates whether the filter primitive should perform a noise or turbulence function."));
+    _settings->add_combo(TurbulenceType::TURBULENCE, SPAttr::TYPE, _("Type:"), TurbulenceTypeConverter, _("Indicates whether the filter primitive should perform a noise or turbulence function."));
     _settings->add_dualspinscale(SPAttr::BASEFREQUENCY, _("Size:"), 0.001, 10, 0.001, 0.1, 3);
     _settings->add_spinscale(1, SPAttr::NUMOCTAVES, _("Detail:"), 1, 10, 1, 1, 0);
     _settings->add_spinscale(0, SPAttr::SEED, _("Seed:"), 0, 1000, 1, 1, 0, _("The starting number for the pseudo random number generator."));
 }
 
-void FilterEffectsDialog::add_filter_primitive(Filters::FilterPrimitiveType type) {
+void FilterEffectsDialog::add_filter_primitive(PrimitiveType type) {
     if (auto filter = _filter_modifier.get_selected_filter()) {
         SPFilterPrimitive* prim = filter_add_primitive(filter, type);
         _primitive_list.select(prim);
@@ -3373,7 +3374,7 @@ void FilterEffectsDialog::update_settings_view()
     if (prim && prim->getRepr()) {
         //XML Tree being used directly here while it shouldn't be.
         auto id = FPConverter.get_id_from_key(prim->getRepr()->name());
-        _settings->show_and_update(id, prim);
+        _settings->show_and_update((int)id, prim);
         _empty_settings.set_visible(false);
         _cur_effect_name->set_text(_(FPConverter.get_label(id).c_str()));
         header.set_visible(true);
@@ -3407,7 +3408,7 @@ void FilterEffectsDialog::update_settings_view()
 void FilterEffectsDialog::update_settings_sensitivity()
 {
     SPFilterPrimitive* prim = _primitive_list.get_selected();
-    const bool use_k = is<SPFeComposite>(prim) && cast<SPFeComposite>(prim)->get_composite_operator() == COMPOSITE_ARITHMETIC;
+    const bool use_k = is<SPFeComposite>(prim) && cast<SPFeComposite>(prim)->get_composite_operator() == CompositeOperator::ARITHMETIC;
     _k1->set_sensitive(use_k);
     _k2->set_sensitive(use_k);
     _k3->set_sensitive(use_k);

@@ -13,18 +13,11 @@
 
 #include "tile.h"
 
-#include "display/nr-filter-tile.h"  // for FilterTile
+#include "renderer/drawing-filters/tile.h"  // for FilterTile
 
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-} // namespace Inkscape
-
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeTile::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeTile::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto tile = std::make_unique<Inkscape::Filters::FilterTile>();
+    auto tile = std::make_unique<Inkscape::Renderer::DrawingFilter::Tile>();
     build_renderer_common(tile.get());
     return tile;
 }

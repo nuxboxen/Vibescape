@@ -9,14 +9,6 @@ namespace Inkscape {
 namespace UI {
 namespace Widget {
 
-void region_to_path(Cairo::RefPtr<Cairo::Context> const &cr, Cairo::RefPtr<Cairo::Region> const &reg)
-{
-    for (int i = 0; i < reg->get_num_rectangles(); i++) {
-        auto rect = reg->get_rectangle(i);
-        cr->rectangle(rect.x, rect.y, rect.width, rect.height);
-    }
-}
-
 Cairo::RefPtr<Cairo::Region> shrink_region(Cairo::RefPtr<Cairo::Region> const &reg, int d, int t)
 {
     // Find the bounding rect, expanded by 1 in all directions.
@@ -42,12 +34,6 @@ Cairo::RefPtr<Cairo::Region> shrink_region(Cairo::RefPtr<Cairo::Region> const &r
     reg2->subtract(reg3);
 
     return reg2;
-}
-
-Colors::Color checkerboard_darken(Colors::Color color)
-{
-    auto opacity = color.stealOpacity();
-    return Colors::make_contrasted_color(color, 1.0 - opacity);
 }
 
 } // namespace Widget

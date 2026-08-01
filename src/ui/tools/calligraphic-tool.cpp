@@ -40,7 +40,7 @@
 #include "selection.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-drawing.h" // ctx
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 
 #include "object/sp-shape.h"
 #include "object/sp-text.h"

@@ -41,8 +41,8 @@
 #include "object/sp-text.h"
 #include "object/sp-tspan.h"
 #include "libnrtype/font-factory.h"
-#include "display/nr-filter.h"
-#include "display/nr-filter-gaussian.h"
+#include "renderer/drawing-filters/filter.h"
+#include "renderer/drawing-filters/gaussian-blur.h"
 
 #define FE_0(WHAT, n, p)
 #define FE_1(WHAT, n, p, X)      WHAT(n, p, X) 
@@ -475,7 +475,7 @@ public:
             get()._clss.insert(cls);
 
             auto [this_call, that_call] = get_inherited_constructor(chlds);
-            std::cout << "// Construct " << addr << " (" << this_call << ", " << that_call << ")\n";
+            //std::cout << "// Construct " << addr << " (" << this_call << ", " << that_call << ")\n";
             if (!that_call.empty()) {
                 // Constructed by parent, log it for later
                 get().prior_calls.emplace_back(that_call, addr);
@@ -488,7 +488,7 @@ public:
                 // Add every prior call's object address using the same name
                 if (get()._constructs.find(addr) == get()._constructs.end() || overwrite) {
                     // Add memory of object so calls can use it as arg or this
-                    std::cout << "// Remember " << addr << " is " << var_name << "\n";
+                    //std::cout << "// Remember " << addr << " is " << var_name << "\n";
                     get()._constructs[addr] = {var_name, is_ptr, (bool)smart_ptr};
 
                     // Add constructor to code output
@@ -623,9 +623,10 @@ public:
         const_cast<Cairo::Surface *>(&s)->write_to_png(filename);
         Construct(s, "Renderer::Surface", "image_surface", "std::make_shared", {}, true) << filename;
     }
-    void _populate(Filters::Filter const &f)
+    /*
+    void _populate(Renderer::DrawingFilter::Filter const &f)
     {
-        for (auto &p : f.primitives) {
+        for (auto &p : f.get_primitives()) {
             maybeConstruct(*p);
         }
         Construct(f, "DrawingFilter::Filter", "filter", "std::make_unique");
@@ -647,6 +648,7 @@ public:
             Call(*blur, "set_output") << blur->get_output();
         }
     }
+    */
     struct Call : ArgList<false>
     {
         template <typename T>

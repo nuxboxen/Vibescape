@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+# This unit contains static objects which must not be included multiple times
+set(statics_unit_SRC
+        statics.cpp
+        statics.h
+)
+
+function(get_statics_unit_lib)
+    list(TRANSFORM statics_unit_SRC PREPEND "${CMAKE_SOURCE_DIR}/src/util/")
+    add_library(statics_unit_lib SHARED "${statics_unit_SRC}")
+    #pkg_check_modules(RENDERER_UNIT_DEPS REQUIRED IMPORTED_TARGET cairomm-1.16 pangoft2 pangomm-2.48)
+    #target_link_libraries(renderer_unit_lib colors_unit_lib PkgConfig::RENDERER_UNIT_DEPS 2Geom::2geom GLibmm::GLibmm)
+    #make_target_unit_testable(renderer_unit_lib)
+endfunction(get_statics_unit_lib)

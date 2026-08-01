@@ -23,8 +23,10 @@ class SPStyle;
 
 namespace Inkscape {
 
+namespace Renderer {
 class Drawing;
 class DrawingItem;
+}
 
 namespace Extension {
 
@@ -32,8 +34,8 @@ class Print : public Extension {
 
 public: /* TODO: These are public for the short term, but this should be fixed */
     SPItem *base;
-    Inkscape::Drawing *drawing;
-    Inkscape::DrawingItem *root;
+    Renderer::Drawing *drawing;
+    Renderer::DrawingItem *root;
     unsigned int dkey;
 
 public:

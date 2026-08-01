@@ -24,16 +24,16 @@
 #include "document.h"
 #include "object/sp-object.h"
 #include "object/sp-dimensions.h"
-#include "display/nr-filter-types.h"
+#include "renderer/drawing-filters/enums.h"
 
-namespace Inkscape {
+namespace Inkscape::Renderer {
 class Drawing;
 class DrawingItem;
-namespace Filters {
+namespace DrawingFilter {
 class Filter;
-class FilterPrimitive;
+class Primitive;
 } // namespace Filters
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
 class SlotResolver;
 
@@ -49,10 +49,10 @@ public:
     int get_in() const { return in_slot; }
     int get_out() const { return out_slot; }
 
-    virtual void show(Inkscape::DrawingItem *item) {}
-    virtual void hide(Inkscape::DrawingItem *item) {}
+    virtual void show(Inkscape::Renderer::DrawingItem *item) {}
+    virtual void hide(Inkscape::Renderer::DrawingItem *item) {}
 
-    virtual std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const = 0;
+    virtual std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const = 0;
 
     /* Calculate the filter's effect on the region */
     virtual Geom::Rect calculate_region(Geom::Rect const &region) const;
@@ -75,12 +75,12 @@ protected:
     Inkscape::XML::Node *write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr, unsigned flags) override;
 
     // Common initialization for filter primitives.
-    void build_renderer_common(Inkscape::Filters::FilterPrimitive *primitive) const;
+    void build_renderer_common(Inkscape::Renderer::DrawingFilter::Primitive *primitive) const;
 
 private:
     std::optional<std::string> in_name, out_name;
-    int in_slot = Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
-    int out_slot = Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
+    int in_slot = Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
+    int out_slot = Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
 };
 
 #endif // SEEN_SP_FILTER_PRIMITIVE_H

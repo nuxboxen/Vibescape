@@ -44,7 +44,9 @@ class FontInstance;
 using PangoFontDescription = struct _PangoFontDescription;
 
 namespace Inkscape {
+namespace Renderer {
 class DrawingGroup;
+}
 
 namespace Text {
 class StyleAttachments;
@@ -366,7 +368,7 @@ public:
      \param in_arena  The arena to add the glyphs group to
      \param paintbox  The current rendering tile
     */
-    void show(DrawingGroup *in_arena, StyleAttachments &style_attachments, Geom::OptRect const &paintbox) const;
+    void show(Renderer::DrawingGroup *in_arena, StyleAttachments &style_attachments, Geom::OptRect const &paintbox) const;
 
     /** Calculates the smallest rectangle completely enclosing all the
     glyphs.

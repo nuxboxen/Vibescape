@@ -10,8 +10,7 @@
 #include <glibmm.h>
 
 #include "attributes.h"
-#include "display/cairo-utils.h"
-#include "display/drawing-paintserver.h"
+#include "renderer/drawing/drawing-paintserver.h"
 
 #include "sp-mesh-gradient.h"
 

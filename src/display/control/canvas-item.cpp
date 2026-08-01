@@ -20,6 +20,7 @@
 #include "canvas-item-group.h"
 #include "ui/pixel-alignment.h"
 #include "ui/widget/canvas.h"
+#include "colors/color.h"
 
 constexpr bool DEBUG_LOGGING = false;
 constexpr bool DEBUG_BOUNDS = false;
@@ -96,7 +97,7 @@ void CanvasItem::set_z_position(int zpos)
 
         if (zpos <= 0) {
             _parent->items.push_front(*this);
-        } else if (zpos >= _parent->items.size() - 1) {
+        } else if (zpos >= (int)_parent->items.size() - 1) {
             _parent->items.push_back(*this);
         } else {
             auto it = _parent->items.begin();
@@ -233,15 +234,16 @@ void CanvasItem::ungrab()
 
 void CanvasItem::render(CanvasItemBuffer &buf) const
 {
+    static auto color = *Colors::Color::parse("red");
     if (_visible && _bounds && _bounds->interiorIntersects(buf.rect)) {
         _render(buf);
         if constexpr (DEBUG_BOUNDS) {
             auto bounds = *_bounds;
             bounds.expandBy(-1);
             bounds -= buf.rect.min();
-            buf.cr->set_source_rgba(1.0, 0.0, 0.0, 1.0);
-            buf.cr->rectangle(bounds.min().x(), bounds.min().y(), bounds.width(), bounds.height());
-            buf.cr->stroke();
+            buf.cr.setSource(color);
+            buf.cr.rectangle(bounds);
+            buf.cr.stroke();
         }
     }
 }
@@ -293,7 +295,7 @@ void CanvasItem::set_fill(uint32_t fill)
     });
 }
 
-void CanvasItem::set_fill_pattern(Cairo::RefPtr<Cairo::Pattern> fill_pattern)
+void CanvasItem::set_fill_pattern(std::shared_ptr<Renderer::Pattern> fill_pattern)
 {
     defer([fill_pattern = std::move(fill_pattern), this] () mutable {
         if (_fill_pattern == fill_pattern) return;

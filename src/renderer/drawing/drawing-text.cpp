@@ -14,6 +14,7 @@
 #include "helper/geom.h"
 #include "libnrtype/font-instance.h"
 
+#include "renderer/code-builder.h"
 #include "renderer/context.h"
 #include "renderer/surface.h"
 
@@ -27,6 +28,7 @@ DrawingGlyphs::DrawingGlyphs(Drawing &drawing)
     : DrawingItem(drawing)
     , _glyph(0)
 {
+    if (drawing._code_build) CodeBuilder::Construct(*this, "DrawingGlyphs", "glyphs", "make_drawingitem") << drawing;
 }
 
 struct SvgGlyphHash
@@ -123,19 +125,19 @@ unsigned DrawingGlyphs::_updateItem(Geom::IntRect const &/*area*/, UpdateContext
     // Expand to make it easier to pick text when zoom out.
     bbox_pick_scaled_d.expandBy(1.0); // One pixel
 
-    if (ggroup->_nrstyle.stroke.type != DrawingStyle::PaintType::NONE) {
+    if (ggroup->_style.stroke.type != DrawingStyle::PaintType::NONE) {
         // this expands the selection box for cases where the stroke is "thick"
         float scale = ctx.ctm.descrim();
         if (_transform) {
             scale /= _transform->descrim(); // FIXME temporary hack
         }
-        float width = std::max<double>(0.125, ggroup->_nrstyle.stroke_width * scale);
-        if (std::fabs(ggroup->_nrstyle.stroke_width * scale) > 0.01) { // FIXME: this is always true
+        float width = std::max<double>(0.125, ggroup->_style.stroke_width * scale);
+        if (std::fabs(ggroup->_style.stroke_width * scale) > 0.01) { // FIXME: this is always true
             bbox_pick_scaled_d.expandBy(0.5 * width);
             bbox_draw_scaled_d.expandBy(0.5 * width);
         }
 
-        float miterMax = width * ggroup->_nrstyle.miter_limit;
+        float miterMax = width * ggroup->_style.miter_limit;
         if (miterMax > 0.01) {
             // grunt mode. we should compute the various miters instead
             // (one for each point on the curve)
@@ -165,8 +167,8 @@ DrawingItem *DrawingGlyphs::_pickItem(Geom::Point const &p, double /*delta*/, Ge
         throw InvalidItemException();
     }
     DrawingItem *result = nullptr;
-    bool invisible = ggroup->_nrstyle.fill.type == DrawingStyle::PaintType::NONE &&
-                     ggroup->_nrstyle.stroke.type == DrawingStyle::PaintType::NONE;
+    bool invisible = ggroup->_style.fill.type == DrawingStyle::PaintType::NONE &&
+                     ggroup->_style.stroke.type == DrawingStyle::PaintType::NONE;
     bool outline = flags & PICK_OUTLINE;
 
     if (outline || !invisible) {
@@ -182,6 +184,7 @@ DrawingItem *DrawingGlyphs::_pickItem(Geom::Point const &p, double /*delta*/, Ge
 DrawingText::DrawingText(Drawing &drawing)
     : DrawingGroup(drawing)
 {
+    if (drawing._code_build) CodeBuilder::Construct(*this, "DrawingText", "text", "make_drawingitem") << drawing;
 }
 
 bool DrawingText::addComponent(std::shared_ptr<FontInstance> const &font, unsigned int glyph, Geom::Affine const &trans, float width, float ascent, float descent, float phase_length)
@@ -194,6 +197,11 @@ bool DrawingText::addComponent(std::shared_ptr<FontInstance> const &font, unsign
     if (!font) {
         std::cerr << "DrawingTExt::addComponent: no font!" << std::endl;
         return false;
+    }
+
+    if (drawing()._code_build) {
+        CodeBuilder::Construct(*font, "make_fontinstance", "font") << *font->get_descr();
+        CodeBuilder::Call(*this, "addComponent") << *font << glyph << trans << width << ascent << descent << phase_length;
     }
 
     defer([=, this, font = std::move(font)] () mutable {
@@ -213,7 +221,7 @@ bool DrawingText::addComponent(std::shared_ptr<FontInstance> const &font, unsign
 
 unsigned DrawingText::_updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset)
 {
-    _nrstyle.invalidate();
+    _style.invalidate();
     return DrawingGroup::_updateItem(area, ctx, flags, reset);
 }
 
@@ -254,7 +262,7 @@ void DrawingText::decorateStyle(Context &dc, double vextent, double xphase, Geom
     Geom::Point pf = Geom::Point(step * round(p2[Geom::X]/step),p2[Geom::Y]);
     Geom::Point poff = Geom::Point(0,thickness/2.0);
 
-    if (_nrstyle.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_ISDOUBLE) {
+    if (_style.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_ISDOUBLE) {
         ps -= Geom::Point(0, vextent/12.0);
         pf -= Geom::Point(0, vextent/12.0);
         dc.rectangle( Geom::Rect(ps + poff, pf - poff));
@@ -267,7 +275,7 @@ void DrawingText::decorateStyle(Context &dc, double vextent, double xphase, Geom
     to figure where in each of their cycles to start.  Only accurate to 1 part in 16.
     Huge positive offset should keep the phase calculation from ever being negative.
     */
-    else if(_nrstyle.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_DOTTED){
+    else if(_style.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_DOTTED){
         // FIXME: Per spec, this should produce round dots.
         Geom::Point pv = ps;
         while(true){
@@ -293,7 +301,7 @@ void DrawingText::decorateStyle(Context &dc, double vextent, double xphase, Geom
             i = 0;  // once in phase, it stays in phase
         }
     }
-    else if (_nrstyle.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_DASHED) {
+    else if (_style.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_DASHED) {
         Geom::Point pv = ps;
         while(true){
             Geom::Point pvlast = pv;
@@ -318,7 +326,7 @@ void DrawingText::decorateStyle(Context &dc, double vextent, double xphase, Geom
             i = 0;  // once in phase, it stays in phase
         }
     }
-    else if (_nrstyle.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_WAVY) {
+    else if (_style.text_decoration_style & DrawingStyle::TEXT_DECORATION_STYLE_WAVY) {
         double   amp  = vextent/10.0;
         double   x    = ps[Geom::X];
         double   y    = ps[Geom::Y] + poff[Geom::Y];
@@ -347,15 +355,15 @@ void DrawingText::decorateStyle(Context &dc, double vextent, double xphase, Geom
 /* returns scaled line thickness */
 void DrawingText::decorateItem(Context &dc, double phase_length, bool under) const
 {
-    if ( _nrstyle.font_size <= 1.0e-32 )return;  // might cause a divide by zero or overflow and nothing would be visible anyway
-    double tsp_width_adj                = _nrstyle.tspan_width                     / _nrstyle.font_size;
-    double tsp_asc_adj                  = _nrstyle.ascender                        / _nrstyle.font_size;
-    double tsp_size_adj                 = (_nrstyle.ascender + _nrstyle.descender) / _nrstyle.font_size;
+    if ( _style.font_size <= 1.0e-32 )return;  // might cause a divide by zero or overflow and nothing would be visible anyway
+    double tsp_width_adj                = _style.tspan_width                     / _style.font_size;
+    double tsp_asc_adj                  = _style.ascender                        / _style.font_size;
+    double tsp_size_adj                 = (_style.ascender + _style.descender) / _style.font_size;
 
-    double final_underline_thickness    = CLAMP(_nrstyle.underline_thickness,    tsp_size_adj/30.0, tsp_size_adj/10.0);
-    double final_line_through_thickness = CLAMP(_nrstyle.line_through_thickness, tsp_size_adj/30.0, tsp_size_adj/10.0);
+    double final_underline_thickness    = CLAMP(_style.underline_thickness,    tsp_size_adj/30.0, tsp_size_adj/10.0);
+    double final_line_through_thickness = CLAMP(_style.line_through_thickness, tsp_size_adj/30.0, tsp_size_adj/10.0);
 
-    double xphase = phase_length/ _nrstyle.font_size; // used to figure out phase of patterns
+    double xphase = phase_length/ _style.font_size; // used to figure out phase of patterns
 
     Geom::Point p1;
     Geom::Point p2;
@@ -366,36 +374,36 @@ void DrawingText::decorateItem(Context &dc, double phase_length, bool under) con
 
     if( under ) {
 
-        if(_nrstyle.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_UNDERLINE){
-            p1 = Geom::Point(0.0,          -_nrstyle.underline_position);
-            p2 = Geom::Point(tsp_width_adj,-_nrstyle.underline_position);
+        if(_style.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_UNDERLINE){
+            p1 = Geom::Point(0.0,          -_style.underline_position);
+            p2 = Geom::Point(tsp_width_adj,-_style.underline_position);
             decorateStyle(dc, tsp_size_adj, xphase, p1, p2, thickness);
         }
 
-        if(_nrstyle.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_OVERLINE){
-            p1 = Geom::Point(0.0,          tsp_asc_adj -_nrstyle.underline_position + 1 * final_underline_thickness);
-            p2 = Geom::Point(tsp_width_adj,tsp_asc_adj -_nrstyle.underline_position + 1 * final_underline_thickness);
+        if(_style.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_OVERLINE){
+            p1 = Geom::Point(0.0,          tsp_asc_adj -_style.underline_position + 1 * final_underline_thickness);
+            p2 = Geom::Point(tsp_width_adj,tsp_asc_adj -_style.underline_position + 1 * final_underline_thickness);
             decorateStyle(dc, tsp_size_adj, xphase,  p1, p2, thickness);
         }
 
     } else {
         // Over
 
-        if(_nrstyle.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_LINETHROUGH){
+        if(_style.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_LINETHROUGH){
             thickness = final_line_through_thickness;
-            p1 = Geom::Point(0.0,          _nrstyle.line_through_position);
-            p2 = Geom::Point(tsp_width_adj,_nrstyle.line_through_position);
+            p1 = Geom::Point(0.0,          _style.line_through_position);
+            p2 = Geom::Point(tsp_width_adj,_style.line_through_position);
             decorateStyle(dc, tsp_size_adj, xphase,  p1, p2, thickness);
         }
 
         // Obviously this does not blink, but it does indicate which text has been set with that attribute
-        if(_nrstyle.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_BLINK){
+        if(_style.text_decoration_line & DrawingStyle::TEXT_DECORATION_LINE_BLINK){
             thickness = final_line_through_thickness;
-            p1 = Geom::Point(0.0,          _nrstyle.line_through_position - 2*final_line_through_thickness);
-            p2 = Geom::Point(tsp_width_adj,_nrstyle.line_through_position - 2*final_line_through_thickness);
+            p1 = Geom::Point(0.0,          _style.line_through_position - 2*final_line_through_thickness);
+            p2 = Geom::Point(tsp_width_adj,_style.line_through_position - 2*final_line_through_thickness);
             decorateStyle(dc, tsp_size_adj, xphase,  p1, p2, thickness);
-            p1 = Geom::Point(0.0,          _nrstyle.line_through_position + 2*final_line_through_thickness);
-            p2 = Geom::Point(tsp_width_adj,_nrstyle.line_through_position + 2*final_line_through_thickness);
+            p1 = Geom::Point(0.0,          _style.line_through_position + 2*final_line_through_thickness);
+            p2 = Geom::Point(tsp_width_adj,_style.line_through_position + 2*final_line_through_thickness);
             decorateStyle(dc, tsp_size_adj, xphase,  p1, p2, thickness);
         }
     }
@@ -436,7 +444,7 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
     // and in applying text decorations.
 
     // Do we have text decorations?
-    bool decorate = (_nrstyle.text_decoration_line != DrawingStyle::TEXT_DECORATION_LINE_CLEAR );
+    bool decorate = (_style.text_decoration_line != DrawingStyle::TEXT_DECORATION_LINE_CLEAR );
 
     // prepareFill / prepareStroke need to be called with _ctm in effect.
     // However, we might need to apply a different ctm for glyphs.
@@ -450,13 +458,13 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
         Context::Save save(dc);
         dc.transform(_ctm);
 
-        has_fill   = _nrstyle.prepareFill  (dc, rc, *visible, _item_bbox, _fill_pattern);
-        has_stroke = _nrstyle.prepareStroke(dc, rc, *visible, _item_bbox, _stroke_pattern);
+        has_fill   = _style.prepareFill  (dc, rc, *visible, _item_bbox, _fill_pattern);
+        has_stroke = _style.prepareStroke(dc, rc, *visible, _item_bbox, _stroke_pattern);
 
         // Avoid creating patterns if not needed
         if (decorate) {
-            has_td_fill   = _nrstyle.prepareTextDecorationFill  (dc, rc, *visible, _item_bbox, _fill_pattern);
-            has_td_stroke = _nrstyle.prepareTextDecorationStroke(dc, rc, *visible, _item_bbox, _stroke_pattern);
+            has_td_fill   = _style.prepareTextDecorationFill  (dc, rc, *visible, _item_bbox, _fill_pattern);
+            has_td_stroke = _style.prepareTextDecorationStroke(dc, rc, *visible, _item_bbox, _stroke_pattern);
         }
     }
 
@@ -465,9 +473,9 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
         // Determine order for fill and stroke.
         // Text doesn't have markers, we can do paint-order quick and dirty.
         bool fill_first = false;
-        if( _nrstyle.paint_order_layer[0] == DrawingStyle::PAINT_ORDER_NORMAL ||
-            _nrstyle.paint_order_layer[0] == DrawingStyle::PAINT_ORDER_FILL   ||
-            _nrstyle.paint_order_layer[2] == DrawingStyle::PAINT_ORDER_STROKE ) {
+        if( _style.paint_order_layer[0] == DrawingStyle::PAINT_ORDER_NORMAL ||
+            _style.paint_order_layer[0] == DrawingStyle::PAINT_ORDER_FILL   ||
+            _style.paint_order_layer[2] == DrawingStyle::PAINT_ORDER_STROKE ) {
             fill_first = true;
         } // Won't get "stroke fill stroke" but that isn't 'valid'
 
@@ -526,17 +534,17 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
                 dc.transform(_ctm);  // Needed so that fill pattern rotates with text
 
                 if (has_td_fill && fill_first) {
-                    _nrstyle.applyTextDecorationFill(dc, *has_td_fill);
+                    _style.applyTextDecorationFill(dc, *has_td_fill);
                     dc.fillPreserve();
                 }
 
                 if (has_td_stroke) {
-                    _nrstyle.applyTextDecorationStroke(dc, *has_td_stroke);
+                    _style.applyTextDecorationStroke(dc, *has_td_stroke);
                     dc.strokePreserve();
                 }
 
                 if (has_td_fill && !fill_first) {
-                    _nrstyle.applyTextDecorationFill(dc, *has_td_fill);
+                    _style.applyTextDecorationFill(dc, *has_td_fill);
                     dc.fillPreserve();
                 }
 
@@ -627,23 +635,23 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
             Context::Save save(dc);
             dc.transform(_ctm);
             if (has_fill && fill_first) {
-                _nrstyle.applyFill(dc, *has_fill);
+                _style.applyFill(dc, *has_fill);
                 dc.fillPreserve();
             }
         }
         {
             Context::Save save(dc);
-            if (!_nrstyle.vector_effect_stroke) {
+            if (!_style.vector_effect_stroke) {
                 dc.transform(_ctm);
             }
             if (has_stroke) {
-                _nrstyle.applyStroke(dc, *has_stroke);
+                _style.applyStroke(dc, *has_stroke);
 
                 // If the stroke is a hairline, set it to exactly 1px on screen.
                 // If visible hairline mode is on, make sure the line is at least 1px.
-                if (flags & RENDER_VISIBLE_HAIRLINES || _nrstyle.stroke_extensions_hairline) {
+                if (flags & RENDER_VISIBLE_HAIRLINES || _style.stroke_extensions_hairline) {
                     auto pixel_size = dc.device_to_user_distance({1.0, 1.0}).length();
-                    if (_nrstyle.stroke_extensions_hairline || _nrstyle.stroke_width < pixel_size) {
+                    if (_style.stroke_extensions_hairline || _style.stroke_width < pixel_size) {
                        dc.setHairline();
                     }
                 }
@@ -655,7 +663,7 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
             Context::Save save(dc);
             dc.transform(_ctm);
             if (has_fill && !fill_first) {
-                _nrstyle.applyFill(dc, *has_fill);
+                _style.applyFill(dc, *has_fill);
                 dc.fillPreserve();
             }
         }
@@ -675,17 +683,17 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
                 dc.transform(_ctm);  // Needed so that fill pattern rotates with text
 
                 if (has_td_fill && fill_first) {
-                    _nrstyle.applyTextDecorationFill(dc, *has_td_fill);
+                    _style.applyTextDecorationFill(dc, *has_td_fill);
                     dc.fillPreserve();
                 }
 
                 if (has_td_stroke) {
-                    _nrstyle.applyTextDecorationStroke(dc, *has_td_stroke);
+                    _style.applyTextDecorationStroke(dc, *has_td_stroke);
                     dc.strokePreserve();
                 }
 
                 if (has_td_fill && !fill_first) {
-                    _nrstyle.applyTextDecorationFill(dc, *has_td_fill);
+                    _style.applyTextDecorationFill(dc, *has_td_fill);
                     dc.fillPreserve();
                 }
 
@@ -701,7 +709,7 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
 void DrawingText::_clipItem(Context &dc, DrawingOptions &rc, Geom::IntRect const &/*area*/) const
 {
     Context::Save save(dc);
-    dc.setFillRule(_nrstyle.clip_rule);
+    dc.setFillRule(_style.clip_rule);
 
     for (auto & i : _children) {
         auto g = cast<DrawingGlyphs>(&i);

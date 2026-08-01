@@ -82,6 +82,9 @@ namespace Inkscape {
     class PageManager;
     namespace Colors {
         class DocumentCMS;
+        namespace Space {
+            class AnySpace;
+        }
     }
     class Selection;
     class UndoStackObserver;
@@ -239,6 +242,9 @@ public:
 
     // Styling
     CRCascade    *getStyleCascade() { return style_cascade; }
+
+    std::shared_ptr<Inkscape::Colors::Space::AnySpace> getColorSpace() const;
+    bool setColorSpace(std::shared_ptr<Inkscape::Colors::Space::AnySpace> const &space);
 
     // File information --------------------
 

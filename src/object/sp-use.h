@@ -58,7 +58,7 @@ public:
         const char* displayName() const override;
 	char* description() const override;
 	void print(SPPrintContext *ctx) override;
-	Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+	Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
 	void hide(unsigned int key) override;
 	void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const override;
 

@@ -15,7 +15,7 @@
 #include "extension/system.h"
 #include "extension/print.h"
 #include "extension/db.h"
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "object/sp-root.h"
 
 
@@ -57,7 +57,7 @@ void LatexOutput::save(Inkscape::Extension::Output * /*mod2*/, SPDocument *doc, 
     context.module = mod;
     // fixme: This has to go into module constructor somehow
     mod->base = doc->getRoot();
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     mod->dkey = SPItem::display_key_new(1);
     mod->root = (mod->base)->invoke_show(drawing, mod->dkey, SP_ITEM_SHOW_DISPLAY);
     drawing.setRoot(mod->root);

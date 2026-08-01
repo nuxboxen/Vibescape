@@ -17,7 +17,6 @@
 #include <gtkmm/menubutton.h>
 #include <gtkmm/togglebutton.h>
 
-#include "display/cairo-utils.h"
 #include "color-picker-panel.h"
 #include "document-undo.h"
 #include "gradient-chemistry.h"

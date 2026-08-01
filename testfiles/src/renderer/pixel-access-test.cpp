@@ -137,6 +137,23 @@ TEST(PixelAccessTest, AlphaIs)
     }
 }
 
+TEST(PixelAccessTest, ColorInIntegerFormat)
+{
+    auto src = TestCairoSurface<4>(4, 4);
+    src.rect(1, 1, 2, 2, {1.0, 0.0, 0.2, 0.5, 0.5});
+
+    EXPECT_TRUE(ColorIs<int>(*src._d, 1, 1, {1.0, 0.0, 0.2, 0.5, 0.5}, true));
+    auto ret1 = ColorIs<int, uint8_t>(*src._d, 1, 1, {255, 0, 51, 127, 127}, true);
+    EXPECT_TRUE(ret1);
+    auto ret2 = ColorIs<int, uint16_t>(*src._d, 1, 1, {65535, 0, 13107, 32767, 32767}, true);
+    EXPECT_TRUE(ret2);
+    EXPECT_TRUE(ColorIs<double>(*src._d, 1.0, 1.0, {1.0, 0.0, 0.2, 0.5, 0.5}, true));
+    auto ret3 = ColorIs<double, uint8_t>(*src._d, 1.0, 1.0, {255, 0, 51, 127, 127}, true);
+    EXPECT_TRUE(ret1);
+    auto ret4 = ColorIs<double, uint16_t>(*src._d, 1.0, 1.0, {65535, 0, 13107, 32767, 32767}, true);
+    EXPECT_TRUE(ret2);
+}
+
 TEST(PixelAccessTest, BilinearInterpolation)
 {
     auto src = TestCairoSurface<3>(4, 4);

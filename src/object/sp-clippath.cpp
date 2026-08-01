@@ -29,8 +29,7 @@
 #include "sp-text.h"
 #include "sp-use.h"
 
-#include "display/drawing-item.h"
-#include "display/drawing-group.h"
+#include "renderer/drawing-forward.h"
 
 SPClipPath::SPClipPath()
 {
@@ -153,9 +152,9 @@ Inkscape::XML::Node *SPClipPath::write(Inkscape::XML::Document *xml_doc, Inkscap
     return repr;
 }
 
-Inkscape::DrawingItem *SPClipPath::show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
+Inkscape::Renderer::DrawingItem *SPClipPath::show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
 {
-    views.emplace_back(make_drawingitem<Inkscape::DrawingGroup>(drawing), bbox, key);
+    views.emplace_back(make_drawingitem<Inkscape::Renderer::DrawingGroup>(drawing), bbox, key);
     auto &v = views.back();
     auto root = v.drawingitem.get();
 

@@ -23,7 +23,8 @@
 #include <gtkmm/label.h>
 #include <gtkmm/treeview.h>
 
-#include "display/nr-filter-types.h"
+#include "renderer/drawing-filters/enums.h"
+
 #include "ui/dialog/dialog-base.h"
 #include "ui/widget-vfuncs-class-init.h"
 #include "ui/widget/combo-enums.h"
@@ -168,7 +169,7 @@ private:
         }
 
         Gtk::TreeModelColumn<SPFilterPrimitive*> primitive;
-        Gtk::TreeModelColumn<Inkscape::Filters::FilterPrimitiveType> type_id;
+        Gtk::TreeModelColumn<Renderer::DrawingFilter::PrimitiveType> type_id;
         Gtk::TreeModelColumn<Glib::ustring> type;
         Gtk::TreeModelColumn<Glib::ustring> id;
     };
@@ -281,7 +282,7 @@ private:
     void remove_primitive();
     void duplicate_primitive();
     void convolve_order_changed();
-    void add_filter_primitive(Filters::FilterPrimitiveType type);
+    void add_filter_primitive(Renderer::DrawingFilter::PrimitiveType type);
 
     void set_attr_direct(const UI::Widget::AttrWidget*);
     void set_child_attr_direct(const UI::Widget::AttrWidget*);
@@ -310,7 +311,7 @@ private:
     // View/add primitives
     Gtk::ScrolledWindow* _primitive_box;
 
-    UI::Widget::ComboBoxEnum<Inkscape::Filters::FilterPrimitiveType> _add_primitive_type;
+    UI::Widget::ComboBoxEnum<Renderer::DrawingFilter::PrimitiveType> _add_primitive_type;
     Gtk::Button _add_primitive;
 
     // Bottom pane (filter effect primitive settings)

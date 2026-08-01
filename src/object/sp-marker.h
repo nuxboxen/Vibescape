@@ -66,7 +66,7 @@ public:
 	/* Private views indexed by key that corresponds to a
 	 * particular marker type (start, mid, end) on a particular
 	 * path. SPMarkerView is a wrapper for a vector of pointers to
-	 * Inkscape::DrawingItem instances, one pointer for each
+	 * Inkscape::Renderer::DrawingItem instances, one pointer for each
 	 * rendered marker.
 	 */
 	std::map<unsigned int, SPMarkerView> views_map;
@@ -77,8 +77,8 @@ public:
 	void update(SPCtx *ctx, guint flags) override;
 	Inkscape::XML::Node* write(Inkscape::XML::Document *xml_doc, Inkscape::XML::Node *repr, guint flags) override;
 
-	Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
-	virtual Inkscape::DrawingItem* private_show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags);
+	Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
+	virtual Inkscape::Renderer::DrawingItem* private_show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags);
 	void hide(unsigned int key) override;
 
 	void print(SPPrintContext *ctx) override;
@@ -99,7 +99,7 @@ protected:
 
 void sp_validate_marker(SPMarker *sp_marker, SPDocument *doc);
 void sp_marker_show_dimension (SPMarker *marker, unsigned int key, unsigned int size);
-Inkscape::DrawingItem *sp_marker_show_instance (SPMarker *marker, Inkscape::DrawingItem *parent,
+Inkscape::Renderer::DrawingItem *sp_marker_show_instance (SPMarker *marker, Inkscape::Renderer::DrawingItem *parent,
 				      unsigned int key, unsigned int pos, unsigned int z_order,
 				      Geom::Affine const &marker_transform, float linewidth);
 void sp_marker_hide (SPMarker *marker, unsigned int key);

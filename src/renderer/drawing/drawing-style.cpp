@@ -51,7 +51,8 @@ std::shared_ptr<Pattern> DrawingStyle::preparePaint(Context &dc, DrawingOptions 
                 cp.pattern = std::make_shared<SolidColorPattern>(*color);
                 break;
             }
-            default:
+            case DrawingStyle::PaintType::CONTEXT:
+            case DrawingStyle::PaintType::NONE:
                 cp.pattern.reset();
                 break;
         }

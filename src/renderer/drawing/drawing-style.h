@@ -30,6 +30,11 @@ public:
     // All default values
     DrawingStyle() = default;
 
+    // Disable copy but allow move and assignment
+    DrawingStyle(const DrawingStyle&) = delete;
+    DrawingStyle(DrawingStyle&& other) noexcept = default;
+    DrawingStyle& operator=(DrawingStyle&& other) noexcept = default;
+
     template <typename StyleSource>
     DrawingStyle(StyleSource const *style, StyleSource const *context_style = nullptr)
     {

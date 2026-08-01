@@ -16,10 +16,8 @@
 
 #include "canvas-item-rect.h"
 
-#include <cairo/cairo.h>
-#include <cairomm/pattern.h>
+#include "renderer/context-pattern-complex.h"
 
-#include "display/cairo-utils.h"
 #include "ui/util.h"
 #include "ui/widget/canvas.h"
 
@@ -108,7 +106,7 @@ void CanvasItemRect::_update(bool)
 /**
  * Render rect to screen via Cairo.
  */
-void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemRect::_render(Inkscape::CanvasItemBuffer buf) const
 {
     // Are we axis aligned?
     auto const &aff = affine();
@@ -162,11 +160,10 @@ void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
         }
     }
 
-    buf.cr->save();
-    buf.cr->translate(-buf.rect.left(), -buf.rect.top());
+    buf.cr.translate(-buf.rect.left(), -buf.rect.top());
 
     if (_inverted) {
-        cairo_set_operator(buf.cr->cobj(), CAIRO_OPERATOR_DIFFERENCE);
+        buf.cr.setOperator(SP_CSS_BLEND_DIFFERENCE);
     }
 
     // Draw shadow first. Shadow extends under rectangle to reduce aliasing effects. Canvas draws page shadows in OpenGL mode.
@@ -177,46 +174,49 @@ void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
             vflip = Geom::Affine(1, 0, 0, -1, 0, rect.top() + rect.bottom()); // flip rect upside down
         }
 
-        buf.cr->save();
-        buf.cr->transform(geom_to_cairo(vflip * aff));
-        ink_cairo_draw_drop_shadow(buf.cr, rect, get_shadow_size(), _shadow_color, SP_RGBA32_A_F(_shadow_color));
-        buf.cr->restore();
+        auto ctx = buf.cr;
+        ctx.transform(vflip * aff);
+        // TODO: This PatternComplex can be made once and not on every rendering pass now
+        auto size = get_shadow_size();
+        ctx.paint(Renderer::GradientShadow(rect, size, {size/2.0, size/2.0}, Colors::Color(_shadow_color)));
     }
 
     // Get the points we need transformed into window coordinates.
-    buf.cr->begin_new_path();
+    buf.cr.begin_new_path();
     for (auto &corner : corners) {
-        buf.cr->line_to(corner.x(), corner.y());
+        buf.cr.line_to(corner.x(), corner.y());
     }
-    buf.cr->close_path();
+    buf.cr.close_path();
 
     // Draw border.
-    static std::valarray<double> const dashes = {4.0, 4.0};
+    static std::vector<double> const dashes = {4.0, 4.0};
     if (_dashed) {
-        buf.cr->set_dash(dashes, -0.5);
+        buf.cr.set_dash(dashes, -0.5);
     }
 
     // We maybe have painted the background, back to "normal" compositing
 
     // Do outline
-    if (SP_RGBA32_A_U(_outline) > 0 && _outline_width > 0) {
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_outline));
-        buf.cr->set_line_width(get_effective_outline());
-        buf.cr->stroke_preserve();
+    auto outline = Colors::Color(_outline);
+    if (outline.getOpacity() > 0 && _outline_width > 0) {
+        buf.cr.setSource(outline);
+        buf.cr.set_line_width(get_effective_outline());
+        buf.cr.stroke_preserve();
     }
 
     // Do stroke
-    if (SP_RGBA32_A_U(_stroke) > 0 && _stroke_width > 0) {
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_stroke));
-        buf.cr->set_line_width(_stroke_width);
-        buf.cr->stroke_preserve();
+    auto stroke = Colors::Color(_stroke);
+    if (stroke.getOpacity() > 0 && _stroke_width > 0) {
+        buf.cr.setSource(stroke);
+        buf.cr.set_line_width(_stroke_width);
+        buf.cr.stroke_preserve();
     }
 
     // Highlight the border by drawing it in _shadow_color.
     if (_shadow_width == 1 && _dashed) {
-        buf.cr->set_dash(dashes, 3.5); // Dash offset by dash length.
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_shadow_color));
-        buf.cr->stroke_preserve();
+        buf.cr.set_dash(dashes, 3.5); // Dash offset by dash length.
+        buf.cr.setSource(Colors::Color(_shadow_color));
+        buf.cr.stroke_preserve();
     }
 
     if (_shift_infill && axis_aligned) {
@@ -224,37 +224,36 @@ void CanvasItemRect::_render(Inkscape::CanvasItemBuffer &buf) const
         // Not shifting while rotated as that tends to create ugly gap which looks worse than infill tinting
         // semi transparent stroke.
         auto shift = expansion_dir * total_thickness * 0.5;
-        buf.cr->begin_new_path();
+        buf.cr.begin_new_path();
         for (auto &corner : corners) {
             corner += shift;
-            buf.cr->line_to(corner.x(), corner.y());
+            buf.cr.line_to(corner.x(), corner.y());
             shift = shift.cw();
         }
     }
 
     // Draw fill pattern
     if (_fill_pattern && !buf.outline_pass) {
-        buf.cr->set_source(_fill_pattern);
-        buf.cr->fill_preserve();
+        buf.cr.setSource(*_fill_pattern);
+        buf.cr.fill_preserve();
     }
 
     // Draw fill
-    if (SP_RGBA32_A_U(_fill) > 0 && !buf.outline_pass) {
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_fill));
-        buf.cr->fill_preserve();
+    auto fill = Colors::Color(_fill);
+    if (fill.getOpacity() > 0 && !buf.outline_pass) {
+        buf.cr.setSource(fill);
+        buf.cr.fill_preserve();
     }
 
-    buf.cr->begin_new_path(); // Clear path or get weird artifacts.
+    buf.cr.begin_new_path(); // Clear path or get weird artifacts.
 
     // Uncomment to show bounds
     // Geom::Rect bounds = _bounds;
     // bounds.expandBy(-1);
     // bounds -= buf.rect.min();
-    // buf.cr->set_source_rgba(1.0, 0.0, _shadow_width / 3.0, 1.0);
-    // buf.cr->rectangle(bounds.min().x(), bounds.min().y(), bounds.width(), bounds.height());
-    // buf.cr->stroke();
-
-    buf.cr->restore();
+    // buf.cr.set_source_rgba(1.0, 0.0, _shadow_width / 3.0, 1.0);
+    // buf.cr.rectangle(bounds.min().x(), bounds.min().y(), bounds.width(), bounds.height());
+    // buf.cr.stroke();
 }
 
 void CanvasItemRect::set_is_page(bool is_page)

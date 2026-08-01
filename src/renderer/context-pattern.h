@@ -79,8 +79,6 @@ public:
     void copyColorStops(Pattern const &other);
     std::pair<double, Colors::Color> getColorStop(int stop) const;
     int numColorStops() const;
-
-    static Geom::Affine rectToMatrix(Geom::OptRect const &rect);
 };
 
 class SolidColorPattern : public Pattern
@@ -121,11 +119,6 @@ class CheckerboardPattern : public Pattern
 public:
     CheckerboardPattern(Colors::Color color, int size);
     CheckerboardPattern(Colors::Color color1, Colors::Color color2, int size);
-
-    static Colors::Color darker(Colors::Color color) {
-        auto opacity = color.stealOpacity();
-        return Colors::make_contrasted_color(color, 1.0 - opacity);
-    }
 private:
     std::shared_ptr<Surface> _surface;
 };

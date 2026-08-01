@@ -38,6 +38,8 @@ class Surface;
 Cairo::Matrix geom_to_cairo(const Geom::Affine &affine);
 Cairo::RectangleInt geom_to_cairo(Geom::IntRect const &rect);
 Geom::IntRect cairo_to_geom(const Cairo::RectangleInt &rect);
+Geom::Affine rect_to_matrix(Geom::OptRect const &bbox);
+Geom::Affine viewbox_matrix(Geom::Affine const &m, Geom::OptRect const &rect);
 
 /**
  * @class Context
@@ -47,7 +49,7 @@ class Context
 {
 public:
     Context(Context const &parent);
-    Context(std::shared_ptr<Surface> s, Geom::IntPoint logicalBounds = {}, Geom::Scale const &scale = {});
+    Context(Surface &surface, Geom::IntPoint logicalBounds = {}, Geom::Scale const &scale = {});
     ~Context();
 
     /**
@@ -107,6 +109,7 @@ public:
     void stroke() { for (auto &ct : _cts) { ct->stroke(); } }
     void stroke_preserve() { for (auto &ct : _cts) { ct->stroke_preserve(); } }
     void clip() { for (auto &ct : _cts) { ct->clip(); } }
+    void reset_clip() { for (auto &ct : _cts) { ct->reset_clip(); } }
 
       // Cairo style
     void set_line_width(double w) { for (auto &ct : _cts) { ct->set_line_width(w); } }
@@ -178,6 +181,9 @@ public:
             ct->close_path();
         }
     }
+    void circle(const Geom::Point& center, double radius) {
+        arc(center.x(), center.y(), radius, 0, 2 * M_PI);
+    }
     void newPath() { begin_new_path(); }
     void newSubpath() { begin_new_sub_path(); }
     void path(Geom::PathVector const &pv);
@@ -226,11 +232,14 @@ public:
 
     // This breaks the barrier between context and surface layers, so don't use it unless you know
     // exactly why you need to. It should be possible to design this away.
-    auto getSurface() { return _surface; }
-    int getDeviceScale() const;
+    int getDeviceScale() const { return _device_scale; }
+    // The color space of the surface might be empty, this means sRGB in Integer format
+    std::shared_ptr<Colors::Space::AnySpace> getSurfaceColorSpace() const { return _surface_color_space; }
+    // The context's color space is always set, either as the surface's or sRGB itself
     std::shared_ptr<Colors::Space::AnySpace> getColorSpace() const;
-    Geom::IntPoint getDimensions() const;
+    Geom::IntPoint getDimensions() const { return _dimensions; }
     Geom::IntRect logicalBounds() const { return Geom::IntRect::from_xywh(_origin, getDimensions()); }
+    cairo_format_t getSurfaceFormat() const { return _format; }
 
 #ifdef UNIT_TEST
     bool hasParent() const { return _parent; }
@@ -241,8 +250,9 @@ private:
     std::vector<Cairo::RefPtr<Cairo::Context>> _cts;
     Geom::IntPoint _origin;
     cairo_format_t _format;
-
-    std::shared_ptr<Surface> _surface;
+    int _device_scale;
+    Geom::IntPoint _dimensions;
+    std::shared_ptr<Colors::Space::AnySpace> _surface_color_space;
 
     // Save mechanism
     Context const *_parent = nullptr;

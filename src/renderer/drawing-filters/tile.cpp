@@ -51,7 +51,7 @@ void Tile::render(Slot &slot) const
     auto tile = in->similar(Geom::IntPoint(tt.width(), tt.height()));
 
     {
-        auto ct_tile = Context(tile);
+        auto ct_tile = Context(*tile);
         ct_tile.setSource(*in, shift[Geom::X], shift[Geom::Y]);
         ct_tile.paint();
     }
@@ -63,7 +63,7 @@ void Tile::render(Slot &slot) const
     int tile_cols = std::ceil(pr.width()  / tile_area.width());
     int tile_rows = std::ceil(pr.height() / tile_area.height());
 
-    auto ct = Context(out);
+    auto ct = Context(*out);
     // Do tiling (TO DO: restrict to slot area.)
     for (int col = 0; col < tile_cols; ++col) {
         for (int row = 0; row < tile_rows; ++row) {

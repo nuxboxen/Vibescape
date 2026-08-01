@@ -17,6 +17,7 @@
 #include <memory>
 #include <compare>
 
+#include "renderer/surface.h"
 #include "canvas-item-enums.h"
 
 namespace Cairo { class ImageSurface; }
@@ -35,11 +36,12 @@ struct RenderParams
     double angle;
     int device_scale;
     int size_parity; // -1 - disabled, 0, 1 desired parity in physical pixels
+    std::shared_ptr<Colors::Space::AnySpace> color_space;
 
     auto operator<=>(RenderParams const &) const = default;
 };
 
-std::shared_ptr<Cairo::ImageSurface const> draw(RenderParams const &params);
+std::shared_ptr<Renderer::Surface const> draw(RenderParams const &params);
 
 } // namespace Inkscape::Handles
 

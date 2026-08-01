@@ -27,7 +27,7 @@
 #include "print.h"
 #include "sp-use.h"
 
-#include "display/drawing-group.h"
+#include "renderer/drawing/drawing-group.h"
 #include "svg/svg.h"
 #include "xml/document.h"                            // for Document
 
@@ -225,7 +225,7 @@ void SPSymbol::update(SPCtx *ctx, guint flags) {
 
         // As last step set additional transform of drawing group
         for (auto &v : views) {
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             g->setChildTransform(this->c2p);
         }
     } else {
@@ -260,15 +260,15 @@ Inkscape::XML::Node* SPSymbol::write(Inkscape::XML::Document *xml_doc, Inkscape:
     return repr;
 }
 
-Inkscape::DrawingItem* SPSymbol::show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags)
+Inkscape::Renderer::DrawingItem* SPSymbol::show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags)
 {
-    Inkscape::DrawingItem *ai = nullptr;
+    Inkscape::Renderer::DrawingItem *ai = nullptr;
 
     if (cloned) {
         // Cloned <symbol> is actually renderable
         ai = SPGroup::show(drawing, key, flags);
 
-        if (auto g = cast<Inkscape::DrawingGroup>(ai)) {
+        if (auto g = cast<Inkscape::Renderer::DrawingGroup>(ai)) {
 			g->setChildTransform(this->c2p);
 		}
     }

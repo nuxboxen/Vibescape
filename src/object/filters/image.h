@@ -22,9 +22,10 @@ class SPItem;
 
 namespace Inkscape {
 class URIReference;
+namespace Renderer {
 class DrawingItem;
 class Drawing;
-class Pixbuf;
+} // namesapce Renderer
 } // namespace Inksacpe
 
 class SPFeImage final
@@ -51,7 +52,7 @@ private:
     Type type = NONE;
     std::unique_ptr<Inkscape::URIReference> elemref; // Tracks href if it is a valid URI.
     SPItem *elem; // If type == ELEM, the referenced element.
-    std::shared_ptr<Inkscape::Pixbuf const> pixbuf; // If type == IMAGE, the loaded image.
+    //std::shared_ptr<Inkscape::Pixbuf const> pixbuf; // If type == IMAGE, the loaded image.
 
     sigc::connection _href_changed_connection; // Tracks the reference being reattached.
     sigc::connection _href_modified_connection; // If type == ELEM, tracks the referenced object being modified.
@@ -64,8 +65,8 @@ private:
 
     struct View
     {
-        Inkscape::DrawingItem *parent; // The item to which the filter is applied.
-        Inkscape::DrawingItem *child; // The element or image shown by the filter.
+        Inkscape::Renderer::DrawingItem *parent; // The item to which the filter is applied.
+        Inkscape::Renderer::DrawingItem *child; // The element or image shown by the filter.
         unsigned inner_key; // The display key at which child is shown at.
     };
     std::vector<View> views;
@@ -79,10 +80,10 @@ protected:
 	void release() override;
     void set(SPAttr key, char const *value) override;
 
-    void show(Inkscape::DrawingItem *item) override;
-    void hide(Inkscape::DrawingItem *item) override;
+    void show(Inkscape::Renderer::DrawingItem *item) override;
+    void hide(Inkscape::Renderer::DrawingItem *item) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FEIMAGE_H_SEEN

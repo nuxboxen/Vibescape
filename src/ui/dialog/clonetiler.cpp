@@ -30,9 +30,8 @@
 #include "inkscape.h"
 #include "preferences.h"
 #include "selection.h"
-#include "display/cairo-utils.h"
-#include "display/drawing-context.h"
-#include "display/drawing.h"
+#include "renderer/context.h"
+#include "renderer/drawing-forward.h"
 #include "object/algorithms/unclump.h"
 #include "object/sp-namedview.h"
 #include "object/sp-root.h"
@@ -77,7 +76,7 @@ static constexpr int VB_MARGIN = 4;
 
 static Glib::ustring const prefs_path = "/dialogs/clonetiler/";
 
-static std::unique_ptr<Inkscape::Drawing> trace_drawing;
+static std::unique_ptr<Renderer::Drawing> trace_drawing;
 static unsigned trace_visionkey;
 static gdouble trace_zoom;
 static SPDocument *trace_doc = nullptr;
@@ -1893,7 +1892,7 @@ void CloneTiler::trace_hide_tiled_clones_recursively(SPObject *from)
 
 void CloneTiler::trace_setup(SPDocument *doc, gdouble zoom, SPItem *original)
 {
-    trace_drawing = std::make_unique<Inkscape::Drawing>();
+    trace_drawing = std::make_unique<Renderer::Drawing>();
 
     /* Create ArenaItem and set transform */
     trace_visionkey = SPItem::display_key_new(1);
@@ -1921,15 +1920,7 @@ guint32 CloneTiler::trace_pick(Geom::Rect box)
 
     /* Item integer bbox in points */
     Geom::IntRect ibox = (box * Geom::Scale(trace_zoom)).roundOutwards();
-
-    /* Find visible area */
-    cairo_surface_t *s = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, ibox.width(), ibox.height());
-    Inkscape::DrawingContext dc(s, ibox.min());
-    /* Render */
-    trace_drawing->render(dc, ibox);
-    auto color = ink_cairo_surface_average_color(s);
-    cairo_surface_destroy(s);
-    return color.toRGBA();
+    return trace_drawing->averageColor(ibox).toRGBA();
 }
 
 void CloneTiler::trace_finish()

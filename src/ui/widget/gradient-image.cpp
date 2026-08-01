@@ -15,7 +15,6 @@
 
 #include <gdkmm/pixbuf.h>
 
-#include "display/cairo-utils.h"
 #include "object/sp-gradient.h"
 #include "object/sp-stop.h"
 
@@ -24,7 +23,7 @@ static void sp_gradient_draw(SPGradient *gr, int width, int height, cairo_t *ct)
     if (!gr) {
         return;
     }
-
+/* TODO
     auto check = ink_cairo_pattern_create_checkerboard();
     cairo_set_source(ct, check->cobj());
     cairo_paint(ct);
@@ -36,6 +35,7 @@ static void sp_gradient_draw(SPGradient *gr, int width, int height, cairo_t *ct)
     cairo_set_source(ct, p);
     cairo_paint(ct);
     cairo_pattern_destroy(p);
+    */
 }
 
 namespace Inkscape::UI::Widget {
@@ -88,7 +88,7 @@ Glib::RefPtr<Gdk::Pixbuf> sp_gradient_to_pixbuf(SPGradient *gr, int width, int h
     cairo_surface_flush(s);
 
     // no need to free s - the call below takes ownership
-    return Glib::wrap(ink_pixbuf_create_from_cairo_surface(s));
+    return {}; // TODO Glib::wrap(ink_pixbuf_create_from_cairo_surface(s));
 }
 
 Cairo::RefPtr<Cairo::ImageSurface> sp_gradient_to_surface(SPGradient* gr, int width, int height) {
@@ -107,22 +107,24 @@ Cairo::RefPtr<Cairo::ImageSurface> sp_gradstop_to_surface(SPStop *stop, int widt
     cairo_t *ct = ctx->cobj();
 
     /* Checkerboard background */
+    /* TODO
     auto check = ink_cairo_pattern_create_checkerboard();
     cairo_rectangle(ct, 0, 0, width, height);
     cairo_set_source(ct, check->cobj());
     cairo_fill_preserve(ct);
+    */
 
     if (stop) {
         /* Alpha area */
         cairo_rectangle(ct, 0, 0, width/2, height);
-        ink_cairo_set_source_color(ct, stop->getColor());
+        //ink_cairo_set_source_color(ct, stop->getColor());
         cairo_fill(ct);
 
         /* Solid area */
         auto no_alpha = stop->getColor();
         no_alpha.enableOpacity(false);
         cairo_rectangle(ct, width/2, 0, width, height);
-        ink_cairo_set_source_color(ct, no_alpha);
+        //ink_cairo_set_source_color(ct, no_alpha);
         cairo_fill(ct);
     }
 

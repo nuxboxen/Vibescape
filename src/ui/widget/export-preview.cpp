@@ -52,7 +52,7 @@ void PreviewDrawing::destruct()
  */
 void PreviewDrawing::construct()
 {
-    auto drawing = std::make_shared<Inkscape::Drawing>();
+    auto drawing = std::make_shared<Renderer::Drawing>();
     _visionkey = SPItem::display_key_new(1);
     if (auto di = _document->getRoot()->invoke_show(*drawing, _visionkey, SP_ITEM_SHOW_DISPLAY)) {
         drawing->setRoot(di);
@@ -85,7 +85,7 @@ bool PreviewDrawing::render(ExportPreview *widget, uint32_t bg, SPItem const *it
     }
 
     Geom::OptRect bbox = dbox;
-    DrawingItem *di = nullptr;
+    Renderer::DrawingItem *di = nullptr;
 
     if (item) {
         bbox = item->documentVisualBounds();
@@ -98,7 +98,7 @@ bool PreviewDrawing::render(ExportPreview *widget, uint32_t bg, SPItem const *it
         return true; // Force quit
 
     // Use a callback to set the preview rendering;
-    widget->setPreview(UI::Preview::render_preview(_document, _drawing, bg, di, size, size, *bbox));
+    // TODO widget->setPreview(UI::Preview::render_preview(_document, _drawing, Colors::Color(bg), di, size, size, *bbox));
     return true;
 }
 

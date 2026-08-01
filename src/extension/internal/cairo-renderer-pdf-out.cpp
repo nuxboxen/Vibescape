@@ -29,7 +29,7 @@
 #include "extension/db.h"
 #include "extension/output.h"
 
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "path/path-curve.h"
 
 #include "object/sp-item.h"
@@ -78,7 +78,7 @@ pdf_render_document_to_file(SPDocument *doc, gchar const *filename, unsigned int
     }
     
     /* Create new drawing */
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     unsigned dkey = SPItem::display_key_new(1);
     drawing.setRoot(root->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY));
     drawing.setExact();

@@ -104,9 +104,6 @@ struct ConvolveMatrix
     int _targetX, _targetY, _orderX, _orderY;
     double _bias;
     bool _preserve_alpha;
-
-    // We expect unpremultiplied Alpha
-    static constexpr bool needs_unmultiplied = true;
 };
 
 } // namespace Inkscape

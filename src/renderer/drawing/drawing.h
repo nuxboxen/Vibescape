@@ -43,6 +43,14 @@ public:
     void setRoot(DrawingItem *root);
     DrawingItem *root() { return _root; }
 
+    /**
+     * Special debugging, testing and dev instruction for requesting that all
+     * instructions to this drawing stack produce compilable code to stdout.
+     *
+     * Can not be turned off for this drawing, once enabled.
+     */
+    void setCodeBuild();
+
     void setRenderMode(RenderMode);
     void setColorMode(ColorMode);
     void setOutlineOverlay(bool);
@@ -140,6 +148,9 @@ private:
     sigc::signal<void(unsigned)> _item_deleted_signal;
 
     friend class DrawingItem;
+
+public:
+    bool _code_build = false;
 };
 
 } // namespace Inkscape::Renderer

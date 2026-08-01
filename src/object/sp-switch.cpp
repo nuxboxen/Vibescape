@@ -16,7 +16,7 @@
 #include <glibmm/i18n.h>
 
 #include "sp-switch.h"
-#include "display/drawing-group.h"
+#include "renderer/drawing/drawing-group.h"
 #include "conditions.h"
 
 #include <sigc++/adaptors/bind.h>
@@ -132,7 +132,7 @@ void SPSwitch::_releaseLastItem(SPObject *obj)
     this->_cached_item = nullptr;
 }
 
-void SPSwitch::_showChildren (Inkscape::Drawing &drawing, Inkscape::DrawingItem *ai, unsigned int key, unsigned int flags) {
+void SPSwitch::_showChildren (Inkscape::Renderer::Drawing &drawing, Inkscape::Renderer::DrawingItem *ai, unsigned int key, unsigned int flags) {
     SPObject *evaluated_child = this->_evaluateFirst();
 
     std::vector<SPObject*> l = this->_childList(false, SPObject::ActionShow);
@@ -143,7 +143,7 @@ void SPSwitch::_showChildren (Inkscape::Drawing &drawing, Inkscape::DrawingItem 
         if (is<SPItem>(o)) {
             auto child = cast<SPItem>(o);
             child->setEvaluated(o == evaluated_child);
-            Inkscape::DrawingItem *ac = child->invoke_show (drawing, key, flags);
+            Inkscape::Renderer::DrawingItem *ac = child->invoke_show (drawing, key, flags);
 
             if (ac) {
                 ai->appendChild(ac);

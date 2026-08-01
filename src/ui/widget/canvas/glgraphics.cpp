@@ -10,6 +10,11 @@
 #include "pixelstreamer.h"
 #include "util.h"
 
+#include "colors/manager.h"
+#include "renderer/surface.h"
+#include "renderer/context.h"
+#include "renderer/context-pattern.h"
+
 namespace Inkscape::UI::Widget {
 
 namespace {
@@ -591,37 +596,35 @@ void GLGraphics::setup_tiles_pipeline()
     glDisable(GL_BLEND);
 };
 
-Cairo::RefPtr<Cairo::ImageSurface> GLGraphics::request_tile_surface(Geom::IntRect const &rect, bool nogl)
+std::shared_ptr<Renderer::Surface> GLGraphics::request_tile_surface(Geom::IntRect const &rect, bool nogl)
 {
-    Cairo::RefPtr<Cairo::ImageSurface> surface;
+    std::shared_ptr<Renderer::Surface> surface;
 
     {
         auto g = std::lock_guard(ps_mutex);
-        surface = pixelstreamer->request(rect.dimensions() * scale_factor, nogl);
-    }
-
-    if (surface) {
-        cairo_surface_set_device_scale(surface->cobj(), scale_factor, scale_factor);
+        auto argb32 = pixelstreamer->request(rect.dimensions() * scale_factor, nogl);
+        // Expensive conversion from INT32 to FLOAT128
+        surface = std::make_shared<Renderer::Surface>(argb32);
     }
 
     return surface;
 }
 
-void GLGraphics::draw_tile(Fragment const &fragment, Cairo::RefPtr<Cairo::ImageSurface> surface, Cairo::RefPtr<Cairo::ImageSurface> outline_surface)
+void GLGraphics::draw_tile(Fragment const &fragment, std::shared_ptr<Renderer::Surface> surface, std::shared_ptr<Renderer::Surface> outline_surface)
 {
     auto g = std::lock_guard(ps_mutex);
-    auto surface_size = dimensions(surface);
+    auto surface_size = surface->dimensions();
 
     Texture texture, outline_texture;
 
     glActiveTexture(GL_TEXTURE0);
     texture = texturecache->request(surface_size); // binds
-    pixelstreamer->finish(std::move(surface)); // uploads content
+    pixelstreamer->finish(surface->exportToARGB32()); // uploads content
 
     if (outlines_enabled) {
         glActiveTexture(GL_TEXTURE1);
         outline_texture = texturecache->request(surface_size);
-        pixelstreamer->finish(std::move(outline_surface));
+        pixelstreamer->finish(outline_surface->exportToARGB32());
     }
 
     setup_tiles_pipeline();
@@ -636,10 +639,10 @@ void GLGraphics::draw_tile(Fragment const &fragment, Cairo::RefPtr<Cairo::ImageS
     }
 }
 
-void GLGraphics::junk_tile_surface(Cairo::RefPtr<Cairo::ImageSurface> surface)
+void GLGraphics::junk_tile_surface(std::shared_ptr<Renderer::Surface> surface)
 {
     auto g = std::lock_guard(ps_mutex);
-    pixelstreamer->finish(std::move(surface), true);
+    pixelstreamer->finish(surface->exportToARGB32(), true);
 }
 
 void GLGraphics::setup_widget_pipeline(Fragment const &view)
@@ -664,7 +667,7 @@ void GLGraphics::setup_widget_pipeline(Fragment const &view)
     glBindVertexArray(rect.vao);
 };
 
-void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::RefPtr<Cairo::Context> const&)
+void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, std::shared_ptr<Renderer::Context> const&)
 {
     // If in decoupled mode, create the vertex data describing the drawn region of the store.
     VAO clean_vao;
@@ -688,8 +691,8 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
             glDisable(GL_BLEND);
             glUseProgram(checker.id);
             glUniform1f(checker.loc("size"), 12.0 * scale_factor);
-            glUniform3fv(checker.loc("col1"), 1, std::begin(rgb_to_array(page)));
-            glUniform3fv(checker.loc("col2"), 1, std::begin(checkerboard_darken(page)));
+            glUniform3fv(checker.loc("col1"), 1, std::begin(Colors::Color(page).toArray<float, 3>()));
+            glUniform3fv(checker.loc("col2"), 1, std::begin(Colors::make_contrasted_color(Colors::Color(page)).toArray<float, 3>()));
             geom_to_uniform(Geom::Scale(2.0, -2.0) * Geom::Translate(-1.0, 1.0), checker.loc("mat"), checker.loc("trans"));
             geom_to_uniform({1.0, 1.0}, checker.loc("subrect"));
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -707,8 +710,8 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
         // Pages
         glUseProgram(checker.id);
         glUniform1f(checker.loc("size"), 12.0 * scale_factor);
-        glUniform3fv(checker.loc("col1"), 1, std::begin(rgb_to_array(page)));
-        glUniform3fv(checker.loc("col2"), 1, std::begin(checkerboard_darken(page)));
+        glUniform3fv(checker.loc("col1"), 1, std::begin(Colors::Color(page).toArray<float, 3>()));
+        glUniform3fv(checker.loc("col2"), 1, std::begin(Colors::make_contrasted_color(Colors::Color(page)).toArray<float, 3>()));
         geom_to_uniform({1.0, 1.0}, checker.loc("subrect"));
         for (auto &rect : pi.pages) {
             set_page_transform(rect, checker);
@@ -718,8 +721,8 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
         glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
         // Desk
-        glUniform3fv(checker.loc("col1"), 1, std::begin(rgb_to_array(desk)));
-        glUniform3fv(checker.loc("col2"), 1, std::begin(checkerboard_darken(desk)));
+        glUniform3fv(checker.loc("col1"), 1, std::begin(Colors::Color(desk).toArray<float, 3>()));
+        glUniform3fv(checker.loc("col2"), 1, std::begin(Colors::make_contrasted_color(Colors::Color(desk)).toArray<float, 3>()));
         geom_to_uniform(Geom::Scale(2.0, -2.0) * Geom::Translate(-1.0, 1.0), checker.loc("mat"), checker.loc("trans"));
         geom_to_uniform({1.0, 1.0}, checker.loc("subrect"));
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -740,7 +743,7 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
 
             glUniform1f(shadow.loc("size"), shadow_size);
             glUniform2fv(shadow.loc("dir"), 1, std::begin({(GLfloat)dir.x(), (GLfloat)dir.y()}));
-            glUniform4fv(shadow.loc("shadow_col"), 1, std::begin(premultiplied(rgba_to_array(shadow_color))));
+            glUniform4fv(shadow.loc("shadow_col"), 1, std::begin(premultiplied(Colors::Color(shadow_color).toArray<float, 4>())));
             for (auto &rect : pi.pages) {
                 set_page_transform(rect, shadow);
                 glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -787,14 +790,14 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
         }
     };
 
-    if (a.splitmode == Inkscape::SplitMode::NORMAL || (a.splitmode == Inkscape::SplitMode::XRAY && !a.mouse)) {
+    if (a.splitmode == Renderer::SplitMode::NORMAL || (a.splitmode == Renderer::SplitMode::XRAY && !a.mouse)) {
 
         // Drawing the backing store over the whole view.
-        a.render_mode == Inkscape::RenderMode::OUTLINE_OVERLAY
+        a.render_mode == Renderer::RenderMode::OUTLINE_OVERLAY
                         ? draw_store(outlineoverlay, DrawMode::Combine)
                         : draw_store(texcopy, DrawMode::Store);
 
-    } else if (a.splitmode == Inkscape::SplitMode::SPLIT) {
+    } else if (a.splitmode == Renderer::SplitMode::SPLIT) {
 
         // Calculate the clipping rectangles for split view.
         auto [store_clip, outline_clip] = calc_splitview_cliprects(view.rect.dimensions(), a.splitfrac, a.splitdir);
@@ -803,7 +806,7 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
 
         // Draw the backing store.
         glScissor(store_clip.left() * scale_factor, (view.rect.height() - store_clip.bottom()) * scale_factor, store_clip.width() * scale_factor, store_clip.height() * scale_factor);
-        a.render_mode == Inkscape::RenderMode::OUTLINE_OVERLAY
+        a.render_mode == Renderer::RenderMode::OUTLINE_OVERLAY
                         ? draw_store(outlineoverlay, DrawMode::Combine)
                         : draw_store(texcopy, DrawMode::Store);
 
@@ -816,18 +819,18 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
 
         // Calculate the bounding rectangle of the split view controller.
         auto rect = Geom::IntRect({0, 0}, view.rect.dimensions());
-        auto dim = a.splitdir == Inkscape::SplitDirection::EAST || a.splitdir == Inkscape::SplitDirection::WEST ? Geom::X : Geom::Y;
+        auto dim = a.splitdir == Renderer::SplitDirection::EAST || a.splitdir == Renderer::SplitDirection::WEST ? Geom::X : Geom::Y;
         rect[dim] = Geom::IntInterval(-21, 21) + std::round(a.splitfrac[dim] * view.rect.dimensions()[dim]);
 
         // Lease out a PixelStreamer mapping to draw on.
         auto surface_size = rect.dimensions() * scale_factor;
-        auto surface = pixelstreamer->request(surface_size);
-        cairo_surface_set_device_scale(surface->cobj(), scale_factor, scale_factor);
+        // Expensive conversion from INT32 to FLOAT128
+        auto surface = std::make_shared<Renderer::Surface>(pixelstreamer->request(surface_size));
 
         // Actually draw the content with Cairo.
-        auto cr = Cairo::Context::create(surface);
+        auto cr = std::make_shared<Renderer::Context>(*surface);
         cr->set_operator(Cairo::Context::Operator::SOURCE);
-        cr->set_source_rgba(0.0, 0.0, 0.0, 0.0);
+        cr->setSource(Colors::Color(0x0));
         cr->paint();
         cr->translate(-rect.left(), -rect.top());
         paint_splitview_controller(view.rect.dimensions(), a.splitfrac, a.splitdir, a.hoverdir, cr);
@@ -835,7 +838,7 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
         // Convert the surface to a texture.
         glActiveTexture(GL_TEXTURE0);
         auto texture = texturecache->request(surface_size);
-        pixelstreamer->finish(std::move(surface));
+        pixelstreamer->finish(surface->exportToARGB32());
 
         // Paint the texture onto the view.
         glUseProgram(texcopy.id);
@@ -846,9 +849,9 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, Cairo::R
 
         // Return the texture back to the texture cache.
         texturecache->finish(std::move(texture));
-    } else { // if (_split_mode == Inkscape::SplitMode::XRAY && a.mouse)
+    } else { // if (_split_mode == Renderer::SplitMode::XRAY && a.mouse)
         // Draw the backing store over the whole view.
-        auto const &shader = a.render_mode == Inkscape::RenderMode::OUTLINE_OVERLAY ? outlineoverlayxray : xray;
+        auto const &shader = a.render_mode == Renderer::RenderMode::OUTLINE_OVERLAY ? outlineoverlayxray : xray;
         glUseProgram(shader.id);
         glUniform1f(shader.loc("radius"), prefs.xray_radius * scale_factor);
         glUniform2fv(shader.loc("pos"), 1, std::begin({(GLfloat)(a.mouse->x() * scale_factor), (GLfloat)((view.rect.height() - a.mouse->y()) * scale_factor)}));

@@ -14,7 +14,7 @@
 #include <2geom/rect.h>                   // for Rect
 #include "style.h"                        // for SPStyle
 
-#include "display/drawing-paintserver.h"  // for DrawingRadialGradient, Draw...
+#include "renderer/drawing/drawing-paintserver.h"  // for DrawingRadialGradient, Draw...
 #include "object/sp-gradient.h"           // for SPGradient
 #include "object/sp-item.h"               // for SPItemCtx
 #include "object/sp-object.h"             // for SP_OBJECT_MODIFIED_FLAG

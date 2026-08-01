@@ -23,65 +23,52 @@
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/numeric/converters.h"             // for read_number, read_ve...
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Node;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeColorMatrix::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::TYPE);
     readAttr(SPAttr::VALUES);
 }
 
-static Inkscape::Filters::FilterColorMatrixType read_type(char const *str)
+static Inkscape::Renderer::DrawingFilter::ColorMatrixType read_type(char const *str)
 {
     if (!str) {
-    	return Inkscape::Filters::COLORMATRIX_MATRIX; //matrix is default
+    	return Inkscape::Renderer::DrawingFilter::ColorMatrixType::MATRIX; //matrix is default
     }
 
     switch (str[0]) {
         case 'm':
-            if (std::strcmp(str, "matrix") == 0) return Inkscape::Filters::COLORMATRIX_MATRIX;
+            if (std::strcmp(str, "matrix") == 0) return Inkscape::Renderer::DrawingFilter::ColorMatrixType::MATRIX;
             break;
         case 's':
-            if (std::strcmp(str, "saturate") == 0) return Inkscape::Filters::COLORMATRIX_SATURATE;
+            if (std::strcmp(str, "saturate") == 0) return Inkscape::Renderer::DrawingFilter::ColorMatrixType::SATURATE;
             break;
         case 'h':
-            if (std::strcmp(str, "hueRotate") == 0) return Inkscape::Filters::COLORMATRIX_HUEROTATE;
+            if (std::strcmp(str, "hueRotate") == 0) return Inkscape::Renderer::DrawingFilter::ColorMatrixType::HUEROTATE;
             break;
         case 'l':
-            if (std::strcmp(str, "luminanceToAlpha") == 0) return Inkscape::Filters::COLORMATRIX_LUMINANCETOALPHA;
+            if (std::strcmp(str, "luminanceToAlpha") == 0) return Inkscape::Renderer::DrawingFilter::ColorMatrixType::LUMINANCETOALPHA;
             break;
     }
 
-    return Inkscape::Filters::COLORMATRIX_MATRIX; //matrix is default
+    return Inkscape::Renderer::DrawingFilter::ColorMatrixType::MATRIX; //matrix is default
 }
 
 void SPFeColorMatrix::set(SPAttr key, char const *str)
 {
     auto set_default_value = [this] {
         switch (type) {
-            case Inkscape::Filters::COLORMATRIX_MATRIX:
+            case Inkscape::Renderer::DrawingFilter::ColorMatrixType::MATRIX:
                 values = {1, 0, 0, 0, 0,  0, 1, 0, 0, 0,  0, 0, 1, 0, 0,  0, 0, 0, 1, 0};
                 break;
-            case Inkscape::Filters::COLORMATRIX_SATURATE:
+            case Inkscape::Renderer::DrawingFilter::ColorMatrixType::SATURATE:
                 // Default value for saturate is 1.0 ("values" not used).
                 value = 1;
                 break;
-            case Inkscape::Filters::COLORMATRIX_HUEROTATE:
+            case Inkscape::Renderer::DrawingFilter::ColorMatrixType::HUEROTATE:
                 value = 0;
                 break;
-            case Inkscape::Filters::COLORMATRIX_LUMINANCETOALPHA:
+            case Inkscape::Renderer::DrawingFilter::ColorMatrixType::LUMINANCETOALPHA:
                 // value, values not used.
                 break;
         }
@@ -114,9 +101,9 @@ void SPFeColorMatrix::set(SPAttr key, char const *str)
     }
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeColorMatrix::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeColorMatrix::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto colormatrix = std::make_unique<Inkscape::Filters::FilterColorMatrix>();
+    auto colormatrix = std::make_unique<Inkscape::Renderer::DrawingFilter::ColorMatrix>();
     build_renderer_common(colormatrix.get());
 
     colormatrix->set_type(type);

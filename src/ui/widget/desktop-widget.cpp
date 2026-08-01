@@ -326,7 +326,7 @@ void SPDesktopWidget::switchDesktop(SPDesktop *desktop)
             action->set_state(Glib::Variant<int>::create((int)_desktop->getCanvas()->get_render_mode()));
         }
         if (auto action = dynamic_cast<Gio::SimpleAction *>(_window->lookup_action("canvas-color-mode").get())) {
-            action->set_state(Glib::Variant<bool>::create(_desktop->getCanvas()->get_color_mode() == Inkscape::ColorMode::GRAYSCALE));
+            action->set_state(Glib::Variant<bool>::create(_desktop->getCanvas()->get_color_mode() == Renderer::ColorMode::GRAYSCALE));
         }
         if (auto action = dynamic_cast<Gio::SimpleAction *>(_window->lookup_action("canvas-split-mode").get())) {
             action->set_state(Glib::Variant<int>::create((int)_desktop->getCanvas()->get_split_mode()));
@@ -422,24 +422,24 @@ void SPDesktopWidget::_updateTitle()
         auto const render_mode = canvas->get_render_mode();
         auto const color_mode  = canvas->get_color_mode();
 
-        if (render_mode == Inkscape::RenderMode::OUTLINE) {
+        if (render_mode == Renderer::RenderMode::OUTLINE) {
             Name += N_("outline");
-        } else if (render_mode == Inkscape::RenderMode::NO_FILTERS) {
+        } else if (render_mode == Renderer::RenderMode::NO_FILTERS) {
             Name += N_("no filters");
-        } else if (render_mode == Inkscape::RenderMode::VISIBLE_HAIRLINES) {
+        } else if (render_mode == Renderer::RenderMode::VISIBLE_HAIRLINES) {
             Name += N_("enhance thin lines");
-        } else if (render_mode == Inkscape::RenderMode::OUTLINE_OVERLAY) {
+        } else if (render_mode == Renderer::RenderMode::OUTLINE_OVERLAY) {
             Name += N_("outline overlay");
         }
 
-        if (color_mode != Inkscape::ColorMode::NORMAL &&
-            render_mode != Inkscape::RenderMode::NORMAL) {
+        if (color_mode != Renderer::ColorMode::NORMAL &&
+            render_mode != Renderer::RenderMode::NORMAL) {
             Name += ", ";
         }
 
-        if (color_mode == Inkscape::ColorMode::GRAYSCALE) {
+        if (color_mode == Renderer::ColorMode::GRAYSCALE) {
             Name += N_("grayscale");
-        } else if (color_mode == Inkscape::ColorMode::PRINT_COLORS_PREVIEW) {
+        } else if (color_mode == Renderer::ColorMode::PRINT_COLORS_PREVIEW) {
             Name += N_("print colors preview");
         }
 

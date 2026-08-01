@@ -24,7 +24,7 @@ public:
         scale = {1, 1};
 
         surface = std::make_shared<Surface>(size, 1, cmyk_cpp);
-        context = std::make_unique<Context>(surface, bounds.min(), scale);
+        context = std::make_unique<Context>(*surface, bounds.min(), scale);
     }
 
     auto get_default_pattern(int count = 3) {
@@ -70,7 +70,7 @@ TEST_F(RenderContextPatternTest, SetPatternSolidColorOpacity)
 
     auto s2 = std::make_shared<TestSurface>(size, 1, rgb);
     {
-        context = std::make_unique<Context>(s2, bounds.min(), scale);
+        context = std::make_unique<Context>(*s2, bounds.min(), scale);
         context->setSource(*pattern);
         context->rectangle(Geom::Rect(3, 3, 18, 18));
         context->fill();
@@ -91,7 +91,7 @@ TEST_F(RenderContextPatternTest, SetPatternSolidColorOpacity)
 TEST_F(RenderContextPatternTest, SetPatternSurface)
 {
     auto image_s = std::make_shared<Surface>(Geom::IntPoint(9, 9), 1, cmyk_cpp);
-    auto image_ct = std::make_unique<Context>(image_s, bounds.min(), scale);
+    auto image_ct = std::make_unique<Context>(*image_s, bounds.min(), scale);
 
     image_ct->setSource(Color(cmyk_cpp, {0.7, 0, 0.7, 0.2, 0.7}));
     image_ct->setLineWidth(1);
@@ -239,7 +239,7 @@ TEST_F(RenderContextPatternTest, PatternMatrixBox)
     pattern.setExtend(Cairo::Pattern::Extend::REFLECT);
     pattern.addColorStop(0.0, Colors::Color(cmyk_cpp, {0.0, 0.0, 0.0, 0.0, 1.0}));
     pattern.addColorStop(1.0, Colors::Color(cmyk_cpp, {1.0, 1.0, 1.0, 1.0, 1.0}));
-    pattern.setMatrix(Pattern::rectToMatrix(Geom::Rect(0, 0, 21, 21)).inverse());
+    pattern.setMatrix(Geom::identity(), Geom::Rect(0, 0, 21, 21));
     context->setSource(pattern);
     context->rectangle(Geom::Rect(0, 0, 21, 21));
     context->fill();
@@ -340,7 +340,7 @@ TEST_F(RenderContextPatternTest, GradientShadow)
 {
     auto image_s = std::make_shared<Surface>(Geom::IntPoint(35, 35), 1, cmyk_cpp);
     {
-        auto image_ct = Context(image_s, bounds.min(), scale);
+        auto image_ct = Context(*image_s, bounds.min(), scale);
         auto color = Colors::Color(cmyk_cpp, {0, 0, 0, 0, 1.0});
         auto rect = Geom::Rect(Geom::Point{5, 5}, {15, 15});
         auto comp = GradientShadow(rect, 25, {15, 15}, color);

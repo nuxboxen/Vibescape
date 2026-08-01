@@ -35,7 +35,7 @@
 #include "metafile-print.h"
 #include "util-string/symbol-convert.h"
 
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "extension/db.h"
 #include "extension/input.h"
 #include "extension/output.h"
@@ -83,7 +83,7 @@ Wmf::print_document_to_file(SPDocument *doc, const gchar *filename)
     /* fixme: This has to go into module constructor somehow */
     /* Create new arena */
     mod->base = doc->getRoot();
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     mod->dkey = SPItem::display_key_new(1);
     mod->root = mod->base->invoke_show(drawing, mod->dkey, SP_ITEM_SHOW_DISPLAY);
     drawing.setRoot(mod->root);

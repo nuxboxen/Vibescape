@@ -21,10 +21,6 @@
 #include "document.h"                 // for SPDocument
 #include "util/numeric/converters.h"  // for read_number, read_vector
 
-namespace Inkscape::XML {
-class Node;
-} // namespace Inkscape::XML
-
 void SPFeFuncNode::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
 	SPObject::build(document, repr);
@@ -51,43 +47,43 @@ void SPFeFuncNode::release()
     SPObject::release();
 }
 
-static Inkscape::Filters::FilterComponentTransferType sp_feComponenttransfer_read_type(char const *value)
+static Inkscape::Renderer::DrawingFilter::ComponentTransferType sp_feComponenttransfer_read_type(char const *value)
 {
     if (!value) {
-    	return Inkscape::Filters::COMPONENTTRANSFER_TYPE_ERROR; //type attribute is REQUIRED.
+    	return Inkscape::Renderer::DrawingFilter::ComponentTransferType::ERROR; //type attribute is REQUIRED.
     }
 
     switch (value[0]) {
         case 'i':
             if (!std::strcmp(value, "identity")) {
-            	return Inkscape::Filters::COMPONENTTRANSFER_TYPE_IDENTITY;
+            	return Inkscape::Renderer::DrawingFilter::ComponentTransferType::IDENTITY;
             }
             break;
         case 't':
             if (!std::strcmp(value, "table")) {
-            	return Inkscape::Filters::COMPONENTTRANSFER_TYPE_TABLE;
+            	return Inkscape::Renderer::DrawingFilter::ComponentTransferType::TABLE;
             }
             break;
         case 'd':
             if (!std::strcmp(value, "discrete")) {
-            	return Inkscape::Filters::COMPONENTTRANSFER_TYPE_DISCRETE;
+            	return Inkscape::Renderer::DrawingFilter::ComponentTransferType::DISCRETE;
             }
             break;
         case 'l':
             if (!std::strcmp(value, "linear")) {
-            	return Inkscape::Filters::COMPONENTTRANSFER_TYPE_LINEAR;
+            	return Inkscape::Renderer::DrawingFilter::ComponentTransferType::LINEAR;
             }
             break;
         case 'g':
             if (!std::strcmp(value, "gamma")) {
-            	return Inkscape::Filters::COMPONENTTRANSFER_TYPE_GAMMA;
+            	return Inkscape::Renderer::DrawingFilter::ComponentTransferType::GAMMA;
             }
             break;
         default:
             break;
     }
 
-    return Inkscape::Filters::COMPONENTTRANSFER_TYPE_ERROR; //type attribute is REQUIRED.
+    return Inkscape::Renderer::DrawingFilter::ComponentTransferType::ERROR; //type attribute is REQUIRED.
 }
 
 void SPFeFuncNode::set(SPAttr key, char const *value)

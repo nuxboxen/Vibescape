@@ -18,12 +18,6 @@
 #include "sp-filter-primitive.h"
 #include "number-opt-number.h"
 
-namespace Inkscape {
-namespace Filters {
-class FilterDiffuseLighting;
-} // namespace Filters
-} // namespace Inkscape
-
 class SPFeDiffuseLighting final
     : public SPFilterPrimitive
 {
@@ -51,7 +45,7 @@ protected:
     void remove_child(Inkscape::XML::Node *child) override;
     void order_changed(Inkscape::XML::Node *child, Inkscape::XML::Node *old_repr, Inkscape::XML::Node *new_repr) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FEDIFFUSELIGHTING_H_SEEN

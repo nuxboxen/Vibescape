@@ -91,7 +91,7 @@ SPFilter *new_filter(SPDocument *document)
 }
 
 SPFilterPrimitive *
-filter_add_primitive(SPFilter *filter, const Inkscape::Filters::FilterPrimitiveType type)
+filter_add_primitive(SPFilter *filter, const Inkscape::Renderer::DrawingFilter::PrimitiveType type)
 {
     Inkscape::XML::Document *xml_doc = filter->document->getReprDoc();
 
@@ -101,44 +101,44 @@ filter_add_primitive(SPFilter *filter, const Inkscape::Filters::FilterPrimitiveT
 
     // set default values
     switch(type) {
-        case Inkscape::Filters::NR_FILTER_BLEND:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::BLEND:
             repr->setAttribute("mode", "normal");
             break;
-        case Inkscape::Filters::NR_FILTER_COLORMATRIX:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::COLORMATRIX:
             break;
-        case Inkscape::Filters::NR_FILTER_COMPONENTTRANSFER:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::COMPONENTTRANSFER:
             break;
-        case Inkscape::Filters::NR_FILTER_COMPOSITE:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::COMPOSITE:
             break;
-        case Inkscape::Filters::NR_FILTER_CONVOLVEMATRIX:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::CONVOLVEMATRIX:
             repr->setAttribute("order", "3 3");
             repr->setAttribute("kernelMatrix", "0 0 0 0 0 0 0 0 0");
             break;
-        case Inkscape::Filters::NR_FILTER_DIFFUSELIGHTING:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::DIFFUSELIGHTING:
             break;
-        case Inkscape::Filters::NR_FILTER_DISPLACEMENTMAP:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::DISPLACEMENTMAP:
             break;
-        case Inkscape::Filters::NR_FILTER_FLOOD:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::FLOOD:
             break;
-        case Inkscape::Filters::NR_FILTER_GAUSSIANBLUR:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::GAUSSIANBLUR:
             repr->setAttribute("stdDeviation", "1");
             break;
-        case Inkscape::Filters::NR_FILTER_IMAGE:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::IMAGE:
             break;
-        case Inkscape::Filters::NR_FILTER_MERGE:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::MERGE:
             break;
-        case Inkscape::Filters::NR_FILTER_MORPHOLOGY:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::MORPHOLOGY:
             repr->setAttribute("radius", "1");
             break;
-        case Inkscape::Filters::NR_FILTER_OFFSET:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::OFFSET:
             repr->setAttribute("dx", "0");
             repr->setAttribute("dy", "0");
             break;
-        case Inkscape::Filters::NR_FILTER_SPECULARLIGHTING:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::SPECULARLIGHTING:
             break;
-        case Inkscape::Filters::NR_FILTER_TILE:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::TILE:
             break;
-        case Inkscape::Filters::NR_FILTER_TURBULENCE:
+        case Inkscape::Renderer::DrawingFilter::PrimitiveType::TURBULENCE:
             break;
         default:
             break;

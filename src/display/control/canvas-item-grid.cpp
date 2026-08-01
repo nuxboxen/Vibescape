@@ -204,8 +204,8 @@ static std::optional<Geom::Line> get_grid_line(Geom::IntRect const &screen_rect,
 
 static void add_line(Inkscape::CanvasItemBuffer &buf, Geom::Line const &line)
 {
-    buf.cr->move_to(line.origin().x(), line.origin().y());
-    buf.cr->line_to(line.finalPoint().x(), line.finalPoint().y());
+    buf.cr.move_to(line.origin().x(), line.origin().y());
+    buf.cr.line_to(line.finalPoint().x(), line.finalPoint().y());
 }
 
 /** ====== Rectangular Grid  ====== **/
@@ -235,16 +235,15 @@ void CanvasItemGridXY::_update(bool)
     request_redraw();
 }
 
-void CanvasItemGridXY::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemGridXY::_render(Inkscape::CanvasItemBuffer buf) const
 {
     // no_emphasize_when_zoomedout determines color (minor or major) when only major grid lines/dots shown.
     uint32_t empcolor = ((scaled[Geom::X] || scaled[Geom::Y]) && _no_emp_when_zoomed_out) ? _minor_color : _major_color;
     uint32_t color = _minor_color;
 
-    buf.cr->save();
-    buf.cr->translate(-buf.rect.left(), -buf.rect.top());
-    buf.cr->set_line_width(1.0);
-    buf.cr->set_line_cap(Cairo::Context::LineCap::SQUARE);
+    buf.cr.translate(-buf.rect.left(), -buf.rect.top());
+    buf.cr.set_line_width(1.0);
+    buf.cr.set_line_cap(Cairo::Context::LineCap::SQUARE);
 
     int physical_thickness = buf.device_scale * 1;
 
@@ -314,21 +313,18 @@ void CanvasItemGridXY::_render(Inkscape::CanvasItemBuffer &buf) const
                 if (noemp) {
                     // Minor lines
                     offset += min_dash_offset;
-                    buf.cr->set_dash(min_dashes, -offset);
+                    buf.cr.set_dash(min_dashes, -offset);
                 } else {
                     // Major lines
                     offset += maj_dash_offset;
-                    buf.cr->set_dash(maj_dashes, -offset);
+                    buf.cr.set_dash(maj_dashes, -offset);
                 }
-                buf.cr->set_line_cap(Cairo::Context::LineCap::BUTT);
+                buf.cr.set_line_cap(Cairo::Context::LineCap::BUTT);
             }
-            buf.cr->set_source_rgba(SP_RGBA32_R_F(col), SP_RGBA32_G_F(col), SP_RGBA32_B_F(col), SP_RGBA32_A_F(col));
-
-            buf.cr->stroke();
+            buf.cr.setSource(Colors::Color(col));
+            buf.cr.stroke();
         }
     }
-
-    buf.cr->restore();
 }
 
 /** ========= Axonometric Grids ======== */
@@ -446,16 +442,15 @@ void CanvasItemGridAxonom::set_angle_z(double deg)
  * This function calls Cairo to render a line on a particular canvas buffer.
  * Coordinates are interpreted as SCREENcoordinates
  */
-void CanvasItemGridAxonom::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemGridAxonom::_render(Inkscape::CanvasItemBuffer buf) const
 {
     // Set correct coloring, depending preference (when zoomed out, always major coloring or minor coloring)
     uint32_t empcolor = (scaled && _no_emp_when_zoomed_out) ? _minor_color : _major_color;
     uint32_t color = _minor_color;
 
-    buf.cr->save();
-    buf.cr->translate(-buf.rect.left(), -buf.rect.top());
-    buf.cr->set_line_width(1.0);
-    buf.cr->set_line_cap(Cairo::Context::LineCap::SQUARE);
+    buf.cr.translate(-buf.rect.left(), -buf.rect.top());
+    buf.cr.set_line_width(1.0);
+    buf.cr.set_line_cap(Cairo::Context::LineCap::SQUARE);
     int const phsyical_thickness = 1 * buf.device_scale;
 
     // Add a 2px margin to the buffer rectangle to avoid missing intersections (in case of rounding errors, and due to
@@ -479,12 +474,10 @@ void CanvasItemGridAxonom::_render(Inkscape::CanvasItemBuffer &buf) const
             add_line(buf, line.value());
             bool const noemp = !scaled && j % _major_line_interval != 0;
             auto rgba = noemp ? color : empcolor;
-            buf.cr->set_source_rgba(SP_RGBA32_R_F(rgba), SP_RGBA32_G_F(rgba), SP_RGBA32_B_F(rgba), SP_RGBA32_A_F(rgba));
-            buf.cr->stroke();
+            buf.cr.setSource(Colors::Color(rgba));
+            buf.cr.stroke();
         }
     }
-
-    buf.cr->restore();
 }
 
 CanvasItemGridTiles::CanvasItemGridTiles(Inkscape::CanvasItemGroup *group)
@@ -539,7 +532,7 @@ void CanvasItemGridTiles::_update(bool)
     request_redraw();
 }
 
-void CanvasItemGridTiles::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemGridTiles::_render(Inkscape::CanvasItemBuffer buf) const
 {
     // minute tiles bring no real value, they look like noise, skip them
     double const MIN_SIZE_SQ = 3 * 3;
@@ -547,10 +540,9 @@ void CanvasItemGridTiles::_render(Inkscape::CanvasItemBuffer &buf) const
         return;
     }
 
-    buf.cr->save();
-    buf.cr->translate(-buf.rect.left(), -buf.rect.top());
-    buf.cr->set_line_width(1.0);
-    buf.cr->set_line_cap(Cairo::Context::LineCap::BUTT);
+    buf.cr.translate(-buf.rect.left(), -buf.rect.top());
+    buf.cr.set_line_width(1.0);
+    buf.cr.set_line_cap(Cairo::Context::LineCap::BUTT);
     int physical_thickness = 1 * buf.device_scale;
 
     // Add a 2px margin to the buffer rectangle to avoid missing intersections (in case of rounding errors, and due to
@@ -568,17 +560,17 @@ void CanvasItemGridTiles::_render(Inkscape::CanvasItemBuffer &buf) const
                 auto grid_corner = _world_origin + x * _world_pitch[0] + y * _world_pitch[1];
 
                 auto aligned_corner = align_to_pixels05(grid_corner + corners[3], physical_thickness, buf.device_scale);
-                buf.cr->move_to(aligned_corner.x(), aligned_corner.y());
+                buf.cr.move_to(aligned_corner.x(), aligned_corner.y());
                 for (auto corner : corners) {
                     aligned_corner = align_to_pixels05(grid_corner + corner, physical_thickness, buf.device_scale);
-                    buf.cr->line_to(aligned_corner.x(), aligned_corner.y());
+                    buf.cr.line_to(aligned_corner.x(), aligned_corner.y());
                 }
             }
         }
 
         uint32_t rgba = color;
-        buf.cr->set_source_rgba(SP_RGBA32_R_F(rgba), SP_RGBA32_G_F(rgba), SP_RGBA32_B_F(rgba), SP_RGBA32_A_F(rgba));
-        buf.cr->stroke();
+        buf.cr.setSource(Colors::Color(rgba));
+        buf.cr.stroke();
     };
 
     draw_rectangles(_world_corners, _major_color);
@@ -587,7 +579,6 @@ void CanvasItemGridTiles::_render(Inkscape::CanvasItemBuffer &buf) const
     if (world_margin.lengthSq() > 0.25) {
         draw_rectangles(_world_margin_corners, _minor_color);
     }
-    buf.cr->restore();
 }
 
 } // namespace Inkscape

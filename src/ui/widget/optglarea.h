@@ -8,7 +8,12 @@
 namespace Cairo { class Context; }
 namespace Gdk { class GLContext; }
 
-namespace Inkscape::UI::Widget {
+namespace Inkscape {
+namespace Renderer {
+class Context;
+}
+
+namespace UI::Widget {
 
 /**
  * A widget that can dynamically switch between a Gtk::DrawingArea and a Gtk::GLArea.
@@ -51,9 +56,9 @@ protected:
     virtual Glib::RefPtr<Gdk::GLContext> create_context() = 0;
 
     /**
-     * Reimplement to render the widget. The Cairo context is only for when OpenGL is disabled.
+     * Reimplement to render the widget. The renderer context is only for when OpenGL is disabled.
      */
-    virtual void paint_widget(Cairo::RefPtr<Cairo::Context> const &) {}
+    virtual void paint_widget(std::shared_ptr<Renderer::Context> const &) {}
 
 private:
     bool opengl_enabled = false;
@@ -65,7 +70,8 @@ private:
     void uninit_opengl();
 };
 
-} // namespace Inkscape::UI::Widget
+} // namespace UI::Widget
+} // namespace Inkscape
 
 #endif // INKSCAPE_UI_WIDGET_OPTGLAREA_H
 
