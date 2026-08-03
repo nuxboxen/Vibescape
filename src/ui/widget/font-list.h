@@ -10,6 +10,7 @@
 
 #include <giomm/liststore.h>
 #include <gtkmm/builder.h>
+#include <gtkmm/flowbox.h>
 #include <gtkmm/grid.h>
 #include <gtkmm/comboboxtext.h>
 #include <gtkmm/gridview.h>
@@ -91,7 +92,7 @@ private:
     Gtk::GridView& _font_grid;
     Gtk::ListView& _font_list;
     Gtk::SearchEntry2& _search;
-    Gtk::Box& _tag_box;
+    Gtk::FlowBox& _tag_box;
     Gtk::Box& _info_box;
     Gtk::Box& _progress_box;
     Gtk::Entry& _grid_sample_entry;

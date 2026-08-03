@@ -25,6 +25,7 @@
 
 #include "preferences.h"
 #include "ui/builder-utils.h"
+#include "ui/icon-names.h"
 #include "ui/icon-loader.h"
 #include "ui/dialog/xml-tree.h"
 #include "ui/widget/drop-down-list.h"
@@ -418,7 +419,7 @@ FontList::FontList(Glib::ustring preferences_path) :
     _grid_size_scale(get_widget<Gtk::Scale>(_builder, "grid-font-size")),
     _grid_sample_entry(get_widget<Gtk::Entry>(_builder, "grid-sample")),
     _list_sample_entry(get_widget<Gtk::Entry>(_builder, "sample-text")),
-    _tag_box(get_widget<Gtk::Box>(_builder, "tag-box")),
+    _tag_box(get_widget<Gtk::FlowBox>(_builder, "tag-box")),
     _info_box(get_widget<Gtk::Box>(_builder, "info-box")),
     _progress_box(get_widget<Gtk::Box>(_builder, "progress-box")),
     _search(get_widget<Gtk::SearchEntry2>(_builder, "font-search")),
@@ -1294,11 +1295,13 @@ Gtk::Box* FontList::create_pill_box(const Glib::ustring& display_name, const Gli
     auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
     auto text = Gtk::make_managed<Gtk::Label>(display_name);
     text->set_ellipsize(Pango::EllipsizeMode::END);
-    text->set_max_width_chars(10);
+    text->set_halign(Gtk::Align::START);
+    text->set_hexpand(true);
+    text->set_max_width_chars(20);
     text->set_tooltip_text(display_name);
     auto close = Gtk::make_managed<Gtk::Button>();
     close->set_has_frame(false);
-    close->set_image_from_icon_name("close-button-symbolic");
+    close->set_icon_name(INKSCAPE_ICON("window-close"));
     close->set_valign(Gtk::Align::CENTER);
     if (tags) {
         close->signal_clicked().connect([=, this] {
