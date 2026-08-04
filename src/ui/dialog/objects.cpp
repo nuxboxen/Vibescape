@@ -746,7 +746,6 @@ ObjectsPanel::ObjectsPanel()
     //Set up the tree
     _tree.set_model(_store);
     _tree.set_headers_visible(false);
-    _tree.set_reorderable(false); // Don't interfere with D&D via controllers!
     _tree.set_name("ObjectsTreeView");
 
     auto& header = get_widget<Gtk::Box>(_builder, "header");
@@ -1049,6 +1048,13 @@ ObjectsPanel::ObjectsPanel()
     drop->signal_motion().connect(sigc::mem_fun(*this, &ObjectsPanel::on_drag_motion), false); // before
     drop->signal_drop().connect(sigc::mem_fun(*this, &ObjectsPanel::on_drag_drop), false); // before
     _tree.add_controller(drop);
+
+    // Set the treeview up as a drag destination for some arbitrary format. This sets up enough
+    // internal gtk machinery such that rows get the correct css markings, but we don't actually
+    // use this format. Our drags are handled by the above controllers, because there's a lot of
+    // edge cases (including column drags on visibility or locks).
+    auto formats = Gdk::ContentFormats::create("application/x-inkscape-objects-panel-drag");
+    _tree.enable_model_drag_dest(formats, Gdk::DragAction::COPY);
 
     //Set up the label editing signals
     _text_renderer->signal_edited().connect(sigc::mem_fun(*this, &ObjectsPanel::_handleEdited));
@@ -1922,6 +1928,9 @@ bool ObjectsPanel::cleanDummyChildren(Gtk::TreeModel::Row row)
  */
 Gdk::DragAction ObjectsPanel::on_drag_motion(double x, double y)
 {
+    // Clear dest row (will be set again at end, if we survive the guantlet of early exits)
+    _tree.set_drag_dest_row(Gtk::TreeModel::Path(), Gtk::TreeView::DropPosition::BEFORE);
+
     auto selection = getSelection();
     auto document = getDocument();
     if (!selection || !document) {
@@ -1962,6 +1971,7 @@ Gdk::DragAction ObjectsPanel::on_drag_motion(double x, double y)
         if (_tree.is_blank_at_pos(x, y)) {
             // Dropping on background.
             path = --_store->children().end();
+            pos = Gtk::TreeView::DropPosition::AFTER;
             auto item = getItem(*_store->get_iter(path));
             if (selection->includes(item)) {
                 // Don't drop after self.
@@ -1969,8 +1979,11 @@ Gdk::DragAction ObjectsPanel::on_drag_motion(double x, double y)
             }
         } else {
             std::cerr << "ObjectsPanel::on_drag_motion: invalid drop area!" << std::endl;
+            return Gdk::DragAction{}; // not supported
         }
     }
+
+    _tree.set_drag_dest_row(path, pos);
 
     // need to cater scenarios where we got no selection/empty bottom space
     return Gdk::DragAction::MOVE;
@@ -2085,6 +2098,7 @@ void ObjectsPanel::drag_end_impl()
     selection->unselect_all();
     selection->set_mode(Gtk::SelectionMode::NONE);
     current_item = nullptr;
+    _tree.set_drag_dest_row(Gtk::TreeModel::Path(), Gtk::TreeView::DropPosition::BEFORE);
 }
 
 void ObjectsPanel::on_drag_end(Glib::RefPtr<Gdk::Drag> const &/*drag*/, bool /*delete_data*/)
