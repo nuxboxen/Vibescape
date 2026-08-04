@@ -232,8 +232,9 @@ void LaTeXTextRenderer::sp_text_render(SPText *textobj)
 {
     // Nothing to do here... (so don't emit an empty box)
     // Also avoids falling out of sync with the CairoRenderer (which won't render anything in this case either)
-    if (textobj->layout.getActualLength() == 0)
+    if (!textobj->layout.outputExists()) {
         return;
+    }
 
     // Only PDFLaTeX supports importing a single page of a graphics file,
     // so only PDF backend gets interleaved text/graphics
