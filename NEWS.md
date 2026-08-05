@@ -1,8 +1,3 @@
-Inkscape 1.2-alpha
-
-Release highlights
-
-Released on 2022-02-05
 
     Inkscape documents can now hold multiple pages, which are managed by the new Page tool
     Editable markers and dash patterns
