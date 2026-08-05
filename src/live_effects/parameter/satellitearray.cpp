@@ -188,12 +188,12 @@ bool SatelliteArrayParam::param_readSVGValue(char const * const strvalue)
             size_t pos = 0;
             for (auto const &w : _vector) {
                 if (w) {
-                    SPObject * tmp = w->getObject();
-                    if (tmp) {
-                        SPObject * tmpsuccessor = tmp->_tmpsuccessor;
-                        unlink(tmp);
-                        if (tmpsuccessor && tmpsuccessor->getId()) {
-                            link(tmpsuccessor,pos);
+                    if (SPObject * tmp = w->getObject()) {
+                        if(SPObject * tmpsuccessor = tmp->_tmpsuccessor) {
+                            unlink(tmp);
+                            if (tmpsuccessor->getId()) {
+                                link(tmpsuccessor,pos);
+                            }
                         }
                     }
                 }
