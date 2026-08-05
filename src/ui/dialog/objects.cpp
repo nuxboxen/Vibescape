@@ -2165,7 +2165,7 @@ bool ObjectsPanel::selectCursorItem(Gdk::ModifierType const state)
             // TODO: Fix layers expand unexpectedly on range selection.
             selectRange(_initial_path, path);
         } else if (Controller::has_flag(state, Gdk::ModifierType::CONTROL_MASK)) {
-            if (selection->includes(item)) {
+            if (selection->includes(item, true)) {
                 selection->remove(item);
             } else {
                 selection->add(item, false);
