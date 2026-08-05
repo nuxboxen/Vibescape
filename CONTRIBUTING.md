@@ -1,8 +1,4 @@
-[Inkscape Developer Documentation](doc/readme.md) /
-
-Contributing to Inkscape - Getting started with Inkscape Development
 ====================================================================
-
 Inkscape welcomes your contributions to make it an even better
 drawing program for the Open Source community.
 
