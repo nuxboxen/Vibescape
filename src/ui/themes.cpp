@@ -18,14 +18,15 @@
 #include <glibmm/regex.h>
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/settings.h>
+#include <gtkmm/version.h>
 #include <pangomm/fontdescription.h>
 
 #include "config.h"
 #include "desktop.h"
-#include "inkscape.h"
 #include "inkscape-window.h"
+#include "inkscape.h"
 #include "io/resource.h"
-#include "object/sp-item-group.h"  // set_default_highlight_colors
+#include "object/sp-item-group.h" // set_default_highlight_colors
 #include "svg/css-ostringstream.h"
 #include "ui/dialog/dialog-manager.h"
 #include "ui/dialog/dialog-window.h"
@@ -144,19 +145,13 @@ ThemeContext::get_symbolic_colors()
     Glib::ustring css_str;
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     Glib::ustring themeiconname = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
-    guint32 colorsetbase = 0x2E3436ff;
-    guint32 colorsetbase_inverse;
-    guint32 colorsetsuccess = 0x4AD589ff;
-    guint32 colorsetwarning = 0xF57900ff;
-    guint32 colorseterror = 0xCC0000ff;
-    colorsetbase = prefs->getUInt("/theme/" + themeiconname + "/symbolicBaseColor", colorsetbase);
-    colorsetsuccess = prefs->getUInt("/theme/" + themeiconname + "/symbolicSuccessColor", colorsetsuccess);
-    colorsetwarning = prefs->getUInt("/theme/" + themeiconname + "/symbolicWarningColor", colorsetwarning);
-    colorseterror = prefs->getUInt("/theme/" + themeiconname + "/symbolicErrorColor", colorseterror);
-    colorsetbase_inverse = colorsetbase ^ 0xffffff00;
-    css_str += "@define-color warning_color " + Inkscape::Colors::rgba_to_hex(colorsetwarning) + ";\n";
-    css_str += "@define-color error_color " + Inkscape::Colors::rgba_to_hex(colorseterror) + ";\n";
-    css_str += "@define-color success_color " + Inkscape::Colors::rgba_to_hex(colorsetsuccess) + ";\n";
+    auto colorsetbase = prefs->getColor("/theme/" + themeiconname + "/symbolicBaseColor", "#2e3436");
+    auto colorsetsuccess = prefs->getColor("/theme/" + themeiconname + "/symbolicSuccessColor", "#4ad589");
+    auto colorsetwarning = prefs->getColor("/theme/" + themeiconname + "/symbolicWarningColor", "#f57900");
+    auto colorseterror = prefs->getColor("/theme/" + themeiconname + "/symbolicErrorColor", "#cc0000");
+    css_str += "@define-color warning_color " + colorsetwarning.toString() + ";\n";
+    css_str += "@define-color error_color " + colorseterror.toString() + ";\n";
+    css_str += "@define-color success_color " + colorsetsuccess.toString() + ";\n";
     /* ":not(.rawstyle) > image" works only on images in first level of widget container
     if in the future we use a complex widget with more levels and we dont want to tweak the color
     here, retaining default we can add more lines like ":not(.rawstyle) > > image" 
@@ -167,7 +162,7 @@ ThemeContext::get_symbolic_colors()
         css_str += ":not(.rawstyle) > image:not(.arrow),";
         css_str += ":not(.rawstyle) treeview.image";
         css_str += "{color:";
-        css_str += Inkscape::Colors::rgba_to_hex(colorsetbase);
+        css_str += colorsetbase.toString();
         css_str += ";}";
     }
     css_str += ".dark .forcebright :not(.rawstyle) > image,";
@@ -182,7 +177,9 @@ ThemeContext::get_symbolic_colors()
     css_str += ".inverse image:not(.rawstyle)";
     css_str += "{color:";
     if (overridebasecolor) {
-        css_str += Inkscape::Colors::rgba_to_hex(colorsetbase_inverse);
+        auto colorsetbase_inverse = colorsetbase;
+        colorsetbase_inverse.invert();
+        css_str += colorsetbase_inverse.toString();
     } else {
         // we override base color in this special cases using inverse color
         css_str += "@theme_bg_color";
@@ -494,7 +491,13 @@ bool ThemeContext::isCurrentThemeDark(Gtk::Window * const window)
         prefs->getString("/theme/gtkTheme", prefs->getString("/theme/defaultGtkTheme", ""));
 
     if (auto const settings = Gtk::Settings::get_default()) {
-        settings->property_gtk_application_prefer_dark_theme() = prefs->getBool("/theme/preferDarkTheme", false);
+        auto preferDarkTheme = prefs->getBool("/theme/preferDarkTheme", false);
+#if GTKMM_CHECK_VERSION(4, 20, 0)
+        settings->property_gtk_interface_color_scheme() =
+            preferDarkTheme ? Gtk::InterfaceColorScheme::DARK : Gtk::InterfaceColorScheme::LIGHT;
+#else
+        settings->property_gtk_application_prefer_dark_theme() = preferDarkTheme;
+#endif
     }
 
     auto dark = current_theme.find(":dark") != std::string::npos;

@@ -152,6 +152,7 @@ void TweakToolbar::setup_derived_spin_button(UI::Widget::SpinButton &btn, Glib::
 void TweakToolbar::setMode(int mode)
 {
     _mode_buttons[mode]->set_active();
+    mode_changed(mode); // set_active() does not trigger callback, call it here.
 }
 
 void TweakToolbar::width_value_changed()

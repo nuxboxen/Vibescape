@@ -18,7 +18,7 @@
 #include <gtkmm/expander.h>
 #include <pangomm/layout.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "inkscape.h"
 #include "live_effects/effect.h"
 #include "live_effects/lpe-angle_bisector.h"
@@ -1511,6 +1511,13 @@ void Effect::doOnRemove_impl(SPLPEItem const* lpeitem)
             sp_lpe_item = nullptr;
         }
     }
+
+    if (!keep_paths) {
+        for (auto satellite : effect_get_satellites()) {
+            satellite->deleteObject();
+        }
+    }
+
     doOnRemove(sp_lpe_item);
     getLPEObj()->deleted = true;
 }

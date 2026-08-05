@@ -27,7 +27,7 @@
 #include "path-chemistry.h"
 #include "text-editing.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 #include "object/box3d.h"
 #include "object/object-set.h"
@@ -105,9 +105,7 @@ void ObjectSet::combine(bool skip_undo, bool silent)
 
     items_copy = sp_degroup_list(items_copy); // converting to path may have added more groups, descend again
 
-    std::sort(items_copy.begin(), items_copy.end(), [] (auto a, auto b) {
-        return sp_repr_compare_position(a->getRepr(), b->getRepr()) < 0;
-    });
+    std::sort(items_copy.begin(), items_copy.end(), sp_item_repr_compare_position_bool);
     assert(!items_copy.empty()); // cannot be empty because of check at top of function
 
     // remember the position, id, transform and style of the topmost path, they will be assigned to the combined one

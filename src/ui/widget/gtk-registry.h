@@ -26,7 +26,7 @@ template<class T, class Base> class BuildableWidget : public Base {
     static GType gtype;
 
     static Glib::ObjectBase* wrap_new(GObject* o) {
-        auto obj = new T(GTK_WIDGET(o));
+        auto obj = new T((typename Base::BaseObjectType*)o);
         return Gtk::manage(obj);
     }
 

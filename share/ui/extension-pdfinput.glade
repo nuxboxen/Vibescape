@@ -330,7 +330,7 @@
                       <property name="column-span">2</property>
                     </layout>
                   </object>
-                </child>              
+                </child>
                 <child>
                   <object class="GtkLabel">
                     <property name="halign">start</property>
@@ -420,7 +420,7 @@
                   <object class="GtkEntry" id="page-numbers">
                     <property name="name">page_nums</property>
                     <property name="focusable">True</property>
-                    <property name="tooltip-text" translatable="yes">Type in the page range you want to import using the format 1-4 or 1,2,3,4 or the keyword 'all' to specifiy all pages.</property>
+                    <property name="tooltip-text" translatable="yes">Type in the page range you want to import using the format 1-4 or 1,2,3,4 or the keyword 'all' to specify all pages.</property>
                     <property name="hexpand">True</property>
                     <property name="text" translatable="no">all</property>
                     <layout>
@@ -492,7 +492,7 @@
                       <property name="row">3</property>
                     </layout>
                   </object>
-                </child>  
+                </child>
               </object>
             </property>
             <property name="tab">

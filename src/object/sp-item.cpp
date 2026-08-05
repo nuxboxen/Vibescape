@@ -18,24 +18,28 @@
 #include <algorithm>
 #include <glibmm/i18n.h>
 
-#include "colors/manager.h"
-#include "helper/geom.h"
-#include "path/path-util.h"
-#include "svg/svg.h"
-#include "print.h"
-#include "display/drawing-item.h"
 #include "attributes.h"
-#include "document.h"
-#include "preferences.h"
-
-#include "inkscape.h"
-#include "desktop.h"
-#include "gradient-chemistry.h"
-#include "conn-avoid-ref.h"
+#include "colors/manager.h"
 #include "conditions.h"
+#include "conn-avoid-ref.h"
+#include "desktop.h"
+#include "display/drawing-item.h"
+#include "display/nr-filter.h"
+#include "document.h"
 #include "enums.h"
 #include "filter-chemistry.h"
-
+#include "gradient-chemistry.h"
+#include "helper/geom.h"
+#include "inkscape.h"
+#include "live_effects/effect.h"
+#include "live_effects/lpeobject-reference.h"
+#include "live_effects/lpeobject.h"
+#include "object/uri.h"
+#include "path/path-util.h"
+#include "preferences.h"
+#include "print.h"
+#include "snap-candidate.h"
+#include "snap-preferences.h"
 #include "sp-clippath.h"
 #include "sp-desc.h"
 #include "sp-guide.h"
@@ -49,16 +53,8 @@
 #include "sp-textpath.h"
 #include "sp-title.h"
 #include "sp-use.h"
-
 #include "style.h"
-#include "display/nr-filter.h"
-#include "snap-preferences.h"
-#include "snap-candidate.h"
-
-#include "live_effects/lpeobject.h"
-#include "live_effects/effect.h"
-#include "live_effects/lpeobject-reference.h"
-
+#include "svg/svg.h"
 #include "ui/util.h"
 #include "util/units.h"
 #include "util/uri.h"
@@ -1867,8 +1863,7 @@ Inkscape::DrawingItem *SPItem::get_arenaitem(unsigned key) const
 
 int sp_item_repr_compare_position(SPItem const *first, SPItem const *second)
 {
-    return sp_repr_compare_position(first->getRepr(),
-                                    second->getRepr());
+    return sp_repr_compare_position(first->getRepr(), second->getRepr());
 }
 
 SPItem const *sp_item_first_item_child(SPObject const *obj)

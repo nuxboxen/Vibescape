@@ -125,7 +125,7 @@ ExecutionEnv::createWorkingDialog () {
         return;
     }
 
-    gchar * dlgmessage = g_strdup_printf(_("'%s' complete, loading result..."), _effect->get_name());
+    gchar * dlgmessage = g_strdup_printf(_("Running '%s'..."), _effect->get_name());
     _visibleDialog = new Gtk::MessageDialog(*window,
                                dlgmessage,
                                false, // use markup
@@ -138,9 +138,12 @@ ExecutionEnv::createWorkingDialog () {
     Gtk::Dialog *dlg = _effect->get_pref_dialog();
     if (dlg) {
         _visibleDialog->set_transient_for(*dlg);
+        // Set the dialog as transient for the main window, too, so it stays on top during execution.
+        dlg->set_transient_for(*_desktop->getInkscapeWindow());
     } else {
         _visibleDialog->set_transient_for(*_desktop->getInkscapeWindow());
     }
+    _visibleDialog->set_visible(true);
 }
 
 void
@@ -159,8 +162,19 @@ ExecutionEnv::cancel () {
 
 void
 ExecutionEnv::undo () {
+    Inkscape::SelectionState selectionState;
+
+    // Undoing can delete paths and thus remove them from the current selection, so we save the
+    // state first, and then restore after the undo.
+    if (_desktop) {
+        selectionState = _desktop->getSelection()->getState();
+    }
+
     DocumentUndo::cancel(document);
-    return;
+
+    if (_desktop) {
+        _desktop->getSelection()->setState(selectionState);
+    }
 }
 
 void
@@ -173,36 +187,33 @@ ExecutionEnv::commit () {
 }
 
 void
-ExecutionEnv::reselect () {
-    if (_desktop && _selectionState) {
-        if (auto selection = _desktop->getSelection()) {
-            selection->setState(*_selectionState);
-        }
-    }
-    return;
-}
-
-void
 ExecutionEnv::run () {
     _state = ExecutionEnv::RUNNING;
 
     if (_desktop) {
-        if (_show_working) {
-            createWorkingDialog();
-        }
         auto selection = _desktop->getSelection();
         // Save selection state
-        _selectionState = std::make_unique<Inkscape::SelectionState>(selection->getState());
+        auto selectionState = selection->getState();
+
+        auto gtk_app = InkscapeApplication::instance()->gtk_app();
         if (_show_working) {
+            createWorkingDialog();
             _desktop->setWaitingCursor();
         }
+
         _effect->get_imp()->effect(_effect, this, _desktop, _docCache);
+
         if (_show_working) {
             _desktop->clearWaitingCursor();
+
+            Gtk::Dialog *dlg = _effect->get_pref_dialog();
+            if (dlg) {
+                // Undo the set_transient_for in createWorkingDialog
+                dlg->unset_transient_for();
+            }
         }
         // Restore selection state
-        selection->setState(*_selectionState);
-        _selectionState.reset();
+        selection->setState(selectionState);
     } else {
         _effect->get_imp()->effect(_effect, this, document);
     }

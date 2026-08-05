@@ -7,32 +7,36 @@
 
 namespace Inkscape::UI {
 
-int dialog_run(Gtk::Dialog &dialog)
+void show_modal_synchronous(Gtk::Window &window)
 {
-    std::optional<int> result;
+    bool hidden = false;
 
-    auto response_conn = dialog.signal_response().connect([&] (int response) {
-        result = response;
+    sigc::scoped_connection hide_conn = window.signal_hide().connect([&] {
+        hidden = true;
     });
 
-    auto hide_conn = dialog.signal_hide().connect([&] {
-        result = Gtk::ResponseType::NONE;
-    });
-
-    dialog.set_modal();
-    dialog.set_visible(true);
+    window.set_hide_on_close();
+    window.set_modal();
+    window.present();
 
     auto main_context = Glib::MainContext::get_default();
-    while (!result) {
+    while (!hidden) {
         main_context->iteration(true);
     }
+}
 
-    response_conn.disconnect();
-    hide_conn.disconnect();
+int dialog_run(Gtk::Dialog &dialog)
+{
+    int result = Gtk::ResponseType::NONE;
 
-    dialog.set_visible(false);
+    sigc::scoped_connection response_conn = dialog.signal_response().connect([&] (int response) {
+        result = response;
+        dialog.set_visible(false);
+    });
 
-    return *result;
+    show_modal_synchronous(dialog);
+
+    return result;
 }
 
 void dialog_show_modal_and_selfdestruct(std::unique_ptr<Gtk::Dialog> dialog, Gtk::Root *root)

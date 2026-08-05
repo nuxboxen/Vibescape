@@ -43,7 +43,7 @@ SVGViewWidget::SVGViewWidget(SPDocument *document)
     _drawing = new Inkscape::CanvasItemDrawing(_canvas->get_canvas_item_root());
     _canvas->set_drawing(_drawing->get_drawing());
     _drawing->connect_drawing_event(sigc::mem_fun(*this, &SVGViewWidget::event));
-    _drawing->get_drawing()->setCursorTolerance(0);
+    _drawing->setCursorTolerance(0);
 
     setDocument(document);
 }

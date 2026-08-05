@@ -19,11 +19,12 @@
  */
 
 #include <clocale>
-#include <gtkmm.h>
 #include <string>
 #include <vector>
 
 #include <glib/gi18n.h>
+#include <gtkmm/expander.h>
+#include <gtkmm/label.h>
 
 #include "desktop.h"
 #include "document.h"
@@ -298,10 +299,10 @@ bool sp_file_save_backup(Glib::ustring uri)
 
 int gui_request_dpi_fix_method(SPDocument *doc)
 {
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    Gtk::Dialog scale_dialog(_("Convert legacy Inkscape file"));
+    auto prefs = Inkscape::Preferences::get();
+    Gtk::Window scale_dialog;
+    scale_dialog.set_title(_("Convert legacy Inkscape file"));
     scale_dialog.set_transient_for(*INKSCAPE.active_desktop()->getInkscapeWindow());
-    scale_dialog.set_margin(10);
     scale_dialog.set_resizable(false);
     Gtk::Label explanation;
     explanation.set_markup(Glib::ustring("<b>") + doc->getDocumentName() + "</b>\n" +
@@ -351,10 +352,9 @@ int gui_request_dpi_fix_method(SPDocument *doc)
     moreinfo_text.set_margin_end(15);
 
     Gtk::Box b;
-    Inkscape::UI::pack_start(b, choice2_1, false, false, 4);
-    Inkscape::UI::pack_start(b, choice2_2, false, false, 4);
-    choice2_1.set_visible(true);
-    choice2_2.set_visible(true);
+    b.set_spacing(4);
+    b.append(choice2_1);
+    b.append(choice2_2);
 
     b.set_halign(Gtk::Align::START);
     b.set_valign(Gtk::Align::START);
@@ -362,18 +362,24 @@ int gui_request_dpi_fix_method(SPDocument *doc)
     b.set_vexpand(false);
     b.set_margin_start(30);
 
-    Gtk::Box *content = scale_dialog.get_content_area();
-    Gtk::Button *ok_button = scale_dialog.add_button(_("OK"), GTK_RESPONSE_ACCEPT);
+    Gtk::Button ok_button{_("OK")};
+    ok_button.set_halign(Gtk::Align::END);
+
     bool backup = prefs->getBool("/options/dpifixbackup", true);
     backup_button.set_active(backup);
-    // clang-format off
-    Inkscape::UI::pack_start(*content, explanation,   false, false, 5);
-    Inkscape::UI::pack_start(*content, choice1,       false, false, 5);
-    Inkscape::UI::pack_start(*content, choice2,       false, false, 5);
-    Inkscape::UI::pack_start(*content, b,             false, false, 5);
-    Inkscape::UI::pack_start(*content, backup_button, false, false, 5);
-    Inkscape::UI::pack_start(*content, moreinfo,      false, false, 5);
-    // clang-format on
+
+    Gtk::Box content{Gtk::Orientation::VERTICAL};
+    content.set_margin(10);
+    content.set_spacing(5);
+    content.append(explanation);
+    content.append(choice1);
+    content.append(choice2);
+    content.append(b);
+    content.append(backup_button);
+    content.append(moreinfo);
+    content.append(ok_button);
+    scale_dialog.set_child(content);
+
     moreinfo.set_child(moreinfo_text);
     b.set_visible(false);
     choice1.signal_toggled().connect(sigc::mem_fun(b, &Gtk::Box::hide));
@@ -387,17 +393,21 @@ int gui_request_dpi_fix_method(SPDocument *doc)
             choice2_2.set_active();
         }
     }
-    ok_button->grab_focus();
+    ok_button.grab_focus();
 
-    int status = Inkscape::UI::dialog_run(scale_dialog);
-    if (status == GTK_RESPONSE_ACCEPT) {
+    sigc::scoped_connection clicked_conn = ok_button.signal_clicked().connect([&] {
         backup = backup_button.get_active();
         prefs->setBool("/options/dpifixbackup", backup);
         response = choice1.get_active()     ? FILE_DPI_UNCHANGED
                    : choice2_1.get_active() ? FILE_DPI_VIEWBOX_SCALED
                                             : FILE_DPI_DOCUMENT_SCALED;
         prefs->setInt("/options/dpiupdatemethod", response);
-    }
+
+        scale_dialog.set_visible(false);
+    });
+
+    Inkscape::UI::show_modal_synchronous(scale_dialog);
+
     return response;
 }
 
@@ -722,10 +732,10 @@ void sp_file_fix_lpe(SPDocument *doc)
     }
 }
 
-void sp_file_fix_page_elements(std::unique_ptr<SPDocument> &doc)
+void sp_file_fix_page_elements(SPDocument *doc)
 {
-    std::vector<XML::Node *> to_delete;
-    std::vector<XML::Node *> to_add;
+    std::vector<Inkscape::XML::Node *> to_delete;
+    std::vector<Inkscape::XML::Node *> to_add;
 
     if (auto nv = doc->getNamedView()) {
         bool done = false;
@@ -758,7 +768,7 @@ void sp_file_fix_page_elements(std::unique_ptr<SPDocument> &doc)
                 defs->appendChild(i);
                 Inkscape::GC::release(i);
             }
-            DocumentUndo::done(doc.get(), RC_("Undo", "Convert Pages to SVG2"), "");
+            DocumentUndo::done(doc, RC_("Undo", "Convert Pages to SVG2"), "");
         }
     }
 }

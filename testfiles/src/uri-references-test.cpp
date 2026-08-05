@@ -52,7 +52,7 @@ protected:
 /*
 * Helper: Intercepts GLib warnings and turns them into GTest failures
 */
-void FailOnWarning(const gchar *log_domain, GLogLevelFlags log_level, 
+void FailOnWarning(const gchar *log_domain, GLogLevelFlags log_level,
                    const gchar *message, gpointer user_data) {
     // Record a failure, DO NOT abort/crash the program
     ADD_FAILURE() << "Unexpected Warning: " << message;
@@ -62,7 +62,7 @@ void FailOnWarning(const gchar *log_domain, GLogLevelFlags log_level,
 * Helper: If it matches "Malformed URI", it marks success.
 * If it's something else it records a FAILURE.
 */
-void ExpectMalformedOrFail(const gchar *log_domain, GLogLevelFlags log_level, 
+void ExpectMalformedOrFail(const gchar *log_domain, GLogLevelFlags log_level,
                            const gchar *message, gpointer user_data) {
     bool* saw_expected = static_cast<bool*>(user_data);
 
@@ -101,11 +101,11 @@ TEST_F(URIReferenceTest, SilencesUnsupportedURI)
     Inkscape::URIReference ref(root);
 
     // HTTP
-    bool result = ref.try_attach("http://example.com");
+    bool result = ref.try_attach("http://inkscape.example/path/to/file.svg");
     EXPECT_FALSE(result) << "try_attach should return false silently for http";
 
     // HTTPS
-    bool result_https = ref.try_attach("https://inkscape.org");
+    bool result_https = ref.try_attach("https://inkscape.example/path/to/file.svg");
     EXPECT_FALSE(result_https) << "try_attach should return false silently for https";
 
     g_log_remove_handler(nullptr, handler_id);

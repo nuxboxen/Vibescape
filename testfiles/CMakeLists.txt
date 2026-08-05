@@ -68,7 +68,6 @@ set(TEST_SOURCES
     async_progress-test
     boolop-attr-test
     colors/cms-system-test
-    colors/cms-transform-color-test
     colors/document-cms-test
     colors/dragndrop-test
     colors/color-set-test
@@ -92,7 +91,6 @@ set(TEST_SOURCES
     object-set-test
     object-style-test
     page-management
-    path-boolop-test
     path-reverse-lpe-test
     preferences-test
     rebase-hrefs-test
@@ -112,7 +110,6 @@ set(TEST_SOURCES
     sp-glyph-kerning-test
     cairo-utils-test
     svg-extension-test
-    curve-test
     2geom-characterization-test
     test-feDropShadow
     xml-test
@@ -123,6 +120,7 @@ set(TEST_SOURCES
     sp-document-test
     object-colors-test
     multi-marker-color-wheel-test
+    pixel_align-test
     ${LPE_TESTS_64bit}
     ${LIBNRTYPE_TESTS}
     )
@@ -181,10 +179,10 @@ add_unit_tests(TEST_SOURCES "svg-length-test.cpp"
                             "svg/svg-length.cpp"
                             "svg/stringstream.cpp"
                             "svg/strip-trailing-zeros.cpp"
+                            "util/numeric/precision.cpp"
                             "util/units.cpp"
                             # MOCK object files to unitise these tests
                             "mocks/util-units-filename.cpp"
-                            "mocks/util-numeric-precision.cpp"
                     EXTRA_LIBS GLibmm::GLibmm 2Geom::2geom)
 
 include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
@@ -192,22 +190,27 @@ get_libnrtype_unit_lib()
 
 add_unit_tests(TEST_SOURCES "libnrtype/font-factory-test.cpp"
                             "libnrtype/font-instance-test.cpp"
+                            "libnrtype/font-utils-test.cpp"
+
                 ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
                             "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
                  EXTRA_LIBS libnrtype_unit_lib)
 
 include("${CMAKE_SOURCE_DIR}/src/colors/CMakeUnit.txt")
 get_color_unit_lib()
-
 add_unit_tests(TEST_SOURCES "colors/cms-profile-test.cpp"
+                            "colors/cms-transform-color-test.cpp"
+                            "colors/cms-transform-surface-test.cpp"
                             "colors/color-test.cpp"
                             "colors/gamut-test.cpp"
                             "colors/manager-test.cpp"
                             "colors/parser-test.cpp"
                             "colors/printer-test.cpp"
                             "colors/gradient-averager-test.cpp"
+                            "colors/spaces-alpha-test.cpp"
                             "colors/spaces-cms-test.cpp"
                             "colors/spaces-cmyk-test.cpp"
+                            "colors/spaces-convert-static-test.cpp"
                             "colors/spaces-gray-test.cpp"
                             "colors/spaces-hsl-test.cpp"
                             "colors/spaces-hsluv-test.cpp"
@@ -225,6 +228,12 @@ add_unit_tests(TEST_SOURCES "colors/cms-profile-test.cpp"
                             "colors/spaces-xyz-test.cpp"
                             "colors/utils-test.cpp"
                  EXTRA_LIBS colors_unit_lib)
+
+include("${CMAKE_SOURCE_DIR}/src/path/CMakeUnit.txt")
+get_path_unit_lib()
+add_unit_tests(TEST_SOURCES "path/path-boolop-test.cpp"
+                            "path/path-curve-test.cpp"
+                 EXTRA_LIBS path_unit_lib)
 
 add_unit_test(css-syntactic-decomposition-test TEST_SOURCE "css-syntactic-decomposition-test.cpp"
                                                    SOURCES "css/syntactic-decomposition.cpp"

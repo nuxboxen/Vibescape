@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-#include "tabs-widget.h"
+#include "desktop-tab-row.h"
 
 #include <glibmm/i18n.h>
 #include <glibmm/main.h>
@@ -8,6 +8,7 @@
 #include <gtkmm/dragicon.h>
 #include <gtkmm/droptarget.h>
 #include <gtkmm/eventcontrollermotion.h>
+#include <gtkmm/eventcontrollerscroll.h>
 #include <gtkmm/gestureclick.h>
 #include <gtkmm/picture.h>
 #include <gtkmm/popovermenu.h>
@@ -151,9 +152,9 @@ Glib::ustring get_title(SPDesktop *desktop)
 
 } // namespace
 
-/// Global list of all TabsWidget instances. Its only purpose is to
-/// coordinate when tab bars should be shown/hidden.
-class TabsWidget::Instances
+/// Global list of all DesktopTabRow instances. Its only purpose is to
+/// coordinate when tab bars should be highlighted.
+class DesktopTabRow::Instances
 {
 public:
     static Instances &get()
@@ -162,23 +163,15 @@ public:
         return instance;
     }
 
-    void add(TabsWidget *w)
+    void add(DesktopTabRow *w)
     {
         _instances.push_back(w);
-        if (_instances.size() > 1) {
-            _updateVisibilityAll();
-        }
     }
 
-    void remove(TabsWidget *w)
+    void remove(DesktopTabRow *w)
     {
         _instances.erase(std::find(_instances.begin(), _instances.end(), w));
-        if (_instances.size() <= 1) {
-            _updateVisibilityAll();
-        }
     }
-
-    bool forceVisible() const { return _instances.size() > 1; }
 
     void addHighlight()
     {
@@ -197,14 +190,7 @@ public:
 private:
     Instances() = default;
 
-    void _updateVisibilityAll()
-    {
-        for (auto w : _instances) {
-            w->_updateVisibility();
-        }
-    }
-
-    std::vector<TabsWidget *> _instances;
+    std::vector<DesktopTabRow *> _instances;
 };
 
 /// A purely visual version of a Tab that is used as a dummy during drag-and-drop.
@@ -222,28 +208,32 @@ struct DumbTab : Gtk::Box
         , BUILD(close)
     {
         set_name("DocumentTab");
+        property_accessible_role().set_value(Gtk::Accessible::Role::TAB);
+
         append(get_widget<Gtk::Box>(builder, "root"));
     }
 
     void set_active()
     {
-        get_style_context()->add_class("tab_active");
+        set_state_flags(Gtk::StateFlags::CHECKED, false);
     }
 
     void set_inactive()
     {
-        get_style_context()->remove_class("tab_active");
+        unset_state_flags(Gtk::StateFlags::CHECKED);
     }
 };
 
 /// The actual tabs that are shown in the tab bar.
-struct Tab : DumbTab
+struct Tab : CssNameClassInit, DumbTab
 {
     SPDesktop *const desktop;
-    TabsWidget *const parent;
+    DesktopTabRow *const parent;
 
-    Tab(SPDesktop *desktop, TabsWidget *parent)
-        : desktop{desktop}
+    Tab(SPDesktop *desktop, DesktopTabRow *parent)
+        : Glib::ObjectBase("Tab")
+        , CssNameClassInit{"tab"}
+        , desktop{desktop}
         , parent{parent}
     {
         set_has_tooltip(true);
@@ -302,7 +292,7 @@ public:
     }
 
     /// Set a new destination tab bar, or unset by passing null.
-    void setDst(TabsWidget *new_dst)
+    void setDst(DesktopTabRow *new_dst)
     {
         if (new_dst == _dst) {
             return;
@@ -348,7 +338,7 @@ public:
             }
             _dst->queue_resize();
         }
-        TabsWidget::Instances::get().removeHighlight();
+        DesktopTabRow::Instances::get().removeHighlight();
 
         if (!_dst && _src->parent->_tabs.size() == 1) {
             cancel = true; // cancel if detaching lone tab
@@ -392,7 +382,7 @@ private:
     Geom::Point const _offset; // The point within the tab that the drag started from.
     Glib::RefPtr<Gdk::Device> const _device; // The pointing device that started the drag.
 
-    TabsWidget *_dst; // The destination tabs widget, possibly null.
+    DesktopTabRow *_dst; // The destination tabs widget, possibly null.
     std::optional<int> _drop_x; // Position within dst where tab is dropped.
     std::optional<int> _drop_i; // The index within dst where the tab is dropped.
 
@@ -451,7 +441,7 @@ private:
             // Fixme: Shouldn't be needed, but works around https://gitlab.gnome.org/GNOME/gtk/-/issues/7185
             Gtk::DragIcon::set_from_paintable(_drag, to_texture(Cairo::ImageSurface::create(Cairo::ImageSurface::Format::ARGB32, 1, 1)), 0, 0);
         } else if (_widget->get_parent()) {
-            assert(dynamic_cast<TabsWidget *>(_widget->get_parent()));
+            assert(dynamic_cast<DesktopTabRow *>(_widget->get_parent()));
             _widget->unparent();
         }
 
@@ -459,11 +449,11 @@ private:
         if (_dst) {
             _widget->insert_before(*_dst, *_dst->_overlay);
             _dst->queue_resize();
-            TabsWidget::Instances::get().removeHighlight();
+            DesktopTabRow::Instances::get().removeHighlight();
         } else {
             drag_icon->set_child(*_widget);
             _drag->set_hotspot(_offset.x(), _offset.y());
-            TabsWidget::Instances::get().addHighlight();
+            DesktopTabRow::Instances::get().addHighlight();
         }
     }
 };
@@ -482,20 +472,23 @@ static std::shared_ptr<TabDrag> get_tab_drag(Gtk::DropTarget &droptarget)
     return content->lock();
 }
 
-// This is used to ensure that a Tab never outlives its parent TabsWidget,
+// This is used to ensure that a Tab never outlives its parent DesktopTabRow,
 // which would result in Tab::parent dangling.
 static SPDesktop *consume_tab_return_desktop(std::shared_ptr<Tab> tab)
 {
     return tab ? tab->desktop : nullptr;
 }
 
-TabsWidget::TabsWidget(SPDesktopWidget *desktop_widget)
-    : _desktop_widget{desktop_widget}
+DesktopTabRow::DesktopTabRow(SPDesktopWidget *desktop_widget)
+    : Glib::ObjectBase("DesktopTabRow")
+    , CssNameClassInit{"tabs"}
+    , _desktop_widget{desktop_widget}
     , _overlay{Gtk::make_managed<PointerTransparentWidget>()}
 {
     set_name("DocumentTabsWidget");
     set_overflow(Gtk::Overflow::HIDDEN);
     containerize(*this);
+    property_accessible_role().set_value(Gtk::Accessible::Role::TAB_LIST);
 
     _overlay->insert_at_end(*this); // always kept topmost
     _overlay->set_name("Overlay");
@@ -522,7 +515,7 @@ TabsWidget::TabsWidget(SPDesktopWidget *desktop_widget)
                 break;
             case GDK_BUTTON_SECONDARY: {
                 auto &menu = tab ? get_context_menu() : get_context_menu_background();
-                auto old_parent = dynamic_cast<TabsWidget *>(menu.get_parent());
+                auto old_parent = dynamic_cast<DesktopTabRow *>(menu.get_parent());
                 if (old_parent != this) {
                     if (old_parent) {
                         menu.unparent();
@@ -605,6 +598,19 @@ TabsWidget::TabsWidget(SPDesktopWidget *desktop_widget)
     });
     add_controller(droptarget);
 
+    auto scroll = Gtk::EventControllerScroll::create();
+    scroll->set_flags(Gtk::EventControllerScroll::Flags::VERTICAL | Gtk::EventControllerScroll::Flags::DISCRETE);
+    auto scroll_handler = [this, &scroll = *scroll] (double dx, double dy) {
+        if (dy < 0) {
+            switchToPrevDesktop();
+        } else if (dy > 0) {
+            switchToNextDesktop();
+        }
+        return true;
+    };
+    scroll->signal_scroll().connect(scroll_handler, false);
+    add_controller(scroll);
+
     auto actiongroup = Gio::SimpleActionGroup::create();
     actiongroup->add_action("detach", [this] {
         if (auto desktop = consume_tab_return_desktop(_right_clicked.lock())) {
@@ -619,14 +625,13 @@ TabsWidget::TabsWidget(SPDesktopWidget *desktop_widget)
     insert_action_group("tabs", actiongroup);
 
     Instances::get().add(this);
-    _updateVisibility();
 }
 
-TabsWidget::~TabsWidget()
+DesktopTabRow::~DesktopTabRow()
 {
     Instances::get().remove(this);
 
-    // Note: This code will fail if TabsWidget becomes a managed widget, in which
+    // Note: This code will fail if DesktopTabRow becomes a managed widget, in which
     // case it must be done on signal_destroy() instead.
     if (_drag_dst) {
         _drag_dst->setDst(nullptr);
@@ -636,7 +641,7 @@ TabsWidget::~TabsWidget()
     }
 }
 
-void TabsWidget::addTab(SPDesktop *desktop, int pos)
+void DesktopTabRow::addTab(SPDesktop *desktop, int pos)
 {
     auto tab = std::make_shared<Tab>(desktop, this);
     tab->name.set_text(get_title(desktop));
@@ -657,11 +662,9 @@ void TabsWidget::addTab(SPDesktop *desktop, int pos)
 
     tab->insert_before(*this, *_overlay);
     _tabs.insert(_tabs.begin() + pos, std::move(tab));
-
-    _updateVisibility();
 }
 
-void TabsWidget::removeTab(SPDesktop *desktop)
+void DesktopTabRow::removeTab(SPDesktop *desktop)
 {
     int const i = positionOfTab(desktop);
     assert(i != -1);
@@ -672,11 +675,9 @@ void TabsWidget::removeTab(SPDesktop *desktop)
 
     _tabs[i]->unparent();
     _tabs.erase(_tabs.begin() + i);
-
-    _updateVisibility();
 }
 
-void TabsWidget::switchTab(SPDesktop *desktop)
+void DesktopTabRow::switchTab(SPDesktop *desktop)
 {
     auto const active = _active.lock();
 
@@ -696,14 +697,35 @@ void TabsWidget::switchTab(SPDesktop *desktop)
     }
 }
 
-void TabsWidget::refreshTitle(SPDesktop *desktop)
+void DesktopTabRow::switchToPrevDesktop()
+{
+    int current = _activeTabPosition();
+    if (current > 0) {
+        switchToDesktop(_tabs[current - 1]->desktop);
+    }
+}
+
+void DesktopTabRow::switchToNextDesktop()
+{
+    int current = _activeTabPosition();
+    if (current >= 0 && current < _tabs.size() - 1) {
+        switchToDesktop(_tabs[current + 1]->desktop);
+    }
+}
+
+void DesktopTabRow::switchToDesktop(SPDesktop *desktop)
+{
+    _desktop_widget->switchDesktop(desktop);
+}
+
+void DesktopTabRow::refreshTitle(SPDesktop *desktop)
 {
     int const i = positionOfTab(desktop);
     assert(i != -1);
     _tabs[i]->name.set_text(get_title(_tabs[i]->desktop));
 }
 
-int TabsWidget::positionOfTab(SPDesktop *desktop) const
+int DesktopTabRow::positionOfTab(SPDesktop *desktop) const
 {
     for (int i = 0; i < _tabs.size(); i++) {
         if (_tabs[i]->desktop == desktop) {
@@ -713,49 +735,67 @@ int TabsWidget::positionOfTab(SPDesktop *desktop) const
     return -1;
 }
 
-SPDesktop *TabsWidget::tabAtPosition(int i) const
+SPDesktop *DesktopTabRow::tabAtPosition(int i) const
 {
-    return _tabs[i]->desktop;
+    if (i < _tabs.size()) {
+        return _tabs[i]->desktop;
+    } else {
+        return nullptr;
+    }
 }
 
-void TabsWidget::_updateVisibility()
+Gtk::Widget *DesktopTabRow::widgetAtPosition(int i) const
 {
-    set_visible(_tabs.size() > 1 || Instances::get().forceVisible());
+    if (i < _tabs.size()) {
+        return _tabs[i].get();
+    } else {
+        return nullptr;
+    }
 }
 
-Gtk::SizeRequestMode TabsWidget::get_request_mode_vfunc() const
+int DesktopTabRow::size() const
+{
+    return _tabs.size();
+}
+
+Glib::ustring DesktopTabRow::tabName(int i) const
+{
+    return _tabs[i]->name.get_text();
+}
+
+Gtk::SizeRequestMode DesktopTabRow::get_request_mode_vfunc() const
 {
     return Gtk::SizeRequestMode::CONSTANT_SIZE;
 }
 
-void TabsWidget::measure_vfunc(Gtk::Orientation orientation, int, int &min, int &nat, int &, int &) const
+void DesktopTabRow::measure_vfunc(Gtk::Orientation orientation, int, int &min, int &nat, int &, int &) const
 {
-    if (orientation == Gtk::Orientation::VERTICAL) {
-        min = 0;
-        auto consider = [&] (Gtk::Widget const &w) {
-            auto const m = w.measure(Gtk::Orientation::VERTICAL, -1);
-            min = std::max(min, m.sizes.minimum);
-        };
-        for (auto const &tab : _tabs) {
-            consider(*tab);
+    nat = 0;
+    auto consider = [&] (Gtk::Widget const &w) {
+        auto const m = w.measure(orientation, -1);
+        if (orientation == Gtk::Orientation::VERTICAL) {
+            nat = std::max(nat, m.sizes.natural); // just take max size we find
+        } else {
+            nat += m.sizes.natural; // add all sizes together
         }
-        if (_drag_src) {
-            if (auto widget = _drag_src->widget()) {
-                consider(*widget);
-            }
-        }
-        if (_drag_dst) {
-            if (auto widget = _drag_dst->widget()) {
-                consider(*widget);
-            }
-        }
-    } else {
-        min = 0;
+    };
+    for (auto const &tab : _tabs) {
+        consider(*tab);
     }
-    nat = min;
+    if (_drag_src) {
+        if (auto widget = _drag_src->widget()) {
+            consider(*widget);
+        }
+    }
+    if (_drag_dst) {
+        if (auto widget = _drag_dst->widget()) {
+            consider(*widget);
+        }
+    }
+    min = nat;
 }
 
-void TabsWidget::size_allocate_vfunc(int width, int height, int)
+void DesktopTabRow::size_allocate_vfunc(int width, int height, int)
 {
     struct Drop
     {
@@ -810,7 +850,7 @@ void TabsWidget::size_allocate_vfunc(int width, int height, int)
     }
 }
 
-void TabsWidget::_setTooltip(SPDesktop *desktop, Glib::RefPtr<Gtk::Tooltip> const &tooltip)
+void DesktopTabRow::_setTooltip(SPDesktop *desktop, Glib::RefPtr<Gtk::Tooltip> const &tooltip)
 {
     // Lazy-load tooltip ui file, shared among all instances.
     static auto const tooltip_ui = std::make_unique<TooltipUI>();
@@ -844,7 +884,7 @@ void TabsWidget::_setTooltip(SPDesktop *desktop, Glib::RefPtr<Gtk::Tooltip> cons
     tooltip->set_custom(tooltip_ui->root);
 }
 
-std::pair<std::weak_ptr<Tab>, Geom::Point> TabsWidget::_tabAtPoint(Geom::Point const &pos)
+std::pair<std::weak_ptr<Tab>, Geom::Point> DesktopTabRow::_tabAtPoint(Geom::Point const &pos)
 {
     double xt, yt;
     auto const it = std::find_if(_tabs.begin(), _tabs.end(), [&] (auto const &tab) {
@@ -857,7 +897,7 @@ std::pair<std::weak_ptr<Tab>, Geom::Point> TabsWidget::_tabAtPoint(Geom::Point c
     return {*it, {xt, yt}};
 }
 
-void TabsWidget::_reorderTab(int from, int to)
+void DesktopTabRow::_reorderTab(int from, int to)
 {
     assert(0 <= from && from < _tabs.size());
     assert(0 <= to && to <= _tabs.size());
@@ -869,6 +909,16 @@ void TabsWidget::_reorderTab(int from, int to)
     auto tab = std::move(_tabs[from]);
     _tabs.erase(_tabs.begin() + from);
     _tabs.insert(_tabs.begin() + to - (to > from), std::move(tab));
+}
+
+int DesktopTabRow::_activeTabPosition()
+{
+    auto const active = _active.lock();
+    if (!active) {
+        return -1;
+    }
+
+    return positionOfTab(active->desktop);
 }
 
 } // namespace Inkscape::UI::Widget

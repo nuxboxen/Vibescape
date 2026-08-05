@@ -15,6 +15,7 @@
 
 #include "rubberband.h"
 #include "ui/tools/tool-base.h"
+#include "ui/widget/events/canvas-event.h"
 
 namespace Inkscape {
 struct ScrollEvent;
@@ -62,6 +63,8 @@ private:
     bool _duplicate_drag_on_press = false;
     bool _duplicate_down_on_selected = false;
 
+    void handleClick(ButtonReleaseEvent const &event, Selection *selection);
+
     bool _alt_on = false;
     bool _force_dragging = false;
 
@@ -73,6 +76,16 @@ private:
     Util::ActionAccel _acc_st_grab;
     Util::ActionAccel _acc_st_scale;
     Util::ActionAccel _acc_st_rotate;
+
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_select_always_box;
+    Modifiers::Modifier *mod_select_cycle;
+    Modifiers::Modifier *mod_select_duplicate;
+    Modifiers::Modifier *mod_select_force_drag;
+    Modifiers::Modifier *mod_select_in_groups;
+    Modifiers::Modifier *mod_select_remove_from;
+    Modifiers::Modifier *mod_select_remove_snap;
+    Modifiers::Modifier *mod_select_touch_path;
 };
 
 } // namespace Inkscape::UI::Tools

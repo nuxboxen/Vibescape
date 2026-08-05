@@ -23,7 +23,7 @@
 #include "message-context.h"
 #include "selection.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-ctrl.h"
 #include "display/control/canvas-item-curve.h"
@@ -60,11 +60,22 @@ namespace Tools {
 static Geom::Point pen_drag_origin_w(0, 0);
 static bool pen_within_tolerance = false;
 
+// This gap defines an extra translation on points to avoid zeros in some calculations that really
+// affect spiro maths. See https://gitlab.com/inkscape/inkscape/-/work_items/5658 for details.
+static Geom::Translate handle_cubic_gap(0.001, 0.001);
+
 PenTool::PenTool(SPDesktop *desktop, std::string &&prefs_path, std::string &&cursor_filename)
     : FreehandBase(desktop, std::move(prefs_path), std::move(cursor_filename))
     , _acc_to_line{"tool.pen.to-line"}
     , _acc_to_curve{"tool.pen.to-curve"}
     , _acc_to_guides{"tool.pen.to-guides"}
+    , mod_freehand_angle_snapping(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING))
+    , mod_freehand_dot(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_DOT))
+    , mod_move_no_snapping(Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING))
+    , mod_pen_cusp_node(Modifiers::Modifier::get(Modifiers::Type::PEN_CUSP_NODE))
+    , mod_pen_move_prev(Modifiers::Modifier::get(Modifiers::Type::PEN_MOVE_PREV))
+    , mod_pen_switch_axis(Modifiers::Modifier::get(Modifiers::Type::PEN_SWITCH_AXIS))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
 {
     tablet_enabled = false;
 
@@ -176,7 +187,7 @@ void PenTool::_endpointSnap(Geom::Point &p, unsigned const state)
     // Paraxial kicks in after first line has set the angle (before then it's a free line)
     bool poly = polylines_paraxial && green_curve->curveCount() != 0;
 
-    if ((state & GDK_CONTROL_MASK) && !poly) { //CTRL enables angular snapping
+    if (mod_freehand_angle_snapping->active(state) && !poly) { // angular snapping (default: Ctrl)
         if (this->npoints > 0) {
             spdc_endpoint_snap_rotation(this, p, p_array[0], state);
         } else {
@@ -205,10 +216,11 @@ void PenTool::_endpointSnapHandle(Geom::Point &p, guint const state) {
     g_return_if_fail(( this->npoints == 2 ||
             this->npoints == 5   ));
 
-    if ((state & GDK_CONTROL_MASK)) { //CTRL enables angular snapping
+    if (mod_freehand_angle_snapping->active(state)) { // angular snapping (default: Ctrl)
         spdc_endpoint_snap_rotation(this, p, p_array[this->npoints - 2], state);
     } else {
-        if (!(state & GDK_SHIFT_MASK)) { //SHIFT disables all snapping, except the angular snapping above
+        // "no snapping" disables all snapping, except the angular snapping above (default: Shift)
+        if (!mod_move_no_snapping->active(state)) {
             std::optional<Geom::Point> origin = p_array[this->npoints - 2];
             spdc_endpoint_snap_free(this, p, origin);
         }
@@ -327,9 +339,10 @@ bool PenTool::_handleButtonPress(ButtonPressEvent const &event) {
                         if (npoints == 0) {
                             _bsplineSpiroColor();
                             Geom::Point p;
-                            if ((event.modifiers & GDK_CONTROL_MASK) && (polylines_only || polylines_paraxial)) {
+                            auto freehand_dot = mod_freehand_dot->active(event.modifiers);
+                            if (freehand_dot && (polylines_only || polylines_paraxial)) {
                                 p = event_dt;
-                                if (!(event.modifiers & GDK_SHIFT_MASK)) {
+                                if (!mod_move_no_snapping->active(event.modifiers)) {
                                     auto &m = _desktop->getNamedView()->snap_manager;
                                     m.setup(_desktop);
                                     m.freeSnapReturnByRef(p, Inkscape::SNAPSOURCE_NODE_HANDLE);
@@ -353,7 +366,7 @@ bool PenTool::_handleButtonPress(ButtonPressEvent const &event) {
                                 } else {
                                     sa_overwrited = std::make_shared<Geom::PathVector>(*sa->curve);
                                 }
-                                _bsplineSpiroStartAnchor(event.modifiers & GDK_SHIFT_MASK);
+                                _bsplineSpiroStartAnchor(mod_pen_cusp_node->active(event.modifiers));
                             }
                             if (anchor && (!hasWaitingLPE()|| bspline || spiro)) {
                                 // Adjust point to anchor if needed; if we have a waiting LPE, we need
@@ -365,7 +378,7 @@ bool PenTool::_handleButtonPress(ButtonPressEvent const &event) {
                                 // this curve is not combined with it (unless it is drawn from its
                                 // anchor, which is handled by the sibling branch above)
                                 Inkscape::Selection * const selection = _desktop->getSelection();
-                                if (!(event.modifiers & GDK_SHIFT_MASK) || hasWaitingLPE()) {
+                                if (!mod_select_add_to->active(event.modifiers) || hasWaitingLPE()) {
                                     // if we have a waiting LPE, we need a fresh path to be created
                                     // so don't append to an existing one
                                     selection->clear();
@@ -553,7 +566,11 @@ bool PenTool::_handleMotionNotify(MotionEvent const &event) {
                             if(!spiro && !bspline){
                                 message_context->set(Inkscape::NORMAL_MESSAGE, _("<b>Click</b> or <b>click and drag</b> to close and finish the path."));
                             }else{
-                                message_context->set(Inkscape::NORMAL_MESSAGE, _("<b>Click</b> or <b>click and drag</b> to close and finish the path. Shift+Click make a cusp node"));
+                                message_context->setF(
+                                    Inkscape::NORMAL_MESSAGE,
+                                    _("<b>Click</b> or <b>click and drag</b> to close and finish the path. <b>%s+Click</b> make a cusp node"),
+                                    mod_pen_cusp_node->get_label().c_str()
+                                );
                             }
                             anchor_statusbar = true;
                         } else if (!anchor && anchor_statusbar) {
@@ -567,7 +584,11 @@ bool PenTool::_handleMotionNotify(MotionEvent const &event) {
                             if(!spiro && !bspline){
                                 message_context->set(Inkscape::NORMAL_MESSAGE, _("<b>Click</b> or <b>click and drag</b> to continue the path from this point."));
                             }else{
-                                message_context->set(Inkscape::NORMAL_MESSAGE, _("<b>Click</b> or <b>click and drag</b> to continue the path from this point. Shift+Click make a cusp node"));
+                                message_context->setF(
+                                    Inkscape::NORMAL_MESSAGE,
+                                    _("<b>Click</b> or <b>click and drag</b> to continue the path from this point. <b>%s+Click</b> make a cusp node"),
+                                    mod_pen_cusp_node->get_label().c_str()
+                                );
                             }
                             anchor_statusbar = true;
                         } else if (!anchor && anchor_statusbar) {
@@ -616,11 +637,13 @@ bool PenTool::_handleMotionNotify(MotionEvent const &event) {
             break;
     }
     // calls the function "bspline_spiro_motion" when the mouse starts or stops moving
+    auto cusp_node = mod_pen_cusp_node->active(event.modifiers);
+    auto move_prev = mod_pen_move_prev->active(event.modifiers);
     if (bspline) {
-        _bsplineSpiroMotion(event.modifiers);
+        _bsplineSpiroMotion(cusp_node, move_prev);
     } else {
         if ( Geom::LInfty( event_w - pen_drag_origin_w ) > (tolerance/2)) {
-            _bsplineSpiroMotion(event.modifiers);
+            _bsplineSpiroMotion(cusp_node, move_prev);
             pen_drag_origin_w = event_w;
         }
     }
@@ -1142,9 +1165,8 @@ void PenTool::_setInitialPoint(Geom::Point const p)
  * This type of message always shows angle/distance as the last
  * two parameters ("angle %3.2f&#176;, distance %s").
  */
-void PenTool::_setAngleDistanceStatusMessage(Geom::Point const p, int pc_point_to_compare, gchar const *message) {
+void PenTool::_setAngleDistanceStatusMessage(Geom::Point const p, int pc_point_to_compare, Glib::ustring const &message) {
     g_assert((pc_point_to_compare == 0) || (pc_point_to_compare == 3)); // exclude control handles
-    g_assert(message != nullptr);
 
     Geom::Point rel = p - p_array[pc_point_to_compare];
     Inkscape::Util::Quantity q = Inkscape::Util::Quantity(Geom::L2(rel), "px");
@@ -1163,7 +1185,7 @@ void PenTool::_setAngleDistanceStatusMessage(Geom::Point const p, int pc_point_t
         }
     }
 
-    this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE, message, angle, dist.c_str());
+    this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE, message.c_str(), angle, dist.c_str());
 }
 
 // this function changes the colors red, green and blue making them transparent or not, depending on if spiro is being used.
@@ -1212,13 +1234,17 @@ void PenTool::_bsplineSpiroColor()
 }
 
 
-void PenTool::_bsplineSpiro(bool shift)
+void PenTool::_bsplineSpiro(bool cusp_node)
 {
     if(!this->spiro && !this->bspline){
         return;
     }
 
-    shift?this->_bsplineSpiroOff():this->_bsplineSpiroOn();
+    if (cusp_node) {
+        this->_bsplineSpiroOff();
+    } else {
+        this->_bsplineSpiroOn();
+    }
     this->_bsplineSpiroBuild();
 }
 
@@ -1229,7 +1255,8 @@ void PenTool::_bsplineSpiroOn()
         p_array[0] = red_curve.initialPoint();
         p_array[3] = get_first_segment(red_curve)->finalPoint();
         p_array[2] = p_array[3] + (1./3) * (p_array[0] - p_array[3]);
-        _bsplineSpiroMotion(GDK_ALT_MASK);
+        p_array[2] *= handle_cubic_gap;
+        _bsplineSpiroMotion(false, true);
     }
 }
 
@@ -1243,7 +1270,7 @@ void PenTool::_bsplineSpiroOff()
     }
 }
 
-void PenTool::_bsplineSpiroStartAnchor(bool shift)
+void PenTool::_bsplineSpiroStartAnchor(bool cusp_node)
 {
     if (sa->curve->curveCount() == 0) {
         return;
@@ -1281,7 +1308,7 @@ void PenTool::_bsplineSpiroStartAnchor(bool shift)
         _bsplineSpiroColor();
         return;
     }
-    if(shift){
+    if (cusp_node){
         this->_bsplineSpiroStartAnchorOff();
     } else {
         this->_bsplineSpiroStartAnchorOn();
@@ -1296,6 +1323,7 @@ void PenTool::_bsplineSpiroStartAnchorOn()
     Geom::Point point_a = get_last_segment(*sa_overwrited)->initialPoint();
     Geom::Point point_d = sa_overwrited->finalPoint();
     Geom::Point point_c = point_d + (1./3) * (point_a - point_d);
+    point_c *= handle_cubic_gap;
     auto last_segment = Geom::Path{point_a};
     if (cubic) {
         last_segment.appendNew<Geom::CubicBezier>((*cubic)[1], point_c, point_d);
@@ -1329,9 +1357,8 @@ void PenTool::_bsplineSpiroStartAnchorOff()
     }
 }
 
-void PenTool::_bsplineSpiroMotion(unsigned const state)
+void PenTool::_bsplineSpiroMotion(bool cusp_node, bool move_prev)
 {
-    bool shift = state & GDK_SHIFT_MASK;
     if(!this->spiro && !this->bspline){
         return;
     }
@@ -1343,9 +1370,11 @@ void PenTool::_bsplineSpiroMotion(unsigned const state)
     npoints = 5;
     Geom::PathVector tmp_curve;
     p_array[2] = p_array[3] + (1./3) * (p_array[0] - p_array[3]);
+    p_array[2] *= handle_cubic_gap;
     if (green_curve->curveCount() == 0 && !sa) {
         p_array[1] = p_array[0] + (1./3)*(p_array[3] - p_array[0]);
-        if (shift) {
+        p_array[1] *= handle_cubic_gap;
+        if (cusp_node) {
             p_array[2] = p_array[3];
         }
     } else if (green_curve->curveCount() != 0) {
@@ -1353,12 +1382,12 @@ void PenTool::_bsplineSpiroMotion(unsigned const state)
     } else {
         tmp_curve = *sa_overwrited;
     }
-    if ((state & GDK_ALT_MASK ) && previous != Geom::Point(0,0)) { //ALT drag
+    if (move_prev && previous != Geom::Point(0,0)) { // "move prev" drag (default: Alt)
         p_array[0] = p_array[0] + (p_array[3] - previous);
     }
     if (tmp_curve.curveCount() != 0) {
         auto cubic = dynamic_cast<Geom::CubicBezier const *>(get_last_segment(tmp_curve));
-        if ((state & GDK_ALT_MASK) && !Geom::are_near(tmp_curve.finalPoint(), p_array[0], 0.1)) {
+        if (move_prev && !Geom::are_near(tmp_curve.finalPoint(), p_array[0], 0.1)) {
             auto const previous_weight_power = Geom::LineSegment{get_last_segment(tmp_curve)->initialPoint(), p_array[0]};
             if (tmp_curve.curveCount() == 1) {
                 Geom::Point initial = get_last_segment(tmp_curve)->initialPoint();
@@ -1389,8 +1418,10 @@ void PenTool::_bsplineSpiroMotion(unsigned const state)
                 p_array[1] = weight_power.pointAt(0.33334);
                 if (Geom::are_near(p_array[1], p_array[0])) {
                     p_array[1] = p_array[0];
+                } else {
+                    p_array[1] *= handle_cubic_gap;
                 }
-                if (shift) {
+                if (cusp_node) {
                     p_array[2] = p_array[3];
                 }
                 if (Geom::are_near((*cubic)[3], (*cubic)[2])) {
@@ -1401,7 +1432,7 @@ void PenTool::_bsplineSpiroMotion(unsigned const state)
             }
         } else {
             p_array[1] = p_array[0];
-            if (shift) {
+            if (cusp_node) {
                 p_array[2] = p_array[3];
             }
         }
@@ -1410,7 +1441,7 @@ void PenTool::_bsplineSpiroMotion(unsigned const state)
     }
 
     if (anchor_statusbar && red_curve.curveCount() != 0) {
-        if (shift) {
+        if (cusp_node) {
             _bsplineSpiroEndAnchorOff();
         } else {
             _bsplineSpiroEndAnchorOn();
@@ -1434,6 +1465,7 @@ void PenTool::_bsplineSpiroEndAnchorOn()
     using Geom::X;
     using Geom::Y;
     p_array[2] = p_array[3] + (1./3) * (p_array[0] - p_array[3]);
+    p_array[2] *= handle_cubic_gap;
     Geom::PathVector tmp_curve;
     Geom::Point point_c;
     if (green_anchor && green_anchor->active) {
@@ -1448,6 +1480,7 @@ void PenTool::_bsplineSpiroEndAnchorOn()
     }
     if (bspline) {
         point_c = tmp_curve.finalPoint() + (1./3) * (get_last_segment(tmp_curve)->initialPoint() - tmp_curve.finalPoint());
+        point_c *= handle_cubic_gap;
     } else {
         point_c = p_array[3] + p_array[3] - p_array[2];
     }
@@ -1628,16 +1661,18 @@ void PenTool::_setSubsequentPoint(Geom::Point const p, bool statusbar, unsigned 
     red_bpath->set_bpath(red_curve, true);
 
     if (statusbar) {
-        char *message;
+        Glib::ustring message;
         if (spiro || bspline) {
             message = is_curve ?
-            _("<b>Curve segment</b>: angle %3.2f&#176;; <b>Shift+Click</b> creates cusp node, <b>ALT</b> moves previous, <b>Enter</b> or <b>Shift+Enter</b> to finish" ):
-            _("<b>Line segment</b>: angle %3.2f&#176;; <b>Shift+Click</b> creates cusp node, <b>ALT</b> moves previous, <b>Enter</b> or <b>Shift+Enter</b> to finish");
+            _("<b>Curve segment</b>: angle %%3.2f&#176;; <b>%1+Click</b> creates cusp node, <b>%2</b> moves previous, <b>Enter</b> or <b>Shift+Enter</b> to finish" ):
+            _("<b>Line segment</b>: angle %%3.2f&#176;; <b>%1+Click</b> creates cusp node, <b>%2</b> moves previous, <b>Enter</b> or <b>Shift+Enter</b> to finish");
+            message = Glib::ustring::compose(message, mod_pen_cusp_node->get_label(), mod_pen_move_prev->get_label());
             this->_setAngleDistanceStatusMessage(p, 0, message);
         } else {
             message = is_curve ?
-            _("<b>Curve segment</b>: angle %3.2f&#176;, distance %s; with <b>Ctrl</b> to snap angle, <b>Enter</b> or <b>Shift+Enter</b> to finish the path" ):
-            _("<b>Line segment</b>: angle %3.2f&#176;, distance %s; with <b>Ctrl</b> to snap angle, <b>Enter</b> or <b>Shift+Enter</b> to finish the path");
+            _("<b>Curve segment</b>: angle %%3.2f&#176;, distance %%s; with <b>%1</b> to snap angle, <b>Enter</b> or <b>Shift+Enter</b> to finish the path" ):
+            _("<b>Line segment</b>: angle %%3.2f&#176;, distance %%s; with <b>%1</b> to snap angle, <b>Enter</b> or <b>Shift+Enter</b> to finish the path");
+            message = Glib::ustring::compose(message, mod_freehand_angle_snapping->get_label());
             this->_setAngleDistanceStatusMessage(p, 0, message);
         }
     }
@@ -1659,13 +1694,17 @@ void PenTool::_setCtrl(Geom::Point const q, unsigned const state)
         ctrl[1]->set_position(p_array[1]);
         ctrl[1]->set_visible(true);
         cl1->set_coords(p_array[0], p_array[1]);
-        this->_setAngleDistanceStatusMessage(q, 0, _("<b>Curve handle</b>: angle %3.2f&#176;, length %s; with <b>Ctrl</b> to snap angle"));
+        auto message = Glib::ustring::compose(
+            _("<b>Curve handle</b>: angle %%3.2f&#176;, length %%s; with <b>%1</b> to snap angle"),
+            mod_freehand_angle_snapping->get_label()
+        );
+        this->_setAngleDistanceStatusMessage(q, 0, message);
     } else if ( this->npoints == 5 ) {
         p_array[4] = q;
         cl0->set_visible(true);
         bool is_symm = false;
-        if ( ( ( this->mode == PenTool::MODE_CLICK ) && ( state & GDK_CONTROL_MASK ) ) ||
-             ( ( this->mode == PenTool::MODE_DRAG ) &&  !( state & GDK_SHIFT_MASK  ) ) ) {
+        if ( ( ( this->mode == PenTool::MODE_CLICK ) && mod_freehand_angle_snapping->active(state) ) ||
+             ( ( this->mode == PenTool::MODE_DRAG ) && !mod_move_no_snapping->active(state) ) ) {
             Geom::Point delta = q - p_array[3];
             p_array[2] = p_array[3] - delta;
             is_symm = true;
@@ -1688,9 +1727,10 @@ void PenTool::_setCtrl(Geom::Point const q, unsigned const state)
         cl0->set_coords(p_array[3], p_array[2]);
         cl1->set_coords(p_array[3], p_array[4]);
 
-        char *message = is_symm ?
-            _("<b>Curve handle, symmetric</b>: angle %3.2f&#176;, length %s; with <b>Ctrl</b> to snap angle, with <b>Shift</b> to move this handle only") :
-            _("<b>Curve handle</b>: angle %3.2f&#176;, length %s; with <b>Ctrl</b> to snap angle, with <b>Shift</b> to move this handle only");
+        Glib::ustring message = is_symm ?
+            _("<b>Curve handle, symmetric</b>: angle %%3.2f&#176;, length %%s; with <b>%1</b> to snap angle, with <b>Shift</b> to move this handle only") :
+            _("<b>Curve handle</b>: angle %%3.2f&#176;, length %%s; with <b>%1</b> to snap angle, with <b>Shift</b> to move this handle only");
+        message = Glib::ustring::compose(message, mod_freehand_angle_snapping->get_label());
         _setAngleDistanceStatusMessage(q, 3, message);
     } else {
         g_warning("Something bad happened - npoints is %d", npoints);
@@ -1704,7 +1744,7 @@ void PenTool::_finishSegment(Geom::Point const q, unsigned const state) // use '
     }
 
     if (red_curve.curveCount() != 0) {
-        _bsplineSpiro(state & GDK_SHIFT_MASK);
+        _bsplineSpiro(mod_pen_cusp_node->active(state));
         if (green_curve->curveCount() != 0 &&
            !Geom::are_near(green_curve->finalPoint(), p_array[0]))
         {
@@ -1918,14 +1958,15 @@ void PenTool::nextParaxialDirection(Geom::Point const &pt, Geom::Point const &or
         // first mouse click
         paraxial_angle = (pt - origin).ccw();
     }
-    if (!(state & GDK_SHIFT_MASK)) {
+    if (!mod_pen_switch_axis->active(state)) {
         paraxial_angle = paraxial_angle.ccw();
     }
 }
 
 void PenTool::_setToNearestHorizVert(Geom::Point &pt, guint const state) const {
+    auto const switch_axis = mod_pen_switch_axis->active(state);
     Geom::Point const origin = p_array[0];
-    Geom::Point const target = (state & GDK_SHIFT_MASK) ? this->paraxial_angle : this->paraxial_angle.ccw();
+    Geom::Point const target = switch_axis ? this->paraxial_angle : this->paraxial_angle.ccw();
 
     // Create a horizontal or vertical constraint line
     Inkscape::Snapper::SnapConstraint cl(origin, target);

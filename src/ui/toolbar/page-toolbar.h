@@ -91,6 +91,7 @@ private:
     Gtk::Entry &_text_page_bleeds;
     Gtk::Entry &_text_page_label;
     Gtk::Label &_label_page_pos;
+    Gtk::Button &_btn_page_duplicate;
     Gtk::Button &_btn_page_backward;
     Gtk::Button &_btn_page_foreward;
     Gtk::Button &_btn_page_delete;

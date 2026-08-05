@@ -25,6 +25,7 @@ public:
     void set_desk_color(unsigned int rgba);
     void set_page_color(unsigned int rgba);
     void set_border_color(unsigned int rgba);
+    void set_shadow_color(unsigned int rgba);
     void draw_border(bool border);
     void enable_drop_shadow(bool shadow);
     void set_page_size(double width, double height);
@@ -34,9 +35,10 @@ public:
 
 private:
     void draw_func(Cairo::RefPtr<Cairo::Context> const &cr, int width, int height);
-    unsigned int _border_color = 0x0000001f;
+    unsigned int _border_color = 0x00000000;
     unsigned int _page_color = 0xffffff00;
     unsigned int _desk_color = 0xc8c8c8ff;
+    unsigned int _shadow_color = 0x00000000;
     bool _draw_border = true;
     bool _draw_shadow = true;
     bool _draw_checkerboard = false;

@@ -33,11 +33,11 @@ INSTANTIATE_TEST_SUITE_P(ColorsSpacesHsl, badColorString, testing::Values(
 ));
 
 INSTANTIATE_TEST_SUITE_P(ColorsSpacesHsl, toString, testing::Values(
-    _P(out, HSL, { 0.333, 0.2,   0.8         }, "hsl(119, 20, 80)"),
-    _P(out, HSL, { 0.333, 0.8,   0.258       }, "hsl(119, 80, 25.8)"),
-    _P(out, HSL, { 1.0,   0.5,   0.004       }, "hsl(360, 50, 0.4)"),
-    _P(out, HSL, { 0,     1,     0.2,   0.8  }, "hsla(0, 100, 20, 0.8)", true),
-    _P(out, HSL, { 0,     1,     0.2,   0.8  }, "hsl(0, 100, 20)", false)
+    _P(out, HSL, { 0.333, 0.2,   0.8         }, "hsl(119, 20%, 80%)"),
+    _P(out, HSL, { 0.333, 0.8,   0.258       }, "hsl(119, 80%, 25.8%)"),
+    _P(out, HSL, { 1.0,   0.5,   0.004       }, "hsl(360, 50%, 0.4%)"),
+    _P(out, HSL, { 0,     1,     0.2,   0.8  }, "hsla(0, 100%, 20%, 0.8)", true),
+    _P(out, HSL, { 0,     1,     0.2,   0.8  }, "hsl(0, 100%, 20%)", false)
 ));
 
 INSTANTIATE_TEST_SUITE_P(ColorsSpacesHsl, convertColorSpace, testing::Values(

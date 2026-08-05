@@ -29,6 +29,8 @@
 #include "ui/widget/spinbutton.h"
 #include "util/transform-objects.h"
 
+using Inkscape::UI::Widget::Scalar;
+
 namespace Inkscape::UI::Dialog {
 
 /*########################################################################
@@ -224,13 +226,13 @@ void Transformation::layoutPageMove()
 {
     _units_move.setUnitType(UNIT_TYPE_LINEAR);
 
-    _scalar_move_horizontal.initScalar(-1e6, 1e6);
+    _scalar_move_horizontal.initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     _scalar_move_horizontal.setDigits(3);
     _scalar_move_horizontal.setIncrements(0.1, 1.0);
     _scalar_move_horizontal.set_hexpand();
     _scalar_move_horizontal.setWidthChars(7);
 
-    _scalar_move_vertical.initScalar(-1e6, 1e6);
+    _scalar_move_vertical.initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     _scalar_move_vertical.setDigits(3);
     _scalar_move_vertical.setIncrements(0.1, 1.0);
     _scalar_move_vertical.set_hexpand();
@@ -254,7 +256,7 @@ void Transformation::layoutPageScale()
     _units_scale.setUnitType(UNIT_TYPE_DIMENSIONLESS);
     _units_scale.setUnitType(UNIT_TYPE_LINEAR);
 
-    _scalar_scale_horizontal.initScalar(-1e6, 1e6);
+    _scalar_scale_horizontal.initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     _scalar_scale_horizontal.setValue(100.0, "%");
     _scalar_scale_horizontal.setDigits(3);
     _scalar_scale_horizontal.setIncrements(0.1, 1.0);
@@ -263,7 +265,7 @@ void Transformation::layoutPageScale()
     _scalar_scale_horizontal.set_hexpand();
     _scalar_scale_horizontal.setWidthChars(7);
 
-    _scalar_scale_vertical.initScalar(-1e6, 1e6);
+    _scalar_scale_vertical.initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     _scalar_scale_vertical.setValue(100.0, "%");
     _scalar_scale_vertical.setDigits(3);
     _scalar_scale_vertical.setIncrements(0.1, 1.0);
@@ -333,13 +335,13 @@ void Transformation::layoutPageSkew()
     _units_skew.setUnitType(UNIT_TYPE_DIMENSIONLESS);
     _units_skew.setUnitType(UNIT_TYPE_RADIAL);
 
-    _scalar_skew_horizontal.initScalar(-1e6, 1e6);
+    _scalar_skew_horizontal.initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     _scalar_skew_horizontal.setDigits(3);
     _scalar_skew_horizontal.setIncrements(0.1, 1.0);
     _scalar_skew_horizontal.set_hexpand();
     _scalar_skew_horizontal.setWidthChars(7);
 
-    _scalar_skew_vertical.initScalar(-1e6, 1e6);
+    _scalar_skew_vertical.initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     _scalar_skew_vertical.setDigits(3);
     _scalar_skew_vertical.setIncrements(0.1, 1.0);
     _scalar_skew_vertical.set_hexpand();

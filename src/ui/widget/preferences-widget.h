@@ -39,18 +39,20 @@ class PrefCheckButton : public Gtk::CheckButton
 {
 public:
     void init(Glib::ustring const &label, Glib::ustring const &prefs_path,
-              bool default_value);
+              bool default_value, bool invert_ui = false);
     // Allow use with the GtkBuilder get_derived_widget
-    PrefCheckButton(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refGlade, Glib::ustring pref, bool def)
+    PrefCheckButton(BaseObjectType *cobject, const Glib::RefPtr<Gtk::Builder> &refGlade,
+                    Glib::ustring pref, bool def, bool invert_ui = false)
         : Gtk::CheckButton(cobject)
     {
-        init("", pref, def);
+        init("", pref, def, invert_ui);
     }
     PrefCheckButton() : Gtk::CheckButton() {};
     sigc::signal<void (bool)> changed_signal;
 
 private:
     Glib::ustring _prefs_path;
+    bool _invert_ui;
     void on_toggled() override;
 };
 
@@ -342,7 +344,7 @@ class DialogPage : public Gtk::Grid
 {
 public:
     DialogPage();
-    void add_line(bool indent, Glib::ustring const &label, Gtk::Widget& widget, Glib::ustring const &suffix, Glib::ustring const &tip, bool expand = true, Gtk::Widget *other_widget = nullptr);
+    int add_line(bool indent, Glib::ustring const &label, Gtk::Widget& widget, Glib::ustring const &suffix, Glib::ustring const &tip, bool expand = true, Gtk::Widget *other_widget = nullptr);
     void add_group_header(Glib::ustring name, int columns = 1);
     void add_group_note(Glib::ustring name);
     void set_tip(Gtk::Widget &widget, Glib::ustring const &tip);

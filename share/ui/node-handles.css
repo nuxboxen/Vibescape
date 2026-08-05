@@ -17,7 +17,7 @@ All available properties:
     size-extra: 1px; -> extra space to fine-tune handle size with relation to other handles
     stroke-scale: 0.10; -> factor for scaling stroke with handle size or 0 to disable scaling
 
-Where 'shape' is one of: 
+Where 'shape' is one of:
     'square'
     'diamond'
     'circle'
@@ -100,11 +100,24 @@ Notes:
 
 
 .inkscape-node-cusp,
-.inkscape-shaper, /* box 3d, connector tool, gradient stops */
-.inkscape-lpe { /* several path effects */
+.inkscape-shaper /* box 3d, connector tool, gradient stops */ {
     shape: "diamond";
     scale: 2.828427; /* 2 * sqrt(2) */
     size-extra: 2px;
+}
+
+.inkscape-lpe {
+    shape: "circle";
+    fill: orange;
+    size-extra: 2px;
+}
+
+.inkscape-lpe:hover {
+    fill: darkorange;
+}
+
+.inkscape-lpe:selected:click {
+    fill: darkorange;
 }
 
 .inkscape-node-smooth,
@@ -222,9 +235,11 @@ Notes:
 
 .inkscape-guide-handle {
     /* guide lines handles are tiny and unobtrusive */
+    shape: "circle";
     scale: 0.5;
-    size-extra: 3px;
+    size-extra: 5px;
     stroke-width: 1.0px;
+    stroke-opacity: 0; /* real opacity and shape gets toggled at runtime based on lock state */
     stroke-scale: 0;
     outline-width: 0px;
 }

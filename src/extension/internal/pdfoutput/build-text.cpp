@@ -12,25 +12,20 @@
 
 #include "build-text.h"
 
-#include <codecvt>
-#include <locale>
-
 #include "build-drawing.h"
 #include "libnrtype/Layout-TNG.h"
 #include "libnrtype/font-instance.h"
 #include "style.h"
+#include "style-text.h"
+#include "util-string/string-convert.h"
 
 namespace Inkscape::Extension::Internal::PdfBuilder {
 
 static std::string unicodeToUtf8(std::vector<gunichar> const &chars)
 {
     std::string text;
-    std::string utf8_code;
-    static std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv1;
-    // Note std::wstring_convert and std::codecvt_utf are deprecated and will be removed in C++26.
     for (auto c : chars) {
-        utf8_code = conv1.to_bytes(c);
-        text += utf8_code;
+        text += unicode_char_to_utf8(c);
     }
     return text;
 }
@@ -56,15 +51,15 @@ std::optional<double> TextContext::get_softmask(double opacity) const
  */
 bool TextContext::set_text_style(std::shared_ptr<FontInstance> const &font, SPStyle *style)
 {
-    auto font_filename = font->GetFilename();
-    if (font_filename != last_font) {
-        if (auto font_id = _doc.get_font(font_filename, style->font_variation_settings)) {
+    if (auto ret = _doc.get_font(font, style->font_variation_settings)) {
+        auto &[key, font_id] = *ret;
+        if (key != last_font) {
             // Transformation has consumed the font size
-            _tx.cmd_Tf(*font_id, 1); // style->font_size.computed);
-            last_font = font_filename;
-        } else {
-            return false;
+            _tx.cmd_Tf(font_id, 1); // style->font_size.computed);
+            last_font = key;
         }
+    } else {
+        return false;
     }
     if (style->letter_spacing.set && style->letter_spacing.computed != last_letter_spacing) {
         _tx.cmd_Tc(style->letter_spacing.computed / 1000);
@@ -221,7 +216,7 @@ void DrawContext::clip_text_layout(Text::Layout const &layout)
 {
     using Inkscape::Text::Layout;
 
-    if (layout.getActualLength() == 0) {
+    if (!layout.outputExists()) {
         return;
     }
 
@@ -257,7 +252,7 @@ void DrawContext::paint_text_layout(Text::Layout const &layout, SPStyle const *c
 {
     using Inkscape::Text::Layout;
 
-    if (layout.getActualLength() == 0) {
+    if (!layout.outputExists()) {
         return;
     }
 

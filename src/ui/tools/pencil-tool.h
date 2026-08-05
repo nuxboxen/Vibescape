@@ -77,6 +77,12 @@ private:
     bool _is_drawing = false;
     PencilState _state = SP_PENCIL_CONTEXT_IDLE;
     int _npoints = 0;
+
+    Modifiers::Modifier *mod_freehand_angle_snapping;
+    Modifiers::Modifier *mod_freehand_dot;
+    Modifiers::Modifier *mod_move_no_snapping;
+    Modifiers::Modifier *mod_pencil_sketch;
+    Modifiers::Modifier *mod_select_add_to;
 };
 
 } // namespace Inkscape::UI::Tools

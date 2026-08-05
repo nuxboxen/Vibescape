@@ -20,6 +20,7 @@
 #include "proj_pt.h"
 #include "vanishing-point.h"
 
+#include "ui/modifiers.h"
 #include "ui/tools/tool-base.h"
 
 class SPItem;
@@ -60,10 +61,16 @@ private:
     Proj::Pt3 drag_ptB_proj;
     Proj::Pt3 drag_ptC_proj;
 
-    bool ctrl_dragged = false; ///< whether we are ctrl-dragging
+    bool two_dimension_dragged = false; ///< whether we are ctrl-dragging (extruding in two dimensions)
     bool extruded = false; ///< whether shift-dragging already occurred (i.e. the box is already extruded)
 
     sigc::scoped_connection sel_changed_connection;
+
+    Modifiers::Modifier *mod_box3d_extrude_one;
+    Modifiers::Modifier *mod_box3d_extrude_two;
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_select_force_drag;
+    Modifiers::Modifier *mod_select_in_groups;
 
     void selection_changed(Selection *selection);
 

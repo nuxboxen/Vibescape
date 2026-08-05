@@ -43,6 +43,7 @@ CanvasItemGuideLine::CanvasItemGuideLine(CanvasItemGroup *group, Glib::ustring l
     _origin_ctrl->set_name("CanvasItemGuideLine:Ctrl:" + _label);
     _origin_ctrl->set_size_default();
     _origin_ctrl->set_pickable(true); // The handle will also react to dragging
+    _origin_ctrl->set_preferred_size_parity(1);
     set_locked(false); // Init _origin_ctrl shape and stroke.
 }
 
@@ -249,7 +250,6 @@ CanvasItemGuideHandle::CanvasItemGuideHandle(CanvasItemGroup *group,
     : CanvasItemCtrl(group, CANVAS_ITEM_CTRL_TYPE_GUIDE_HANDLE, pos)
     , _my_line(line) // Save a pointer to our guide line
 {
-    set_shape(CANVAS_ITEM_CTRL_SHAPE_CIRCLE);
 }
 
 /**

@@ -14,6 +14,7 @@ target_sources(inkscape_base PRIVATE
 	interface.cpp
 	monitor.cpp
 	pack.cpp
+	pixel-alignment.cpp
 	popup-menu.cpp
 	shape-editor.cpp
 	shape-editor-knotholders.cpp
@@ -181,6 +182,7 @@ target_sources(inkscape_base PRIVATE
 	widget/character-viewer.cpp
 	widget/iconrenderer.cpp
 	widget/ink-property-grid.cpp
+	widget/advanced-tab.cpp
 	widget/alignment-selector.cpp
 	widget/anchor-selector.cpp
 	widget/completion-popup.cpp
@@ -213,6 +215,8 @@ target_sources(inkscape_base PRIVATE
 	widget/combo-tool-item.cpp
 	widget/custom-tooltip.cpp
 	widget/dash-selector.cpp
+	widget/desktop-tab-controls.cpp
+	widget/desktop-tab-row.cpp
 	widget/desktop-widget.cpp
 	widget/document-templates.cpp
 	widget/drop-down-list.cpp
@@ -225,6 +229,7 @@ target_sources(inkscape_base PRIVATE
 	widget/font-collection-selector.cpp
 	widget/font-list.cpp
 	widget/font-selector.cpp
+	widget/font-size-selector.cpp
 	widget/font-variants.cpp
 	widget/font-variations.cpp
 	widget/frame.cpp
@@ -241,6 +246,7 @@ target_sources(inkscape_base PRIVATE
 	widget/generic/spin-button.cpp
 	widget/generic/tab-strip.cpp
 	widget/generic/text-combo-box.cpp
+	widget/generic/text-entry.cpp
 	widget/gradient-image.cpp
 	widget/gradient-editor.cpp
 	widget/gradient-selector.cpp
@@ -298,7 +304,6 @@ target_sources(inkscape_base PRIVATE
         widget/style/paint-order.cpp
 	widget/swatch-editor.cpp
 	widget/swatch-selector.cpp
-	widget/tabs-widget.cpp
 	widget/template-list.cpp
 	widget/text.cpp
 	widget/textpath-popover.cpp
@@ -506,6 +511,7 @@ target_sources(inkscape_base PRIVATE
 
 	widget/iconrenderer.h
 	widget/ink-property-grid.h
+	widget/advanced-tab.h
 	widget/alignment-selector.h
 	widget/anchor-selector.h
 	widget/attr-widget.h
@@ -544,6 +550,8 @@ target_sources(inkscape_base PRIVATE
 	widget/combo-tool-item.h
 	widget/custom-tooltip.h
 	widget/dash-selector.h
+	widget/desktop-tab-controls.h
+	widget/desktop-tab-row.h
 	widget/desktop-widget.h
 	widget/drop-down-list.h
 	widget/document-templates.h
@@ -560,6 +568,7 @@ target_sources(inkscape_base PRIVATE
 	widget/font-collection-selector.h
 	widget/font-list.h
 	widget/font-selector.h
+	widget/font-size-selector.h
 	widget/font-variants.h
 	widget/font-variations.h
 	widget/frame.h
@@ -576,6 +585,7 @@ target_sources(inkscape_base PRIVATE
 	widget/generic/spin-button.h
 	widget/generic/tab-strip.h
 	widget/generic/text-combo-box.h
+	widget/generic/text-entry.h
 	widget/gradient-image.h
 	widget/gradient-editor.h
 	widget/gradient-selector.h
@@ -634,7 +644,6 @@ target_sources(inkscape_base PRIVATE
         widget/style/paint-order.h
 	widget/swatch-editor.h
 	widget/swatch-selector.h
-	widget/tabs-widget.h
 	widget/template-list.h
 	widget/text.h
 	widget/textpath-popover.h

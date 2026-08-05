@@ -16,7 +16,7 @@
 #include "selection.h"
 
 #include "display/control/canvas-item-bpath.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "live_effects/effect.h"
 #include "live_effects/effect-enum.h"
 #include "object/sp-lpe-item.h"

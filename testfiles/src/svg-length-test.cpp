@@ -189,8 +189,8 @@ TEST(SvgLengthTest, testToFromString)
     EXPECT_EQ(len.unit, SVGLength::NONE);
     EXPECT_EQ(len.write(), "10");
     EXPECT_EQ(len.toString("mm", scale), "10mm");
-    EXPECT_EQ(len.toString("in", scale), "0.39370079in");
-    EXPECT_EQ(len.toString("", scale), "37.795276");
+    EXPECT_EQ(len.toString("in", scale), "0.3937007874in");
+    EXPECT_EQ(len.toString("", scale), "37.79527559");
 }
 
 TEST(SvgLengthTest, testEquality)

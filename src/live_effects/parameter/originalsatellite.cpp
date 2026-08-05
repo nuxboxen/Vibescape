@@ -14,7 +14,7 @@
 #include <gtkmm/image.h>
 
 #include "desktop.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "inkscape.h"
 #include "live_effects/effect.h"
 #include "live_effects/parameter/satellite-reference.h"

@@ -18,7 +18,7 @@
 #include <cairomm/matrix.h>
 #include <cstdint>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/cairo-utils.h"
 #include "helper/geom.h" // bounds_exact_transformed()
 

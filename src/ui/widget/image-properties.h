@@ -22,10 +22,12 @@ class Button;
 class CheckButton;
 class ComboBoxText;
 class DrawingArea;
+class Entry;
 } // namespace Gtk
 
 namespace Inkscape::UI::Widget {
 class InkSpinButton;
+class TextEntry;
 
 class ImageProperties final
     : public WidgetVfuncsClassInit
@@ -43,6 +45,8 @@ private:
     void css_changed(GtkCssStyleChange *change) final;
     void update_bg_color();
     void reset_preview();
+    void link_image();
+    void set_href(Glib::ustring const &href);
 
     Glib::RefPtr<Gtk::Builder> _builder;
 
@@ -52,6 +56,7 @@ private:
     Gtk::CheckButton &_stretch;
     Gtk::DropDown& _rendering;
     InkSpinButton& _resolution;
+    TextEntry& _url;
     Gtk::Button& _embed;
     int _preview_max_height;
     int _preview_max_width;

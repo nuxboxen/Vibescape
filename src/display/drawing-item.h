@@ -25,6 +25,8 @@
 #include <boost/operators.hpp>
 #include <2geom/affine.h>
 #include <2geom/rect.h>
+#include <sigc++/signal.h>
+#include <sigc++/connection.h>
 
 #include "colors/color.h"
 #include "style-enums.h"
@@ -146,6 +148,7 @@ public:
     virtual void setStyle(SPStyle const *style, SPStyle const *context_style = nullptr);
     virtual void setChildrenStyle(SPStyle const *context_style);
     void setOpacity(float opacity);
+    void setOpacityOverride(std::optional<double> opacity);
     void setAntialiasing(Antialiasing antialias);
     void setIsolation(bool isolation); // CSS Compositing and Blending
     void setBlendMode(SPBlendMode blend_mode);
@@ -167,10 +170,15 @@ public:
     unsigned render(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags = 0, DrawingItem const *stop_at = nullptr) const;
     unsigned render(DrawingContext &dc, Geom::IntRect const &area, unsigned flags = 0) const;
     void clip(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const;
-    DrawingItem *pick(Geom::Point const &p, double delta, unsigned flags = 0);
+    DrawingItem *pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags = 0);
 
     Glib::ustring name() const; // For debugging
     void recursivePrintTree(unsigned level = 0) const;  // For debugging
+
+    sigc::connection connectItemDeleted(sigc::slot<void ()> const &slot) { return _delete_item_signal.connect(slot); }
+
+    inline double getOpacity() const { return _opacity_override ? *_opacity_override : _opacity; }
+    inline bool hasOpacity() const { return getOpacity() < 0.995; }
 
 protected:
     enum class ChildType : unsigned char
@@ -199,7 +207,7 @@ protected:
     virtual unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) { return 0; }
     virtual unsigned _renderItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const { return RENDER_OK; }
     virtual void _clipItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area) const {}
-    virtual DrawingItem *_pickItem(Geom::Point const &p, double delta, unsigned flags) { return nullptr; }
+    virtual DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) { return nullptr; }
     virtual bool _canClip() const { return false; }
     virtual void _dropPatternCache() {}
 
@@ -222,6 +230,7 @@ protected:
     SPStyle const *_context_style; // Used for 'context-fill', 'context-stroke'
 
     float _opacity;
+    std::optional<double> _opacity_override;
     std::unique_ptr<Geom::Affine> _transform; ///< Incremental transform from parent to this item's coords
     Geom::Affine _ctm; ///< Total transform from item coords to display coords
     Geom::OptIntRect _bbox; ///< Bounding box in display (pixel) coords including stroke
@@ -270,6 +279,8 @@ protected:
         auto &drawing = static_cast<std::enable_if_t<(sizeof(F) > 0), Drawing&>>(_drawing);
         drawing.defer(std::forward<F>(f));
     }
+
+    sigc::signal<void()> _delete_item_signal;
 
     friend class Drawing;
 };

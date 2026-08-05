@@ -17,6 +17,8 @@
 
 #include "object/sp-textpath.h"
 
+class SPDesktop;
+
 namespace Glib {
 class ustring;
 } // namespace Glib

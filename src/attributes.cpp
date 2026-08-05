@@ -67,7 +67,6 @@ static SPStyleProp const props[] = {
     /* SPNamedView */
     {SPAttr::VIEWONLY, "viewonly"},
     {SPAttr::SHOWGUIDES, "showguides"},
-    {SPAttr::SHOWGRIDS, "showgrid"},
     {SPAttr::GRIDTOLERANCE, "gridtolerance"},
     {SPAttr::GUIDETOLERANCE, "guidetolerance"},
     {SPAttr::OBJECTTOLERANCE, "objecttolerance"},
@@ -84,10 +83,6 @@ static SPStyleProp const props[] = {
     {SPAttr::BORDEROPACITY, "borderopacity"},
     {SPAttr::PAGECOLOR, "pagecolor"},
     {SPAttr::PAGELABELSTYLE, "labelstyle"},
-    {SPAttr::FIT_MARGIN_TOP, "fit-margin-top"},
-    {SPAttr::FIT_MARGIN_LEFT, "fit-margin-left"},
-    {SPAttr::FIT_MARGIN_RIGHT, "fit-margin-right"},
-    {SPAttr::FIT_MARGIN_BOTTOM, "fit-margin-bottom"},
     {SPAttr::INKSCAPE_PAGEOPACITY, "inkscape:pageopacity"},
     {SPAttr::INKSCAPE_PAGESHADOW, "inkscape:pageshadow"},
     {SPAttr::INKSCAPE_ZOOM, "inkscape:zoom"},

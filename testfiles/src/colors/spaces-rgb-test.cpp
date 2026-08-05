@@ -88,6 +88,11 @@ TEST(ColorsSpacesRgb, components)
     ASSERT_EQ(c2[3].index, 3);
 }
 
+TEST(ColorsSpacesRgb, isDirect)
+{
+    ASSERT_TRUE(std::dynamic_pointer_cast<Space::ProfileSpace<true>>(Manager::get().find(RGB)));
+}
+
 /*TEST(ColorsSpacesRgb, colorVarFallback)
 {
     auto &cm = Manager::get();

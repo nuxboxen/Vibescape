@@ -19,6 +19,8 @@
 #include <glibmm/value.h>
 #include <2geom/forward.h>
 
+#include "extension/output.h"
+
 namespace Gtk {
     class Widget;
 }
@@ -118,7 +120,9 @@ public:
 
     // ----- Output functions -----
     /** Find out information about the file. */
-    virtual void save(Inkscape::Extension::Output * /*module*/, SPDocument * /*doc*/, gchar const * /*filename*/) {}
+    virtual void save(Inkscape::Extension::Output * /*module*/, SPDocument * /*doc*/, gchar const * /*filename*/) {
+        throw Inkscape::Extension::Output::save_failed(); // flag the lack of implementation to the user
+    }
     /**
      * Convert from PNG to raster format.
      * 

@@ -25,6 +25,7 @@
 #include <gtkmm/separator.h>
 #include <gtkmm/treestore.h>
 
+#include "desktop-style.h"
 #include "desktop.h"
 #include "display/translucency-group.h"
 #include "document-undo.h"
@@ -32,6 +33,7 @@
 #include "filter-chemistry.h"
 #include "inkscape-window.h"
 #include "layer-manager.h"
+#include "object/object-set.h"
 #include "object/sp-root.h"
 #include "style.h"
 #include "svg/css-ostringstream.h"
@@ -251,6 +253,7 @@ public:
         add(_colOpacity);
         add(_colItemState);
         add(_colHoverColor);
+        add(_colIconsVisible);
     }
 
     Gtk::TreeModelColumn<Node*> _colNode;
@@ -270,6 +273,7 @@ public:
     Gtk::TreeModelColumn<Glib::ustring> _colItemState;
     // Set when hovering over the color tag cell
     Gtk::TreeModelColumn<bool> _colHoverColor;
+    Gtk::TreeModelColumn<bool> _colIconsVisible;
 };
 
 /**
@@ -812,27 +816,54 @@ ObjectsPanel::ObjectsPanel()
         col->add_attribute(_item_state_toggler->property_active(), _model->_colItemStateSet);
         col->add_attribute(_item_state_toggler->property_active_icon(), _model->_colItemState);
         col->add_attribute(_item_state_toggler->property_cell_background_rgba(), _model->_colBgColor);
-        col->add_attribute(_item_state_toggler->property_activatable(), _model->_colHover);
+        col->add_attribute(_item_state_toggler->property_activatable(), _model->_colIconsVisible);
         col->set_fixed_width(icon_col_width);
         _blend_mode_column = col;
     }
 
+    _tree.set_has_tooltip(true);
     _tree.signal_query_tooltip().connect([this](int x, int y, bool kbd, const Glib::RefPtr<Gtk::Tooltip>& tooltip){
         Gtk::TreeModel::iterator iter;
         if (!_tree.get_tooltip_context_iter(x, y, kbd, iter) || !iter) {
             return false;
         }
-        auto blend = (*iter)[_model->_colBlendMode];
-        auto opacity = (*iter)[_model->_colOpacity];
-        auto templt = !pango_version_check(1, 50, 0) ?
-            "<span>%1 %2%%\n</span><span line_height=\"0.5\">\n</span><span>%3\n<i>%4</i></span>" :
-            "<span>%1 %2%%\n</span><span>\n</span><span>%3\n<i>%4</i></span>";
-        auto label = Glib::ustring::compose(templt,
-            _("Opacity:"), Util::format_number(opacity * 100.0, 1),
-            _("Blend mode:"), _blend_mode_names[blend]
-        );
-        tooltip->set_markup(label);
-        _tree.set_tooltip_cell(tooltip, nullptr, _blend_mode_column, _item_state_toggler);
+
+        // Get column we are hovering over (would be nice if the above method gave that to us)
+        int rel_x, rel_y, cell_x, cell_y;
+        Gtk::TreeModel::Path path;
+        Gtk::TreeViewColumn *column;
+        _tree.convert_widget_to_bin_window_coords(x, y, rel_x, rel_y);
+        if (!_tree.get_path_at_pos(rel_x, rel_y, path, column, cell_x, cell_y)) {
+            return false;
+        }
+
+        if (column == _blend_mode_column) {
+            auto blend = (*iter)[_model->_colBlendMode];
+            auto opacity = (*iter)[_model->_colOpacity];
+            auto templt = !pango_version_check(1, 50, 0) ?
+                "<span>%1 %2%%\n</span><span line_height=\"0.5\">\n</span><span>%3\n<i>%4</i></span>" :
+                "<span>%1 %2%%\n</span><span>\n</span><span>%3\n<i>%4</i></span>";
+            auto label = Glib::ustring::compose(templt,
+                _("Opacity:"), Util::format_number(opacity * 100.0, 1),
+                _("Blend mode:"), _blend_mode_names[blend]
+            );
+            tooltip->set_markup(label);
+        }
+        else if (column == _eye_column) {
+            auto invisible = (*iter)[_model->_colInvisible];
+            auto label = invisible ? _("Hidden") : _("Visible");
+            tooltip->set_text(label);
+        }
+        else if (column == _lock_column) {
+            auto locked = (*iter)[_model->_colLocked];
+            auto label = locked ? _("Locked") :  _("Unlocked");
+            tooltip->set_text(label);
+        }
+        else {
+            return false;
+        }
+
+        _tree.set_tooltip_cell(tooltip, nullptr, column, nullptr);
         return true;
     }, false); // before
 
@@ -857,9 +888,12 @@ ObjectsPanel::ObjectsPanel()
             auto css = sp_repr_css_attr_new();
             sp_repr_css_set_property(css, "opacity", os.str().c_str());
 
-            // Apply the style change through the StyleSubject.
-            // This ensures the "last style used" system is notified
-            _subject.setCSS(css);
+            // Apply CSS through the desktop to ensure that "last style used" is
+            // set correctly.
+            auto obj_set = Inkscape::ObjectSet();
+            obj_set.set(current_item);
+            sp_desktop_set_style(&obj_set, getDesktop(), css);
+
             sp_repr_css_attr_unref(css);
             DocumentUndo::maybeDone(current_item->document, ":opacity", RC_("Undo", "Change opacity"), INKSCAPE_ICON("dialog-object-properties"));
         }
@@ -917,7 +951,7 @@ ObjectsPanel::ObjectsPanel()
     if (auto eye = _tree.get_column(visibleColNum)) {
         eye->add_attribute(eyeRenderer->property_active(), _model->_colInvisible);
         eye->add_attribute(eyeRenderer->property_cell_background_rgba(), _model->_colBgColor);
-        eye->add_attribute(eyeRenderer->property_activatable(), _model->_colHover);
+        eye->add_attribute(eyeRenderer->property_activatable(), _model->_colIconsVisible);
         eye->add_attribute(eyeRenderer->property_gossamer(), _model->_colAncestorInvisible);
         eye->set_fixed_width(icon_col_width);
         _eye_column = eye;
@@ -930,7 +964,7 @@ ObjectsPanel::ObjectsPanel()
     if (auto lock = _tree.get_column(lockedColNum)) {
         lock->add_attribute(lockRenderer->property_active(), _model->_colLocked);
         lock->add_attribute(lockRenderer->property_cell_background_rgba(), _model->_colBgColor);
-        lock->add_attribute(lockRenderer->property_activatable(), _model->_colHover);
+        lock->add_attribute(lockRenderer->property_activatable(), _model->_colIconsVisible);
         lock->add_attribute(lockRenderer->property_gossamer(), _model->_colAncestorLocked);
         lock->set_fixed_width(icon_col_width);
         _lock_column = lock;
@@ -994,6 +1028,11 @@ ObjectsPanel::ObjectsPanel()
     _tree.signal_row_collapsed().connect([this](const Gtk::TreeModel::iterator &iter, const Gtk::TreeModel::Path &) {
         if (auto item = getItem(*iter)) {
             item->setExpanded(false);
+        }
+    });
+    _tree.signal_cursor_changed().connect([this] {
+        if (GTK_IS_TREE_MODEL(_store->gobj())) { // avoid calling during destroy
+            _updateIconVisibility();
         }
     });
 
@@ -1069,19 +1108,13 @@ ObjectsPanel::ObjectsPanel()
     update();
 }
 
-ObjectsPanel::~ObjectsPanel() {
-    _subject.setDesktop(nullptr);
-};
+ObjectsPanel::~ObjectsPanel() = default;
 
 void ObjectsPanel::desktopReplaced()
 {
     layer_changed.disconnect();
 
     auto desktop = getDesktop();
-
-    // Update the _subject with the new desktop
-    _subject.setDesktop(desktop);
-
     if (desktop) {
         layer_changed = desktop->layerManager().connectCurrentLayerChanged(sigc::mem_fun(*this, &ObjectsPanel::layerChanged));
     }
@@ -1132,7 +1165,9 @@ bool ObjectsPanel::showChildInTree(SPItem *item) {
     if (show_child && term.length()) {
         // A source document allows search for different pieces of metadata
         std::stringstream source;
-        source << "#" << item->getId();
+        if (char const *id = item->getId()) {
+            source << "#" << id;
+        }
         if (auto label = item->label())
             source << " " << label;
         source << " @" << item->getTagName();
@@ -1408,7 +1443,6 @@ bool ObjectsPanel::on_tree_key_pressed(Gtk::EventControllerKey const &controller
     if (!desktop)
         return false;
 
-    // This isn't needed in Gtk4, use expand_collapse_cursor_row instead.
     Gtk::TreeModel::Path path;
     Gtk::TreeViewColumn *column;
     _tree.get_cursor(path, column);
@@ -1423,37 +1457,18 @@ bool ObjectsPanel::on_tree_key_pressed(Gtk::EventControllerKey const &controller
                 return true;
             }
             break;
-        case GDK_KEY_Left:
-        case GDK_KEY_KP_Left: {
-            // suppress handling if in multiselect mode
-            if (shift) {
-                return true;
-            }
-            if (_tree.row_expanded(path)) {
-                _tree.collapse_row(path);
-            } else if (path.up()) {
-                _tree.collapse_row(path);
-            }
-            _tree.get_selection()->set_mode(Gtk::SelectionMode::NONE);
-            _tree.set_cursor(path, *_name_column);
-            selectCursorItem(Gdk::ModifierType(state));
-            return true;
-        };
-        case GDK_KEY_Right:
-        case GDK_KEY_KP_Right:
-            // suppress handling if in multiselect mode
-            if (shift) {
-                return true;
-            }
-            if (_tree.expand_row(path, false)) {
-                path.down();
-            }
-            _tree.get_selection()->set_mode(Gtk::SelectionMode::NONE);
-            _tree.set_cursor(path, *_name_column);
-            selectCursorItem(Gdk::ModifierType(state));
-            return true;
         case GDK_KEY_space:
             selectCursorItem(Gdk::ModifierType(state));
+
+            if (path && column == _name_column) {
+                // Toggle expansion of row
+                if (_tree.row_expanded(path)) {
+                    _tree.collapse_row(path);
+                } else {
+                    _tree.expand_row(path, false);
+                }
+            }
+
             return true;
         // Depending on the action to cover this causes it's special
         // text and node handling to block deletion of objects. DIY
@@ -1482,38 +1497,6 @@ bool ObjectsPanel::on_tree_key_pressed(Gtk::EventControllerKey const &controller
             if (ctrl) {
                 _activateAction("win.layer-raise", "selection-stack-up");
                 return true;
-            } else {
-                auto original_path = path;
-                if (!path.prev()) {
-                    if (path.size() > 1) {
-                        path.up();
-                    }
-                } else {
-                    // if the node is expanded navigate to the last child item
-                    while (_tree.row_expanded(path)) {
-                        path = _tree.iter_last_child(path);
-                    }
-                }
-                if (shift) {
-                    auto selection = getSelection();
-                    auto row = *_store->get_iter(path);
-                    if (!row)
-                        return false;
-                    auto item = getItem(row);
-                    if (selection->includes(item)) {
-                        auto row = *_store->get_iter(original_path);
-                        if (!row)
-                            return false;
-                        auto item = getItem(row);
-                        selection->remove(item);
-                    } else {
-                        selection->add(item, false);
-                    }
-                }
-                _tree.set_cursor(path);
-                if (!shift)
-                    selectCursorItem(Gdk::ModifierType(state));
-                return true;
             }
             break;
         case GDK_KEY_Down:
@@ -1521,56 +1504,15 @@ bool ObjectsPanel::on_tree_key_pressed(Gtk::EventControllerKey const &controller
             if (ctrl) {
                 _activateAction("win.layer-lower", "selection-stack-down");
                 return true;
-            } else {
-                auto original_path = path;
-                if (_tree.row_expanded(path)) {
-                    path.down();
-                } else {
-                    while (!_tree.iter_next(path) && path.size() > 1) {
-                        // if you can't go to the next node go up to the parent then move to the next node at that level
-                        path.up();
-                    }
-                }
-
-                // don't loop back up to top from the bottom of the tree
-                if (path.to_string() == "0")
-                    return true;
-
-                if (shift) {
-                    auto selection = getSelection();
-                    auto row = *_store->get_iter(path);
-                    if (!row)
-                        return false;
-                    auto item = getItem(row);
-                    auto original_row = *_store->get_iter(original_path);
-                    if (!original_row)
-                        return false;
-                    auto original_item = getItem(original_row);
-                    if (selection->includes(item)) {
-                        selection->remove(original_item);
-                    } else {
-                        // if descending into a group deselect the top level
-                        if (path.is_descendant(original_path))
-                            selection->remove(original_item);
-                        selection->add(item, false);
-                    }
-                }
-
-                _tree.set_cursor(path);
-                if (!shift)
-                    selectCursorItem(Gdk::ModifierType(state));
-                return true;
             }
             break;
         case GDK_KEY_Return:
-            if (auto item = getSelection()->singleItem()) {
-                if (auto watcher = getWatcher(item->getRepr())) {
-                    auto item_path = watcher->getTreePath();
-                    _tree.set_cursor(item_path, *_tree.get_column(0), true /* start_editing */);
-                    _is_editing = true;
-                    return true;
-                }
+            if (path) {
+                _tree.set_cursor(path, *_tree.get_column(0), true /* start_editing */);
+                _is_editing = true;
+                return true;
             }
+            break;
     }
 
     return false;
@@ -1605,10 +1547,13 @@ void ObjectsPanel::on_motion_enter(double /*ex*/, double /*ey*/)
     _msg_id = getDesktop()->messageStack()->push(Inkscape::NORMAL_MESSAGE,
          _("<b>Hold ALT</b> while hovering over item to highlight, "
            "<b>hold SHIFT</b> and click to hide/lock all."));
+    _translucency_key =  getDesktop()->getTranslucencyGroups().createGroupKey();
 }
 // watch mouse leave too to clear any state.
 void ObjectsPanel::on_motion_leave()
 {
+    getDesktop()->getTranslucencyGroups().removeGroupKey(_translucency_key);
+    _translucency_key = 0;
     getDesktop()->messageStack()->cancel(_msg_id);
     on_motion_motion(nullptr, 0, 0);
 }
@@ -1638,6 +1583,7 @@ void ObjectsPanel::on_motion_motion(Gtk::EventControllerMotion const *controller
     if (controller == nullptr) {
         _hovered_row_ref = Gtk::TreeModel::RowReference();
         _handleTransparentHover(false);
+        _updateIconVisibility();
         return;
     }
 
@@ -1686,27 +1632,39 @@ void ObjectsPanel::on_motion_motion(Gtk::EventControllerMotion const *controller
 
     auto const state = controller->get_current_event_state();
     _handleTransparentHover(Controller::has_flag(state, Gdk::ModifierType::ALT_MASK));
+    _updateIconVisibility();
 }
 
 void ObjectsPanel::_handleTransparentHover(bool enabled)
 {
-    auto &trg = getDesktop()->getTranslucencyGroup();
     SPItem *item = nullptr;
     if (enabled && _hovered_row_ref) {
         if (auto row = *_store->get_iter(_hovered_row_ref.get_path())) {
             item = getItem(row);
         }
     }
-    // Save any solid item from other inkscape features
-    if (enabled && !_translucency_enabled) {
-        _old_solid_item = trg.getSolidItem();
-    } else if (!enabled && _translucency_enabled) {
-        item = _old_solid_item;
-    }
-    _translucency_enabled = enabled;
+    // Hovered item is solid, everything else is translucent
+    getDesktop()->getTranslucencyGroups().setSolidItem(_translucency_key, item);
+}
 
-    // Ask the canvas to only show one item fully opaque
-    trg.setSolidItem(item);
+void ObjectsPanel::_updateIconVisibility()
+{
+    if (_is_editing) {
+        return; // modifying store confuses editor
+    }
+
+    Gtk::TreeModel::Path focus_path;
+    Gtk::TreeViewColumn *focus_column;
+    _tree.get_cursor(focus_path, focus_column);
+
+    // Iterate all rows because some might need to be marked invisible now (no focus or hover).
+    _store->foreach_path([this, focus_path](const Gtk::TreeModel::Path &path) {
+        auto iter = _store->get_iter(path);
+        auto row = *iter;
+        auto has_focus = focus_path && focus_path == path;
+        row[_model->_colIconsVisible] = row[_model->_colHover] || has_focus;
+        return false; // keep walking tree
+    });
 }
 
 [[nodiscard]] static auto get_cell_area(Gtk::TreeView const &tree_view,
@@ -2136,8 +2094,6 @@ void ObjectsPanel::on_drag_end(Glib::RefPtr<Gdk::Drag> const &/*drag*/, bool /*d
 
 void ObjectsPanel::selectRange(Gtk::TreeModel::Path start, Gtk::TreeModel::Path end)
 {
-    auto &layers = getDesktop()->layerManager();
-
     if (!start || !end) {
         return;
     }
@@ -2165,10 +2121,8 @@ void ObjectsPanel::selectRange(Gtk::TreeModel::Path start, Gtk::TreeModel::Path 
             (gtk_tree_path_compare(end.gobj(), p.gobj()) >= 0)) {
             auto obj = getItem(*it);
             if (obj) {
-                if (!layers.isLayer(obj)) {
-                    _prev_range.emplace_back(obj);
-                    selection->add(obj, false);
-                }
+                _prev_range.emplace_back(obj);
+                selection->add(obj, false);
             }
         }
         return false;

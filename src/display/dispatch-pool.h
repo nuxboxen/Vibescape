@@ -11,6 +11,7 @@
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <stop_token>
 #include <thread>
 #include <vector>
 
@@ -92,21 +93,19 @@ public:
     }
 
 private:
-    void thread_func(local_id id);
+    void thread_func(std::stop_token const &stop_token, local_id id);
     void execute_batch(std::unique_lock<std::mutex> &lk, local_id id, int thread_count);
 
-private:
     global_id _available_work{};
     global_id _completed_work{};
     global_id _target_work{};
-    bool _shutdown{};
 
     std::mutex _dispatch_lock;
     std::mutex _lock;
-    std::condition_variable _available_cv;
+    std::condition_variable_any _available_cv;
     std::condition_variable _completed_cv;
     dispatch_func _function;
-    std::vector<std::thread> _threads;
+    std::vector<std::jthread> _threads;
 };
 
 } // namespace Inkscape

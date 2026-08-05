@@ -537,10 +537,13 @@ Geom::Affine SPGenericEllipse::set_transform(Geom::Affine const &xform)
 
     this->set_shape();
 
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    bool should_scale_stroke = prefs->getBool("/options/transform/stroke", true);
+
     // Adjust stroke width
-    if (!g_strcmp0(getAttribute("sodipodi:arc-type"), "slice") || 
-        !g_strcmp0(getAttribute("sodipodi:arc-type"), "chord") ||
-        !g_strcmp0(getAttribute("sodipodi:arc-type"), "arc")) 
+    if (should_scale_stroke && (!g_strcmp0(getAttribute("sodipodi:arc-type"), "slice") ||
+                                !g_strcmp0(getAttribute("sodipodi:arc-type"), "chord") ||
+                                !g_strcmp0(getAttribute("sodipodi:arc-type"), "arc")))
     {
         double const expansion = transform.descrim();
         adjust_stroke_width_recursive(expansion);

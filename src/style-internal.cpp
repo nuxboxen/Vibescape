@@ -23,37 +23,33 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
+#include "style-internal.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <sigc++/bind.h>
 #include <glibmm/regex.h>
 #include <glibmm/ustring.h>
-
-#include "style-enums.h"
-#include "style-internal.h"
-#include "style.h"
-
-#include "colors/color.h"
-#include "colors/manager.h"
-#include "colors/spaces/base.h"
-#include "colors/document-cms.h"
-
-#include "document.h"
+#include <sigc++/bind.h>
 
 #include "bad-uri-exception.h"
+#include "colors/color.h"
+#include "colors/document-cms.h"
+#include "colors/manager.h"
+#include "colors/spaces/base.h"
+#include "document.h"
+#include "object/object-set.h"
+#include "object/uri.h"
 #include "preferences.h"
 #include "streq.h"
 #include "strneq.h"
-
-#include "object/object-set.h"
-
-#include "svg/svg.h"
+#include "style-enums.h"
+#include "style.h"
 #include "svg/css-ostringstream.h"
-
+#include "svg/svg.h"
+#include "util-string/ustring-format.h"
 #include "util/units.h"
 #include "util/uri.h"
-#include "util-string/ustring-format.h"
 
 // TODO REMOVE OR MAKE MEMBER FUNCTIONS
 void sp_style_fill_paint_server_ref_changed(  SPObject *old_ref, SPObject *ref, SPStyle *style);
@@ -63,6 +59,7 @@ void sp_style_set_ipaint_to_uri(SPStyle *style, SPIPaint *paint, const Inkscape:
 void sp_style_set_ipaint_to_uri_string (SPStyle *style, SPIPaint *paint, const gchar *uri);
 
 using Inkscape::CSSOStringStream;
+namespace Colors = Inkscape::Colors;
 
 // SPIBase --------------------------------------------------------------
 
@@ -1612,10 +1609,14 @@ void SPIColorInterpolation::read(gchar const *str)
 {
     set = (bool)str;
     if (str) {
+        Glib::ustring unquoted_str = str;
+        // Required for profile name containing a period (e.g., "CASIO-COMPUTER-CO.-LTD")
+        css_unquote(unquoted_str);
+
         if (canHaveCMS()) {
-            _color_space = getCMS().findSvgColorSpace(str);
+            _color_space = getCMS().findSvgColorSpace(unquoted_str.c_str());
         } else {
-            _color_space = Colors::Manager::get().findSvgColorSpace(str);
+            _color_space = Colors::Manager::get().findSvgColorSpace(unquoted_str.c_str());
         }
     }
 }
@@ -1845,7 +1846,7 @@ SPIPaint::reset( bool init ) {
     href.reset();
 
     if (init && id() == SPAttr::FILL) {
-        _color = Inkscape::Colors::Color(0x000000ff); // 'black' is default for 'fill'
+        _color = Colors::Color(0x000000ff); // 'black' is default for 'fill'
     }
 }
 
@@ -2250,7 +2251,44 @@ SPIFilter::equals(const SPIBase& rhs) const {
     }
 }
 
+// SPIMarker ------------------------------------------------------------
 
+void SPIMarker::read(gchar const *str)
+{
+    SPIString::read(str);
+
+    if (strneq(str, "url", 3)) {
+        auto uri = extract_uri(str);
+        if (uri.empty()) {
+            std::cerr << "SPIMarker::read: url is empty or invalid" << std::endl;
+            return;
+        } else if (!style) {
+            std::cerr << "SPIMarker::read: url with empty SPStyle pointer" << std::endl;
+            return;
+        }
+
+        auto target = style->object ? style->object : (SPObject*)style->document;
+        if (!target) {
+            std::cerr << "SPIMarker::read: style without object or document" << std::endl;
+            return;
+        }
+
+        href = std::make_shared<SPMarkerReference>(target);
+        try {
+            href->attach(Inkscape::URI(uri.c_str()));
+        } catch (Inkscape::BadURIException &e) {
+            std::cerr << "SPIMarker::read: " << e.what() << std::endl;
+            href.reset();
+        }
+    }
+}
+
+void
+SPIMarker::clear()
+{
+    SPIBase::clear();
+    href.reset();
+}
 
 // SPIDashArray ---------------------------------------------------------
 

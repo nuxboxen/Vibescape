@@ -15,6 +15,28 @@
 #include <glib/poppler-features.h>
 #include <UTF.h>
 
+#if POPPLER_CHECK_VERSION(26, 7, 0)
+#define _POPPLER_STRING_26_7 std::string
+#else
+#define _POPPLER_STRING_26_7 GooString
+#endif
+
+#if POPPLER_CHECK_VERSION(26, 6, 0)
+#define _POPPLER_GET_GRAY(color, gray) getGray(color, gray)
+#define _POPPLER_GET_RGB(color, rgb) getRGB(color, rgb)
+#define _POPPLER_GET_CMYK(color, cmyk) getCMYK(color, cmyk)
+#define _POPPLER_SET_FILL_COLOR(color) setFillColor(color)
+#define _POPPLER_SET_STROKE_COLOR(color) setStrokeColor(color)
+#define _POPPLER_GFX_STATE(h, v, Rect, rotateA, upsideDown) GfxState(h, v, Rect, rotateA, upsideDown)
+#else
+#define _POPPLER_GET_GRAY(color, gray) getGray(&color, gray)
+#define _POPPLER_GET_RGB(color, rgb) getRGB(&color, rgb)
+#define _POPPLER_GET_CMYK(color, cmyk) getCMYK(&color, cmyk)
+#define _POPPLER_SET_FILL_COLOR(color) setFillColor(&color)
+#define _POPPLER_SET_STROKE_COLOR(color) setStrokeColor(&color)
+#define _POPPLER_GFX_STATE(h, v, Rect, rotateA, upsideDown) GfxState(h, v, &Rect, rotateA, upsideDown)
+#endif
+
 #if POPPLER_CHECK_VERSION(26, 2, 0)
 #define _POPPLER_WMODE GfxFont::WritingMode
 #define _POPPLER_WMODE_HORIZONTAL GfxFont::WritingMode::Horizontal

@@ -13,6 +13,8 @@
 #ifndef INKSCAPE_UI_TOOL_NODE_H
 #define INKSCAPE_UI_TOOL_NODE_H
 
+#include <2geom/path-sink.h>
+
 #include "selectable-control-point.h"
 #include "snap-candidate.h"
 #include "ui/tool/node-types.h"
@@ -21,6 +23,7 @@ class SPDesktop;
 namespace Inkscape {
 class CanvasItemGroup;
 class CanvasItemCurve;
+class CanvasItemBpath;
 
 namespace UI {
 class ControlPointSelection;
@@ -194,6 +197,11 @@ public:
     static NodeType parse_nodetype(char x);
     static char const *node_type_to_localized_string(NodeType type);
 
+    /**
+     * Build the next segment of a geom path from this node's data
+     */
+    void build_segment(Geom::PathBuilder &builder, Node *next_node);
+
     // temporarily public
     /** Customized event handler to catch scroll events needed for selection grow/shrink. */
     bool _eventHandler(Inkscape::UI::Tools::ToolBase *event_context, CanvasEvent const &event) override;
@@ -238,6 +246,10 @@ private:
     Handle _back; ///< Node handle in the forward direction of the path
     NodeType _type; ///< Type of node - cusp, smooth...
     bool _handles_shown;
+
+    // Created on mouse down, this segment contains the curve between the previous node
+    // and the next node used for confine-to-path.
+    std::optional<Geom::PathVector> _short_segment_path;
 
     // This is used by fixNeighbors to repair smooth nodes after all move
     // operations have been completed. If this is empty, no fixing is needed.

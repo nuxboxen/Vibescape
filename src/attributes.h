@@ -66,7 +66,6 @@ enum class SPAttr {
     /* SPNamedView */
     VIEWONLY,
     SHOWGUIDES,
-    SHOWGRIDS,
     GRIDTOLERANCE,
     GUIDETOLERANCE,
     OBJECTTOLERANCE,
@@ -83,10 +82,6 @@ enum class SPAttr {
     BORDEROPACITY,
     PAGECOLOR,
     PAGELABELSTYLE,
-    FIT_MARGIN_TOP,
-    FIT_MARGIN_LEFT,
-    FIT_MARGIN_RIGHT,
-    FIT_MARGIN_BOTTOM,
     INKSCAPE_PAGEOPACITY,
     INKSCAPE_PAGESHADOW,
     INKSCAPE_ZOOM,
@@ -481,7 +476,7 @@ enum class SPAttr {
     SOLID_COLOR,
     SOLID_OPACITY,
     VECTOR_EFFECT,
-    
+
     /* CSS Blending/Compositing */
     MIX_BLEND_MODE,
     ISOLATION,
@@ -548,7 +543,7 @@ enum class SPAttr {
     SHAPE_PADDING,
     SHAPE_MARGIN,
     INLINE_SIZE,
-    
+
     /* Text Decoration */
     TEXT_DECORATION,  // CSS 2/CSS3-Shorthand
     TEXT_DECORATION_LINE,

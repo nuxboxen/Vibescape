@@ -54,13 +54,13 @@ DialogPage::DialogPage()
  * \param[in] expand_widget  Whether to expand the widget horizontally
  * \param[in] other_widget   An optional additional widget to display at the right of the first one
  */
-void DialogPage::add_line(bool                 indent,
-                          Glib::ustring const &label,
-                          Gtk::Widget         &widget,
-                          Glib::ustring const &suffix,
-                          const Glib::ustring &tip,
-                          bool                 expand_widget,
-                          Gtk::Widget         *other_widget)
+int DialogPage::add_line(bool                 indent,
+                         Glib::ustring const &label,
+                         Gtk::Widget         &widget,
+                         Glib::ustring const &suffix,
+                         const Glib::ustring &tip,
+                         bool                 expand_widget,
+                         Gtk::Widget         *other_widget)
 {
     if (!tip.empty())
         widget.set_tooltip_text(tip);
@@ -104,6 +104,11 @@ void DialogPage::add_line(bool                 indent,
     // Pack an additional widget into a box with the widget if desired
     if (other_widget)
         UI::pack_start(*hb, *other_widget, expand_widget, expand_widget);
+
+    // Query what row we are at, so callers can reference this label & widget again later
+    int col, row, width, height;
+    query_child(*hb, col, row, width, height);
+    return row;
 }
 
 void DialogPage::add_group_header(Glib::ustring name, int columns)
@@ -137,13 +142,15 @@ void DialogPage::set_tip(Gtk::Widget& widget, Glib::ustring const &tip)
 }
 
 void PrefCheckButton::init(Glib::ustring const &label, Glib::ustring const &prefs_path,
-    bool default_value)
+    bool default_value, bool invert_ui)
 {
     _prefs_path = prefs_path;
+    _invert_ui = invert_ui;
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     if (!label.empty())
         this->set_label(label);
-    this->set_active( prefs->getBool(_prefs_path, default_value) );
+    auto value = prefs->getBool(_prefs_path, default_value) ^ _invert_ui;
+    this->set_active(value);
 }
 
 void PrefCheckButton::on_toggled()
@@ -151,7 +158,7 @@ void PrefCheckButton::on_toggled()
     if (this->get_visible()) //only take action if the user toggled it
     {
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-        prefs->setBool(_prefs_path, this->get_active());
+        prefs->setBool(_prefs_path, this->get_active() ^ _invert_ui);
     }
     this->changed_signal.emit(this->get_active());
 }

@@ -29,6 +29,7 @@
 #include <glibmm/i18n.h>
 #include <gtkmm/image.h>
 
+#include "desktop.h"
 #include "document-undo.h"
 #include "inkscape-window.h"
 #include "layer-manager.h"
@@ -74,22 +75,22 @@ static Glib::RefPtr<Gio::Menu> create_clipboard_actions(bool const paste_only = 
         AppendItemFromAction(result, "app.copy", _("_Copy"), "edit-copy");
     }
     AppendItemFromAction(result, "win.paste", _("_Paste"), "edit-paste");
-    
-    /// Also appending special paste options 
+
+    /// Also appending special paste options
     /// (in place, paste on page, paste style, paste size, paste width, paste height, paste size separately,
     /// paste width separately, paste height separately), to increase discoverability.
     auto gmenu_paste_section = Gio::Menu::create();
     auto gmenu_paste_submenu = Gio::Menu::create();
-    AppendItemFromAction(gmenu_paste_submenu, "win.paste-in-place", _("_In Place"), "edit-paste-in-place");
-    AppendItemFromAction(gmenu_paste_submenu, "win.paste-on-page", _("_On Page"), "");
-    AppendItemFromAction(gmenu_paste_submenu, "app.paste-style", _("_Style"), "edit-paste-style");
-    AppendItemFromAction(gmenu_paste_submenu, "app.paste-size", _("Si_ze"), "edit-paste-size");
-    AppendItemFromAction(gmenu_paste_submenu, "app.paste-width", _("_Width"), "edit-paste-width");
-    AppendItemFromAction(gmenu_paste_submenu, "app.paste-height", _("_Height"), "edit-paste-height");
-    AppendItemFromAction(gmenu_paste_submenu, "app.paste-size-separately", _("Size Separately"), "edit-paste-size-separately");
-    AppendItemFromAction(gmenu_paste_submenu, "app.paste-width-separately", _("Width Separately"), "edit-paste-width-separately");
-    AppendItemFromAction(gmenu_paste_submenu, "app.paste-height-separately", _("Height Separately"), "edit-paste-height-separately");
-    gmenu_paste_section->append_submenu(_("Paste..."), gmenu_paste_submenu);
+    AppendItemFromAction(gmenu_paste_submenu, "win.paste-in-place", _("Paste _in Place"), "edit-paste-in-place");
+    AppendItemFromAction(gmenu_paste_submenu, "win.paste-on-page", _("Paste _on Page"), "");
+    AppendItemFromAction(gmenu_paste_submenu, "app.paste-style", _("Paste _Style"), "edit-paste-style");
+    AppendItemFromAction(gmenu_paste_submenu, "app.paste-size", _("Paste Si_ze Onto Selection"), "edit-paste-size");
+    AppendItemFromAction(gmenu_paste_submenu, "app.paste-width", _("Paste _Width Onto Selection"), "edit-paste-width");
+    AppendItemFromAction(gmenu_paste_submenu, "app.paste-height", _("Paste _Height Onto Selection"), "edit-paste-height");
+    AppendItemFromAction(gmenu_paste_submenu, "app.paste-size-separately", _("Paste Size Onto Selection Separately"), "edit-paste-size-separately");
+    AppendItemFromAction(gmenu_paste_submenu, "app.paste-width-separately", _("Paste Width Onto Selection Separately"), "edit-paste-width-separately");
+    AppendItemFromAction(gmenu_paste_submenu, "app.paste-height-separately", _("Paste Height Onto Selection Separately"), "edit-paste-height-separately");
+    gmenu_paste_section->append_submenu(_("Paste Options"), gmenu_paste_submenu);
     result->append_section(gmenu_paste_section);
 
     return result;
@@ -182,6 +183,7 @@ ContextMenu::ContextMenu(SPDesktop *desktop, SPObject *object, std::vector<SPIte
 
         gmenu_section = Gio::Menu::create();
         AppendItemFromAction(gmenu_section, "doc.page-new", _("_New Page"), "pages-add");
+        AppendItemFromAction(gmenu_section, "doc.page-duplicate", _("Duplicate Page"), "pages-duplicate");
         gmenu->append_section(gmenu_section);
 
         gmenu_section = Gio::Menu::create();
@@ -376,7 +378,7 @@ ContextMenu::ContextMenu(SPDesktop *desktop, SPObject *object, std::vector<SPIte
     set_flags(Gtk::PopoverMenu::Flags::NESTED);
 
     // Do not install this CSS provider; it messes up menus with icons (like popup menu with all dialogs).
-    // It doesn't work well with context menu either, introducing disturbing visual glitch 
+    // It doesn't work well with context menu either, introducing disturbing visual glitch
     // where menu shifts upon opening.
     show_icons_and_tooltips(*this);
     // Set the style and icon theme of the new menu based on the desktop

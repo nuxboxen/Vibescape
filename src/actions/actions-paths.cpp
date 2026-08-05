@@ -136,25 +136,25 @@ select_path_simplify(InkscapeApplication *app)
 }
 
 void
-select_path_inset(InkscapeWindow* win)
+select_path_inset(InkscapeApplication* app)
 {
-    SPDesktop* dt = win->get_desktop();
+    auto selection = app->get_active_selection();
 
     // Inset selected paths
-    dt->getSelection()->removeLPESRecursive(true);
-    dt->getSelection()->unlinkRecursive(true);
-    sp_selected_path_inset(dt);
+    selection->removeLPESRecursive(true);
+    selection->unlinkRecursive(true);
+    sp_selected_path_inset(selection);
 }
 
 void
-select_path_offset(InkscapeWindow* win)
+select_path_offset(InkscapeApplication* app)
 {
-    SPDesktop* dt = win->get_desktop();
+    auto selection = app->get_active_selection();
 
-    // Offset selected paths
-    dt->getSelection()->removeLPESRecursive(true);
-    dt->getSelection()->unlinkRecursive(true);
-    sp_selected_path_offset(dt);
+    // Inset selected paths
+    selection->removeLPESRecursive(true);
+    selection->unlinkRecursive(true);
+    sp_selected_path_offset(selection);
 }
 
 void
@@ -260,8 +260,8 @@ static const std::vector<std::vector<Glib::ustring>> raw_data_path =
     {"app.path-fill-between-paths",  N_("Fill between paths"),       SECTION, N_("Create a fill object using the selected paths")},
     {"app.path-simplify",            N_("Simplify"),                 SECTION, N_("Simplify selected paths (remove extra nodes)")},
 
-    {"win.path-inset",               N_("Inset"),                    SECTION, N_("Inset selected paths")},
-    {"win.path-offset",              N_("Offset"),                   SECTION, N_("Offset selected paths")},
+    {"app.path-inset",               N_("Inset"),                    SECTION, N_("Inset selected paths")},
+    {"app.path-offset",              N_("Offset"),                   SECTION, N_("Offset selected paths")},
     {"win.path-offset-dynamic",      N_("Dynamic Offset"),           SECTION, N_("Create a dynamic offset object")},
     {"win.path-offset-linked",       N_("Linked Offset"),            SECTION, N_("Create a dynamic offset object linked to the original path")},
     {"win.path-reverse",             N_("Reverse"),                  SECTION, N_("Reverse the direction of selected paths (useful for flipping markers)")},
@@ -292,6 +292,8 @@ void add_actions_path(InkscapeApplication *app)
     gapp->add_action(               "path-flatten",            sigc::bind(sigc::ptr_fun(&select_path_flatten) ,      app));
     gapp->add_action(               "path-fill-between-paths", sigc::bind(sigc::ptr_fun(&fill_between_paths),        app));
     gapp->add_action(               "path-simplify",           sigc::bind(sigc::ptr_fun(&select_path_simplify),      app));
+    gapp->add_action(               "path-inset",              sigc::bind(sigc::ptr_fun(&select_path_inset),         app));
+    gapp->add_action(               "path-offset",             sigc::bind(sigc::ptr_fun(&select_path_offset),        app));
     // clang-format on
 
     app->get_action_extra_data().add_data(raw_data_path);
@@ -307,8 +309,6 @@ void add_actions_path(InkscapeWindow *win)
     bool replace = prefs->getBool("/tools/booleans/replace", true);
 
     // clang-format off
-    win->add_action(                "path-inset",                   sigc::bind(sigc::ptr_fun(&select_path_inset),          win));
-    win->add_action(                "path-offset",                  sigc::bind(sigc::ptr_fun(&select_path_offset),         win));
     win->add_action_with_parameter( "path-inset-screen",    Double, sigc::bind(sigc::ptr_fun(&select_path_inset_screen),   win));
     win->add_action_with_parameter( "path-offset-screen",   Double, sigc::bind(sigc::ptr_fun(&select_path_offset_screen),  win));
     win->add_action(                "path-offset-dynamic",          sigc::bind(sigc::ptr_fun(&select_path_offset_dynamic), win));

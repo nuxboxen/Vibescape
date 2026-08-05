@@ -10,7 +10,8 @@ target_sources(inkscape_base PRIVATE
     font-discovery.cpp
     font-tags.cpp
     funclog.cpp
-	glyph-draw.cpp
+    glyph-draw.cpp
+    join.cpp
     share.cpp
     object-renderer.cpp
     object-modified-tags.cpp
@@ -78,6 +79,7 @@ target_sources(inkscape_base PRIVATE
     smart_ptr_keys.h
 	unicode.h
     units.h
+    unsafe-optional.h
     uri.h
     variant-visitor.h
     value-utils.h

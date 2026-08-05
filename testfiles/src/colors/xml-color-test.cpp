@@ -57,10 +57,10 @@ TEST_F(ColorXmlColor, test_paint_to_xml_string)
 <paint>
   <color
      space="RGB"
-     opacity="0.26666667"
-     r="0.81176471"
-     g="0.19607843"
-     b="0.07058824" />
+     opacity="0.2666666667"
+     r="0.8117647059"
+     g="0.1960784314"
+     b="0.0705882353" />
 </paint>
 )");
     ASSERT_EQ(paint_to_xml_string(*Color::parse("hsl(180,100,100)")), R"(<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -121,10 +121,10 @@ TEST_F(ColorXmlColor, test_xml_string_to_paint)
 <paint>
   <color
      space="RGB"
-     opacity="0.26666667"
-     r="0.81176471"
-     g="0.19607843"
-     b="0.07058824" />
+     opacity="0.2666666667"
+     r="0.8117647059"
+     g="0.1960784314"
+     b="0.0705882353" />
 </paint>
 )",
                                   nullptr)
@@ -141,7 +141,7 @@ TEST_F(ColorXmlColor, test_xml_string_to_paint)
 )",
                                   nullptr)
                 ).toString(),
-              "hsl(180, 100, 100)");
+              "hsl(180, 100%, 100%)");
 }
 
 } // namespace

@@ -76,7 +76,9 @@ private:
     Glib::RefPtr<Glib::MainLoop> _main_loop;
 
     void _change_extension(Inkscape::Extension::Extension *mod, ExecutionEnv *executionEnv, SPDocument *doc,
-                           std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs = false);
+                           std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs = false, bool custom_ui = true);
+
+    void _setAppSensitive(bool sensitive);
 
     /**
      * The command that has been derived from
@@ -146,9 +148,7 @@ private:
 
     int execute(std::list<std::string> const &in_command, std::list<std::string> const &in_params,
                 Glib::ustring const &filein, file_listener &fileout, bool ignore_stderr = false,
-                bool pipe_diffs = false);
-
-    void pump_events();
+                bool pipe_diffs = false, bool custom_ui = false);
 
     /** \brief  A definition of an interpreter, which can be specified
         in the INX file, but we need to know what to call */

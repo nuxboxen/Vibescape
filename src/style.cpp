@@ -365,10 +365,10 @@ SPStyle::SPStyle(SPDocument *document_in, SPObject *object_in) :
 
     stroke_extensions(      ),
 
-    marker(                 ),  // SPIString
-    marker_start(           ),  // SPIString
-    marker_mid(             ),  // SPIString
-    marker_end(             ),  // SPIString
+    marker(                 ),  // SPIMarker
+    marker_start(           ),  // SPIMarker
+    marker_mid(             ),  // SPIMarker
+    marker_end(             ),  // SPIMarker
 
     // Filter properties
     filter(),
@@ -444,6 +444,8 @@ SPStyle::SPStyle(SPDocument *document_in, SPObject *object_in) :
     color.setStylePointer(this);
     stop_color.setStylePointer(this);
     solid_color.setStylePointer(this);
+    color_interpolation.setStylePointer(this);
+    color_interpolation_filters.setStylePointer(this);
 
     // 'text_decoration' shorthand requires access to included properties.
     text_decoration.setStylePointer( this );
@@ -453,6 +455,12 @@ SPStyle::SPStyle(SPDocument *document_in, SPObject *object_in) :
     filter.setStylePointer( this );
     shape_inside.setStylePointer( this );
     shape_subtract.setStylePointer( this );
+
+    // Markers need style pointer to be connecting to references in the style
+    marker.setStylePointer(this);
+    marker_start.setStylePointer(this);
+    marker_mid.setStylePointer(this);
+    marker_end.setStylePointer(this);
 
     // Used to iterate over markers
     marker_ptrs[SP_MARKER_LOC]       = &marker;
@@ -1371,6 +1379,21 @@ sp_style_css_size_units_to_px(double size, int unit, double font_size)
     return size * (size / sp_style_css_size_px_to_units(size, unit, font_size));;
 }
 
+/*
+ * Avoid rounding errors when, say, converting stored 'px' values to displayed 'pt' values.
+ * We just don't want to confuse the user when they see 12.999 instead of 13.
+ */
+double
+sp_style_css_size_round_for_user_display(double size)
+{
+    int rounded_size = std::round(size);
+    if (std::abs((size - rounded_size)/size) < 0.0001) {
+        return rounded_size;
+    } else {
+        return size;
+    }
+}
+
 /**
  * Create a vector<double> containing the default list of font sizes scaled for the given unit.
  */
@@ -1404,8 +1427,12 @@ const std::vector<double>& sp_style_get_default_font_size_list(int unit) {
 void
 sp_style_set_property_url (SPObject *item, gchar const *property, SPObject *linked, bool recursive)
 {
-    Inkscape::XML::Node *repr = item->getRepr();
+    sp_style_set_property_url_on_repr(item->getRepr(), property, linked, recursive);
+}
 
+void
+sp_style_set_property_url_on_repr(Inkscape::XML::Node *repr, gchar const *property, SPObject *linked, bool recursive)
+{
     if (repr == nullptr) return;
 
     SPCSSAttr *css = sp_repr_css_attr_new();
@@ -1414,7 +1441,7 @@ sp_style_set_property_url (SPObject *item, gchar const *property, SPObject *link
         sp_repr_css_set_property(css, property, val);
         g_free(val);
     } else {
-        sp_repr_css_unset_property(css, "filter");
+        sp_repr_css_unset_property(css, property);
     }
 
     if (recursive) {

@@ -845,7 +845,7 @@ void PaintAttribute::set_paint(const SPObject* object, bool fill) {
     strip.set_paint(object);
 }
 
-void PaintAttribute::update_markers(SPIString* markers[], SPObject* object) {
+void PaintAttribute::update_markers(SPIMarker* markers[], SPObject* object) {
     for (auto combo : {&_marker_start, &_marker_mid, &_marker_end}) {
         if (combo->in_update()) continue;
 

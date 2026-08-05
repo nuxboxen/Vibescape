@@ -20,7 +20,6 @@
 
 #include "document.h"
 #include "inkscape-application.h"
-#include "inkscape-version.h"
 #include "style.h"
 
 #include "object/object-set.h"
@@ -739,8 +738,7 @@ void add_actions_processing(SPDocument* doc)
         rroot->setAttribute("version", "1.1");
     });
     group->add_action("set-inkscape-version",         [doc]() {
-        auto rroot = doc->getReprRoot();
-        rroot->setAttribute("inkscape:version", Inkscape::version_string);
+        doc->getRoot()->updateDocVersion();
     });
     group->add_action("prune-inkscape-namespaces",    [doc]() { prune_inkscape_from_node(doc->getReprRoot()); });
     group->add_action("prune-proprietary-namespaces", [doc]() { prune_proprietary_from_node(doc->getReprRoot()); });

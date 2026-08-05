@@ -30,6 +30,7 @@ public:
     size_t getTotalNodeSatellites();
     void setSelected(std::vector<size_t> selected);
     void updateSteps(size_t steps, bool apply_no_radius, bool apply_with_radius, bool only_selected);
+    void updateAngle(double angle, bool apply_no_radius, bool apply_with_radius, bool only_selected);
     void updateAmount(double radius, bool apply_no_radius, bool apply_with_radius, bool only_selected, 
                       bool use_knot_distance, bool flexible);
     void convertUnit(Glib::ustring in, Glib::ustring to, bool apply_no_radius, bool apply_with_radius);

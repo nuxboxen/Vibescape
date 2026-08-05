@@ -23,7 +23,7 @@
 #include <gtkmm/label.h>
 #include <gtkmm/separator.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "helper/geom.h"
 #include "object/sp-lpe-item.h"
 #include "preferences.h"

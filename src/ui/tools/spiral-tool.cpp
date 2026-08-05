@@ -21,7 +21,6 @@
 
 #include "context-fns.h"
 #include "desktop-style.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "document.h"
 #include "message-context.h"
@@ -42,6 +41,8 @@ namespace Inkscape::UI::Tools {
 
 SpiralTool::SpiralTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/shapes/spiral", "spiral.svg")
+    , mod_freehand_angle_snapping(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
 {
     sp_event_context_read(this, "expansion");
     sp_event_context_read(this, "revolution");
@@ -174,7 +175,7 @@ bool SpiralTool::root_handler(CanvasEvent const &event)
                     finishItem();
                 } else if (item_to_select) {
                     // No dragging, select clicked item if any.
-                    if (event.modifiers & GDK_SHIFT_MASK) {
+                    if (mod_select_add_to->active(event.modifiers)) {
                         selection->toggle(item_to_select);
                     } else if (!selection->includes(item_to_select)) {
                         selection->set(item_to_select);
@@ -190,21 +191,15 @@ bool SpiralTool::root_handler(CanvasEvent const &event)
             ungrabCanvasEvents();
         },
         [&] (KeyPressEvent const &event) {
-            switch (get_latin_keyval (event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt (at least on my machine)
-                case GDK_KEY_Meta_R:
-                    sp_event_show_modifier_tip(defaultMessageContext(), event,
-                                               _("<b>Ctrl</b>: snap angle"),
-                                               nullptr,
-                                               _("<b>Alt</b>: lock spiral radius"));
-                    break;
+            auto keyval = get_latin_keyval(event);
 
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                Modifiers::responsive_tooltip(
+                    defaultMessageContext(), event, 1, Modifiers::Type::FREEHAND_ANGLE_SNAPPING
+                );
+            }
+
+            switch (keyval) {
                 case GDK_KEY_Escape:
                     if (dragging) {
                         dragging = false;
@@ -240,19 +235,10 @@ bool SpiralTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (KeyReleaseEvent const &event) {
-            switch (get_latin_keyval(event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt
-                case GDK_KEY_Meta_R:
-                    defaultMessageContext()->clear();
-                    break;
-                default:
-                    break;
+            auto keyval = get_latin_keyval(event);
+
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                defaultMessageContext()->clear();
             }
         },
         [&] (CanvasEvent const &event) {}
@@ -299,7 +285,7 @@ void SpiralTool::drag(Geom::Point const &p, guint state) {
     // Start angle calculated from end angle and number of revolutions.
     gdouble arg = Geom::atan2(delta) - 2.0*M_PI * spiral->revo;
 
-    if (state & GDK_CONTROL_MASK) {
+    if (mod_freehand_angle_snapping->active(state)) {
         /* Snap start angle */
         double snaps_radian = M_PI / snaps;
         arg = std::round(arg / snaps_radian) * snaps_radian;
@@ -316,8 +302,9 @@ void SpiralTool::drag(Geom::Point const &p, guint state) {
     Inkscape::Util::Quantity q = Inkscape::Util::Quantity(rad, "px");
     Glib::ustring rads = q.string(_desktop->getNamedView()->display_units);
     this->message_context->setF(Inkscape::IMMEDIATE_MESSAGE,
-                               _("<b>Spiral</b>: radius %s, angle %.2f&#176;; with <b>Ctrl</b> to snap angle"),
-                                rads.c_str(), arg * 180/M_PI + 360*spiral->revo);
+                                _("<b>Spiral</b>: radius %s, angle %.2f&#176;; with <b>%s</b> to snap angle"),
+                                rads.c_str(), arg * 180/M_PI + 360*spiral->revo,
+                                mod_freehand_angle_snapping->get_label().c_str());
 }
 
 void SpiralTool::finishItem() {

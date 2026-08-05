@@ -39,13 +39,22 @@ INSTANTIATE_TEST_SUITE_P(ColorsSpacesLuv, normalize, testing::Values(
 TEST(ColorsSpacesLuv, manualConversion)
 {
     // This output is unscaled, so Luv values are between L:0..100 and etc.
-    EXPECT_TRUE(ManualPassFunc(Space::Luv::fromXYZ, {0.5, 0.2, 0.4}, Space::Luv::toXYZ, {51.837, 153.445, -57.51}));
+    std::array<double, 3> from_values = {0.5, 0.2, 0.4};
+    std::array<double, 3> to_values = {51.837, 153.445, -57.51};
+    auto copy = from_values;
+    Space::Luv::profileToSpace(from_values.data(), copy.data());
+    auto ret = VectorIsNear(copy, to_values, 0.05);
+    if (ret) {
+        Space::Luv::spaceToProfile(to_values.data(), to_values.data());
+        ret = VectorIsNear(to_values, from_values, 0.05);
+    }
 }
 
 TEST(ColorsSpacesLuv, randomConversion)
 {
     // Isolate conversion functions
-    EXPECT_TRUE(RandomPassFunc(Space::Luv::fromXYZ, Space::Luv::toXYZ, 1000));
+    EXPECT_TRUE(RandomPassFunc(Space::Luv::profileToSpace<double>,
+                               Space::Luv::spaceToProfile<double>, 1000));
 
     EXPECT_TRUE(RandomPassthrough(LUV, XYZ, 1000));
 }

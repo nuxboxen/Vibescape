@@ -10,7 +10,6 @@
 
 #include "ui/tools/dynamic-base.h"
 #include "display/control/canvas-item-bpath.h"
-#include "desktop.h"
 #include "util/units.h"
 
 using Inkscape::Util::Unit;

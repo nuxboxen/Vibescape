@@ -12,7 +12,6 @@
 
 #include "pages-tool.h"
 
-#include "desktop.h"
 #include "document-undo.h"
 #include "pure-transform.h"
 #include "selection.h"
@@ -39,6 +38,8 @@ namespace Inkscape::UI::Tools {
 
 PagesTool::PagesTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/pages", "select.svg")
+    , mod_move_no_snapping(Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING))
+    , mod_trans_confine(Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE))
 {
     // Save selection state and clear selection before using the tool
     _selection_state = std::make_unique<Inkscape::SelectionState>(desktop->getSelection()->getState());
@@ -195,15 +196,7 @@ void PagesTool::resizeKnotMoved(SPKnot *knot, Geom::Point const &ppointer, guint
     Geom::Point point = getSnappedResizePoint(knot->position(), state, start, page);
 
     if (point != start) {
-        if (index % 3 == 0)
-            rect[Geom::X].setMin(point[Geom::X]);
-        else
-            rect[Geom::X].setMax(point[Geom::X]);
-
-        if (index < 2)
-            rect[Geom::Y].setMin(point[Geom::Y]);
-        else
-            rect[Geom::Y].setMax(point[Geom::Y]);
+        rect = Geom::Rect(rect.corner((index + 2) % 4), point);
 
         visual_box->set_visible(true);
         visual_box->set_rect(rect);
@@ -214,7 +207,7 @@ void PagesTool::resizeKnotMoved(SPKnot *knot, Geom::Point const &ppointer, guint
 
 bool PagesTool::offsetKnotMoved(SPKnot *knot, Geom::Point *point, guint state)
 {
-    if (!Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(state)) {
+    if (!mod_move_no_snapping->active(state)) {
         knot->setPosition(
             getSnappedResizePoint(*point, state, knot->position()), state);
         return true;
@@ -239,7 +232,7 @@ void PagesTool::offsetKnotFinished(SPKnot *knot, guint state)
  */
 Geom::Point PagesTool::getSnappedResizePoint(Geom::Point point, guint state, Geom::Point origin, SPObject *target)
 {
-    if (!(state & GDK_SHIFT_MASK)) {
+    if (!mod_move_no_snapping->active(state)) {
         SnapManager &snap_manager = _desktop->getNamedView()->snap_manager;
         snap_manager.setup(_desktop, true, target);
         Inkscape::SnapCandidatePoint scp(point, Inkscape::SNAPSOURCE_PAGE_CORNER);
@@ -276,8 +269,8 @@ bool PagesTool::marginKnotMoved(SPKnot *knot, Geom::Point *ppointer, guint state
         Geom::Point point = *ppointer * document->dt2doc();
 
         // Confine knot to edge
-        auto confine = Modifiers::Modifier::get(Modifiers::Type::TRANS_CONFINE)->active(state);
-        if (!Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(state)) {
+        auto confine = mod_trans_confine->active(state);
+        if (!mod_move_no_snapping->active(state)) {
             point = getSnappedResizePoint(point, state, knot->drag_origin, page);
         }
 
@@ -334,7 +327,7 @@ bool PagesTool::root_handler(CanvasEvent const &event)
         [&] (MotionEvent const &event) {
             auto point_w = event.pos;
             auto point_dt = _desktop->w2d(point_w);
-            bool snap = !(event.modifiers & GDK_SHIFT_MASK);
+            bool snap = !mod_move_no_snapping->active(event.modifiers);
 
             if (event.modifiers & GDK_BUTTON1_MASK) {
                 if (!mouse_is_pressed) {
@@ -386,7 +379,7 @@ bool PagesTool::root_handler(CanvasEvent const &event)
             }
             auto point_w = event.pos;
             auto point_dt = _desktop->w2d(point_w);
-            bool snap = !(event.modifiers & GDK_SHIFT_MASK);
+            bool snap = !mod_move_no_snapping->active(event.modifiers);
             auto document = _desktop->getDocument();
 
             if (dragging_viewbox || dragging_item) {

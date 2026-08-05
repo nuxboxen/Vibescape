@@ -52,9 +52,9 @@
 #include "ui/tools/text-tool.h"
 #include "ui/util.h"
 #include "ui/widget/combo-box-entry-tool-item.h"
+#include "ui/widget/font-size-selector.h"
 #include "ui/widget/spinbutton.h"
 #include "ui/widget/unit-tracker.h"
-#include "ui/widget/generic/number-combo-box.h"
 #include "util/font-collections.h"
 #include "widgets/style-utils.h"
 
@@ -140,7 +140,6 @@ TextToolbar::TextToolbar()
 TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     : Toolbar{get_widget<Gtk::Box>(builder, "text-toolbar")}
     , _tracker{std::make_unique<UnitTracker>(Util::UNIT_TYPE_LINEAR)}
-    , _tracker_fs{std::make_unique<UnitTracker>(Util::UNIT_TYPE_LINEAR)}
     , _font_collections_list{get_widget<Gtk::ListBox>(builder, "_font_collections_list")}
     , _reset_button{get_widget<Gtk::Button>(builder, "reset_btn")}
     , _line_height_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_line_height_item")}
@@ -151,6 +150,7 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     , _dx_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_dx_item")}
     , _dy_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_dy_item")}
     , _rotation_item{get_derived_widget<UI::Widget::SpinButton>(builder, "_rotation_item")}
+    , _font_size_item{get_widget<UI::Widget::FontSizeSelector>(builder, "font_size")}
 {
     auto prefs = Preferences::get();
 
@@ -162,8 +162,6 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     _tracker->addUnit(unit_table.unit("em"));
     _tracker->addUnit(unit_table.unit("ex"));
     _tracker->setActiveUnit(lines.get());
-
-    _tracker_fs->setActiveUnit(unit_table.getUnit("mm"));
 
     // Setup the spin buttons.
     // TODO: Take care of the line-height pref settings.
@@ -255,30 +253,7 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     get_widget<Gtk::Box>(builder, "styles_list_box").append(*_font_style_item);
 
     // Font size
-    int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
-    _previous_unit = unit;
-    auto unit_str = sp_style_get_css_unit_string(unit);
-    auto tooltip = Glib::ustring::format(_("Font size"), " (", unit_str, ")");
-
-    _font_size_item = Gtk::make_managed<UI::Widget::NumberComboBox>();
-    _font_size_item->set_name("TextFontSizeAction");
-    _font_size_item->set_tooltip_text(tooltip);
-    _font_size_item->set_menu_options(sp_style_get_default_font_size_list(unit));
-    auto& entry = _font_size_item->get_entry();
-    entry.set_min_size("9999");
-    entry.set_digits(3);
-    int max_size = prefs->getInt("/dialogs/textandfont/maxFontSize", 10000);
-    entry.set_range(0.001, max_size);
-
-    _font_size_item->signal_value_changed().connect([this](auto size) { fontsize_value_changed(size); });
-    _font_size_item->get_entry().setDefocusTarget(this);
-
-    get_widget<Gtk::Box>(builder, "font_size_box").append(*_font_size_item);
-
-    // Font size units
-    _font_size_units_item = _tracker_fs->create_unit_dropdown();
-    _font_size_units_item->signal_changed().connect(sigc::mem_fun(*this, &TextToolbar::fontsize_unit_changed));
-    get_widget<Gtk::Box>(builder, "unit_menu_box").append(*_font_size_units_item);
+    _font_size_item.signal_size_changed().connect([this](auto size, int unit) { fontsize_value_changed(size); });
 
     // Line height units
     _line_height_units_item = _tracker->create_unit_dropdown();
@@ -481,13 +456,10 @@ void TextToolbar::fontsize_value_changed(double size)
     }
     _freeze = true;
 
-    auto prefs = Preferences::get();
-    int max_size = prefs->getInt("/dialogs/textandfont/maxFontSize", 10000); // somewhat arbitrary, but text&font preview freezes with too huge fontsizes
-    size = std::min<double>(size, max_size);
-
     // Set css font size.
     auto css = sp_repr_css_attr_new();
     CSSOStringStream osfs;
+    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
     if (prefs->getBool("/options/font/textOutputPx", true)) {
         osfs << sp_style_css_size_units_to_px(size, unit) << sp_style_get_css_unit_string(SP_CSS_UNIT_PX);
@@ -640,6 +612,32 @@ SPCSSTextAlign text_align_to_side(SPCSSTextAlign const &align, SPCSSDirection co
     return new_align;
 }
 
+SPCSSAttr *TextToolbar::cssForTextAlignment(int align_mode, int direction)
+{
+    auto css = sp_repr_css_attr_new();
+
+    if ((align_mode == 0 && direction == SP_CSS_DIRECTION_LTR) ||
+        (align_mode == 2 && direction == SP_CSS_DIRECTION_RTL)) {
+        sp_repr_css_set_property(css, "text-anchor", "start");
+        sp_repr_css_set_property(css, "text-align",  "start");
+    }
+    if ((align_mode == 0 && direction == SP_CSS_DIRECTION_RTL) ||
+        (align_mode == 2 && direction == SP_CSS_DIRECTION_LTR)) {
+        sp_repr_css_set_property(css, "text-anchor", "end");
+        sp_repr_css_set_property(css, "text-align",  "end");
+    }
+    if (align_mode == 1) {
+        sp_repr_css_set_property(css, "text-anchor", "middle");
+        sp_repr_css_set_property(css, "text-align",  "center");
+    }
+    if (align_mode == 3) {
+        sp_repr_css_set_property(css, "text-anchor", "start");
+        sp_repr_css_set_property(css, "text-align",  "justify");
+    }
+
+    return css;
+}
+
 void TextToolbar::align_mode_changed(int align_mode)
 {
     // quit if run by the _changed callbacks
@@ -648,9 +646,12 @@ void TextToolbar::align_mode_changed(int align_mode)
     }
     _freeze = true;
 
-    Preferences::get()->setInt("/tools/text/align_mode", align_mode);
+    auto prefs = Preferences::get();
+    prefs->setInt("/tools/text/align_mode", align_mode);
 
     // Move the alignment point of all texts to preserve the same bbox.
+    // Because align_mode interpretation depends on text direction, we don't simply us
+    // mergeDefaultStyle like other "button changed" handlers. We need to query each selection.
     bool changed = false;
     Selection *selection = _desktop->getSelection();
     for (auto i : selection->items()) {
@@ -743,25 +744,7 @@ void TextToolbar::align_mode_changed(int align_mode)
                 changed = true;
             }
 
-            SPCSSAttr *css = sp_repr_css_attr_new ();
-            if ((align_mode == 0 && direction == SP_CSS_DIRECTION_LTR) ||
-                (align_mode == 2 && direction == SP_CSS_DIRECTION_RTL)) {
-                sp_repr_css_set_property (css, "text-anchor", "start");
-                sp_repr_css_set_property (css, "text-align",  "start");
-            }
-            if ((align_mode == 0 && direction == SP_CSS_DIRECTION_RTL) ||
-                (align_mode == 2 && direction == SP_CSS_DIRECTION_LTR)) {
-                sp_repr_css_set_property (css, "text-anchor", "end");
-                sp_repr_css_set_property (css, "text-align",  "end");
-            }
-            if (align_mode == 1) {
-                sp_repr_css_set_property (css, "text-anchor", "middle");
-                sp_repr_css_set_property (css, "text-align",  "center");
-            }
-            if (align_mode == 3) {
-                sp_repr_css_set_property (css, "text-anchor", "start");
-                sp_repr_css_set_property (css, "text-align",  "justify");
-            }
+            auto css = cssForTextAlignment(align_mode, direction);
             text->changeCSS(css, "style");
             sp_repr_css_attr_unref(css);
 
@@ -775,6 +758,14 @@ void TextToolbar::align_mode_changed(int align_mode)
             text->updateRepr();
             text->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
         } // if(text)
+    }
+
+    // Update the default style css if nothing is selected, based off of the default direction.
+    if (selection->isEmpty()) {
+        auto direction = prefs->getInt("/tools/text/direction_mode", SP_CSS_DIRECTION_LTR);
+        auto css = cssForTextAlignment(align_mode, direction);
+        changed = mergeDefaultStyle(css);
+        sp_repr_css_attr_unref(css);
     }
 
     if (changed) {
@@ -863,7 +854,9 @@ void TextToolbar::direction_changed(int mode)
     }
     _freeze = true;
 
-    Preferences::get()->setInt("/tools/text/direction_mode", mode);
+    auto prefs = Preferences::get();
+    auto has_new_default_direction = prefs->getInt("/tools/text/direction_mode", SP_CSS_DIRECTION_LTR) != mode;
+    prefs->setInt("/tools/text/direction_mode", mode);
 
     auto css = sp_repr_css_attr_new();
     switch (mode) {
@@ -875,6 +868,23 @@ void TextToolbar::direction_changed(int mode)
             break;
         default:
             break;
+    }
+
+    // Because align_mode interpretation depends on direction_mode, we update the global default
+    // style's align_mode if nothing is selected (just like a selected text's style would
+    // swap alignment as direction changes).
+    if (_desktop->getSelection()->isEmpty() && has_new_default_direction) {
+        auto alignment = prefs->getInt("/tools/text/align_mode", 0);
+        auto new_alignment = alignment;
+        if (alignment == 0) {
+            new_alignment = 2;
+        } else if (alignment == 2) {
+            new_alignment = 0;
+        }
+        if (alignment != new_alignment) {
+            prefs->setInt("/tools/text/align_mode", new_alignment);
+            _alignment_buttons[new_alignment]->set_active(true);
+        }
     }
 
     if (mergeDefaultStyle(css)) {
@@ -1200,22 +1210,6 @@ void TextToolbar::lineheight_unit_changed()
     _freeze = false;
 }
 
-void TextToolbar::fontsize_unit_changed()
-{
-    // quit if run by the _changed callbacks
-    auto const unit = _tracker_fs->getActiveUnit();
-
-    // This nonsense is to get SP_CSS_UNIT_xx value corresponding to unit.
-    SPILength temp_size;
-    CSSOStringStream temp_size_stream;
-    temp_size_stream << 1 << unit->abbr;
-    temp_size.read(temp_size_stream.str().c_str());
-    Preferences::get()->setInt("/options/font/unitType", temp_size.unit);
-
-    // refresh font size and list of font sizes after unit change
-    _selectionChanged(nullptr);
-}
-
 void TextToolbar::wordspacing_value_changed()
 {
     // quit if run by the _changed callbacks
@@ -1513,29 +1507,9 @@ void TextToolbar::_selectionChanged(Selection *selection) // don't bother to upd
             size = sp_style_css_size_px_to_units(query.font_size.computed, unit);
         }
 
-        auto unit_str = sp_style_get_css_unit_string(unit);
-        Glib::ustring tooltip = Glib::ustring::format(_("Font size"), " (", unit_str, ")");
-
-        _font_size_item->set_tooltip_text(tooltip.c_str());
-
-        // We don't want to parse values just show
-
-        _tracker_fs->setActiveUnitByAbbr(sp_style_get_css_unit_string(unit));
-        int rounded_size = std::round(size);
-        if (std::abs((size - rounded_size)/size) < 0.0001) {
-            // We use rounded_size to avoid rounding errors when, say, converting stored 'px' values to displayed 'pt' values.
-            selection_fontsize = rounded_size;
-        } else {
-            selection_fontsize = size;
-        }
-
-        if (unit != _previous_unit) {
-            // No need to update menu options unless the unit is changed
-            _previous_unit = unit;
-            _font_size_item->set_menu_options(sp_style_get_default_font_size_list(unit));
-        }
-
-        _font_size_item->set_value(selection_fontsize);
+        // Avoid conversion oddities by rounding
+        selection_fontsize = sp_style_css_size_round_for_user_display(size);
+        _font_size_item.setSize(selection_fontsize);
 
         // Superscript
         bool superscriptSet =

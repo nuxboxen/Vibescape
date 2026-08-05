@@ -97,7 +97,7 @@ void ObjectColorSet::populateStopsMap(SPStop *stop)
 * populate _selected_colors map with the color as a string key with vector of objects that
 * have the same color and a pair of colors that has the old and new colors of type color
 * to ensure easy access on both colors
-* 
+*
 */
 void ObjectColorSet::populateMap(Color color, SPObject *item, ObjectStyleType type, std::string const &kind)
 {
@@ -106,7 +106,7 @@ void ObjectColorSet::populateMap(Color color, SPObject *item, ObjectStyleType ty
     ColorPair pair {color, color};
     uint32_t color_rgba = color.toRGBA();
     auto _selected = _selected_colors.find(color_rgba);
-    // search if key exist and just push the object to the objects vector 
+    // search if key exist and just push the object to the objects vector
     if (_selected != _selected_colors.end()) {
         _selected->second.first.push_back(ref);
     } else { // create key and push the object and their color ref
@@ -176,7 +176,7 @@ std::optional<Color> ObjectColorSet::getColor(int index) const
     if (index < 0 || index >= colors.size()) {
         return {};
     }
-    
+
     return colors[index];
 }
 
@@ -243,24 +243,27 @@ void ColorsExtractor::collectColors(std::vector<SPObject *> objects, ObjectStyle
     for (auto object : objects) {
         if (auto item = cast<SPItem>(object)) {
             if (auto mask = cast<SPMask>(item->getMaskObject())) {
-                std::vector<SPObject *> children_vec;
-                for (auto &child : mask->children) {
-                    children_vec.push_back(&child);
-                }
-                collectColors(children_vec, ObjectStyleType::Mask);
+                auto children = mask->childList(false);
+                collectColors(children, ObjectStyleType::Mask);
             }
-            if (auto text = cast<SPText>(item)) { // handle text objects color collection by collecting the colors of its tspans children
-                if (auto tspan = cast<SPTSpan>(&text->children.front())) {
-                    std::vector<SPObject *> children_vec;
-                    bool noid = true;
-                    for (auto &child : tspan->children) {
-                        children_vec.push_back(&child);
-                    }
-                    collectColors(children_vec, type);
-                    continue;
-                }
+
+            // Text objects may contain many tspans, each of which can be styled
+            // differently.
+            if (auto text = cast<SPText>(item)) {
+                auto children = text->childList(false);
+                collectColors(children, type);
+
+                // The text object itself isn't expected to have a color.
+                continue;
+            }
+
+            // A tspan can contain recursively contain additional tspans.
+            if (auto tspan = cast<SPTSpan>(item)) {
+                auto children = tspan->childList(false);
+                collectColors(children, type);
             }
         }
+
         extractObjectColors(object, type);
     }
 }
@@ -411,7 +414,7 @@ void ColorsExtractor::extractPatternColors(SPPattern *pattern)
 
 /*
 * extract marker id from marker to get it by herf from the xml tree
-* then try to cast the result to spmarker 
+* then try to cast the result to spmarker
 * loop over the spmarker children and do the extraction process on every child
 * by calling extractObjectColors
 */

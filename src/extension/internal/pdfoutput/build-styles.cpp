@@ -15,6 +15,8 @@
 #include "colors/color.h"
 #include "colors/spaces/cms.h"
 #include "colors/spaces/cmyk.h"
+#include "object/sp-gradient.h"
+#include "libnrtype/font-instance.h"
 #include "object/sp-paint-server.h"
 #include "style.h"
 
@@ -286,18 +288,24 @@ std::optional<CapyPDF_GraphicsStateId> Document::get_shape_graphics_state(SPStyl
  *
  * @returns the FontId in capypdf to use.
  */
-std::optional<CapyPDF_FontId> Document::get_font(std::string const &filename, SPIFontVariationSettings &var)
+std::optional<std::pair<std::string, CapyPDF_FontId>> Document::get_font(std::shared_ptr<FontInstance> font, SPIFontVariationSettings &var)
 {
+    auto filename = font->GetFilename();
     auto key = filename;
     if (!var.axes.empty()) {
         key += "-" + var.toString();
     }
+
     // TODO: It's possible for the font loading to fail but we don't know how yet.
     if (!_font_cache.contains(key)) {
         try {
             auto fontprops = capypdf::FontProperties();
-            for (auto &[name, value] : var.axes) {
-                fontprops.set_variation(name, (int)value);
+            auto axes = font->get_opentype_varaxes();
+            for (auto &axis : axes) {
+                auto iter = var.axes.find(axis.tag);
+                fontprops.set_variation(axis.tag, iter == var.axes.end()
+                        ? (int)axis.def
+                        : iter->second);
             }
             _font_cache[key] = _gen.load_font(filename.c_str(), fontprops);
         } catch (std::exception const &err) {
@@ -305,7 +313,7 @@ std::optional<CapyPDF_FontId> Document::get_font(std::string const &filename, SP
             return {};
         }
     }
-    return _font_cache[key];
+    return {{key, _font_cache[key]}};
 }
 
 /**
@@ -332,7 +340,10 @@ std::optional<capypdf::Color> Document::get_paint(SPIPaint const &paint, SPStyle
 
     capypdf::Color out;
     if (paint.isPaintserver()) {
-        if (auto pattern_id = get_pattern(paint.href ? paint.href->getObject() : nullptr, opacity)) {
+        auto swatch = cast<SPGradient>(paint.href ? paint.href->getObject() : nullptr);
+        if (swatch && swatch->isSolid()) {
+            return get_color(swatch->getPreviewAverageColor(), opacity);
+        } else if (auto pattern_id = get_pattern(paint.href ? paint.href->getObject() : nullptr, opacity)) {
             out.set_pattern(*pattern_id);
         } else {
             g_warning("Couldn't generate pattern for fill '%s'", paint.get_value().c_str());

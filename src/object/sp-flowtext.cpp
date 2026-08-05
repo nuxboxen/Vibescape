@@ -33,7 +33,7 @@
 #include "sp-text.h"
 #include "sp-use.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/drawing-group.h"
 #include "libnrtype/font-factory.h"
 #include "libnrtype/font-instance.h"
@@ -634,20 +634,14 @@ bool SPFlowtext::has_internal_frame() const
     return (frame && isAncestorOf(frame) && cast<SPRect>(frame));
 }
 
-
-SPItem *create_flowtext_with_internal_frame (SPDesktop *desktop, Geom::Point p0, Geom::Point p1)
+SPItem *create_flowtext_with_internal_frame (SPGroup *parent, SPCSSAttr *css, Geom::Rect rect_doc)
 {
-    SPDocument *doc = desktop->getDocument();
-    auto const parent = desktop->layerManager().currentLayer();
-    assert(parent);
+    SPDocument *doc = parent->document;
 
     Inkscape::XML::Document *xml_doc = doc->getReprDoc();
     Inkscape::XML::Node *root_repr = xml_doc->createElement("svg:flowRoot");
     root_repr->setAttribute("xml:space", "preserve"); // we preserve spaces in the text objects we create
     root_repr->setAttributeOrRemoveIfEmpty("transform", sp_svg_transform_write(parent->i2doc_affine().inverse()));
-
-    /* Set style */
-    desktop->applyCurrentOrToolStyle(root_repr, "/tools/text", true);
 
     auto ft_item = cast<SPItem>(parent->appendChildRepr(root_repr));
     g_assert(ft_item != nullptr);
@@ -665,18 +659,7 @@ SPItem *create_flowtext_with_internal_frame (SPDesktop *desktop, Geom::Point p0,
     auto rect = cast<SPRect>(doc->getObjectByRepr(rect_repr));
     g_assert(rect != nullptr);
 
-    p0 *= desktop->dt2doc();
-    p1 *= desktop->dt2doc();
-    using Geom::X;
-    using Geom::Y;
-    Geom::Coord const x0 = MIN(p0[X], p1[X]);
-    Geom::Coord const y0 = MIN(p0[Y], p1[Y]);
-    Geom::Coord const x1 = MAX(p0[X], p1[X]);
-    Geom::Coord const y1 = MAX(p0[Y], p1[Y]);
-    Geom::Coord const w  = x1 - x0;
-    Geom::Coord const h  = y1 - y0;
-
-    rect->setPosition(x0, y0, w, h);
+    rect->setPosition(rect_doc.min()[Geom::X], rect_doc.min()[Geom::Y], rect_doc.width(), rect_doc.height());
     rect->updateRepr();
 
     Inkscape::XML::Node *para_repr = xml_doc->createElement("svg:flowPara");

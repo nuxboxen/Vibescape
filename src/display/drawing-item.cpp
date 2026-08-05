@@ -95,14 +95,7 @@ DrawingItem::DrawingItem(Drawing &drawing)
 
 DrawingItem::~DrawingItem()
 {
-    // Unactivate if active.
-    if (auto itemdrawing = _drawing.getCanvasItemDrawing()) {
-        if (itemdrawing->get_active() == this) {
-            itemdrawing->set_active(nullptr);
-        }
-    } else {
-        // Typically happens, e.g. for any non-Canvas Drawing.
-    }
+    _drawing._item_deleted_signal.emit(_key);
 
     // Remove caching candidate entry.
     if (_has_cache_iterator) {
@@ -132,7 +125,7 @@ bool DrawingItem::unisolatedBlend() const
 {
     if (_blend_mode != SP_CSS_BLEND_NORMAL) {
         return true;
-    } else if (_mask || _filter || _opacity < 0.995 || _isolation == SP_CSS_ISOLATION_ISOLATE) {
+    } else if (_mask || _filter || hasOpacity() || _isolation == SP_CSS_ISOLATION_ISOLATE) {
         return false;
     } else {
         return _contains_unisolated_blend;
@@ -202,6 +195,17 @@ void DrawingItem::setOpacity(float opacity)
     defer([=, this] {
         if (opacity == _opacity) return;
         _opacity = opacity;
+        _markForRendering();
+    });
+}
+
+void DrawingItem::setOpacityOverride(std::optional<double> opacity)
+{
+    defer([=, this] {
+        if ((!opacity && !_opacity_override) || (opacity && _opacity_override && *opacity == *_opacity_override)) {
+            return;
+        }
+        _opacity_override = opacity;
         _markForRendering();
     });
 }
@@ -619,7 +623,7 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
         }
 
         // Determine whether this item is cachable.
-        bool isolated = _mask || _filter || _opacity < 0.995
+        bool isolated = _mask || _filter || hasOpacity()
             || _blend_mode != SP_CSS_BLEND_NORMAL
             || _isolation == SP_CSS_ISOLATION_ISOLATE
             || _child_type == ChildType::ROOT;
@@ -790,7 +794,7 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
            _clip                                  // 1. it has a clipping path
         || _mask                                  // 2. it has a mask
         || (_filter && render_filters)            // 3. it has a filter
-        || _opacity < 0.995                       // 4. it is non-opaque
+        || hasOpacity()                           // 4. it is non-opaque
         || _blend_mode != SP_CSS_BLEND_NORMAL     // 5. it has blend mode
         || _isolation == SP_CSS_ISOLATION_ISOLATE // 6. it is isolated
         || (_child_type == ChildType::ROOT && isolate_root) // 7. it is the root and needs isolation
@@ -838,7 +842,7 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
     unsigned render_result = RENDER_OK;
 
     // 1. Render clipping path with alpha = opacity.
-    ict.setSource(0,0,0,_opacity);
+    ict.setSource(0,0,0, getOpacity());
     // Since clip can be combined with opacity, the result could be incorrect
     // for overlapping clip children. To fix this we use the SOURCE operator
     // instead of the default OVER.
@@ -1021,7 +1025,7 @@ void DrawingItem::clip(DrawingContext &dc, Inkscape::RenderContext &rc, Geom::In
  *               When false, only visible and sensitive objects are considered.
  *               When true, invisible and insensitive objects can also be picked.
  */
-DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, unsigned flags)
+DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
     // Sometimes there's no BBOX in state, reason unknown (bug 992817)
     // I made this not an assert to remove the warning
@@ -1039,14 +1043,14 @@ DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, unsigned flag
     if (!outline) {
         // pick inside clipping path; if NULL, it means the object is clipped away there
         if (_clip) {
-            DrawingItem *cpick = _clip->pick(p, delta, flags | PICK_AS_CLIP);
+            DrawingItem *cpick = _clip->pick(p, delta, area_world, flags | PICK_AS_CLIP);
             if (!cpick) {
                 return nullptr;
             }
         }
         // same for mask
         if (_mask) {
-            DrawingItem *mpick = _mask->pick(p, delta, flags);
+            DrawingItem *mpick = _mask->pick(p, delta, area_world, flags);
             if (!mpick) {
                 return nullptr;
             }
@@ -1066,7 +1070,7 @@ DrawingItem *DrawingItem::pick(Geom::Point const &p, double delta, unsigned flag
     }
 
     if (expanded.contains(p)) {
-        return _pickItem(p, delta, flags);
+        return _pickItem(p, delta, area_world, flags);
     }
     return nullptr;
 }
@@ -1132,9 +1136,7 @@ void DrawingItem::_markForRendering()
         bkg_root->_invalidateFilterBackground(*dirty);
     }
 
-    if (auto canvasitem = drawing().getCanvasItemDrawing()) {
-        canvasitem->get_canvas()->redraw_area(*dirty);
-    }
+    _drawing._redraw_area_signal.emit(*dirty);
 }
 
 void DrawingItem::_invalidateFilterBackground(Geom::IntRect const &area)
@@ -1182,11 +1184,7 @@ void DrawingItem::_markForUpdate(unsigned flags, bool propagate)
             // up to the root. Do not bother recursing, because it won't change anything.
             // Also do this if we are the root item, because we have no more ancestors
             // to invalidate.
-            if (drawing().getCanvasItemDrawing()) {
-                drawing().getCanvasItemDrawing()->request_update();
-            } else {
-                // Typically happens, e.g. for any non-Canvas Drawing.
-            }
+            _drawing._drawing_updated_signal.emit();
         }
     }
 }

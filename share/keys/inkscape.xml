@@ -36,12 +36,11 @@ override) the bindings in the main default.xml.
   <modifier action="select-in-groups" modifiers="Ctrl"/>
   <modifier action="select-touch-path" modifiers="Alt"/>
   <modifier action="select-always-box" modifiers="Shift"/>
-  <modifier action="select-remove-from" modifiers="Ctrl"/>
+  <modifier action="select-remove-from" modifiers="Shift,Ctrl"/>
   <modifier action="select-force-drag" modifiers="Alt"/>
   <modifier action="select-cycle" modifiers="Alt"/>
 
   <modifier action="move-confine" modifiers="Ctrl"/>
-  <modifier action="move-increment" modifiers="Alt"/>
   <modifier action="move-snapping" />
   
   <modifier action="trans-confine" modifiers="Ctrl"/>
@@ -365,11 +364,11 @@ override) the bindings in the main default.xml.
   <bind gaction="app.path-fracture"                      keys="&lt;shift&gt;&lt;alt&gt;f" />
   <bind gaction="app.path-flatten"                       keys="&lt;shift&gt;f" />
 
-  <bind gaction="win.path-inset"                         keys="&lt;primary&gt;parenleft,
+  <bind gaction="app.path-inset"                         keys="&lt;primary&gt;parenleft,
                                                                &lt;primary&gt;&lt;shift&gt;parenleft,
                                                                &lt;primary&gt;9,
                                                                &lt;primary&gt;&lt;shift&gt;9" />
-  <bind gaction="win.path-offset"                        keys="&lt;primary&gt;parenright,
+  <bind gaction="app.path-offset"                        keys="&lt;primary&gt;parenright,
                                                                &lt;primary&gt;&lt;shift&gt;parenright,
                                                                &lt;primary&gt;0,
                                                                &lt;primary&gt;&lt;shift&gt;0" />

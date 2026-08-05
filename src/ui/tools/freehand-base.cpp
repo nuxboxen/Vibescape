@@ -19,7 +19,7 @@
 
 #include "desktop-style.h"
 #include "display/control/canvas-item-bpath.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "id-clash.h"
 #include "live_effects/lpe-bendpath.h"
 #include "live_effects/lpe-patternalongpath.h"
@@ -287,6 +287,13 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
 
     auto desktop = dc->getDesktop();
 
+    if (!is_bend) {
+        // The bend effect does not want the transform applied yet
+        item->transform = dc->currentLayer()->i2doc_affine().inverse();
+        item->updateRepr();
+        item->doWriteTransform(item->transform, nullptr, true);
+    }
+
     if (is<SPLPEItem>(item)) {
         double const defsize = 10 / (0.265 * dc->getDesktop()->getDocument()->getDocumentScale()[0]);
         auto const SHAPE_LENGTH = defsize;
@@ -320,6 +327,13 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
         if (!is_bend && previous_shape_type == BEND_CLIPBOARD && shape == BEND_CLIPBOARD) {
             return;
         }
+
+        // Save original item and swap in the bend_item as the target for our various effects if we
+        // are in bend mode, since the bend_item will end up being the user visible object and we
+        // want to make sure it gains the new effects.
+        SPItem *orig_item = item;
+        item = is_bend ? bend_item : item;
+
         bool shape_applied = false;
         bool simplify = prefs->getInt(dc->getPrefsPath() + "/simplify", 0);
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
@@ -422,7 +436,7 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
             }
             case BEND_CLIPBOARD:
             {
-                gchar const *svgd = item->getRepr()->attribute("d");
+                gchar const *svgd = orig_item->getRepr()->attribute("d");
                 if(bend_item && (is<SPShape>(bend_item) || is<SPGroup>(bend_item))){
                     // If item is a SPRect, convert it to path first:
                     if (is<SPRect>(bend_item) ) {
@@ -436,7 +450,7 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
                             }
                         }
                     }
-                    bend_item->moveTo(item,false);
+                    bend_item->moveTo(orig_item, false);
                     bend_item->transform.setTranslation(Geom::Point());
                     spdc_apply_bend_shape(svgd, dc, bend_item);
                     dc->selection->add(bend_item);
@@ -460,13 +474,13 @@ static void spdc_check_for_and_apply_waiting_LPE(FreehandBase *dc, SPItem *item,
                     }
                 } else {
                     if(bend_item != nullptr && bend_item->getRepr() != nullptr){
-                        gchar const *svgd = item->getRepr()->attribute("d");
+                        gchar const *svgd = orig_item->getRepr()->attribute("d");
                         dc->selection->add(bend_item);
                         dc->selection->duplicate();
                         dc->selection->remove(bend_item);
                         bend_item = dc->selection->singleItem();
                         if(bend_item){
-                            bend_item->moveTo(item,false);
+                            bend_item->moveTo(orig_item, false);
                             Geom::Coord expansion_X = bend_item->transform.expansionX();
                             Geom::Coord expansion_Y = bend_item->transform.expansionY();
                             bend_item->transform = Geom::Affine(1,0,0,1,0,0);
@@ -577,8 +591,9 @@ void spdc_endpoint_snap_rotation(ToolBase *tool, Geom::Point &p, Geom::Point con
     SnapManager &m = tool->getDesktop()->getNamedView()->snap_manager;
     m.setup(tool->getDesktop());
 
+    auto snap_user_disabled = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(state);
     bool snap_enabled = m.snapprefs.getSnapEnabledGlobally();
-    if (state & GDK_SHIFT_MASK) {
+    if (snap_user_disabled) {
         // SHIFT disables all snapping, except the angular snapping. After all, the user explicitly asked for angular
         // snapping by pressing CTRL, otherwise we wouldn't have arrived here. But although we temporarily disable
         // the snapping here, we must still call for a constrained snap in order to apply the constraints (i.e. round
@@ -589,7 +604,7 @@ void spdc_endpoint_snap_rotation(ToolBase *tool, Geom::Point &p, Geom::Point con
     Inkscape::SnappedPoint dummy = m.constrainedAngularSnap(Inkscape::SnapCandidatePoint(p, Inkscape::SNAPSOURCE_NODE_HANDLE), std::optional<Geom::Point>(), o, snaps);
     p = dummy.getPoint();
 
-    if (state & GDK_SHIFT_MASK) {
+    if (snap_user_disabled) {
         m.snapprefs.setSnapEnabledGlobally(snap_enabled); // restore the original setting
     }
 
@@ -769,19 +784,17 @@ static void spdc_flush_white(FreehandBase *dc, std::shared_ptr<Geom::PathVector>
         if (SP_IS_PENCIL_CONTEXT(dc) && dc->tablet_enabled) {
             if (!dc->white_item) {
                 dc->white_item = cast<SPItem>(layer->appendChildRepr(repr));
+                Inkscape::GC::release(repr);
             }
             spdc_check_for_and_apply_waiting_LPE(dc, dc->white_item, c.get(), false);
         }
         if (!dc->white_item) {
             // Attach repr
             auto item = cast<SPItem>(layer->appendChildRepr(repr));
-            dc->white_item = item;
-            //Bend needs the transforms applied after, Other effects best before
-            spdc_check_for_and_apply_waiting_LPE(dc, item, c.get(), true);
             Inkscape::GC::release(repr);
-            item->transform = layer->i2doc_affine().inverse();
-            item->updateRepr();
-            item->doWriteTransform(item->transform, nullptr, true);
+            dc->white_item = item;
+            // Apply bend and non-bend affects separately, since they need different transforms
+            spdc_check_for_and_apply_waiting_LPE(dc, item, c.get(), true);
             spdc_check_for_and_apply_waiting_LPE(dc, item, c.get(), false);
             if(previous_shape_type == BEND_CLIPBOARD){
                 repr->parent()->removeChild(repr);
@@ -902,17 +915,20 @@ void spdc_create_single_dot(ToolBase *tool, Geom::Point const &pt, char const *p
     Geom::Affine const i2d (item->i2dt_affine ());
     Geom::Point pp = pt * i2d.inverse();
 
+    auto double_size = Modifiers::Modifier::get(Modifiers::Type::FREEHAND_DOT_DOUBLE)->active(event_state);
+    auto random_size = Modifiers::Modifier::get(Modifiers::Type::FREEHAND_DOT_RANDOM)->active(event_state);
+
     double rad = 0.5 * prefs->getDouble(tool_path + "/dot-size", 3.0);
     if (!strcmp(path, "/tools/calligraphic"))
         rad = 0.0333 * prefs->getDouble(tool_path + "/width", 3.0) / desktop->current_zoom() / desktop->getDocument()->getDocumentScale()[Geom::X];
-    if (event_state & GDK_ALT_MASK) {
+    if (random_size) {
         // TODO: We vary the dot size between 0.5*rad and 1.5*rad, where rad is the dot size
         // as specified in prefs. Very simple, but it might be sufficient in practice. If not,
         // we need to devise something more sophisticated.
         double s = g_random_double_range(-0.5, 0.5);
         rad *= (1 + s);
     }
-    if (event_state & GDK_SHIFT_MASK) {
+    if (double_size) {
         // double the point size
         rad *= 2;
     }

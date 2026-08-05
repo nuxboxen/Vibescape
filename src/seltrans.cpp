@@ -18,7 +18,7 @@
 #include <cstring>
 #include <string>
 
-#include <gdk/gdkkeysyms.h>
+#include <gdk/gdk.h>
 #include <glibmm/i18n.h>
 #include <giomm/application.h>
 
@@ -1449,7 +1449,7 @@ gboolean Inkscape::SelTrans::centerRequest(Geom::Point &pt, guint state)
     m.setup(_desktop);
     m.setRotationCenterSource(items);
 
-    auto no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(state);
+    auto no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(state);
     auto confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(state);
     if (confine) {
         std::vector<Inkscape::Snapper::SnapConstraint> constraints;
@@ -1506,11 +1506,9 @@ bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
     Geom::Point dxy = xy - _point;
 
     auto increments = Modifiers::Modifier::get(Modifiers::Type::MOVE_INCREMENT)->active(state);
-    auto no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->active(state);
+    auto no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(state);
     auto confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(state);
-    auto force_drag = Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG);
-    auto dup_drag = Modifiers::Modifier::get(Modifiers::Type::SELECT_DUPLICATE);
-    increments = increments && !(force_drag && force_drag->active(state)) && !(dup_drag && dup_drag->active(state));
+    increments = increments;
 
     if (confine) {
         if (fabs(dxy[Geom::X]) > fabs(dxy[Geom::Y])) {
@@ -1612,7 +1610,7 @@ bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
 
     // status text
     auto confine_mod = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->get_label();
-    auto no_snap_mod = Modifiers::Modifier::get(Modifiers::Type::MOVE_SNAPPING)->get_label();
+    auto no_snap_mod = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->get_label();
     Inkscape::Util::Quantity x_q = Inkscape::Util::Quantity(dxy[Geom::X], "px");
     Inkscape::Util::Quantity y_q = Inkscape::Util::Quantity(dxy[Geom::Y], "px");
     Glib::ustring xs(x_q.string(_desktop->getNamedView()->display_units));

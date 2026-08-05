@@ -11,16 +11,18 @@
 #ifndef SEEN_COLORS_SPACES_BASE_H
 #define SEEN_COLORS_SPACES_BASE_H
 
+#include <algorithm>
 #include <cstdint>
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "colors/parser.h"
 #include "enum.h"
 #include "colors/cms/profile.h"
+#include "colors/cms/transform-color.h"
 
 constexpr double SCALE_UP(double v, double a, double b)
 {
@@ -33,7 +35,6 @@ constexpr double SCALE_DOWN(double v, double a, double b)
 
 namespace Inkscape::Colors {
 namespace CMS {
-class Profile;
 class TransformColor;
 class GamutChecker;
 } // namespace CMS
@@ -63,10 +64,11 @@ public:
     std::string getSvgName() const { return _svgNames.empty() ? "" : _svgNames[0]; }
     std::vector<std::string> const& getSvgNames() const { return _svgNames; }
     std::string const& getIcon() const { return _icon; }
+    unsigned int getComponentCount() const { return _components; }
     virtual Type getComponentType() const { return getType(); }
-    virtual unsigned int getComponentCount() const { return _components; }
     virtual std::shared_ptr<Colors::CMS::Profile> const getProfile() const = 0;
     RenderingIntent getIntent() const { return _intent; }
+    RenderingIntent getBestIntent(std::shared_ptr<AnySpace> const &to_space) const;
     // Specifies if this color space can be used for color interpolation in the render engine.
     virtual bool canInterpolateColors() const { return true; }
     // Some color spaces (like XYZ or LAB) do not put restrictions on valid ranges of values;
@@ -81,7 +83,28 @@ public:
     Components const &getComponents(bool alpha = false) const;
     std::string const getPrefsPath() const { return "/colorselector/" + getName() + "/"; }
 
-    virtual bool isValid() const { return true; }
+    /**
+     * Returns true almost always. Only CMS could have a different return value.
+     */
+    virtual bool hasValidCmsProfile() const { return true; }
+
+    virtual bool spaceToProfile(std::vector<double> &io) const = 0;
+    virtual bool profileToProfile(std::vector<double> &io, std::shared_ptr<Colors::CMS::Profile> const &profile, RenderingIntent intent) const = 0;
+    virtual bool profileToSpace(std::vector<double> &io) const = 0;
+
+    /**
+     * Convert between any two color spaces and their profiles.
+     */
+    bool convert(std::vector<double> &io, std::shared_ptr<AnySpace> to_space) const
+    {
+        return convert(io, to_space, getBestIntent(to_space));
+    }
+    bool convert(std::vector<double> &io, std::shared_ptr<AnySpace> to_space, RenderingIntent intent) const
+    {
+        return spaceToProfile(io)
+            && profileToProfile(io, to_space->getProfile(), intent)
+            && to_space->profileToSpace(io);
+    }
 
 protected:
     friend class Colors::Color;
@@ -89,26 +112,16 @@ protected:
     AnySpace(Type type, int components, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false);
 
     bool isValidData(std::vector<double> const &values) const;
-    virtual std::vector<Parser> getParsers() const { return {}; }
     virtual std::string toString(std::vector<double> const &values, bool opacity = true) const = 0;
-
-    bool convert(std::vector<double> &io, std::shared_ptr<AnySpace> to_space) const;
-    bool profileToProfile(std::vector<double> &io, std::shared_ptr<AnySpace> to_space) const;
-    virtual void spaceToProfile(std::vector<double> &io) const;
-    virtual void profileToSpace(std::vector<double> &io) const;
-    virtual bool overInk(std::vector<double> const &input) const { return false; }
-
     uint32_t toRGBA(std::vector<double> const &values, double opacity = 1.0) const;
 
-    std::shared_ptr<Colors::CMS::Profile> srgb_profile = Colors::CMS::Profile::create_srgb();
-
+    virtual bool overInk(std::vector<double> const &input) const { return false; }
     bool outOfGamut(std::vector<double> const &input, std::shared_ptr<AnySpace> to_space) const;
 
     RenderingIntent _intent = RenderingIntent::UNKNOWN;
     int _intent_priority = 0;
     std::vector<std::string> _svgNames;
 private:
-    mutable std::map<std::string, std::shared_ptr<Colors::CMS::TransformColor>> _transforms;
     mutable std::map<std::string, std::shared_ptr<Colors::CMS::GamutChecker>> _gamut_checkers;
     Type _type;
     int _components;
@@ -116,6 +129,90 @@ private:
     std::string _shortName;
     std::string _icon;
     bool _spaceIsUnbounded;
+};
+
+template <bool isDirect = true>
+class ProfileSpace : public AnySpace
+{
+public:
+    ProfileSpace(Type type, int channels, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false)
+        : AnySpace(type, channels, std::move(name), std::move(shortName), std::move(icon), spaceIsUnbounded)
+    {}
+
+    bool spaceToProfile(std::vector<double> &io) const override { return true; }
+    bool profileToSpace(std::vector<double> &io) const override { return true; }
+    bool profileToProfile(std::vector<double> &io, std::shared_ptr<Colors::CMS::Profile> const &to_profile, RenderingIntent intent) const override
+    {
+        auto from_profile = getProfile();
+        if (*from_profile == *to_profile)
+            return true;
+        auto to_size = to_profile->getSize();
+        auto from_size = from_profile->getSize();
+        bool has_alpha = io.size() == from_size + 1;
+        if (auto tr = makeTransform(to_profile, intent)) {
+            while (io.size() - has_alpha < to_size) io.insert(io.begin() + from_size, 0.0);
+            auto ret = tr->do_transform(io, io);
+            io.erase(io.begin() + to_size, io.end() - has_alpha);
+            return ret;
+        }
+        return false;
+    }
+private:
+    /**
+     * Construct an lcms2 transform and cache the results for later use.
+     */
+    std::shared_ptr<Colors::CMS::TransformColor> makeTransform(std::shared_ptr<Colors::CMS::Profile> const &to_profile, RenderingIntent intent) const
+    {
+
+        auto &transform = _transforms[{to_profile->getChecksum(), intent}];
+        if (!transform) {
+            // Create a new transform for this one way profile-pair
+            transform = std::make_shared<Colors::CMS::TransformColor>(getProfile(), to_profile, intent);
+        }
+        return transform;
+    }
+
+    mutable std::map<std::pair<std::string, RenderingIntent>, std::shared_ptr<Colors::CMS::TransformColor>> _transforms;
+};
+
+template <typename T>
+class ConvertableSpace : public ProfileSpace<false>
+{
+public:
+    using TargetSpace = T;
+
+    ConvertableSpace(Type type, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false)
+        : ProfileSpace(type, TargetSpace::OutputChannels, std::move(name), std::move(shortName), std::move(icon), spaceIsUnbounded)
+    {}
+
+    bool spaceToProfile(std::vector<double> &io) const override
+    {
+        bool has_alpha = io.size() == TargetSpace::OutputChannels + 1;
+        if constexpr (TargetSpace::OutputChannels < TargetSpace::ProfileChannels) {
+            while (io.size() - has_alpha < TargetSpace::ProfileChannels) {
+                io.insert(io.end() - has_alpha, 0.0);
+            }
+        }
+        T::spaceToProfile(io.data(), io.data());
+        if constexpr (TargetSpace::OutputChannels > TargetSpace::ProfileChannels) {
+            io.erase(io.begin() + TargetSpace::ProfileChannels, io.end() - has_alpha);
+        }
+        return true;
+    }
+    bool profileToSpace(std::vector<double> &io) const override
+    {
+        bool has_alpha = io.size() == TargetSpace::ProfileChannels + 1;
+        if constexpr (TargetSpace::ProfileChannels < TargetSpace::OutputChannels) {
+            while (io.size() - has_alpha < TargetSpace::OutputChannels) {
+                io.insert(io.end() - has_alpha, 0.0);
+            }
+        }
+        T::profileToSpace(io.data(), io.data());
+        if constexpr (TargetSpace::ProfileChannels > TargetSpace::OutputChannels) {
+            io.erase(io.begin() + TargetSpace::OutputChannels, io.end() - has_alpha);
+        }
+        return true;
+    }
 };
 
 } // namespace Space

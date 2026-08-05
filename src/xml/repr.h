@@ -174,13 +174,11 @@ inline Inkscape::XML::Node *sp_repr_document_first_child(Inkscape::XML::Document
 
 inline bool sp_repr_is_def(Inkscape::XML::Node const *node) {
     return node->parent() != nullptr &&
-        node->parent()->name() != nullptr &&
-        strcmp("svg:defs", node->parent()->name()) == 0;
+        g_strcmp0("svg:defs", node->parent()->name()) == 0;
 }
 
 inline bool sp_repr_is_layer(Inkscape::XML::Node const *node) {
-    return node->attribute("inkscape:groupmode") != nullptr &&
-        strcmp("layer", node->attribute("inkscape:groupmode")) == 0;
+    return g_strcmp0("layer", node->attribute("inkscape:groupmode")) == 0;
 }
 
 /**

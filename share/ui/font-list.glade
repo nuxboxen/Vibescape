@@ -289,34 +289,24 @@
           <object class="GtkBox" id="info-box">
             <property name="hexpand">True</property>
             <child>
-              <object class="GtkScrolledWindow">
-                <property name="focusable">True</property>
+              <object class="GtkFlowBox" id="tag-box">
                 <property name="hexpand">True</property>
-                <property name="vscrollbar-policy">never</property>
-                <property name="overlay-scrolling">False</property>
-                <property name="child">
-                  <object class="GtkViewport">
-                    <property name="child">
-                      <object class="GtkBox" id="tag-box">
-                        <child>
-                          <placeholder></placeholder>
-                        </child>
-                        <child>
-                          <placeholder></placeholder>
-                        </child>
-                        <child>
-                          <placeholder></placeholder>
-                        </child>
-                      </object>
-                    </property>
-                  </object>
-                </property>
+                <property name="selection-mode">none</property>
+                <child>
+                  <placeholder></placeholder>
+                </child>
+                <child>
+                  <placeholder></placeholder>
+                </child>
+                <child>
+                  <placeholder></placeholder>
+                </child>
               </object>
             </child>
             <child>
               <object class="GtkLabel" id="font-count">
                 <property name="halign">end</property>
-                <property name="valign">center</property>
+                <property name="valign">start</property>
                 <property name="margin-start">4</property>
                 <property name="margin-top">4</property>
                 <property name="margin-bottom">3</property>
@@ -421,7 +411,7 @@
           </object>
         </child>
         <child>
-          <object class="GtkWidget" id="font-size">
+          <object class="gtkmm__CustomObject_FontSizeSelector" id="font-size">
             <property name="margin-top">2</property>
             <property name="margin-bottom">2</property>
             <property name="valign">center</property>

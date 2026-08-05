@@ -41,22 +41,23 @@
 #include "ui/tools/tool-base.h"
 #include "ui/widget/canvas-notice.h"
 #include "ui/widget/canvas.h"
+#include "ui/widget/desktop-tab-controls.h"
 #include "ui/widget/desktop-widget.h" // Hopefully temp.
 #include "ui/widget/events/canvas-event.h"
 #include "ui/widget/ink-ruler.h"
 #include "ui/widget/stack.h"
-#include "ui/widget/tabs-widget.h"
 #include "util/units.h"
 
 namespace Inkscape::UI::Widget {
 
 CanvasGrid::CanvasGrid(SPDesktopWidget *dtw)
+    : Glib::ObjectBase("CanvasGrid")
 {
     _dtw = dtw;
     set_name("CanvasGrid");
 
     // Tabs widget
-    _tabs_widget = std::make_unique<Inkscape::UI::Widget::TabsWidget>(dtw);
+    _tabs_widget = std::make_unique<Inkscape::UI::Widget::DesktopTabControls>(dtw);
 
     // Command palette
     _command_palette = std::make_unique<Inkscape::UI::Dialog::CommandPalette>();
@@ -181,7 +182,7 @@ CanvasGrid::CanvasGrid(SPDesktopWidget *dtw)
     });
 
     // Main grid
-    attach(*_tabs_widget,  0, 0);
+    attach(*_tabs_widget,  0, 0, 2, 1);
     attach(_subgrid,       0, 1, 1, 2);
     attach(_hscrollbar,    0, 3, 1, 1);
     attach(_cms_adjust,    1, 3, 1, 1);
@@ -357,14 +358,14 @@ void CanvasGrid::updateRulers()
 
     Geom::Point pos(_canvas->get_pos());
     auto d2c = d2c_scalerot * Geom::Translate(-pos);
-    auto pagebox = (pm.getSelectedPageRect() * d2c).roundOutwards();
+    auto pagebox = (pm.getSelectedPageRect() * d2c);
     _hruler->set_page(pagebox.left(), pagebox.right());
     _vruler->set_page(pagebox.top(), pagebox.bottom());
 
     Geom::Rect selbox = Geom::IntRect(0, 0, 0, 0);
     if (sel) {
         if (auto const bbox = sel->preferredBounds()) {
-            selbox = (*bbox * d2c).roundOutwards();
+            selbox = (*bbox * d2c);
         }
     }
     _hruler->set_selection(selbox.left(), selbox.right());

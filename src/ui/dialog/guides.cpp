@@ -25,6 +25,8 @@
 #include "preferences.h"
 #include "ui/widget/spinbutton.h"
 
+using Inkscape::UI::Widget::Scalar;
+
 namespace Inkscape::UI::Dialog {
 namespace {
 
@@ -210,12 +212,12 @@ void GuidelinePropertiesDialog::_setup()
     _spin_button_x.setDigits(minimumexponent);
     _spin_button_x.setAlignment(1.0);
     _spin_button_x.setIncrements(1.0, 10.0);
-    _spin_button_x.setRange(-1e6, 1e6);
+    _spin_button_x.setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
 
     _spin_button_y.setDigits(minimumexponent);
     _spin_button_y.setAlignment(1.0);
     _spin_button_y.setIncrements(1.0, 10.0);
-    _spin_button_y.setRange(-1e6, 1e6);
+    _spin_button_y.setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
 
     _spin_button_x.setWidthChars(12);
     _spin_button_y.setWidthChars(12);

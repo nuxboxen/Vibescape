@@ -15,25 +15,46 @@
 
 namespace Inkscape::Colors::Space {
 
-class Lab : public AnySpace
+/**
+ * Return the RGB color profile, this is static for all RGB sub-types
+ */
+static std::shared_ptr<Inkscape::Colors::CMS::Profile> const getLabProfile()
+{
+    static std::shared_ptr<Colors::CMS::Profile> lab_profile = Colors::CMS::Profile::create_lab();
+    return lab_profile;
+}
+
+template <typename T>
+class LabBase : public ConvertableSpace<T>
 {
 public:
-    Lab(): AnySpace(Type::LAB, 3, "Lab", "Lab", "color-selector-lab", true) {
+    LabBase(Type type, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false)
+        : ConvertableSpace<T>(type, std::move(name), std::move(shortName), std::move(icon), spaceIsUnbounded)
+    {}
+
+    std::shared_ptr<Inkscape::Colors::CMS::Profile> const getProfile() const override { return getLabProfile(); }
+};
+
+
+class Lab : public ProfileSpace<true>
+{
+public:
+    static constexpr double LUMA_SCALE = 100;
+    // CSS Actual values are scaled -128 -> 127
+    static constexpr double MIN_SCALE = -128;
+    static constexpr double MAX_SCALE = 127;
+
+    Lab(): ProfileSpace(Type::LAB, 3, "Lab", "Lab", "color-selector-lab", true) {
         _svgNames.emplace_back("lab");
         _intent = RenderingIntent::ABSOLUTE_COLORIMETRIC;
         _intent_priority = 10;
     }
     ~Lab() override = default;
 
-protected:
-    friend class Inkscape::Colors::Color;
+    std::shared_ptr<Inkscape::Colors::CMS::Profile> const getProfile() const override { return getLabProfile(); }
 
-    Lab(Type type, int components, std::string name, std::string shortName, std::string icon, bool spaceIsUnbounded = false);
-
-    std::shared_ptr<Inkscape::Colors::CMS::Profile> const getProfile() const override;
     std::string toString(std::vector<double> const &values, bool opacity) const override;
 
-public:
     class Parser : public Colors::Parser
     {
     public:
@@ -42,9 +63,6 @@ public:
         {}
         bool parse(std::istringstream &input, std::vector<double> &output) const override;
     };
-
-    static void toXYZ(std::vector<double> &output);
-    static void fromXYZ(std::vector<double> &output);
 
     static void scaleDown(std::vector<double> &in_out);
     static void scaleUp(std::vector<double> &in_out);

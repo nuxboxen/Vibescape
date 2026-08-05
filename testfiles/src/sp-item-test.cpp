@@ -78,5 +78,5 @@ TEST_F(SPItemTest, getClipPathVector)
 
     auto r_parent = cast<SPItem>(doc->getObjectById("group1"));
     auto pathv4 = r_item->getClipPathVector(r_parent);
-    ASSERT_EQ(sp_svg_write_path(*pathv4), "M 13.166016,13.166016 V 40.837891 H 40.837891 V 13.166016 Z");
+    ASSERT_EQ(sp_svg_write_path(*pathv4), "M 13.16601563,13.16601563 V 40.83789062 H 40.83789062 V 13.16601563 Z");
 }

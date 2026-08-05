@@ -43,15 +43,15 @@ public:
      * @param icon       Icon name, placed before the label (defaults to empty).
      * @param unit_menu  UnitMenu drop down; if not specified, one will be created
      *                   and displayed after the widget (defaults to NULL).
-     * @param mnemonic   Mnemonic toggle; if true, an underscore (_) in the label
-     *                   indicates the next character should be used for the
-     *                   mnemonic accelerator key (defaults to true).
+     * @param should_convert_limits If true, the values of the minimum and
+                                    maximum limits will be converted when the
+                                    units of the input value are changed.
      */
     ScalarUnit(Glib::ustring const &label, Glib::ustring const &tooltip,
                UnitType unit_type = UNIT_TYPE_LINEAR,
                Glib::ustring const &icon = {},
                UnitMenu *unit_menu = nullptr,
-               bool mnemonic = true);
+               bool should_convert_limits = false);
 
     /**
      * Construct a ScalarUnit.
@@ -60,14 +60,10 @@ public:
      * @param tooltip   Tooltip, as per the Labelled base class.
      * @param take_unitmenu  Use the unitmenu from this parameter.
      * @param icon       Icon name, placed before the label (defaults to empty).
-     * @param mnemonic   Mnemonic toggle; if true, an underscore (_) in the label
-     *                   indicates the next character should be used for the
-     *                   mnemonic accelerator key (defaults to true).
      */
     ScalarUnit(Glib::ustring const &label, Glib::ustring const &tooltip,
                ScalarUnit &take_unitmenu,
-               Glib::ustring const &icon = {},
-               bool mnemonic = true);
+               Glib::ustring const &icon = {});
 
     /**
      * Initializes the scalar based on the settings in _unit_menu.
@@ -162,6 +158,8 @@ public:
     void on_unit_changed();
 
 protected:
+    double convertValue(double old_value, Inkscape::Util::Unit const &old_unit, Inkscape::Util::Unit const &new_unit);
+
     UnitMenu  *_unit_menu;
 
     double _hundred_percent; // the length that corresponds to 100%, in px, for %-to/from-absolute conversions
@@ -169,6 +167,12 @@ protected:
     bool _absolute_is_increment; // if true, 120% with _hundred_percent=100px gets converted to/from 20px; otherwise, to/from 120px
     bool _percentage_is_increment; // if true, 120px with _hundred_percent=100px gets converted to/from 20%; otherwise, to/from 120%
                                             // if both are true, 20px is converted to/from 20% if _hundred_percent=100px
+
+    // If true, range limits will be converted when the input unit is changed.
+    // This is paramaterized as it's a desirable behavior, but behaves poorly
+    // in some circumstances, e.g. when converting to/from percentages when
+    // the hundred percent value has not been properly initialized.
+    bool should_convert_limits;
 
     Glib::ustring lastUnits; // previously selected unit, for conversions
 };

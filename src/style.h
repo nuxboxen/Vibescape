@@ -120,7 +120,7 @@ public:
     T<SPAttr::FONT_FAMILY, SPIString> font_family;
     /** Font shorthand */
     T<SPAttr::FONT, SPIFont> font;
-    /** Full font name, as FontFactory::ConstructFontSpecification would give, for internal use. */
+    /** Full font name, as pango_font_description_to_string() would give, for internal use. */
     T<SPAttr::INKSCAPE_FONT_SPEC, SPIString> font_specification;
 
     /* Font variants -------------------- */
@@ -263,11 +263,11 @@ public:
     T<SPAttr::STROKE_EXTENSIONS, SPIStrokeExtensions> stroke_extensions;
 
     /** Marker list */
-    T<SPAttr::MARKER, SPIString> marker;
-    T<SPAttr::MARKER_START, SPIString> marker_start;
-    T<SPAttr::MARKER_MID, SPIString> marker_mid;
-    T<SPAttr::MARKER_END, SPIString> marker_end;
-    SPIString* marker_ptrs[SP_MARKER_LOC_QTY];
+    T<SPAttr::MARKER, SPIMarker> marker;
+    T<SPAttr::MARKER_START, SPIMarker> marker_start;
+    T<SPAttr::MARKER_MID, SPIMarker> marker_mid;
+    T<SPAttr::MARKER_END, SPIMarker> marker_end;
+    SPIMarker* marker_ptrs[SP_MARKER_LOC_QTY];
 
     /* Filter effects ------------------------ */
 
@@ -366,6 +366,7 @@ char const *sp_style_get_css_unit_string(int unit);  // No change?
 #define SP_CSS_FONT_SIZE_DEFAULT 12.0
 double sp_style_css_size_px_to_units(double size, int unit, double font_size = SP_CSS_FONT_SIZE_DEFAULT); // No change?
 double sp_style_css_size_units_to_px(double size, int unit, double font_size = SP_CSS_FONT_SIZE_DEFAULT); // No change?
+double sp_style_css_size_round_for_user_display(double size);
 const std::vector<double>& sp_style_get_default_font_size_list(int unit);
 
 SPCSSAttr *sp_css_attr_from_style (SPStyle const *const style, unsigned int flags);
@@ -378,6 +379,7 @@ SPCSSAttr *sp_css_attr_scale(SPCSSAttr *css, double ex);
 void sp_style_unset_property_attrs(SPObject *o);
 
 void sp_style_set_property_url (SPObject *item, char const *property, SPObject *linked, bool recursive);
+void sp_style_set_property_url_on_repr(Inkscape::XML::Node *node, char const *property, SPObject *linked, bool recursive);
 
 void css_quote( Glib::ustring &val );   // Add quotes around CSS values
 void css_unquote( Glib::ustring &val ); // Remove quotes from CSS values (style-internal.cpp, xml/repr-css.cpp)

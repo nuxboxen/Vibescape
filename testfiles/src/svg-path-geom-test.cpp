@@ -501,7 +501,7 @@ TEST_F(SvgPathGeomTest, testMinexpPrecision)
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
     prefs->setBool("/options/svgoutput/allowrelativecoordinates", true);
     prefs->setBool("/options/svgoutput/forcerepeatcommands", false);
-    prefs->setInt("/options/svgoutput/numericprecision", 8);
+    prefs->setInt("/options/svgoutput/numericprecision", 10);
     prefs->setInt("/options/svgoutput/minimumexponent", -8);
     pv = sp_svg_read_pathv("M 123456781,1.23456781e-8 L 123456782,1.23456782e-8 L 123456785,1.23456785e-8 L
 10123456400,1.23456785e-8 L 123456789,1.23456789e-8 L 123456789,101.234564e-8 L 123456789,1.23456789e-8"); path_str =

@@ -34,7 +34,6 @@
 #include "context-fns.h"
 #include "desktop-events.h"
 #include "desktop-style.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "document.h"
 #include "layer-manager.h"
@@ -450,18 +449,6 @@ bool EraserTool::root_handler(CanvasEvent const &event)
             ret = _handleKeypress(event);
         },
 
-        [&] (KeyReleaseEvent const &event) {
-            switch (get_latin_keyval(event)) {
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                    message_context->clear();
-                    break;
-
-                default:
-                    break;
-            }
-        },
-
         [&] (CanvasEvent const &event) {}
     );
 
@@ -474,9 +461,6 @@ bool EraserTool::_handleKeypress(KeyPressEvent const &key)
     bool ret = false;
     bool just_ctrl = (key.modifiers & GDK_CONTROL_MASK)                      // Ctrl key is down
                      && !(key.modifiers & (GDK_ALT_MASK | GDK_SHIFT_MASK)); // but not Alt or Shift
-
-    bool just_alt = (key.modifiers & GDK_ALT_MASK)                            // Alt is down
-                    && !(key.modifiers & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)); // but not Ctrl or Shift
 
     switch (get_latin_keyval(key)) {
         case GDK_KEY_Right:
@@ -1115,7 +1099,7 @@ std::vector<EraseTarget> EraserTool::_findItemsToErase()
         // * result     should contain touched items;
         // * _survivors should contain selected but untouched items.
         auto *r = Rubberband::get(_desktop);
-        std::vector<SPItem *> touched = document->getItemsAtPoints(_desktop->dkey, r->getPoints());
+        std::vector<SPItem *> touched = _desktop->getItemsAtPoints(r->getPoints());
         if (selection->isEmpty()) {
             for (auto *item : touched) {
                 result.emplace_back(item, false);

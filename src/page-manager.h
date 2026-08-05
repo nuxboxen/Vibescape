@@ -93,6 +93,7 @@ public:
     SPPage *newPage(Geom::Rect rect, bool first_page = false);
     SPPage *newDesktopPage(Geom::Rect rect, bool first_page = false);
     SPPage *newDocumentPage(Geom::Rect rect, bool first_page = false);
+    SPPage *duplicatePage();
     void deletePage(SPPage *page, bool contents = false);
     void deletePage(bool contents = false);
     void resizePage(double width, double height);
@@ -130,6 +131,7 @@ public:
     Colors::Color const &getMarginColor() const { return margin_color; }
     Colors::Color const &getBleedColor() const { return bleed_color; }
     Colors::Color const &getBorderColor() const { return border_color; }
+    Colors::Color const &getShadowColor() const;
 
     void movePages(Geom::Affine tr);
     std::vector<SPItem *> getOverlappingItems(SPDesktop *desktop, SPPage *page, bool hidden = true, bool in_bleed = false, bool in_layers = true);

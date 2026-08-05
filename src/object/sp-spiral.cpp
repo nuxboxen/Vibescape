@@ -23,7 +23,7 @@
 
 #include "attributes.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "snap-candidate.h"      // for SnapCandidatePoint
 #include "snap-enums.h"          // for SnapTargetType, SnapSourceType
 #include "snap-preferences.h"    // for SnapPreferences

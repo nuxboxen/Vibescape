@@ -27,6 +27,10 @@
 #include <gtkmm/tooltip.h>
 #include <2geom/bezier.h>
 
+#ifdef GDK_WINDOWING_X11
+#include <gdk/x11/gdkx.h>
+#endif
+
 #include "defocus-target.h"
 #include "desktop.h"
 #include "inkscape.h"
@@ -278,19 +282,6 @@ void close_parent_popover(Gtk::Widget &widget)
 }
 
 } // namespace Inkscape::UI
-
-/**
- * Color is store as a string in the form #RRGGBBAA, '0' means "unset"
- *
- * @param color - The string color from glade.
- */
-unsigned int get_color_value(const Glib::ustring color)
-{
-    Gdk::RGBA gdk_color = Gdk::RGBA(color);
-    return SP_RGBA32_F_COMPOSE(gdk_color.get_red(), gdk_color.get_green(),
-                               gdk_color.get_blue(), gdk_color.get_alpha());
-}
-
 
 Gdk::RGBA mix_colors(const Gdk::RGBA& a, const Gdk::RGBA& b, float ratio) {
     auto lerp = [](double v0, double v1, double t){ return (1.0 - t) * v0 + t * v1; };
@@ -643,6 +634,16 @@ Geom::Affine get_event_transform(Glib::RefPtr<Gdk::Surface const> const &event_s
     auto native = Gtk::Native::get_for_surface(event_surface);
     auto &event_widget = dynamic_cast<Gtk::Widget const &>(*native);
     return Geom::Translate{-get_surface_transform(*native)} * compute_transform(event_widget, target);
+}
+
+bool is_x11_display()
+{
+#ifdef GDK_WINDOWING_X11
+    auto display = gdk_display_get_default();
+    return GDK_IS_X11_DISPLAY(display);
+#else
+    return false;
+#endif
 }
 
 /*

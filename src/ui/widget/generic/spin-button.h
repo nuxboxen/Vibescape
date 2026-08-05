@@ -141,6 +141,8 @@ private:
     void on_scroll_begin(); // Not used with mouse wheel.
     bool on_scroll(double dx, double dy);
     void on_scroll_end(); // Not used with mouse wheel.
+    sigc::scoped_connection _scroll_timer;
+    int _scroll_timeout = 0;
 
     // Use Gesture to get access to modifier keys (rather than "clicked" signal).
     Glib::RefPtr<Gtk::GestureClick> _click_plus;
@@ -197,8 +199,6 @@ private:
     DefocusTarget* _defocus_target = nullptr;
     bool _dont_evaluate = false; // turn off expression evaluator?
     bool _enter_exit_edit = false;
-    Glib::RefPtr<Gdk::Cursor> _old_cursor;
-    Glib::RefPtr<Gdk::Cursor> _current_cursor;
     struct Point { double x = 0; double y = 0; } _drag_start;
     sigc::signal<void (double)> _signal_value_changed;
     std::string _min_size_pattern;

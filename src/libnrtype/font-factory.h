@@ -65,10 +65,6 @@ public:
     ///< The fontsize used as workaround for hinting.
     static constexpr double fontSize = 512;
 
-    /// Constructs a pango string for use with the fontStringMap (see below)
-    Glib::ustring ConstructFontSpecification(PangoFontDescription *font);
-    Glib::ustring ConstructFontSpecification(FontInstance *font);
-
     std::vector<std::string> GetAllFontNames();
 
     /// Returns strings to be used in the UI for family and face (or "style" as the column is labeled)
@@ -107,11 +103,11 @@ public:
     PangoContext *get_font_context() const { return fontContext; }
     PangoFontDescription *parsePostscriptName(std::string const &name, bool substitute);
 
-protected:
+private:
     FontFactory();
     ~FontFactory();
+    friend class EnableSingleton;
 
-private:
     // Pango data. Backend-specific structures are cast to these opaque types.
     PangoFontMap *fontServer;
     PangoContext *fontContext;

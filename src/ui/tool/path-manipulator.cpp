@@ -11,8 +11,6 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include <2geom/path-sink.h>
-
 #include "display/control/canvas-item-bpath.h"
 #include "helper/geom.h"
 #include "live_effects/lpe-powerstroke.h"
@@ -42,6 +40,10 @@ enum PathChange {
 static constexpr double BSPLINE_TOL = 0.001;
 static constexpr double NO_POWER = 0.0;
 static constexpr double DEFAULT_START_POWER = 1.0/3.0;
+
+// This gap defines an extra translation on points to avoid zeros in some calculations that really
+// affect spiro maths. See https://gitlab.com/inkscape/inkscape/-/work_items/5658 for details.
+static Geom::Translate handle_cubic_gap(0.001, 0.001);
 
 /**
  * Notifies the path manipulator when something changes the path being edited
@@ -89,7 +91,6 @@ private:
     bool _blocked;
 };
 
-void build_segment(Geom::PathBuilder &, Node *, Node *);
 PathManipulator::PathManipulator(MultiPathManipulator &mpm, SPObject *path,
         Geom::Affine const &et, guint32 outline_color, Glib::ustring lpe_key)
     : PointManipulator(mpm._path_data.node_data.desktop, *mpm._path_data.node_data.selection)
@@ -400,7 +401,7 @@ void PathManipulator::copySelectedPath(Geom::PathBuilder *builder)
                 if (!builder->inPath() || !prev) {
                     builder->moveTo(node.position());
                 } else {
-                    build_segment(*builder, prev, &node);
+                    prev->build_segment(*builder, &node);
                 }
                 prev = &node;
                 is_last_node = true;
@@ -412,7 +413,7 @@ void PathManipulator::copySelectedPath(Geom::PathBuilder *builder)
         // Complete the path, especially for closed sub paths where the last node is selected
         if (subpath->closed() && is_last_node) {
             if (!prev->front()->isDegenerate() || !subpath->begin()->back()->isDegenerate())   {
-                build_segment(*builder, prev, subpath->begin().ptr());
+                prev->build_segment(*builder, subpath->begin().ptr());
             }
             // if that segment is linear, we just call closePath().
             builder->closePath();
@@ -1121,14 +1122,14 @@ NodeList::iterator PathManipulator::subdivideSegment(NodeList::iterator first, d
         } else {
             if (second->back()->isDegenerate()) {
                 auto const line_inside_nodes = Geom::LineSegment{n->position(), second->position()};
-                auto const next = line_inside_nodes.pointAt(DEFAULT_START_POWER);
+                auto const next = line_inside_nodes.pointAt(DEFAULT_START_POWER) * handle_cubic_gap;
                 n->front()->setPosition(next);
             } else {
                 n->front()->setPosition(seg2[1]);
             }
             if (first->front()->isDegenerate()) {
                 auto const line_inside_nodes = Geom::LineSegment{n->position(), first->position()};
-                auto const previous = line_inside_nodes.pointAt(DEFAULT_START_POWER);
+                auto const previous = line_inside_nodes.pointAt(DEFAULT_START_POWER) * handle_cubic_gap;
                 n->back()->setPosition(previous);
             } else {
                 n->back()->setPosition(seg1[2]);
@@ -1237,6 +1238,18 @@ Geom::Affine PathManipulator::_getTransform() const
     return _i2d_transform * _edit_transform;
 }
 
+void PathManipulator::_normalizeBsplineHandles(Node *n)
+{
+    // If either handle is degenerate, make them both degenerate. When loading a bspline curve,
+    // only one side might start degenerate (which isn't a possible situation in the UI - they
+    // should both be or neither be) and we need to do this to fix it.
+    if (n->front()->isDegenerate()) {
+        n->back()->setPosition(n->position());
+    } else if (n->back()->isDegenerate()) {
+        n->front()->setPosition(n->position());
+    }
+}
+
 /** Create nodes and handles based on the XML of the edited path. */
 void PathManipulator::_createControlPointsFromGeometry()
 {
@@ -1301,6 +1314,21 @@ void PathManipulator::_createControlPointsFromGeometry()
             {
                 previous_node->front()->setPosition((*bezier)[1]);
                 current_node ->back() ->setPosition((*bezier)[2]);
+
+                // Once we have set the position of both handles of a node, normalize that node.
+                if (previous_node != subpath->begin().get_pointer()) {
+                    // Not the first segment, so both handles of previous node are now set.
+                    // This will hit on every segment but the first one, leaving the first node
+                    // to be handled in the check below (or never if we are an open path).
+                    _normalizeBsplineHandles(previous_node);
+                }
+                if (current_node == subpath->begin().get_pointer()) {
+                    // Last segment, so the very first node now has both handles set.
+                    // This will only hit for closed paths, where this will finally close the first
+                    // node after we ignored it above. Open paths won't have their two edge nodes
+                    // finalized because the last segment closing the path isn't in this loop.
+                    _normalizeBsplineHandles(current_node);
+                }
             }
             previous_node = current_node;
         }
@@ -1384,7 +1412,7 @@ double PathManipulator::_bsplineHandlePosition(Handle *h, bool check_other)
     auto const next_node = n->nodeToward(h);
     if (next_node && !Geom::are_near(h->position(), n->position())) {
         auto const line_inside_nodes = Geom::LineSegment{n->position(), next_node->position()};
-        pos = Geom::nearest_time(h->position(), line_inside_nodes);
+        pos = Geom::nearest_time(h->position() * handle_cubic_gap.inverse(), line_inside_nodes);
     }
     if (Geom::are_near(pos, NO_POWER, BSPLINE_TOL) && check_other) {
         return _bsplineHandlePosition(h->other(), false);
@@ -1407,7 +1435,7 @@ Geom::Point PathManipulator::_bsplineHandleReposition(Handle *h, double pos)
     auto next_node = n->nodeToward(h);
     if (next_node && !Geom::are_near(pos, NO_POWER, BSPLINE_TOL)) {
         auto const line_inside_nodes = Geom::LineSegment{n->position(), next_node->position()};
-        ret = line_inside_nodes.pointAt(pos);
+        ret = line_inside_nodes.pointAt(pos) * handle_cubic_gap;
     } else {
         if (Geom::are_near(pos, NO_POWER, BSPLINE_TOL)) {
             ret = n->position();
@@ -1434,14 +1462,14 @@ void PathManipulator::_createGeometryFromControlPoints(bool alert_LPE)
         NodeList::iterator prev = subpath->begin();
         builder.moveTo(prev->position());
         for (NodeList::iterator i = ++subpath->begin(); i != subpath->end(); ++i) {
-            build_segment(builder, prev.ptr(), i.ptr());
+            prev->build_segment(builder, i.ptr());
             prev = i;
         }
         if (subpath->closed()) {
             // Here we link the last and first node if the path is closed.
             // If the last segment is Bezier, we add it.
             if (!prev->front()->isDegenerate() || !subpath->begin()->back()->isDegenerate()) {
-                build_segment(builder, prev.ptr(), subpath->begin().ptr());
+                prev->build_segment(builder, subpath->begin().ptr());
             }
             // if that segment is linear, we just call closePath().
             builder.closePath();
@@ -1485,24 +1513,6 @@ void PathManipulator::_createGeometryFromControlPoints(bool alert_LPE)
     }
     if (_live_objects) {
         _setGeometry();
-    }
-}
-
-/** Build one segment of the geometric representation.
- * @relates PathManipulator */
-void build_segment(Geom::PathBuilder &builder, Node *prev_node, Node *cur_node)
-{
-    if (cur_node->back()->isDegenerate() && prev_node->front()->isDegenerate())
-    {
-        // NOTE: It seems like the renderer cannot correctly handle vline / hline segments,
-        // and trying to display a path using them results in funny artifacts.
-        builder.lineTo(cur_node->position());
-    } else {
-        // this is a bezier segment
-        builder.curveTo(
-            prev_node->front()->position(),
-            cur_node->back()->position(),
-            cur_node->position());
     }
 }
 
@@ -1632,11 +1642,22 @@ Inkscape::XML::Node *PathManipulator::_getXMLNode()
     return lpeobj->getRepr();
 }
 
-bool PathManipulator::_nodeClicked(Node *n, ButtonReleaseEvent const &event)
+/**
+ * Process a mouse click on a node (also used when its handles are clicked).
+ *
+ * @param n The Node
+ * @param event The mouse event
+ * @param skip_auto When cycling through node types, whether to skip the NODE_AUTO type (handle
+ *                  clicks will set this to true)
+ */
+bool PathManipulator::_nodeClicked(Node *n, ButtonReleaseEvent const &event, bool skip_auto)
 {
     if (event.button != 1) return false;
-    if (mod_alt(event) && mod_ctrl(event)) {
-        // Ctrl+Alt+click: delete nodes
+
+    auto const cycle_type = Modifiers::Modifier::get(Modifiers::Type::NODE_CYCLE_TYPE)->active(event.modifiers);
+    auto const delete_node = Modifiers::Modifier::get(Modifiers::Type::NODE_DELETE)->active(event.modifiers);
+
+    if (delete_node) {
         hideDragPoint();
         NodeList::iterator iter = NodeList::get_iterator(n);
         NodeList &nl = iter->nodeList();
@@ -1657,10 +1678,13 @@ bool PathManipulator::_nodeClicked(Node *n, ButtonReleaseEvent const &event)
         _multi_path_manipulator._doneWithCleanup(RC_("Undo", "Delete node"));
 
         return true;
-    } else if (mod_ctrl(event)) {
-        // Ctrl+click: cycle between node types
+    } else if (cycle_type) {
         if (!n->isEndNode()) {
-            n->setType(static_cast<NodeType>((n->type() + 1) % NODE_LAST_REAL_TYPE));
+            auto next = n->type() + 1;
+            if (skip_auto && next == NODE_AUTO) {
+                next += 1;
+            }
+            n->setType(static_cast<NodeType>(next % NODE_LAST_REAL_TYPE));
             update();
             _commit(RC_("Undo", "Cycle node type"));
         }
@@ -1682,8 +1706,9 @@ void PathManipulator::_handleUngrabbed()
 
 bool PathManipulator::_handleClicked(Handle *h, ButtonReleaseEvent const &event)
 {
-    // retracting by Alt+Click
-    if (event.button == 1 && mod_alt(event)) {
+    auto const retract = Modifiers::Modifier::get(Modifiers::Type::NODE_RETRACT_HANDLE)->active(event.modifiers);
+
+    if (event.button == 1 && retract) {
         h->move(h->parent()->position());
         update();
         _commit(RC_("Undo", "Retract handle"));

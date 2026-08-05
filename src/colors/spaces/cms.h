@@ -20,7 +20,7 @@ class DocumentCMS;
 namespace Inkscape::Colors::Space {
 
 // A class for containing the icc profile and the machinery for converting colors
-class CMS : public AnySpace
+class CMS : public ProfileSpace<true>
 {
 public:
     CMS(std::shared_ptr<Colors::CMS::Profile> profile, std::string name = {});
@@ -28,18 +28,18 @@ public:
     ~CMS() override = default;
 
     Type getComponentType() const override { return _profile_type; }
-    unsigned int getComponentCount() const override;
 
     std::shared_ptr<Colors::CMS::Profile> const getProfile() const override;
     void setIntent(RenderingIntent intent) { _intent = intent; }
 
     /** Returns false if this icc profile is not connected to any actual profile */
-    bool isValid() const override { return (bool)_profile; }
+    bool hasValidCmsProfile() const override { return (bool)_profile; }
 
-    void spaceToProfile(std::vector<double> &io) const override;
 protected:
     friend class Colors::Color;
     friend class Colors::DocumentCMS;
+
+    bool spaceToProfile(std::vector<double> &io) const override;
 
     std::string toString(std::vector<double> const &values, bool opacity = true) const override;
 

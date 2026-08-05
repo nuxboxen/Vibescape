@@ -67,7 +67,7 @@ static char const preferences_skeleton[] =
        pageopacity="0.0"
        pagecheckerboard="0"
        bordercolor="#000000"
-       borderopacity="0.25"
+       borderopacity="0.1"
        objecttolerance="10.0"
        gridtolerance="10.0"
        guidetolerance="10.0"
@@ -340,7 +340,7 @@ static char const preferences_skeleton[] =
     <group id="svgoutput"
            disable_optimizations="0"
            usenamedcolors="0"
-           numericprecision="8"
+           numericprecision="10"
            minimumexponent="-8"
            inlineattrs="0"
            indent="2"
@@ -537,8 +537,7 @@ static char const preferences_skeleton[] =
      preferDarkTheme="1"
      darkTheme="1"
      symbolicIcons="1"
-     symbolicDefaultBaseColors="1"
-     symbolicDefaultHighColors="0"/>
+     symbolicDefaultBaseColors="1"/>
 </inkscape>
 )=====";
 

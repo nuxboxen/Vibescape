@@ -121,6 +121,7 @@ private:
 
     void _commit(CommitEvent cps);
     void _done(Inkscape::Util::Internal::ContextString reason, bool alert_LPE = true);
+    void _maybeDone(char const *key, Inkscape::Util::Internal::ContextString reason, bool alert_LPE = true);
     void _doneWithCleanup(Inkscape::Util::Internal::ContextString reason, bool alert_LPE = false);
     Colors::Color _getOutlineColor(ShapeRole role, SPObject *object);
 

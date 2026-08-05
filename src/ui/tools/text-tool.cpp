@@ -25,9 +25,10 @@
 #include "desktop-style.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-curve.h"
+#include "display/control/canvas-item-ctrl.h"
 #include "display/control/canvas-item-quad.h"
 #include "display/control/canvas-item-rect.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "document-undo.h"
 #include "document.h"
 #include "inkscape-window.h"
@@ -72,6 +73,12 @@ TextTool::TextTool(SPDesktop *desktop)
     indicator->set_stroke(0x0000ff7f);
     indicator->set_shadow(0xffffff7f, 1);
     indicator->set_visible(false);
+
+    // The little numbin-bug that tells you where your text-on-path will go
+    text_path_indicator_side = make_canvasitem<CanvasItemCtrl>(_desktop->getCanvasControls(), CANVAS_ITEM_CTRL_TYPE_POINTER);
+    text_path_indicator_side->set_visible(false);
+    text_path_indicator_pos = make_canvasitem<CanvasItemCtrl>(_desktop->getCanvasControls(), CANVAS_ITEM_CTRL_TYPE_MOVE);
+    text_path_indicator_pos->set_visible(false);
 
     // The shape that the text is flowing into
     frame = make_canvasitem<CanvasItemBpath>(_desktop->getCanvasControls());
@@ -193,6 +200,8 @@ bool TextTool::item_handler(SPItem *item, CanvasEvent const &event)
                         // find out click point in document coordinates
                         auto const p = _desktop->w2d(event.pos);
                         // set the cursor closest to that point
+                        // (We hardcode the modifier to match expectations for text fields, which
+                        // on many platforms use shift to mean "select from cursor to HERE")
                         if (event.modifiers & GDK_SHIFT_MASK) {
                             text_sel_start = old_start;
                             text_sel_end = sp_te_get_position_by_coords(text, p);
@@ -244,37 +253,60 @@ bool TextTool::item_handler(SPItem *item, CanvasEvent const &event)
 
 void TextTool::_setupText()
 {
-    /* Create <text> */
-    Inkscape::XML::Document *xml_doc = _desktop->doc()->getReprDoc();
-    Inkscape::XML::Node *rtext = xml_doc->createElement("svg:text");
-    rtext->setAttribute("xml:space", "preserve"); // we preserve spaces in the text objects we create
+    Geom::Affine tr;
 
-    /* Set style */
-    _desktop->applyCurrentOrToolStyle(rtext, "/tools/text", true);
+    // This css object gets eaten by create_text_ functions, TODO replace with C++ shared_ptr
+    auto css = _desktop->getCurrentOrToolStyle("/tools/text", true);
 
-    rtext->setAttributeSvgDouble("x", pdoc.x());
-    rtext->setAttributeSvgDouble("y", pdoc.y());
+    // Remember the text direction for all types
+    auto direction = Preferences::get()->getInt("/tools/text/direction_mode", SP_CSS_DIRECTION_LTR);
+    sp_repr_css_set_property (css, "direction", direction ? "rtl" : "ltr");
 
-    /* Create <tspan> */
-    Inkscape::XML::Node *rtspan = xml_doc->createElement("svg:tspan");
-    rtspan->setAttribute("sodipodi:role", "line"); // otherwise, why bother creating the tspan?
-    rtext->addChild(rtspan, nullptr);
-    Inkscape::GC::release(rtspan);
+    SPText *text_item = nullptr;
+    if (_text_in_rect) {
 
-    /* Create TEXT */
-    Inkscape::XML::Node *rstring = xml_doc->createTextNode("");
-    rtspan->addChild(rstring, nullptr);
-    Inkscape::GC::release(rstring);
-    auto text_item = cast<SPItem>(currentLayer()->appendChildRepr(rtext));
-    /* fixme: Is selection::changed really immediate? */
-    /* yes, it's immediate .. why does it matter? */
-    _desktop->getSelection()->set(text_item);
-    Inkscape::GC::release(rtext);
-    text_item->transform = currentLayer()->i2doc_affine().inverse();
+        auto prefs = Preferences::get();
+        if (prefs->getBool("/tools/text/use_svg2", true)) {
+            text_item = create_text_in_rectangle(currentLayer(), css, *_text_in_rect);
+        } else {
+            auto ft = create_flowtext_with_internal_frame(currentLayer(), css, *_text_in_rect);
+            _desktop->getSelection()->set(ft);
+        }
 
-    text_item->updateRepr();
-    text_item->doWriteTransform(text_item->transform, nullptr, true);
+    } else if (_text_in_shape && is<SPGroup>(_text_in_shape->parent)) {
+        text_item = create_text_in_shape(cast<SPGroup>(_text_in_shape->parent), css, _text_in_shape.get());
+    } else if (_text_on_path && _text_on_path->path && is<SPGroup>(_text_on_path->path->parent)) {
+        auto path = _text_on_path->path;
+        text_item = create_text_on_path(cast<SPGroup>(path->parent),
+                                        css,
+                                        path.get(),
+                                        _text_on_path->offset,
+                                        _text_on_path->align,
+                                        _text_on_path->side);
+    } else {
+        text_item = create_text_at_position(currentLayer(), css, pdoc);
+    }
+
+    if (text_item) {
+        _desktop->getSelection()->set(text_item);
+
+        // Styles are in document units, so aspects from tool style must be rescaled
+        // we don't use doWriteTransform like other tools because text in shape and on path
+        // won't have their sizes correctly updated and things will get really weird.
+
+        double scale = cast<SPItem>(text_item->parent)->i2doc_affine().inverse().descrim();
+        SPText::_adjustFontsizeRecursive(text_item, scale);
+        text_item->adjust_stroke_width_recursive(scale);
+    }
+
     DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Create text"), INKSCAPE_ICON("draw-text"));
+
+    sp_repr_css_attr_unref(css);
+
+    // Reset creators
+    _text_in_shape = nullptr;
+    _text_on_path.reset();
+    _text_in_rect.reset();
 }
 
 /**
@@ -358,7 +390,7 @@ bool TextTool::root_handler(CanvasEvent const &event)
         dump_event(event, "TextTool::root_handler");
     }
 
-    indicator->set_visible(false);
+    indicator->set_visible(nascent_object && _text_in_rect);
 
     _validateCursorIterators();
 
@@ -394,17 +426,27 @@ bool TextTool::root_handler(CanvasEvent const &event)
             grabCanvasEvents();
 
             creating = true;
-
             ret = true;
         },
         [&] (MotionEvent const &event) {
+            if (!creating || dragging_state) {
+                _text_in_shape_hover.reset();
+                _text_on_path_hover.reset();
+            }
+
+            text_path_indicator_side->set_visible(false);
+            text_path_indicator_pos->set_visible(false);
+
             if (creating && event.modifiers & GDK_BUTTON1_MASK) {
                 if (!checkDragMoved(event.pos)) {
                     return;
                 }
 
-                auto p = _desktop->w2d(event.pos);
+                // Cancel the single click now we're dragging
+                _text_in_shape_hover.reset();
+                _text_on_path_hover.reset();
 
+                auto p = _desktop->w2d(event.pos);
                 auto &m = _desktop->getNamedView()->snap_manager;
                 m.setup(_desktop);
                 m.freeSnapReturnByRef(p, SNAPSOURCE_NODE_HANDLE);
@@ -420,6 +462,7 @@ bool TextTool::root_handler(CanvasEvent const &event)
                 auto const xs = x_q.string(_desktop->getNamedView()->display_units);
                 auto const ys = y_q.string(_desktop->getNamedView()->display_units);
                 message_context->setF(IMMEDIATE_MESSAGE, _("<b>Flowed text frame</b>: %s &#215; %s"), xs.c_str(), ys.c_str());
+                return;
             } else if (!sp_event_context_knot_mouseover()) {
                 auto &m = _desktop->getNamedView()->snap_manager;
                 m.setup(_desktop);
@@ -469,6 +512,21 @@ bool TextTool::root_handler(CanvasEvent const &event)
 
             // find out item under mouse, disregarding groups
             auto const item_ungrouped = _desktop->getItemAtPoint(event.pos, true, nullptr);
+
+            // Get nearby paths for text-on-path, a larger distance is used to help with UX
+            auto w2d_scale = _desktop->d2w().inverse().descrim();
+            auto nearby_items = _desktop->getItemsAtPoints({event.pos}, true, false, 0, true, 14.0);
+            auto nearest_path = TextOnPathMetrics::getNearestPath(_desktop, nearby_items, _desktop->w2d(event.pos), 14.0 * w2d_scale);
+
+            // Get nearby shapes, but reduce the distance significantly for text-in-shape
+            auto const nearby_shapes = _desktop->getItemsAtPoints({event.pos}, true, false, 0, true, 0.1);
+
+            // Allow the feature to be turned off by shift key or by preference.
+            auto prefs = Preferences::get();
+            bool shift = event.modifiers & GDK_SHIFT_MASK;
+            bool enable_text_on_path = prefs->getBool("/tools/text/text_on_path", true) != shift;
+            bool enable_text_in_shape = prefs->getBool("/tools/text/text_in_shape", true) != shift;
+
             if (is<SPText>(item_ungrouped) || is<SPFlowtext>(item_ungrouped)) {
                 auto const layout = te_get_layout(item_ungrouped);
                 if (layout->inputTruncated()) {
@@ -496,12 +554,41 @@ bool TextTool::root_handler(CanvasEvent const &event)
                         is<SPText>(item_ungrouped) ? "" : "flowed"
                     );
                 }
-                over_text = true;
+            } else if (enable_text_on_path && nearest_path && nearest_path->path) {
+                _text_on_path_hover = std::move(nearest_path);
+
+                auto pos = _text_on_path_hover->indicate_point * _text_on_path_hover->path->i2dt_affine();
+
+                double cursor_height = sp_desktop_get_font_size_tool(_desktop);
+                auto const y_dir = _desktop->yaxisdir();
+                auto const cursor_size = Geom::Point(0, y_dir * cursor_height);
+                auto const affine = Geom::Rotate(_text_on_path_hover->angle + M_PI * 0.5);
+                text_path_indicator_side->set_position(pos - (cursor_size * affine));
+                text_path_indicator_side->set_angle(_text_on_path_hover->angle);
+                text_path_indicator_side->set_visible(true);
+
+                text_path_indicator_pos->set_position(pos);
+                text_path_indicator_pos->set_visible(true);
+
+                set_cursor("text-on-curve.svg");
+                _desktop->getTool()->defaultMessageContext()->setF(NORMAL_MESSAGE, _("<b>Click</b> to add text to the curve."));
+
+            } else if (enable_text_in_shape && !nearby_shapes.empty() && is<SPShape>(nearby_shapes[0])) {
+                _text_in_shape_hover = cast<SPShape>(nearby_shapes[0]);
+
+                set_cursor("text-in-shape.svg");
+                _desktop->getTool()->defaultMessageContext()->setF(NORMAL_MESSAGE, _("<b>Click</b> to add text into the shape."));
+
             } else {
-                // update cursor and statusbar: we are not over a text object now
                 set_cursor("text.svg");
+                // update cursor and statusbar: we are not over a text object now
                 _desktop->getTool()->defaultMessageContext()->clear();
-                over_text = false;
+            }
+            if (_text_in_shape_hover || _text_on_path_hover) {
+                auto &m = _desktop->getNamedView()->snap_manager;
+                m.setup(_desktop);
+                m.hideSnapIndicator();
+                m.unSetup();
             }
         },
 
@@ -523,20 +610,74 @@ bool TextTool::root_handler(CanvasEvent const &event)
 
             Rubberband::get(_desktop)->stop();
 
-            if (creating && within_tolerance) {
+            if (!creating) {
+                return;
+            }
+            _text_in_shape = nullptr;
+            _text_on_path.reset();
+            _text_in_rect.reset();
+
+            double cursor_height = sp_desktop_get_font_size_tool(_desktop);
+            // Cursor height is defined by the new text object's font size; it needs to be set
+            // artificially here, for the text object does not exist yet:
+            auto const y_dir = _desktop->yaxisdir();
+            auto const cursor_size = Geom::Point(0, y_dir * cursor_height);
+
+            if (_text_in_shape_hover) {
+                _text_in_shape = _text_in_shape_hover;
+                _text_in_shape_hover.reset();
+
+                nascent_object = true; // new object was just created
+                auto curve = *_text_in_shape->curve() * _text_in_shape->i2dt_affine();
+                frame->set_bpath(curve);
+                frame->set_visible(true);
+
+                auto pos = SPText::getFirstInsertionPosition(_text_in_shape.get());
+                pos = pos * _text_in_shape->transform.inverse();
+                p0 = pos * _text_in_shape->i2dt_affine();
+                p1 = p0 + cursor_size;
+
+            } else if (_text_on_path_hover && _text_on_path_hover->path) {
+                _text_on_path = std::move(_text_on_path_hover);
+                nascent_object = true; // new object was just created
+
+                p1 = _text_on_path->indicate_point * _text_on_path->path->i2dt_affine();
+                p0 = p1 - (cursor_size * Geom::Rotate(_text_on_path->angle + M_PI * 0.5));
+
+            } else if (within_tolerance) {
                 // Button 1, set X & Y & new item.
-                _desktop->getSelection()->clear();
                 pdoc = _desktop->dt2doc(p1);
                 nascent_object = true; // new object was just created
 
-                // Cursor height is defined by the new text object's font size; it needs to be set
-                // artificially here, for the text object does not exist yet:
-                double cursor_height = sp_desktop_get_font_size_tool(_desktop);
-                auto const y_dir = _desktop->yaxisdir();
-                auto const cursor_size = Geom::Point(0, y_dir * cursor_height);
-                cursor->set_coords(p1, p1 - cursor_size);
+                p0 = p1 - cursor_size;
                 _showCursor();
 
+                message_context->set(NORMAL_MESSAGE, _("Type text; <b>Enter</b> to start new line.")); // FIXME:: this is a copy of a string from _update_cursor below, do not desync
+            } else {
+                double cursor_height = sp_desktop_get_font_size_tool(_desktop);
+                if (std::abs(p1.y() - p0.y()) > cursor_height) {
+                    // otherwise even one line won't fit; most probably a slip of hand (even if bigger than tolerance)
+                    _text_in_rect = Geom::Rect(_desktop->dt2doc(p0), _desktop->dt2doc(p1));
+                    nascent_object = true; // new object was just created
+
+                    // Fake it until we make it
+                    auto rect = Geom::Rect(p0, p1);
+                    indicator->set_rect(rect);
+                    indicator->set_visible(true);
+
+                    // Cursor position (below), normalised to top left corner
+                    p0 = rect.corner(0);
+                    p1 = p0 + cursor_size;
+
+                    message_context->set(NORMAL_MESSAGE, _("Type text; <b>Enter</b> to create the frame."));
+                } else {
+                    _desktop->messageStack()->flash(ERROR_MESSAGE, _("The frame is <b>too small</b> for the current font size. Flowed text not created."));
+                }
+            }
+            if (nascent_object) {
+                _desktop->getSelection()->clear();
+                cursor->set_coords(p1, p0);
+                _showCursor();
                 if (imc) {
                     GdkRectangle im_cursor;
                     Geom::Point const top_left = _desktop->get_display_area().corner(0);
@@ -549,31 +690,8 @@ bool TextTool::root_handler(CanvasEvent const &event)
                     im_cursor.height = std::floor(im_rect.height());
                     gtk_im_context_set_cursor_location(imc, &im_cursor);
                 }
-                message_context->set(NORMAL_MESSAGE, _("Type text; <b>Enter</b> to start new line.")); // FIXME:: this is a copy of a string from _update_cursor below, do not desync
-
-                within_tolerance = false;
-            } else if (creating) {
-                double cursor_height = sp_desktop_get_font_size_tool(_desktop);
-                if (std::abs(p1.y() - p0.y()) > cursor_height) {
-                    // otherwise even one line won't fit; most probably a slip of hand (even if bigger than tolerance)
-
-                    if (prefs->getBool("/tools/text/use_svg2", true)) {
-                        // SVG 2 text
-                        auto text = create_text_with_rectangle(_desktop, p0, p1);
-                        _desktop->getSelection()->set(text);
-                    } else {
-                        // SVG 1.2 text
-                        auto ft = create_flowtext_with_internal_frame(_desktop, p0, p1);
-                        _desktop->getSelection()->set(ft);
-                    }
-
-                    _desktop->messageStack()->flash(NORMAL_MESSAGE, _("Flowed text is created."));
-                    DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Create flowed text"), INKSCAPE_ICON("draw-text"));
-
-                } else {
-                    _desktop->messageStack()->flash(ERROR_MESSAGE, _("The frame is <b>too small</b> for the current font size. Flowed text not created."));
-                }
             }
+            within_tolerance = false;
             creating = false;
             _desktop->emit_text_cursor_moved(this);
 
@@ -1303,7 +1421,7 @@ bool TextTool::pasteInline(Glib::ustring const clip_text)
 
             return true;
         }
-        
+
     } // FIXME: else create and select a new object under cursor!
 
     return false;
@@ -1830,6 +1948,147 @@ Text::Layout::iterator const *get_cursor_position(TextTool const &tool, SPObject
         return nullptr;
     }
     return &tool.text_sel_end;
+}
+
+TextTool::TextOnPathMetrics::TextOnPathMetrics(SPShape *shape, Geom::Point cursor_point, Geom::Point snap_point)
+    : path(shape)
+{
+
+    double line_distance;
+    auto pathv = shape->curve();
+    auto time_on_line = pathv->nearestTime(cursor_point, &line_distance);
+
+    // Calculate the position and side for this mouse position
+    auto pi = time_on_line->path_index;
+    auto point_on_line = pathv->pointAt(*time_on_line);
+    auto perp_line = Geom::Line(cursor_point, point_on_line);
+    auto point_before_line = perp_line.pointAt(0.99);
+    auto point_after_line = perp_line.pointAt(1.01);
+    indicate_point = point_on_line;
+
+    // Very rare case of hitting the line exactly, we wiggle until we are off the line
+    if (cursor_point == point_on_line) {
+        cursor_point += Geom::Point(1, 0);
+        // Test again if the new point is still on the line
+        if (cursor_point == pathv->pointAt(*pathv->nearestTime(cursor_point, &line_distance))) {
+            // Remove the X wiggle and add a Y wiggle instead
+            cursor_point += Geom::Point(-1, 1);
+        }
+    }
+
+    double total = 0.0, start = 0.0, span = 0.0, pos = 0.0;
+    int winding = 0;
+
+    auto delta_point = point_on_line - cursor_point;
+    bool line_bias = (delta_point[Geom::Y] != 0.0 ? delta_point[Geom::Y] : delta_point[Geom::X]) > 0.0;
+    bool auto_align = true;
+
+    for (unsigned x = 0; x < pathv->size(); x++) {
+        auto path = (*pathv)[x];
+        auto length = Geom::length(Geom::paths_to_pw(path));
+        if (pi == x) {
+            start = total;
+            span = length;
+            pos = span * (time_on_line->asFlatTime() / path.size());
+
+            // Alignment is based on snapping. The position is not just snapped
+            // but the text offset and alignment is changed to make the UX better.
+            if (Geom::are_near(snap_point, path.initialPoint())) {
+                // Start of the sub-path, aligned start
+                offset = start; // Start of the sub-path
+                indicate_point = path.initialPoint();
+                align = -1;
+            } else if (Geom::are_near(snap_point, path.finalPoint())) {
+                // End of the sub-path, aligned end
+                offset = (start + span);
+                indicate_point = path.finalPoint();
+                align = 1;
+            } else {
+                // Nearest position to the cursor by % on the curve (aligned center)
+                offset = (start + pos);
+                align = 0;
+
+                // Override alignment mode from the toolbar when in center
+                auto align_mode = Preferences::get()->getInt("/tools/text/align_mode", 1);
+                auto direction = Preferences::get()->getInt("/tools/text/direction_mode", SP_CSS_DIRECTION_LTR);
+                if ((align_mode == 0 && direction == SP_CSS_DIRECTION_LTR) ||
+                    (align_mode == 2 && direction == SP_CSS_DIRECTION_RTL)) {
+                    align = -1;
+                    auto_align = false;
+                } else if (
+                    (align_mode == 0 && direction == SP_CSS_DIRECTION_RTL) ||
+                    (align_mode == 2 && direction == SP_CSS_DIRECTION_LTR)) {
+                    align = 1;
+                    auto_align = false;
+                }
+            }
+            // This deals with curved lines for side detection
+            winding = path.winding(point_before_line);
+            if (!winding) { // Mouse is outside of curve
+                winding = path.winding(point_after_line) * -1;
+            }
+            if (!winding) { // Straight line
+                winding = line_bias ? -1 : 1;
+            }
+        }
+        total += length;
+    }
+    offset = offset / total;
+
+    if (winding > 0) {
+        side = true;
+    } else if (winding < 0) {
+        side = false;
+    }
+
+    if (side) {
+        // Reverse alignment and position
+        offset = 1 - offset;
+        if (auto_align) {
+            align *= -1;
+        }
+    }
+    angle = perp_line.angle() + (M_PI * line_bias);
+}
+
+std::unique_ptr<TextTool::TextOnPathMetrics> TextTool::TextOnPathMetrics::getNearestPath(SPDesktop *desktop, std::vector<SPItem*> const &items, Geom::Point cursor, double distance)
+{
+    double path_distance = 0;
+    SPShape *path_shape = nullptr;
+
+    std::vector<SnapCandidatePoint> snaps;
+
+    for (auto &item : items) {
+        if (auto shape = cast<SPShape>(item)) {
+
+            double line_distance;
+            shape->curve()->nearestTime(cursor * shape->dt2i_affine(), &line_distance);
+            line_distance /= shape->i2dt_affine().inverse().descrim();
+
+            if (line_distance < distance && (!path_shape || path_distance > line_distance)) {
+                path_shape = shape;
+                path_distance = line_distance;
+            }
+        }
+    }
+
+    if (path_shape) {
+        auto tr = path_shape->dt2i_affine();
+        auto rt = tr.inverse();
+
+        auto pathv = path_shape->curve();
+        for (auto path : *pathv) {
+            if (!path.closed()) {
+                snaps.emplace_back(path.initialPoint() * rt, SNAPSOURCE_TEXT_ANCHOR, SNAPTARGET_TEXT_ANCHOR);
+                snaps.emplace_back(path.finalPoint() * rt, SNAPSOURCE_TEXT_ANCHOR, SNAPTARGET_TEXT_ANCHOR);
+            }
+        }
+
+        auto snap_pt = desktop->getNamedView()->snap_manager.snapToPoints(cursor, SNAPSOURCE_TEXT_ANCHOR, snaps);
+        return std::make_unique<TextTool::TextOnPathMetrics>(path_shape, cursor * tr, snap_pt * tr);
+    }
+
+    return {};
 }
 
 } // namespace Inkscape::UI::Tools

@@ -32,7 +32,8 @@ static std::map<cmsUInt32Number, Space::Type> _lcmssig_to_space = {
 };
 
 CMS::CMS(std::shared_ptr<Inkscape::Colors::CMS::Profile> profile, std::string name)
-    : AnySpace(Type::CMS, 0,
+    : ProfileSpace(Type::CMS,
+            profile ? profile->getSize() : 3,
             name.empty() ? profile->getName(true) : name,
             name.empty() ? profile->getName(true) : name,
             "color-selector-cms")
@@ -48,7 +49,7 @@ CMS::CMS(std::shared_ptr<Inkscape::Colors::CMS::Profile> profile, std::string na
  * Naked CMS space for testing and data retention where the profile is unavailable.
  */
 CMS::CMS(std::string profile_name, unsigned profile_size, Space::Type profile_type)
-    : AnySpace(Type::CMS, 0, profile_name, profile_name, {profile_name}, "color-selector-cms")
+    : ProfileSpace(Type::CMS, profile_size + 3, profile_name, profile_name, {profile_name}, "color-selector-cms")
     , _profile_size(profile_size)
     , _profile_type(profile_type)
     , _profile(nullptr)
@@ -62,7 +63,8 @@ CMS::CMS(std::string profile_name, unsigned profile_size, Space::Type profile_ty
  */
 std::shared_ptr<Colors::CMS::Profile> const CMS::getProfile() const
 {
-    if (!isValid()) {
+    static auto srgb_profile = Colors::CMS::Profile::create_srgb();
+    if (!hasValidCmsProfile()) {
         return srgb_profile;
     }
     return _profile;
@@ -72,33 +74,23 @@ std::shared_ptr<Colors::CMS::Profile> const CMS::getProfile() const
  * If this space lacks a profile, it's really the sRGB fallback values,
  * so we strip out any other values from the io, otherwise we strip the
  * fallback rgb instead.
- */
-void CMS::spaceToProfile(std::vector<double> &io) const
-{
-    bool has_rgb = io.size() > _profile_size + 3;
-    if (isValid()) {
-        // Remove RGB backup leaving just the CMS values
-        if (has_rgb) {
-            io.erase(io.begin(), io.begin() + 3);
-        }
-    } else {
-        bool has_opacity = io.size() == _profile_size + (has_rgb * 3) + 1;
-        // Remove the CMS values leaving just the backup RGB
-        while ((int)io.size() > (3 + has_opacity)) {
-            io.erase(io.begin() + 3);
-        }
-    }
-}
-
-/**
- * Get the number of components for this cms color space.
  *
- * If the color space is not valid, three extra channels are
- * used to hold the red green and blue values.
+ * Not needed for surface conversions, just SVG ones. So this isn't a
+ * static version of spaceToProfile you will see in other modules.
  */
-unsigned int CMS::getComponentCount() const
+bool CMS::spaceToProfile(std::vector<double> &io) const
 {
-    return _profile ? _profile_size : _profile_size + 3;
+    bool has_rgb = io.size() >= _profile_size + 3;
+    bool has_alpha = io.size() == _profile_size + (has_rgb * 3) + 1;
+
+    if (!_profile) {
+        // Remove the CMS values leaving just the backup RGB
+        io.erase(io.begin() + 3, io.end() - has_alpha);
+    } else if (has_rgb) {
+        // Remove RGB backup leaving just the CMS values
+        io.erase(io.begin(), io.begin() + 3);
+    }
+    return true;
 }
 
 /**
@@ -151,7 +143,7 @@ std::string CMS::toString(std::vector<double> const &values, bool /*opacity*/) c
     auto oo = IccColorPrinter(_profile_size, getName());
 
     // When an icc color was parsed, but there is no profile
-    if (!isValid()) {
+    if (!hasValidCmsProfile()) {
         // Not enough values for a fallback option (maybe corrupt?)
         if (values.size() < _profile_size + 3)
             return "";

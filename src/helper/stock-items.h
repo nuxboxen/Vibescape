@@ -27,10 +27,10 @@ class StockPaintDocuments
 public:
     std::vector<SPDocument *> get_paint_documents(std::function<bool (SPDocument *)> const &filter);
 
-protected:
-    StockPaintDocuments();
-
 private:
+    StockPaintDocuments();
+    friend class EnableSingleton;
+
     std::vector<std::unique_ptr<SPDocument>> documents;
 };
 

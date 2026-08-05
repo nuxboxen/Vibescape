@@ -145,12 +145,7 @@ std::unique_ptr<SPDocument> open(Extension *key, char const *filename, bool is_i
  * \param    official  (optional) whether to set :output_module and :modified in the
  *                     document; is true for normal save, false for temporary saves
  *
- * First things first, are we looking at an autodetection?  Well if that's the case then the module
- * needs to be found, and that is done with a database lookup through the module DB.  The foreach
- * function is called, with the parameter being a gpointer array.  It contains both the filename
- * (to find its extension) and where to write the module when it is found.
- *
- * If there is no autodetection the module database is queried with the key given.
+ * The module database is queried with the key given.
  *
  * If everything is cool at this point, the module is loaded, and there is possibility for
  * preferences.  If there is a function, then it is executed to get the dialog to be displayed.
@@ -162,32 +157,11 @@ void
 save(Extension *key, SPDocument *doc, gchar const *filename, bool check_overwrite, bool official,
     Inkscape::Extension::FileSaveMethod save_method)
 {
-    Output *omod = nullptr;
-    if (key == nullptr) {
-        DB::OutputList o;
-        for (auto mod : db.get_output_list(o)) {
-            if (mod->can_save_filename(filename)) {
-                omod = mod;
-                break;
-            }
-        }
+    assert(key);
 
-        /* This is a nasty hack, but it is required to ensure that
-           autodetect will always save with the Inkscape extensions
-           if they are available. */
-        if (omod != nullptr && !strcmp(omod->get_id(), SP_MODULE_KEY_OUTPUT_SVG)) {
-            omod = dynamic_cast<Output *>(db.get(SP_MODULE_KEY_OUTPUT_SVG_INKSCAPE));
-        }
-        /* If autodetect fails, save as Inkscape SVG */
-        if (omod == nullptr) {
-            // omod = dynamic_cast<Output *>(db.get(SP_MODULE_KEY_OUTPUT_SVG_INKSCAPE)); use exception and let user choose
-        }
-    } else {
-        omod = dynamic_cast<Output *>(key);
-    }
-
+    Output *omod = dynamic_cast<Output *>(key);
     if (!omod) {
-        g_warning("Unable to find output module to handle file: %s\n", filename);
+        g_warning("No valid output module provided to handle file: %s\n", filename);
         throw Output::no_extension_found();
     }
 

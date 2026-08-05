@@ -35,6 +35,7 @@ public:
     CssPrinter &operator<<(double);
     CssPrinter &operator<<(int);
     CssPrinter &operator<<(std::vector<double> const &);
+    CssPrinter &operator<<(const char *value) {*(std::ostringstream*)this << value; return *this;}
 
     operator std::string()
     {

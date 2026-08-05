@@ -11,7 +11,6 @@
 
 #include "oklch.h"
 
-#include <2geom/angle.h>
 #include <2geom/polynomial.h>
 #include <cmath>
 
@@ -26,39 +25,6 @@ namespace Inkscape::Colors::Space {
  * always scales from 0 to 1 of this expected range of values.
  */
 constexpr double CHROMA_SCALE = 0.4;
-constexpr double HUE_SCALE = 360;
-
-/**
- * Convert a color from the the OkLch colorspace to the OKLab colorspace.
- *
- * @param in_out[in,out] The OkLch color converted to an OKLab color.
- */
-void OkLch::toOkLab(std::vector<double> &in_out)
-{
-    // c and h are polar coordinates; convert to Cartesian a, b coords.
-    double c = in_out[1];
-    Geom::sincos(Geom::Angle::from_degrees(in_out[2] * HUE_SCALE), in_out[2], in_out[1]);
-    in_out[1] *= c;
-    in_out[2] *= c;
-}
-
-/**
- * Convert a color from the the OKLab colorspace to the OkLch colorspace.
- *
- * @param in_out[in,out] The OKLab color converted to an OkLch color.
- */
-void OkLch::fromOkLab(std::vector<double> &in_out)
-{
-    // Convert a, b to polar coordinates c, h.
-    double c = std::hypot(in_out[1], in_out[2]);
-    if (c > 0.001) {
-        Geom::Angle const hue_angle = std::atan2(in_out[2], in_out[1]);
-        in_out[2] = Geom::deg_from_rad(hue_angle.radians0()) / HUE_SCALE;
-    } else {
-        in_out[2] = 0;
-    }
-    in_out[1] = c;
-}
 
 /** @brief
  * Data needed to compute coefficients in the cubic polynomials which express the lines

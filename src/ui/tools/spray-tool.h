@@ -112,7 +112,7 @@ public:
     void set(Preferences::Entry const &val) override;
     virtual void setCloneTilerPrefs();
     bool root_handler(CanvasEvent const &event) override;
-    void update_cursor(bool /*with_shift*/);
+    void update_cursor();
 
     ObjectSet *objectSet() { return &object_set; }
     SPItem *single_path_output = nullptr;

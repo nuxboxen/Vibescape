@@ -110,7 +110,7 @@ TEST(ColorSetTest, setColorsHsl)
     ASSERT_TRUE(*colors.getAlphaConstraint());
 
     colors.set("i1", *Color::parse("red"));
-    ASSERT_EQ(colors.get("i1")->toString(), "hsla(0, 100, 50, 1)");
+    ASSERT_EQ(colors.get("i1")->toString(), "hsla(0, 100%, 50%, 1)");
 }
 
 TEST(ColorSetTest, setAllColors)
@@ -254,13 +254,13 @@ TEST(ColorSetTest, getAverage)
     colors.set("c1", *Color::parse("hsl(180,100,100)"));
     colors.set("c2", *Color::parse("hsla(60,0,0, 50)"));
     EXPECT_EQ(colors.getBestSpace()->getName(), "HSL");
-    EXPECT_EQ(colors.getAverage().toString(), "hsl(120, 50, 50)");
+    EXPECT_EQ(colors.getAverage().toString(), "hsl(120, 50%, 50%)");
 
     colors.set("c1", *Color::parse("hsl(180,100,100)"));
     colors.set("c2", *Color::parse("hsl(0,50,100)"));
     colors.set("c3", *Color::parse("blue"));
     EXPECT_EQ(colors.getBestSpace()->getName(), "HSL");
-    EXPECT_EQ(colors.getAverage().toString(), "hsl(139, 83.333, 83.333)");
+    EXPECT_EQ(colors.getAverage().toString(), "hsl(139, 83.333%, 83.333%)");
 }
 
 TEST(ColorSetTest, getCmykAverage)

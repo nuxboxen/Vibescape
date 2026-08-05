@@ -255,7 +255,6 @@ std::vector<GskColorStop> create_cubic_gradient(
 
 // If on Windows, get the native window & set it to DWMA_USE_IMMERSIVE_DARK_MODE
 void set_dark_titlebar(Glib::RefPtr<Gdk::Surface> const &surface, bool is_dark);
-unsigned int get_color_value(const Glib::ustring color);
 
 // Parse string that can contain floating point numbers and round them to given precision;
 // Used on path data ("d" attribute).
@@ -301,6 +300,9 @@ Geom::Affine compute_transform(Gtk::Widget const &widget, Gtk::Widget const &tar
  * but is necessary when accessing Gdk::Event::get_position() or Gdk::Event::get_history() directly.
  */
 Geom::Affine get_event_transform(Glib::RefPtr<Gdk::Surface const> const &event_surface, Gtk::Widget const &target);
+
+// Returns true if running under X11.
+bool is_x11_display();
 
 namespace Inkscape::UI {
 

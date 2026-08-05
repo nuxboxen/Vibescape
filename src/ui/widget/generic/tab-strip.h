@@ -20,6 +20,7 @@
 #include <gtkmm/menubutton.h>
 #include <gtkmm/orientable.h>
 
+#include "ui/widget/generic/css-name-class-init.h"
 #include "ui/widget/gtk-registry.h"
 
 namespace Gtk { class Popover; }
@@ -30,7 +31,7 @@ struct TabWidget;
 class TabWidgetDrag;
 
 /// Widget that implements strip of tabs
-class TabStrip : public Gtk::Orientable, public BuildableWidget<TabStrip, Gtk::Widget>
+class TabStrip : public CssNameClassInit, public Gtk::Orientable, public BuildableWidget<TabStrip, Gtk::Widget>
 {
 public:
     using BaseObjectType = GtkWidget;

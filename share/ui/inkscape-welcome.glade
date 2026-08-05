@@ -19,7 +19,7 @@
         <col id="2">resources/canvas_aw.png</col>
         <col id="3">rgba(255, 255, 255, 0)</col>
         <col id="4">False</col>
-        <col id="5">#999999</col>
+        <col id="5">rgba(0, 0, 0, 0.1)</col>
         <col id="6">True</col>
         <col id="7">#d1d1d1</col>
       </row>

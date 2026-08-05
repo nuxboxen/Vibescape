@@ -468,6 +468,8 @@ XmlTreeView::select_node(Inkscape::XML::Node *node, bool edit)
             return false; // continue
         });
     } else {
+        // clear cursor to prevent Gtk from moving it on us if its row is deleted
+        set_cursor(Gtk::TreePath());
         selection->unselect_all();
     }
 }

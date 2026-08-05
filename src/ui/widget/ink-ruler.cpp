@@ -24,6 +24,7 @@
 #include "inkscape.h"
 #include "ui/containerize.h"
 #include "ui/controller.h"
+#include "ui/pixel-alignment.h"
 #include "ui/popup-menu.h"
 #include "ui/themes.h"
 #include "ui/util.h"
@@ -170,19 +171,21 @@ static double safe_frac(double x)
 void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
 {
     auto const dims = Geom::IntPoint{get_width(), get_height()};
+    int const pixel_scale_factor = get_scale_factor();
 
     // aparallel is the longer dimension of the ruler; aperp shorter.
     auto const [aparallel, aperp] = _orientation == Gtk::Orientation::HORIZONTAL
         ? std::pair{dims.x(), dims.y()}
         : std::pair{dims.y(), dims.x()};
 
+    auto aligned_page_interval = Inkscape::pixel_align(
+        Geom::Interval(_page_lower, _page_upper), Inkscape::RectLineAlignment::CenterInside, 0, pixel_scale_factor);
+
     // Color in page indication box
-    if (auto const interval = Geom::IntInterval(std::round(_page_lower), std::round(_page_upper)) & Geom::IntInterval{0, aparallel}) {
-        Geom::IntRect rect;
-        if (_orientation == Gtk::Orientation::HORIZONTAL) {
-            rect = {interval->min(), 0, interval->max(), aperp};
-        } else {
-            rect = {0, interval->min(), aperp, interval->max()};
+    if (auto const interval = aligned_page_interval & Geom::Interval(0, aparallel)) {
+        Geom::Rect rect = Geom::Rect(interval.value(), Geom::Interval(0, aperp));
+        if (_orientation != Gtk::Orientation::HORIZONTAL) {
+            std::swap(rect[Geom::X], rect[Geom::Y]);
         }
         gtk_snapshot_append_color(snapshot->gobj(), &_page_fill, pass_in(rect));
     }
@@ -191,29 +194,20 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
     if (_sel_lower != _sel_upper && _sel_visible) {
         constexpr auto line_width = 2.0;
         auto const delta = _sel_upper - _sel_lower;
-        auto const dxy = 0;//delta > 0 ? radius : -radius;
-        double sy0 = _sel_lower;
-        double sy1 = _sel_upper;
-        double sx0 = std::floor(aperp * 0.7);
-        double sx1 = sx0;
-
-        if (_orientation == Gtk::Orientation::HORIZONTAL) {
-            std::swap(sy0, sx0);
-            std::swap(sy1, sx1);
-        }
 
         if (std::abs(delta) >= 1) {
-            Geom::Rect rect;
-            Geom::Rect bgnd;
+            auto sel_range = Inkscape::pixel_align(Geom::Interval(_sel_lower, _sel_upper),
+                                                   RectLineAlignment::CenterOutside, 0, pixel_scale_factor);
+
+            double sy0 = sel_range.min();
+            double sy1 = sel_range.max();
+
+            auto const x = aperp - line_width;
+            Geom::Rect bgnd = Geom::Rect(0, sy0, x, sy1);
+            Geom::Rect rect = Geom::Rect(x, sy0, aperp, sy1);
             if (_orientation == Gtk::Orientation::HORIZONTAL) {
-                // auto edge_rect = {0, aperp - 1, aparallel, aperp};
-                auto const y = aperp - line_width;// std::round(sy0 - line_width / 2);
-                bgnd = Geom::Rect(sx0 + dxy, 0, sx1 - dxy, aperp -line_width);
-                rect = Geom::Rect(sx0 + dxy, y, sx1 - dxy, y + line_width);
-            } else {
-                auto const x = aperp - line_width; // std::round(sx0 - line_width / 2);
-                bgnd = Geom::Rect(0, sy0 + dxy, aperp - line_width, sy1 - dxy);
-                rect = Geom::Rect(x, sy0 + dxy, x + line_width, sy1 - dxy);
+                std::swap(rect[Geom::X], rect[Geom::Y]);
+                std::swap(bgnd[Geom::X], bgnd[Geom::Y]);
             }
             gtk_snapshot_append_color(snapshot->gobj(), &_select_bgnd, pass_in(bgnd));
             gtk_snapshot_append_color(snapshot->gobj(), &_select_stroke, pass_in(rect));
@@ -257,7 +251,6 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
     double const units_per_major = ruler_metric->ruler_scale[scale_index];
     double const pixels_per_major = pixels_per_unit * units_per_major;
     double const pixels_per_tick = pixels_per_major / subdivisions;
-    int const pixel_scale_factor = get_scale_factor();
 
     // Figure out which cached render nodes to invalidate.
     if (!_params) {
@@ -326,10 +319,10 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
 
         for (int i = 0; i < subdivisions; i++) {
             // Position of tick
-            double position = CanvasItem::align_to_pixels05(i * pixels_per_tick, 0, pixel_scale_factor);
-            // center line based on physical pixels
-            int const centering_shift = pixel_scale_factor / 2;
-            position += -centering_shift / double(pixel_scale_factor);
+            int const width = 1;
+            double position =
+                CanvasItem::align_to_pixels05(i * pixels_per_tick, width * pixel_scale_factor, pixel_scale_factor) -
+                0.5 * width;
 
             // Height of tick
             int size = aperp - 8;
@@ -345,11 +338,9 @@ void Ruler::draw_ruler(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
             }
 
             // Draw ticks
-            Geom::Rect rect;
+            Geom::Rect rect = Geom::Rect(aperp - size, position, aperp, position + width);
             if (_orientation == Gtk::Orientation::HORIZONTAL) {
-                rect = Geom::Rect(position, aperp - size, position + 1, aperp);
-            } else {
-                rect = Geom::Rect(aperp - size, position, aperp, position + 1);
+                std::swap(rect[Geom::X], rect[Geom::Y]);
             }
             gtk_snapshot_append_color(scale_tile, major ? &_major : &_minor, pass_in(rect));
         }

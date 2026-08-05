@@ -20,6 +20,7 @@
 // For updating from selection
 #include <glibmm/main.h>
 
+#include "desktop.h"
 #include "inkscape.h"
 #include "object/sp-text.h"
 #include "preferences.h"
@@ -36,9 +37,7 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
     , family_frame(_("Font family"))
     , style_frame(C_("Font selector", "Style"))
     , size_label(_("Font size"))
-    , size_combobox(true) // With entry
     , signal_block(false)
-    , font_size(18)
 {
     Inkscape::FontLister* font_lister = Inkscape::FontLister::get_instance();
     Glib::RefPtr<Gtk::TreeModel> model = font_lister->get_font_list();
@@ -86,8 +85,11 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
 
     style_treeview.set_model (font_lister->get_style_list());
     style_treeview.set_name ("FontSelectorStyle");
-    style_treeview.append_column ("CSS", font_lister->font_style_list.cssStyle);
+    style_treeview.set_headers_visible (false);
+    // Moved to tooltip to save space, but still useful for debugging.
+    // style_treeview.append_column ("CSS", font_lister->font_style_list.cssStyle);
     style_treeview.append_column (style_treecolumn);
+    style_treeview.set_tooltip_column(font_lister->font_style_list.cssStyle.index());
 
     style_treeview.get_column(0)->set_resizable (true);
 
@@ -99,13 +101,7 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
     style_frame.set_child(style_scroll);
 
     // Size
-    size_combobox.set_name ("FontSelectorSize");
-    if (auto entry = size_combobox.get_entry()) {
-        // limit min size of the entry box to 6 chars, so it doesn't inflate entire dialog!
-        entry->set_width_chars(6);
-    }
-    set_sizes();
-    size_combobox.set_active_text( "18" );
+    size_selector.setSize(sp_style_css_size_px_to_units(18, size_selector.getUnit()));
 
     // Font Variations
     font_variations.set_vexpand (true);
@@ -127,7 +123,7 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
         auto const size_grid = Gtk::make_managed<Gtk::Grid>();
         size_grid->set_column_spacing(4);
         size_grid->attach(size_label, 0, 0, 1, 1);
-        size_grid->attach(size_combobox, 1, 0, 1, 1);
+        size_grid->attach(size_selector, 1, 0, 1, 1);
         append(*size_grid);
     }
     if (with_variations) { // Glyphs panel does not use variations.
@@ -145,7 +141,7 @@ FontSelector::FontSelector(bool with_size, bool with_variations)
     // Add signals
     family_treeview.get_selection()->signal_changed().connect(sigc::mem_fun(*this, &FontSelector::on_family_changed));
     style_treeview.get_selection()->signal_changed().connect(sigc::mem_fun(*this, &FontSelector::on_style_changed));
-    size_combobox.signal_changed().connect(sigc::mem_fun(*this, &FontSelector::on_size_changed));
+    size_selector.signal_size_changed().connect(sigc::mem_fun(*this, &FontSelector::on_size_changed));
     font_variations.connectChanged(sigc::mem_fun(*this, &FontSelector::on_variations_changed));
     family_treeview.signal_realize().connect(sigc::mem_fun(*this, &FontSelector::on_realize_list));
 
@@ -172,7 +168,7 @@ void FontSelector::hide_others()
 {
     style_frame.set_visible(false);
     size_label.set_visible(false);
-    size_combobox.set_visible(false);
+    size_selector.set_visible(false);
     font_variations_scroll.set_visible(false);
     font_variations_scroll.set_vexpand(false);
 }
@@ -198,30 +194,6 @@ Glib::RefPtr<Gdk::ContentProvider> FontSelector::on_drag_prepare(double /*x*/, d
     value.init(G_TYPE_STRING);
     value.set(family_name);
     return Gdk::ContentProvider::create(value);
-}
-
-void
-FontSelector::set_sizes ()
-{
-    size_combobox.remove_all();
-
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
-
-    auto& sizes = sp_style_get_default_font_size_list(unit);
-
-    for (int size : sizes) {
-        size_combobox.append(Inkscape::ustring::format_classic(size));
-    }
-}
-
-void
-FontSelector::set_fontsize_tooltip()
-{
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
-    Glib::ustring tooltip = Inkscape::ustring::format_classic(_("Font size"), " (", sp_style_get_css_unit_string(unit), ")");
-    size_combobox.set_tooltip_text (tooltip);
 }
 
 // Update GUI.
@@ -262,6 +234,7 @@ void FontSelector::update_font()
     // Copy font-lister style list to private list store, searching for match.
     Gtk::TreeModel::iterator match;
     auto local_style_list_store = Gtk::ListStore::create(font_lister->font_style_list);
+
     for (auto const &s : *styles) {
         auto srow = *local_style_list_store->append();
         srow[font_lister->font_style_list.cssStyle] = s.css_name;
@@ -279,21 +252,6 @@ void FontSelector::update_font()
 
     Glib::ustring fontspec = font_lister->get_fontspec();
     update_variations(fontspec);
-
-    signal_block = false;
-}
-
-void
-FontSelector::update_size (double size)
-{
-    signal_block = true;
-
-    // Set font size
-    std::stringstream ss;
-    ss << size;
-    size_combobox.get_entry()->set_text( ss.str() );
-    font_size = size; // Store value
-    set_fontsize_tooltip();
 
     signal_block = false;
 }
@@ -350,6 +308,8 @@ FontSelector::get_fontspec(bool use_variations) {
         if (variations.empty()) {
             fontspec += style;
         } else {
+            fontspec += style;
+            fontspec += " ";
             fontspec += variations;
         }
     } else {
@@ -371,13 +331,15 @@ FontSelector::style_cell_data_func(Gtk::CellRenderer * const renderer,
 
     Glib::ustring style = "Normal";
     (*iter).get_value(1, style);
+    Glib::ustring css = "Normal";
+    (*iter).get_value(0, css);
 
     Glib::ustring style_escaped  = Glib::Markup::escape_text( style );
-    Glib::ustring font_desc = Glib::Markup::escape_text( family + ", " + style );
+    Glib::ustring font_desc = Glib::Markup::escape_text( family + ", " + css );
     Glib::ustring markup;
 
     markup = "<span font='" + font_desc + "'>" + style_escaped + "</span>";
-
+    // std::cout << "CSS: " << css << "   Markup: " << markup << std::endl;
     renderer->set_property("markup", markup);
 }
 
@@ -465,35 +427,11 @@ FontSelector::on_style_changed() {
 }
 
 void
-FontSelector::on_size_changed() {
+FontSelector::on_size_changed(double size, int unit) {
 
     if (signal_block) return;
 
-    double size;
-    Glib::ustring input = size_combobox.get_active_text();
-    try {
-        size = std::stod (input);
-    }
-    catch (std::invalid_argument) {
-        std::cerr << "FontSelector::on_size_changed: Invalid input: " << input.raw() << std::endl;
-        size = -1;
-    }
-
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    // Arbitrary: Text and Font preview freezes with huge font sizes.
-    int max_size = prefs->getInt("/dialogs/textandfont/maxFontSize", 10000); 
-
-    if (size <= 0) {
-        return;
-    }
-    if (size > max_size)
-        size = max_size;
-
-    if (fabs(font_size - size) > 0.001) {
-        font_size = size;
-        // Let world know
-        changed_emit();
-    }
+    changed_emit();
 }
 
 void

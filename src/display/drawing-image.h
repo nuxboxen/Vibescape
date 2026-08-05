@@ -36,6 +36,7 @@ public:
     void setScale(double sx, double sy);
     void setOrigin(Geom::Point const &o);
     void setClipbox(Geom::Rect const &box);
+    void setExtend(cairo_extend_t extend);
     Geom::Rect bounds() const;
 
 protected:
@@ -43,7 +44,7 @@ protected:
 
     unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) override;
     unsigned _renderItem(DrawingContext &dc, RenderContext &rc, Geom::IntRect const &area, unsigned flags, DrawingItem const *stop_at) const override;
-    DrawingItem *_pickItem(Geom::Point const &p, double delta, unsigned flags) override;
+    DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) override;
 
     std::shared_ptr<Inkscape::Pixbuf const> _pixbuf;
 
@@ -53,6 +54,7 @@ protected:
     Geom::Rect _clipbox; ///< for preserveAspectRatio
     Geom::Point _origin;
     Geom::Scale _scale;
+    cairo_extend_t _extend;
 };
 
 } // namespace Inkscape

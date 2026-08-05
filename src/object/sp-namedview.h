@@ -53,7 +53,6 @@ public:
     bool editable = true;
     SVGBool showguides{true};
     SVGBool lockguides{false};
-    SVGBool grids_visible{false};
     SVGBool clip_to_page{false}; // if true, clip rendered content to pages' boundaries
     SVGBool antialias_rendering{true};
     SVGBool desk_checkerboard{false};
@@ -68,7 +67,7 @@ public:
     int window_maximized = 0;
     SnapManager snap_manager;
     Inkscape::Util::Unit const *display_units = nullptr;   // Units used for the UI (*not* the same as units of SVG coordinates)
-    // Inkscape::Util::Unit const *page_size_units; // Only used in "Custom size" part of Document Properties dialog 
+    // Inkscape::Util::Unit const *page_size_units; // Only used in "Custom size" part of Document Properties dialog
     GQuark default_layer_id = 0;
     double connector_spacing;
     std::vector<SPGuide *> guides;
@@ -90,9 +89,6 @@ public:
     void translateGrids(Geom::Translate const &translation);
     void scrollAllDesktops(double dx, double dy);
 
-    bool getShowGrids();
-    void setShowGrids(bool v);
-
     void toggleShowGuides();
     void toggleLockGuides();
     void toggleShowGrids();
@@ -104,7 +100,6 @@ public:
     bool getShowGuides();
 
     void updateViewPort();
-    void newGridCreated();
 
     // page background, border, desk colors
     void change_color(SPAttr color_key, SPAttr opacity_key, Inkscape::Colors::Color const &color);
@@ -135,12 +130,14 @@ private:
     void updateGuides();
     void updateGrids();
 
+    bool getShowGrids();
+    void setShowGrids(bool v);
+
     void setShowGuideSingle(SPGuide *guide);
 
     friend class SPDocument;
 
     std::unique_ptr<Inkscape::CanvasPage> _viewport;
-    bool _sync_grids = true;
     std::optional<Inkscape::Colors::Color> _desk_color;
     std::optional<Inkscape::Colors::Color> _guide_color;
     std::optional<Inkscape::Colors::Color> _guide_hi_color;

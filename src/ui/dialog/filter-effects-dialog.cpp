@@ -17,11 +17,12 @@
 
 #include "filter-effects-dialog.h"
 
+#include <utility>
 #include <gdkmm/general.h>
 #include <gdkmm/seat.h>
-#include <gtkmm/cssprovider.h>
 #include <glibmm/main.h>
 #include <glibmm/stringutils.h>
+#include <gtkmm/cssprovider.h>
 #include <gtkmm/dragsource.h>
 #include <gtkmm/entry.h>
 #include <gtkmm/eventcontrollermotion.h>
@@ -419,7 +420,7 @@ public:
     SubregionSpinButtonAttr(SPAttr a, std::function<bool()> is_active_func)
         : Gtk::SpinButton()
         , AttrWidget(a)
-        , _is_active_func(is_active_func)
+        , _is_active_func(std::move(is_active_func))
     {
         set_range(-10000000.0, 10000000.0);
         set_increments(1.0, 10.0);
@@ -436,7 +437,7 @@ public:
         if (!_is_active_func()) {
             return ""; // Remove attribute (Unset)
         }
-        
+
         Inkscape::CSSOStringStream os;
         os << get_value();
         return os.str();
@@ -483,10 +484,7 @@ public:
             }
         )");
 
-        _check.get_style_context()->add_provider(
-            css_provider, 
-            GTK_STYLE_PROVIDER_PRIORITY_USER
-        );
+        _check.get_style_context()->add_provider(css_provider, GTK_STYLE_PROVIDER_PRIORITY_USER);
         _check.set_margin_bottom(5);
         _check.set_tooltip_markup(_("<b>Defines the subregion for this filter primitive.</b>\n• Unchecked: Defaults to 0%, 0%, 100%, 100% <i>(covers the entire filter region)</i>.\n• Checked: Restricts the effect to the specified X, Y, Width, and Height."));
         append(_check);
@@ -495,10 +493,8 @@ public:
         _grid->set_row_spacing(5);
         _grid->set_column_spacing(10);
 
-        auto add_dual_row = [&](int row, Glib::ustring main_txt, 
-                                Glib::ustring l1_txt, Gtk::Widget& w1, 
-                                Glib::ustring l2_txt, Gtk::Widget& w2) {
-
+        auto add_dual_row = [&](int row, Glib::ustring main_txt, Glib::ustring l1_txt, Gtk::Widget &w1,
+                                Glib::ustring l2_txt, Gtk::Widget &w2) {
             auto* main_lbl = Gtk::make_managed<Gtk::Label>(main_txt);
             main_lbl->set_xalign(0);
             _grid->attach(*main_lbl, 0, row, 1, 1);
@@ -541,8 +537,8 @@ public:
 
     void set_from_attribute(SPObject* o) override
     {
-        bool has_attr = o->getAttribute("x") || o->getAttribute("y") || 
-                        o->getAttribute("width") || o->getAttribute("height");
+        bool has_attr =
+            o->getAttribute("x") || o->getAttribute("y") || o->getAttribute("width") || o->getAttribute("height");
 
         _check.set_active(has_attr);
         _grid->set_visible(has_attr); // Ensure visibility matches state on load
@@ -1802,7 +1798,7 @@ void FilterEffectsDialog::FilterModifier::remove_filter()
         DocumentUndo::done(doc, RC_("Undo", "Remove filter"), INKSCAPE_ICON("dialog-filters"));
 
         update_filters();
-    
+
         // select first filter to avoid empty dialog after filter deletion
         auto &&filters = _filters_model->children();
         if (!filters.empty()) {
@@ -1928,11 +1924,11 @@ FilterEffectsDialog::PrimitiveList::PrimitiveList(FilterEffectsDialog& d)
 
     _model = Gtk::ListStore::create(_columns);
 
+    // Make the list reorderable, which will cause GTK to automatically call insert then remove on
+    // rows as they are dragged. Listen for the removal, so that we can clean up the internal
+    // state after a drag.
     set_reorderable(true);
-
-    auto const drag = Gtk::DragSource::create();
-    drag->signal_drag_end().connect(sigc::mem_fun(*this, &PrimitiveList::on_drag_end));
-    add_controller(drag);
+    _model->signal_row_deleted().connect(sigc::mem_fun(*this, &PrimitiveList::on_row_deleted));
 
     set_model(_model);
     append_column(_("_Effect"), _columns.type);
@@ -2266,7 +2262,7 @@ void FilterEffectsDialog::PrimitiveList::draw_connection(const Cairo::RefPtr<Cai
     cr->save();
 
     int src_id = 0;
-    Gtk::TreeModel::iterator res = find_result(input, attr, src_id, pos); 
+    Gtk::TreeModel::iterator res = find_result(input, attr, src_id, pos);
 
     const bool is_first = input == get_model()->children().begin();
     const bool is_selected = (get_selection()->get_selected())
@@ -2699,17 +2695,27 @@ void FilterEffectsDialog::PrimitiveList::sanitize_connections(const Gtk::TreeMod
     }
 }
 
-// Reorder the filter primitives to match the list order
-void FilterEffectsDialog::PrimitiveList::on_drag_end(Glib::RefPtr<Gdk::Drag> const &/*&drag*/,
-                                                     bool /*delete_data*/)
+// Reorder the filter primitives to match the list order.
+// Will be called after a drag operation by the internal re-ordering GTK does (adds then deletes).
+void FilterEffectsDialog::PrimitiveList::on_row_deleted(const Gtk::TreeModel::Path &path)
 {
+    if (!_drag_prim) {
+        // Skip re-ordering if this deletion didn't come from a drag
+        return;
+    }
+    // to prevent being called again during this handler, save the drag prim and clear it out
+    auto const drag_prim = _drag_prim;
+    _drag_prim = nullptr;
+
     SPFilter* filter = _dialog._filter_modifier.get_selected_filter();
     g_assert(filter);
 
     int ndx = 0;
     for (auto iter = _model->children().begin(); iter != _model->children().end(); ++iter, ++ndx) {
         SPFilterPrimitive* prim = (*iter)[_columns.primitive];
-        if (prim && prim == _drag_prim) {
+        if (prim && prim == drag_prim) {
+            // setPosition will cause row deleted signals to fire, but this handler won't be called
+            // again because of the _drag_prim guard at the top.
             prim->getRepr()->setPosition(ndx);
             break;
         }
@@ -2717,7 +2723,7 @@ void FilterEffectsDialog::PrimitiveList::on_drag_end(Glib::RefPtr<Gdk::Drag> con
 
     for (auto iter = _model->children().begin(); iter != _model->children().end(); ++iter) {
         SPFilterPrimitive* prim = (*iter)[_columns.primitive];
-        if (prim && prim == _drag_prim) {
+        if (prim && prim == drag_prim) {
             sanitize_connections(iter);
             get_selection()->select(iter);
             break;

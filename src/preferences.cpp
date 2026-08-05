@@ -343,6 +343,16 @@ std::vector<Glib::ustring> Preferences::getAllDirs(Glib::ustring const &path)
     return temp;
 }
 
+/**
+ * Is the given path a directory. If false it may be the entry
+ * doesn't exist or is a value instead.
+ */
+bool Preferences::isDir(Glib::ustring const &path)
+{
+    Inkscape::XML::Node *node = _getNode(path, false);
+    return node && node->attribute("id") != nullptr;
+}
+
 // getter methods
 
 Preferences::Entry const Preferences::getEntry(Glib::ustring const &pref_path)
@@ -455,6 +465,13 @@ void Preferences::setDoubleUnit(Glib::ustring const &pref_path, double value, Gl
 void Preferences::setColor(Glib::ustring const &pref_path, Colors::Color const &color)
 {
     _setRawValue(pref_path, color.toString());
+}
+
+void Preferences::setColor(Glib::ustring const &pref_path, Glib::ustring const &value)
+{
+    if (auto color = Colors::Color::parse(value)) {
+        setColor(pref_path, color.value());
+    }
 }
 
 /**
@@ -896,7 +913,7 @@ bool Preferences::Entry::isValidColor() const
         return false;
     }
 
-    return Colors::Color::parse(_value.value().raw()).has_value();
+    return Colors::Color::parse(_value.value().raw()).has_value() || isValidUInt();
 }
 
 // The Entry::get* methods convert the preference string from the XML file back to the original value.
@@ -934,6 +951,10 @@ Colors::Color Preferences::Entry::getColor(std::string const &def) const
         // (exemplary Inkscape startup: 40 calls to getColor vs. 10k calls to getBool())
         if (auto res = Colors::Color::parse(_value.value().raw())) {
             return *res;
+        } else if (isValidUInt()) {
+            // Support historical uint values that are now read as colors (some icon theme colors
+            // at least have transitioned from rgba uints to color strings)
+            return Colors::Color(getUInt());
         }
     }
     if (auto res = Colors::Color::parse(def)) {
@@ -1188,9 +1209,25 @@ void Preferences::PreferencesObserver::notify(Preferences::Entry const& new_val)
     _callback(new_val);
 }
 
+void Preferences::PreferencesObserver::call_recursive(Glib::ustring const &path) {
+    auto prefs = Inkscape::Preferences::get();
+
+    for (auto &e : prefs->getAllEntries(path)) {
+        _callback(e);
+    }
+    for (auto &d : prefs->getAllDirs(path)) {
+        call_recursive(d);
+    }
+}
+
 void Preferences::PreferencesObserver::call() {
     auto prefs = Inkscape::Preferences::get();
-    _callback(prefs->getEntry(observed_path));
+
+    if (!prefs->isDir(observed_path)) {
+        _callback(prefs->getEntry(observed_path));
+    } else {
+        call_recursive(observed_path);
+    }
 }
 
 PrefObserver Preferences::createObserver(Glib::ustring path, std::function<void (const Preferences::Entry&)> callback) {

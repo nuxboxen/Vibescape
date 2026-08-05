@@ -186,7 +186,7 @@ TEST_F(ColorDocumentCMSObjsTest, cmsParsingRGB)
 
     auto space = tr.getSpace("grb");
     ASSERT_TRUE(space);
-    EXPECT_TRUE(space->isValid());
+    EXPECT_TRUE(space->hasValidCmsProfile());
     EXPECT_EQ(space->getType(), Space::Type::CMS);
     EXPECT_EQ(space->getComponentType(), Space::Type::RGB);
 
@@ -220,7 +220,7 @@ TEST_F(ColorDocumentCMSObjsTest, cmsParsingCMYK1)
 
     auto space = tr.getSpace("cmyk-rcm");
     ASSERT_TRUE(space);
-    EXPECT_TRUE(space->isValid());
+    EXPECT_TRUE(space->hasValidCmsProfile());
     EXPECT_EQ(space->getType(), Space::Type::CMS);
     EXPECT_EQ(space->getComponentType(), Space::Type::CMYK);
 
@@ -236,7 +236,7 @@ TEST_F(ColorDocumentCMSObjsTest, cmsParsingCMYK2)
 
     auto space = tr.getSpace("cmyk-acm");
     ASSERT_TRUE(space);
-    EXPECT_TRUE(space->isValid());
+    EXPECT_TRUE(space->hasValidCmsProfile());
     EXPECT_EQ(space->getType(), Space::Type::CMS);
     EXPECT_EQ(space->getComponentType(), Space::Type::CMYK);
 
@@ -307,7 +307,7 @@ TEST_F(ColorDocumentCMSDefsTest, loadDocument)
 
     ASSERT_EQ(spaces.size(), 1);
     ASSERT_EQ(spaces[0]->getName(), "Artifex-CMYK-SWOP-Profile");
-    ASSERT_TRUE(spaces[0]->isValid());
+    ASSERT_TRUE(spaces[0]->hasValidCmsProfile());
 
     auto objects = tracker.getObjects();
     ASSERT_EQ(objects.size(), 1);
@@ -319,12 +319,12 @@ TEST_F(ColorDocumentCMSDefsTest, loadDocument)
 
     // Test the expected values actually return
     std::string expected = "#2c292a icc-color(Artifex-CMYK-SWOP-Profile, 0, 0, 0, 1)";
-    EXPECT_TRUE(tracker.parse(expected)->getSpace()->isValid());
+    EXPECT_TRUE(tracker.parse(expected)->getSpace()->hasValidCmsProfile());
     EXPECT_EQ(tracker.parse(expected)->toString(), expected);
     EXPECT_EQ(color.toString(), expected);
 
     auto space = dynamic_pointer_cast<Space::CMS>(color.getSpace());
-    EXPECT_TRUE(space->isValid());
+    EXPECT_TRUE(space->hasValidCmsProfile());
     EXPECT_EQ(space, spaces[0]);
     EXPECT_NEAR(color[0], 0, 0.01);
     EXPECT_NEAR(color[1], 0, 0.01);

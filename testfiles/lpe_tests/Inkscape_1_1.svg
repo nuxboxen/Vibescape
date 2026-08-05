@@ -2204,8 +2204,8 @@
        id="mask-powermask-path-effect117454-0">
       <path
          id="mask-powermask-path-effect117454-0_box"
-         style="fill:#ffffff;fill-opacity:1;filter:url(#mask-powermask-path-effect117454-0_inverse)"
-         d="M 232.69563,126.35859 H 419.53247 V 271.57298 H 232.69563 Z" />
+         style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none;filter:url(#mask-powermask-path-effect117454-0_inverse)"
+         d="M 233.69563,127.35859 H 418.53247 V 270.57297 H 233.69563 Z" />
       <path
          id="path18672"
          style="fill:#ffffff;fill-opacity:1;filter:url(#mask-powermask-path-effect117454_inverse)"
@@ -2238,8 +2238,8 @@
        id="mask-powermask-path-effect117088-7">
       <path
          id="mask-powermask-path-effect117088-7_box"
-         style="fill:#ffffff;fill-opacity:1"
-         d="M -86.06607,126.49315 H -4.9052775 V 238.39291 H -86.06607 Z" />
+         style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none"
+         d="M -85.06607,127.49315 H -5.9052774 V 237.39291 H -85.06607 Z" />
       <path
          id="path18682"
          style="fill:#ffffff;fill-opacity:1"
@@ -2255,15 +2255,15 @@
          sodipodi:start="0"
          sodipodi:end="5.3619233"
          sodipodi:arc-type="slice"
-         d="m 14.88393,180.62294 a 52.667439,22.714695 0 0 1 -40.644268,22.1149 52.667439,22.714695 0 0 1 -59.201197,-12.01791 52.667439,22.714695 0 0 1 13.614812,-27.60191 52.667439,22.714695 0 0 1 65.4173041,-0.58428 l -31.8540891,18.0892 z" />
+         d="m 14.883931,180.62294 a 52.667439,22.714695 0 0 1 -40.644268,22.1149 52.667439,22.714695 0 0 1 -59.201198,-12.01791 52.667439,22.714695 0 0 1 13.614812,-27.60191 52.667439,22.714695 0 0 1 65.4173047,-0.58428 l -31.8540897,18.0892 z" />
     </mask>
     <mask
        maskUnits="userSpaceOnUse"
        id="mask-powermask-path-effect116820-1">
       <path
          id="mask-powermask-path-effect116820-1_box"
-         style="fill:#ffffff;fill-opacity:1"
-         d="m -811.58303,59.617801 h 90.18006 v 88.762739 h -90.18006 z" />
+         style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none"
+         d="m -810.58303,60.617801 h 88.18007 v 86.762749 h -88.18007 z" />
       <path
          id="path18692"
          style="fill:#ffffff;fill-opacity:1"
@@ -2275,15 +2275,15 @@
          cy="140.84927"
          rx="40.983486"
          ry="34.481037"
-         d="m -700.21195,140.84927 a 40.983486,34.481037 0 0 1 -40.98348,34.48104 40.983486,34.481037 0 0 1 -40.98349,-34.48104 40.983486,34.481037 0 0 1 40.98349,-34.48103 40.983486,34.481037 0 0 1 40.98348,34.48103 z" />
+         d="m -700.21194,140.84927 a 40.983486,34.481037 0 0 1 -40.98349,34.48104 40.983486,34.481037 0 0 1 -40.98349,-34.48104 40.983486,34.481037 0 0 1 40.98349,-34.48104 40.983486,34.481037 0 0 1 40.98349,34.48104 z" />
     </mask>
     <mask
        maskUnits="userSpaceOnUse"
        id="mask-powermask-path-effect117602-6">
       <path
          id="mask-powermask-path-effect117602-6_box"
-         style="fill:#7f0000;fill-opacity:1;filter:url(#mask-powermask-path-effect117602-6_inverse)"
-         d="m 3047.8471,1361.9522 h 204.9823 v 134.6903 h -204.9823 z" />
+         style="display:inline;fill:#7f0000;fill-opacity:1;stroke:none;filter:url(#mask-powermask-path-effect117602-6_inverse)"
+         d="m 3048.8471,1362.9522 h 202.9823 v 132.6903 h -202.9823 z" />
     </mask>
     <filter
        id="mask-powermask-path-effect117602-6_inverse"
@@ -2308,8 +2308,8 @@
        id="mask-powermask-path-effect116934-5">
       <path
          id="mask-powermask-path-effect116934-5_box"
-         style="fill:#ffffff;fill-opacity:1"
-         d="M -171.07641,-14.07914 H 166.83376 V 332.55005 H -171.07641 Z" />
+         style="display:inline;fill:#ffffff;fill-opacity:1;stroke:none"
+         d="M -170.07641,-13.079134 H 165.83376 V 331.55005 h -335.91017 z" />
       <path
          id="path18713"
          style="fill:#ffffff;fill-opacity:1"

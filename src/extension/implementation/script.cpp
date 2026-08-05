@@ -62,27 +62,22 @@
 #include "xml/repr.h"
 #include "xml/simple-document.h"
 
+// This code could maybe be reworked to use GIO's subprocess classes to
+// avoid the need to use these platform-specific defines to manipulate the subprocess.
+// That might not have been an option when this was written
 #ifdef _WIN32
 #include <windows.h>
 #define KILL_PROCESS(pid) TerminateProcess(pid, 0)
+#define WAIT_PROCESS(pid) WaitForSingleObject(pid, INFINITE)
 #else
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #define KILL_PROCESS(pid) kill(pid, SIGTERM)
+#define WAIT_PROCESS(pid) waitpid(pid, NULL, 0)
 #endif
 
 namespace Inkscape::Extension::Implementation {
-
-/** \brief  Make GTK+ events continue to come through a little bit
-
-    This just keeps coming the events through so that we'll make the GUI
-    update and look pretty.
-*/
-void Script::pump_events () {
-    auto main_context = Glib::MainContext::get_default();
-    while (main_context->iteration(false)) {
-    }
-}
-
 
 /** \brief  A table of what interpreters to call for a given language
 
@@ -509,6 +504,30 @@ void Script::export_raster(Inkscape::Extension::Output *module,
     }
 }
 
+void Script::_setAppSensitive(bool sensitive)
+{
+    if (!INKSCAPE.use_gui()) {
+        return;
+    }
+
+    auto application = InkscapeApplication::instance()->gtk_app();
+    for (auto const &win : application->get_windows()) {
+        win->set_sensitive(sensitive);
+    }
+
+#ifdef __APPLE__
+    // On macOS, hide or show our global menubar to avoid users interacting with it while
+    // insensitive. We could try to disable all the actions in the menu, but that would get a bit
+    // messy as we keep track of which were already disabled, and would prevent the extension
+    // script from being able to activate those actions on the CLI.
+    if (sensitive) {
+        build_menu();
+    } else {
+        application->set_menubar(nullptr);
+    }
+#endif
+}
+
 /**
     \return    none
     \brief     This function uses an extension as an effect on a document.
@@ -560,14 +579,12 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
 
         Glib::ustring empty;
         file_listener outfile;
-        execute(command, {}, empty, outfile, module->ignore_stderr, module->pipe_diffs);
+        execute(command, {}, empty, outfile, module->ignore_stderr, module->pipe_diffs, !module->_workingDialog);
 
         // Hack to allow for extension manager to reload extensions
-        // TODO: Find a better way to do this, e.g. implement an action and have extensions (or users)
-        //       call that instead when there's a change that requires extensions to reload
+        // TODO: Have the extension manager call this action itself
         if (!g_strcmp0(module->get_id(), "org.inkscape.extension.manager")) {
-            Inkscape::Extension::refresh_user_extensions();
-            build_menu(); // Rebuild main menubar.
+            InkscapeApplication::instance()->gio_app()->activate_action("refresh-user-extensions");
         }
 
         return;
@@ -593,7 +610,7 @@ void Script::effect(Inkscape::Extension::Effect *module, ExecutionEnv *execution
             }
         }
     }
-    _change_extension(module, executionEnv, desktop->getDocument(), params, module->ignore_stderr, module->pipe_diffs);
+    _change_extension(module, executionEnv, desktop->getDocument(), params, module->ignore_stderr, module->pipe_diffs, !module->_workingDialog);
 }
 
 /**
@@ -612,12 +629,12 @@ void Script::effect(Inkscape::Extension::Effect *mod, ExecutionEnv *executionEnv
 static size_t get_cmdline_budget()
 {
 #ifdef _WIN32
-    // Windows: Length limit is fixed at 32737
-    // Leave 4096 of overhead for executable and files
-    return 28701; // 32737-4096
+    // Windows: Length limit is fixed at 32767
+    // Leave 4096 of overhead for executable and files (rough overestimate)
+    return 32767 - 4096;
 #else
     // Unix: Length limit is from sysconf
-    // Leave 32K of overhead for executable, files, and environment
+    // Leave 32K of overhead for executable, files, and environment (rough overestimate)
     // Also guard against sysconf failure (-1)
     long const arg_max = sysconf(_SC_ARG_MAX);
     size_t usable = 0;
@@ -632,7 +649,7 @@ static size_t get_cmdline_budget()
  * Internally, any modification of an existing document, used by effect and resize_page extensions.
  */
 void Script::_change_extension(Inkscape::Extension::Extension *module, ExecutionEnv *executionEnv, SPDocument *doc,
-                               std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs)
+                               std::list<std::string> &params, bool ignore_stderr, bool pipe_diffs, bool custom_ui)
 {
     module->paramListString(params);
     module->set_environment(doc);
@@ -676,19 +693,16 @@ void Script::_change_extension(Inkscape::Extension::Extension *module, Execution
     }
 
     file_listener fileout;
-    int data_read = execute(command, params, tempfile_in.get_filename(), fileout, ignore_stderr, pipe_diffs);
+    int data_read = execute(command, params, tempfile_in.get_filename(), fileout, ignore_stderr, pipe_diffs, custom_ui);
     if (data_read == 0) {
         return;
     }
     fileout.toFile(tempfile_out.get_filename());
 
-    pump_events();
     Inkscape::XML::Document *new_xmldoc = nullptr;
     if (data_read > 10) {
         new_xmldoc = sp_repr_read_file(tempfile_out.get_filename().c_str(), SP_SVG_NS_URI);
     } // data_read
-
-    pump_events();
 
     if (new_xmldoc) {
         //uncomment if issues on ref extensions links (with previous function)
@@ -734,11 +748,12 @@ void Script::showPopupError (const Glib::ustring &data,
 }
 
 bool Script::cancelProcessing () {
+    KILL_PROCESS(_pid);
+
     _canceled = true;
     if (_main_loop) {
         _main_loop->quit();
     }
-    Glib::spawn_close_pid(_pid);
 
     return true;
 }
@@ -771,11 +786,10 @@ bool Script::cancelProcessing () {
     are closed, and we return to what we were doing.
 */
 int Script::execute(std::list<std::string> const &in_command, std::list<std::string> const &in_params,
-                    Glib::ustring const &filein, file_listener &fileout, bool ignore_stderr, bool pipe_diffs)
+                    Glib::ustring const &filein, file_listener &fileout, bool ignore_stderr, bool pipe_diffs,
+                    bool custom_ui)
 {
     g_return_val_if_fail(!in_command.empty(), 0);
-
-    pump_events();
 
     std::vector<std::string> argv;
 
@@ -819,12 +833,13 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
         argv.push_back(filein_native);
     }
 
-    //for(int i=0;i<argv.size(); ++i){printf("%s ",argv[i].c_str());}printf("\n");
-
     int stdout_pipe, stderr_pipe, stdin_pipe;
 
+    GPid local_pid;
     try {
-        auto spawn_flags = Glib::SpawnFlags::DEFAULT;
+        // DO_NOT_REAP_CHILD is required on Windows at least to get the PID from
+        // spawn_async_with_pipes.
+        auto spawn_flags = Glib::SpawnFlags::DO_NOT_REAP_CHILD;
         if (Glib::getenv("SNAP") != "") {
             // If we are running within the Linux "snap" package format,
             // we need different spawn flags to avoid that Inkscape hangs when
@@ -835,7 +850,7 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
                                      argv,              // arg v
                                      spawn_flags,       // spawn flags
                                      sigc::slot<void()>(),
-                                     &_pid,         // Pid
+                                     &local_pid,         // Pid
                                      &stdin_pipe,   // STDIN
                                      &stdout_pipe,  // STDOUT
                                      &stderr_pipe); // STDERR
@@ -845,16 +860,13 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
     }
 
     // Save the pid. (This function is reentrant, so _pid could be overwritten.)
-    auto const local_pid = _pid;
+    _pid = local_pid;
 
-    // Create a new MainContext for the loop so that the original context sources are not run here,
-    // this enforces that only the file_listeners should be read in this new MainLoop
-    // Unless in pipe_diffs mode, in which case use the application-wide main loop
-    auto const main_context = !pipe_diffs
-        ? Glib::MainContext::create()
-        : Glib::MainContext::get_default();
-
-    _main_loop = Glib::MainLoop::create(main_context, false);
+    // Use GTK's MainContext, so that it can process events and the UI is not flagged as frozen.
+    // But we'll set all windows as insensitive below while we run, to avoid any race conditions
+    // from interacting with Inkscape while an extension is running (like quitting before an
+    // extension can finish writing a file).
+    _main_loop = Glib::MainLoop::create();
 
     file_listener fileerr;
     fileout.init(stdout_pipe, _main_loop);
@@ -887,6 +899,7 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
         conns.emplace_back(document->connectDestroy(on_lose_document));
     }
 
+    _setAppSensitive(false);
     _canceled = false;
     _main_loop->run();
 
@@ -902,15 +915,19 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
         fileerr.read(Glib::IOCondition::IO_IN);
     }
 
+    Glib::spawn_close_pid(local_pid);
+
     _main_loop.reset();
+    _setAppSensitive(true);
 
-    if (pipe_diffs && lost_document) {
-        throw Inkscape::Extension::Output::lost_document{};
-    }
-
+    WAIT_PROCESS(local_pid);
     if (_canceled) {
         // std::cout << "Script Canceled" << std::endl;
         return 0;
+    }
+
+    if (pipe_diffs && lost_document) {
+        throw Inkscape::Extension::Output::lost_document{};
     }
 
     Glib::ustring stderr_data = fileerr.string();

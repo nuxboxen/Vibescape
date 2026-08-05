@@ -78,6 +78,8 @@ public:
     void update_cursor(bool with_shift);
 
 private:
+    Modifiers::Modifier *mod_tweak_invert;
+
     bool set_style(SPCSSAttr const *css);
 };
 

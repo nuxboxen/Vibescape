@@ -26,6 +26,7 @@
 
 int main(int argc, char *argv[])
 {
+    Inkscape::Util::Statics statics;
     Gtk::Application::wrap_in_search_entry2();
 
 #if !defined(_WIN32)
@@ -46,8 +47,6 @@ int main(int argc, char *argv[])
 #endif
 
     auto ret = InkviewApplication().run(argc, argv);
-
-    Inkscape::Util::StaticsBin::get().destroy();
 
 #ifdef _WIN32
     // switch back to initial console encoding

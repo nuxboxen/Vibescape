@@ -29,11 +29,6 @@
 
 namespace Inkscape {
 
-static auto const default_background_color = Colors::Color{0xffffff00};
-static auto const default_margin_color = Colors::Color{0x1699d751};
-static auto const default_bleed_color = Colors::Color{0xbe310e31};
-static auto const default_border_color = Colors::Color{0x0000003f};
-
 bool PageManager::move_objects()
 {
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
@@ -45,10 +40,10 @@ PageManager::PageManager(SPDocument *document)
     , border_on_top(true)
     , shadow_show(true)
     , checkerboard(false)
-    , background_color{default_background_color}
-    , margin_color{default_margin_color}
-    , bleed_color{default_bleed_color}
-    , border_color{default_border_color}
+    , background_color{CanvasPage::DEFAULT_BACKGROUND_COLOR}
+    , margin_color{CanvasPage::DEFAULT_MARGIN_COLOR}
+    , bleed_color{CanvasPage::DEFAULT_BLEED_COLOR}
+    , border_color{CanvasPage::DEFAULT_BORDER_COLOR}
 {
     _document = document;
 
@@ -292,6 +287,31 @@ void PageManager::deletePage(SPPage *page, bool content)
             _document->fitToRect(rect, false);
          }
     }
+}
+
+/**
+ * Creates a new page of the size of the currently selected page,
+ * and makes a deep copy of its overlapping elements.
+ */
+SPPage *PageManager::duplicatePage()
+{
+    enablePages();
+
+    auto contents = ObjectSet(_document);
+    contents.setList(_selected_page->getOverlappingItems());
+
+    auto rect = _selected_page->getRect();
+
+    auto new_page = newPage(rect.width(), rect.height());
+    new_page->copyFrom(_selected_page);
+
+    auto new_rect = new_page->getRect();
+    auto move_tr = (new_rect.midpoint() - rect.midpoint()) * _document->getDocumentScale();
+
+    contents.duplicate(true, false, true);
+    contents.applyAffine(Geom::Affine(Geom::Translate(move_tr)));
+
+    return new_page;
 }
 
 /**
@@ -713,7 +733,7 @@ bool PageManager::subset(SPAttr key, const gchar *value)
             break;
         case SPAttr::BORDERCOLOR: {
             auto const old_opacity = border_color.getOpacity();
-            border_color = Colors::Color::parse(value).value_or(default_border_color);
+            border_color = Colors::Color::parse(value).value_or(CanvasPage::DEFAULT_BORDER_COLOR);
             border_color.setOpacity(old_opacity);
             break;
         }
@@ -721,7 +741,7 @@ bool PageManager::subset(SPAttr key, const gchar *value)
             border_color.setOpacity(value ? g_ascii_strtod(value, nullptr) : 1.0);
             break;
         case SPAttr::PAGECOLOR:
-            background_color = Colors::Color::parse(value).value_or(default_background_color);
+            background_color = Colors::Color::parse(value).value_or(CanvasPage::DEFAULT_BACKGROUND_COLOR);
             break;
         case SPAttr::SHOWPAGESHADOW: // Deprecated
             this->shadow_show.readOrUnset(value);
@@ -769,7 +789,7 @@ bool PageManager::setDefaultAttributes(Inkscape::CanvasPage *item)
     bool ret = item->setOnTop(border_on_top);
     // fixed shadow size, not configurable; shadow changes size with zoom
     ret |= item->setShadow(border_show && shadow_show ? 2 : 0);
-    ret |= item->setPageColor(bdcolor, bgcolor, dkcolor, getMarginColor(), getBleedColor());
+    ret |= item->setPageColor(bdcolor, bgcolor, dkcolor, getMarginColor(), getBleedColor(), getShadowColor());
     ret |= item->setLabelStyle(label_style);
     return ret;
 }
@@ -809,6 +829,17 @@ std::string PageManager::getSizeLabel(double width, double height)
              + " × " +
            format_number(Quantity::convert(height, px, unit), 2)
              + " " + unit->abbr;
+}
+
+Colors::Color const &PageManager::getShadowColor() const
+{
+    if (_document) {
+        auto desk = _document->getNamedView()->getDeskColor();
+        if (auto desk_hsl = desk.converted(Colors::Space::Type::HSL); desk_hsl && (*desk_hsl)[2] < 0.05) {
+            return CanvasPage::DEFAULT_SHADOW_COLOR_LIGHT;
+        }
+    }
+    return CanvasPage::DEFAULT_SHADOW_COLOR;
 }
 
 /**

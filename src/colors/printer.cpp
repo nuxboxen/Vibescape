@@ -12,9 +12,10 @@ namespace Inkscape::Colors {
 CssPrinter &CssPrinter::operator<<(double value)
 {
     if (!_done) {
+        auto base_printer = (std::ostringstream*)this;
         if (_count == _channels && _slash_opacity) {
             // We print opacity as a percentage
-            *this << " / " << (int)(value * 100) << "%";
+            *base_printer << " / " << (int)(value * 100) << "%";
         } else if (_count < _channels) {
             std::ostringstream oo;
             oo.imbue(getloc());
@@ -30,7 +31,7 @@ CssPrinter &CssPrinter::operator<<(double value)
             if (number == "-0")
                 number = "0";
 
-            *this << (_count ? _sep : "") << number;
+            *base_printer << (_count ? _sep : "") << number;
         }
         _count++;
     }
@@ -40,7 +41,8 @@ CssPrinter &CssPrinter::operator<<(double value)
 CssPrinter &CssPrinter::operator<<(int value)
 {
     if (!_done && _count < _channels) {
-        *this << (_count ? _sep : "") << value;
+        auto base_printer = (std::ostringstream*)this;
+        *base_printer << (_count ? _sep : "") << value;
         _count++;
     }
     return *this;

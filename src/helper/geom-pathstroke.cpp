@@ -153,7 +153,7 @@ void miter_join_internal(join_data const &jd, bool clip)
 
     Curve const& incoming = jd.res.back();
     Curve const& outgoing = jd.outgoing.front();
-    Path &res = jd.res;
+    Geom::Path &res = jd.res;
     double width = jd.width, miter = jd.miter;
 
     Point tang1 = jd.in_tang;

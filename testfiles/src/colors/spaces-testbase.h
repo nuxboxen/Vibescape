@@ -30,6 +30,11 @@ void testSpaceName(Space::Type const &type)
     ASSERT_TRUE(manager.find(type)) << "Unknown Color Space";
 }
 
+std::string getSpaceName(Space::Type const &type)
+{
+    return Manager::get().find(type)->getName();
+}
+
 // Allow numbers to be printed as hex in failures
 // see https://github.com/google/googletest/issues/222
 class Hex
@@ -210,9 +215,11 @@ TEST_P(convertColorSpace, copy)
     auto scope = test.enable_scope();
     testSpaceName(test.space_in);
     testSpaceName(test.space_out);
-    EXPECT_TRUE(test.forward_test(false)) << " " << (int)test.space_in << " copy to " << (int)test.space_out;
+    auto in_name = getSpaceName(test.space_in);
+    auto out_name = getSpaceName(test.space_out);
+    EXPECT_TRUE(test.forward_test(false)) << " " << in_name << " copy to " << out_name;
     if (test.both_directions) {
-        EXPECT_TRUE(test.backward_test(false)) << " " << (int)test.space_in << " copy from " << (int)test.space_out;
+        EXPECT_TRUE(test.backward_test(false)) << " " << in_name << " copy from " << out_name;
     }
 }
 TEST_P(convertColorSpace, inPlace)
@@ -221,35 +228,12 @@ TEST_P(convertColorSpace, inPlace)
     auto scope = test.enable_scope();
     testSpaceName(test.space_in);
     testSpaceName(test.space_out);
-    EXPECT_TRUE(test.forward_test(true)) << " in place " << (int)test.space_in << " to " << (int)test.space_out;
+    auto in_name = getSpaceName(test.space_in);
+    auto out_name = getSpaceName(test.space_out);
+    EXPECT_TRUE(test.forward_test(true)) << " in place " << in_name << " to " << out_name;
     if (test.both_directions) {
-        EXPECT_TRUE(test.backward_test(true)) << " in place " << (int)test.space_in << " from " << (int)test.space_out;
+        EXPECT_TRUE(test.backward_test(true)) << " in place " << in_name << " from " << out_name;
     }
-}
-
-/**
- * Manually test a conversion function, both ways.
- *
- * @arg from_func - A conversion function in one direction
- * @arg from_values - The values to pass into the from_func and to compare to the output from to_func
- * @arg to_func - The reverse function
- * @arg to_values - The values to pass to to_func and to compare to the output from from_func
- */
-::testing::AssertionResult ManualPassFunc(std::function<void(std::vector<double> &)> from_func,
-                                          std::vector<double> from_values,
-                                          std::function<void(std::vector<double> &)> to_func,
-                                          std::vector<double> to_values, double epsilon = 0.005)
-{
-    (void)&ManualPassFunc; // Avoid compile warning
-    auto copy = from_values;
-    from_func(copy);
-    auto ret = VectorIsNear(copy, to_values, epsilon);
-
-    if (ret) {
-        to_func(to_values);
-        ret = VectorIsNear(to_values, from_values, epsilon);
-    }
-    return ret;
 }
 
 /**
@@ -260,8 +244,8 @@ TEST_P(convertColorSpace, inPlace)
  * @arg to_func - The reverse function
  * @arg count - The number of tests to create
  */
-::testing::AssertionResult RandomPassFunc(std::function<void(std::vector<double> &)> from_func,
-                                          std::function<void(std::vector<double> &)> to_func, unsigned count = 1000)
+::testing::AssertionResult RandomPassFunc(std::function<void(double const *, double *)> from_func,
+                                          std::function<void(double const *, double *)> to_func, unsigned count = 1000)
 {
     (void)&RandomPassFunc; // Avoid compile warning
     std::srand(13375336);  // We always seed for tests' repeatability
@@ -272,13 +256,13 @@ TEST_P(convertColorSpace, inPlace)
         auto values = random_values(3);
         auto expected = values;
 
-        from_func(values);
+        from_func(values.data(), values.data());
         for (int x = 0; x < 3; x++) {
             range[x + 0] = std::min(range[x + 0], values[x]);
             range[x + 3] = std::max(range[x + 3], values[x]);
         }
 
-        to_func(values);
+        to_func(values.data(), values.data());
         for (int x = 6; x < 9; x++) {
             range[x + 0] = std::min(range[x + 0], values[x - 6]);
             range[x + 3] = std::max(range[x + 3], values[x - 6]);

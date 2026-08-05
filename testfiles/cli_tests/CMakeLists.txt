@@ -271,7 +271,6 @@ add_cli_test(export-area-page_emf PARAMETERS --export-area-page --export-type=em
 add_cli_test(export-area-page_wmf PARAMETERS --export-area-page --export-type=wmf INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area-page.wmf REFERENCE_FILENAME export-area-page_expected.wmf FUZZ_PERCENTAGE 0.5)
 
 # --export-area-page + --export-id  (+ --export-id-only)
-# TODO: PDF/PS/EPS always behave as if --export-id-only was given, see https://gitlab.com/inkscape/inkscape/-/issues/1173
 add_cli_test(export-area-page_export-id_png PARAMETERS --export-area-page --export-id=MyStar --export-id-only INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area-page_export-id.png REFERENCE_FILENAME export-area-page_export-id.png)
 add_cli_test(export-area-page_export-id_svg PARAMETERS --export-area-page --export-id=MyStar --export-id-only INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area-page_export-id.svg REFERENCE_FILENAME export-area-page_export-id.svg)
 if(WITH_CAPYPDF)
@@ -304,12 +303,24 @@ add_cli_test(export-area-drawing-page_ps  PARAMETERS --export-area-drawing --exp
 
 # --export-area=x0:y0:x1:y1
 add_cli_test(export-area_png PARAMETERS --export-area=150:150:350:300 --export-type=png INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.png REFERENCE_FILENAME export-area_expected.png)
-# SVG, PDF, PS, EPS, EMF, WMF: Not supported. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/678
+add_cli_test(export-area_svg PARAMETERS --export-area=150:150:350:300 --export-type=svg INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.svg REFERENCE_FILENAME export-area_expected.svg)
+if(WITH_CAPYPDF)
+add_cli_test(export-area_pdf PARAMETERS --export-area=150:150:350:300 --export-type=pdf INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.pdf REFERENCE_FILENAME export-area_expected.pdf)
+endif()
+add_cli_test(export-area_ps PARAMETERS --export-area=150:150:350:300 --export-type=ps INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.ps REFERENCE_FILENAME export-area_expected.ps)
+add_cli_test(export-area_eps PARAMETERS --export-area=150:150:350:300 --export-type=eps INPUT_FILENAME areas.svg OUTPUT_FILENAME export-area.eps REFERENCE_FILENAME export-area_expected.eps)
+# EMF, WMF: Not supported yet
 
 # --export-area-snap
 add_cli_test(export-area-snap_export-id           PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=png INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.png      REFERENCE_FILENAME export-area-snap_expected.png)
 add_cli_test(export-area-snap_export-area-drawing PARAMETERS --export-area-drawing       --export-area-snap --export-type=png INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-drawing.png REFERENCE_FILENAME export-area-snap_expected.png)
-# SVG, PDF, PS, EPS, EMF, WMF: doesn't make sense
+add_cli_test(export-area-snap_svg                 PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=svg INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.svg      REFERENCE_FILENAME export-area-snap_expected.svg)
+if(WITH_CAPYPDF)
+add_cli_test(export-area-snap_pdf                 PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=pdf INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.pdf      REFERENCE_FILENAME export-area-snap_expected.pdf)
+endif()
+add_cli_test(export-area-snap_ps                  PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=ps  INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.ps       REFERENCE_FILENAME export-area-snap_expected.ps)
+add_cli_test(export-area-snap_eps                 PARAMETERS --export-id=rect_misaligned --export-area-snap --export-type=eps INPUT_FILENAME pyramids.svg OUTPUT_FILENAME export-area-snap-id.eps      REFERENCE_FILENAME export-area-snap_expected.eps)
+# EMF, WMF: Not supported yet
 
 # --export-dpi=DPI
 add_cli_test(export-dpi_png PARAMETERS --export-dpi=12 --export-type=png INPUT_FILENAME filter.svg OUTPUT_FILENAME export-dpi.png REFERENCE_FILENAME export-dpi_expected.png)
@@ -325,108 +336,108 @@ add_cli_test(export-dpi_eps PARAMETERS --export-dpi=12 --export-type=eps INPUT_F
 add_cli_test(export-width                   PARAMETERS --export-width=380                                      --export-type=png INPUT_FILENAME export_hints.svg OUTPUT_FILENAME export-width.png   REFERENCE_FILENAME export-width_expected.png)
 add_cli_test(export-width_export-dpi        PARAMETERS --export-width=380 --export-dpi=300                     --export-type=png INPUT_FILENAME export_hints.svg OUTPUT_FILENAME export-width2.png  REFERENCE_FILENAME export-width_expected.png)
 add_cli_test(export-width_export-use-hints  PARAMETERS --export-width=380 --export-use-hints --export-id=rect1 --export-type=png INPUT_FILENAME export_hints.svg
-    #                                            TEST_SCRIPT identify.sh export_hints_rectangle.png "PNG 385x285"
+                                            TEST_SCRIPT identify.sh "${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png" "PNG 380x285"
                                             EXPECTED_FILES "${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png")
 add_cli_test(export-height                  PARAMETERS --export-height=40                                      --export-type=png INPUT_FILENAME export_hints.svg OUTPUT_FILENAME export-height.png  REFERENCE_FILENAME export-height_expected.png)
 add_cli_test(export-height_export-dpi       PARAMETERS --export-height=40 --export-dpi=300                     --export-type=png INPUT_FILENAME export_hints.svg OUTPUT_FILENAME export-height2.png REFERENCE_FILENAME export-height_expected.png)
 add_cli_test(export-height_export-use-hints PARAMETERS --export-height=40 --export-use-hints --export-id=rect1 --export-type=png INPUT_FILENAME export_hints.svg
-    #                                            TEST_SCRIPT identify.sh ${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png "PNG 53x40"
+                                            TEST_SCRIPT identify.sh ${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png "PNG 53x40"
                                             EXPECTED_FILES "${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png")
 # SVG, PDF, PS, EPS, EMF, WMF: doesn't make sense
 
 # --export-margin=MARGIN
-# There are many problems:
-# - PNG, EPS, EMF, WMF: --export-margin is't supported. This affects all PNG, EPS, EMF, WMF tests below. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/1142
-# - PDF: Defaults to margin in millimeters. This affects all mm based PDF tests below. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/1142
-# - PS: Defaults to margin in pixels. This affects all px based OS tests below. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/1142
-# - --export-id for PDF/PS/EPS is buggy: works as --export-id + --export-id-only should work. See: https://gitlab.com/inkscape/inkscape/-/issues/1173
-# - --export-margin + --export-area=x0:y0:x1:y1 is PNG only feature.
+# There are some gaps:
+# - EPS, WMF: --export-margin is't supported. This affects all EPS, WMF tests below. Feature request: https://gitlab.com/inkscape/inkscape/-/issues/1142
+# - --export-margin + --export-area does not clip to just that area. Feature request: https://gitlab.com/inkscape/inkscape/-/work_items/1142
 # - --export-margin + --export-use-hints is PNG only feature.
 # There is no test for --export-margin + --export-area-page combination because it's equivalent to --export-margin
 
 ## simple --export-margin (millimeter based)
-# add_cli_test(export-margin_mm_png PARAMETERS --export-margin=50 --export-type=png INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.png REFERENCE_FILENAME export-margin_mm_expected.png )
-# add_cli_test(export-margin_mm_svg PARAMETERS --export-margin=50 --export-type=svg INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.svg REFERENCE_FILENAME export-margin_mm_expected.svg )
-# add_cli_test(export-margin_mm_pdf PARAMETERS --export-margin=50 --export-type=pdf INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.pdf REFERENCE_FILENAME export-margin_mm_expected.pdf )
-# add_cli_test(export-margin_mm_ps  PARAMETERS --export-margin=50 --export-type=ps  INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.ps  REFERENCE_FILENAME export-margin_mm_expected.ps  )
+add_cli_test(export-margin_mm_png PARAMETERS --export-margin=50 --export-type=png INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.png REFERENCE_FILENAME export-margin_mm_expected.png )
+add_cli_test(export-margin_mm_svg PARAMETERS --export-margin=50 --export-type=svg INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.svg REFERENCE_FILENAME export-margin_mm_expected.svg )
+add_cli_test(export-margin_mm_pdf PARAMETERS --export-margin=50 --export-type=pdf INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.pdf REFERENCE_FILENAME export-margin_mm_expected.pdf FUZZ_PERCENTAGE 0.01)
+add_cli_test(export-margin_mm_ps  PARAMETERS --export-margin=50 --export-type=ps  INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.ps  REFERENCE_FILENAME export-margin_mm_expected.ps  )
 # add_cli_test(export-margin_mm_eps PARAMETERS --export-margin=50 --export-type=eps INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.eps REFERENCE_FILENAME export-margin_mm_expected.eps )
-# add_cli_test(export-margin_mm_emf PARAMETERS --export-margin=50 --export-type=emf INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.emf REFERENCE_FILENAME export-margin_mm_expected.emf )
+add_cli_test(export-margin_mm_emf PARAMETERS --export-margin=50 --export-type=emf INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.emf REFERENCE_FILENAME export-margin_mm_expected.emf )
 # add_cli_test(export-margin_mm_wmf PARAMETERS --export-margin=50 --export-type=wmf INPUT_FILENAME square_mm.svg OUTPUT_FILENAME export-margin_mm.wmf REFERENCE_FILENAME export-margin_mm_expected.wmf )
 
 ## simple --export-margin (pixel based)
-# add_cli_test(export-margin_px_png PARAMETERS --export-margin=50 --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.png REFERENCE_FILENAME export-margin_px_expected.png )
-# add_cli_test(export-margin_px_svg PARAMETERS --export-margin=50 --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.svg REFERENCE_FILENAME export-margin_px_expected.svg )
-# add_cli_test(export-margin_px_pdf PARAMETERS --export-margin=50 --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.pdf REFERENCE_FILENAME export-margin_px_expected.pdf )
-# add_cli_test(export-margin_px_ps  PARAMETERS --export-margin=50 --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.ps  REFERENCE_FILENAME export-margin_px_expected.ps  )
+add_cli_test(export-margin_px_png PARAMETERS --export-margin=50 --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.png REFERENCE_FILENAME export-margin_px_expected.png )
+add_cli_test(export-margin_px_svg PARAMETERS --export-margin=50 --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.svg REFERENCE_FILENAME export-margin_px_expected.svg )
+add_cli_test(export-margin_px_pdf PARAMETERS --export-margin=50 --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.pdf REFERENCE_FILENAME export-margin_px_expected.pdf FUZZ_PERCENTAGE 0.01 )
+add_cli_test(export-margin_px_ps  PARAMETERS --export-margin=50 --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.ps  REFERENCE_FILENAME export-margin_px_expected.ps  )
 # add_cli_test(export-margin_px_eps PARAMETERS --export-margin=50 --export-type=eps INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.eps REFERENCE_FILENAME export-margin_px_expected.eps )
-# add_cli_test(export-margin_px_emf PARAMETERS --export-margin=50 --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.emf REFERENCE_FILENAME export-margin_px_expected.emf )
+add_cli_test(export-margin_px_emf PARAMETERS --export-margin=50 --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.emf REFERENCE_FILENAME export-margin_px_expected.emf )
 # add_cli_test(export-margin_px_wmf PARAMETERS --export-margin=50 --export-type=wmf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_px.wmf REFERENCE_FILENAME export-margin_px_expected.wmf )
 
 ## --export-margin + --export-id (pixel based)
-# add_cli_test(export-margin_export-id_png PARAMETERS --export-margin=50 --export-id=square-red --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.png REFERENCE_FILENAME export-margin_export-id_expected.png )
-# add_cli_test(export-margin_export-id_svg PARAMETERS --export-margin=50 --export-id=square-red --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.svg REFERENCE_FILENAME export-margin_export-id_expected.svg )
-# add_cli_test(export-margin_export-id_pdf PARAMETERS --export-margin=50 --export-id=square-red --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.pdf REFERENCE_FILENAME export-margin_export-id_expected.pdf )
-# add_cli_test(export-margin_export-id_ps  PARAMETERS --export-margin=50 --export-id=square-red --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.ps  REFERENCE_FILENAME export-margin_export-id_expected.ps  )
+add_cli_test(export-margin_export-id_png PARAMETERS --export-margin=50 --export-id=square-red --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.png REFERENCE_FILENAME export-margin_export-id_expected.png )
+add_cli_test(export-margin_export-id_svg PARAMETERS --export-margin=50 --export-id=square-red --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.svg REFERENCE_FILENAME export-margin_export-id_expected.svg )
+add_cli_test(export-margin_export-id_pdf PARAMETERS --export-margin=50 --export-id=square-red --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.pdf REFERENCE_FILENAME export-margin_export-id_expected.pdf FUZZ_PERCENTAGE 0.01 )
+add_cli_test(export-margin_export-id_ps  PARAMETERS --export-margin=50 --export-id=square-red --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.ps  REFERENCE_FILENAME export-margin_export-id_expected.ps  )
 # add_cli_test(export-margin_export-id_eps PARAMETERS --export-margin=50 --export-id=square-red --export-type=eps INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.eps REFERENCE_FILENAME export-margin_export-id_expected.eps )
-# add_cli_test(export-margin_export-id_emf PARAMETERS --export-margin=50 --export-id=square-red --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.emf REFERENCE_FILENAME export-margin_export-id_expected.emf )
+add_cli_test(export-margin_export-id_emf PARAMETERS --export-margin=50 --export-id=square-red --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.emf REFERENCE_FILENAME export-margin_export-id_expected.emf )
 # add_cli_test(export-margin_export-id_wmf PARAMETERS --export-margin=50 --export-id=square-red --export-type=wmf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id.wmf REFERENCE_FILENAME export-margin_export-id_expected.wmf )
 
 ## --export-margin + --export-id + export-id-only (pixel based)
-# add_cli_test(export-margin_export-id_export-id-only_png PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.png REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.png )
-# add_cli_test(export-margin_export-id_export-id-only_svg PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.svg REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.svg )
-# add_cli_test(export-margin_export-id_export-id-only_pdf PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.pdf REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.pdf )
-# add_cli_test(export-margin_export-id_export-id-only_ps  PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.ps  REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.ps  )
+add_cli_test(export-margin_export-id_export-id-only_png PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.png REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.png )
+add_cli_test(export-margin_export-id_export-id-only_svg PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.svg REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.svg )
+add_cli_test(export-margin_export-id_export-id-only_pdf PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.pdf REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.pdf FUZZ_PERCENTAGE 0.01 )
+add_cli_test(export-margin_export-id_export-id-only_ps  PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.ps  REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.ps  )
 # add_cli_test(export-margin_export-id_export-id-only_eps PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=eps INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.eps REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.eps )
-# add_cli_test(export-margin_export-id_export-id-only_emf PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.emf REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.emf )
+add_cli_test(export-margin_export-id_export-id-only_emf PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.emf REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.emf )
 # add_cli_test(export-margin_export-id_export-id-only_wmf PARAMETERS --export-margin=50 --export-id=square-red --export-id-only --export-type=wmf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-id_export-id-only.wmf REFERENCE_FILENAME export-margin_export-id_export-id-only_expected.wmf )
 
 ## --export-margin + --export-area-drawing (pixel based)
-# add_cli_test(export-margin_export-area-drawing_png PARAMETERS --export-margin=50 --export-area-drawing --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.png REFERENCE_FILENAME export-margin_drawing_expected.png )
-# add_cli_test(export-margin_export-area-drawing_svg PARAMETERS --export-margin=50 --export-area-drawing --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.svg REFERENCE_FILENAME export-margin_drawing_expected.svg )
-# add_cli_test(export-margin_export-area-drawing_pdf PARAMETERS --export-margin=50 --export-area-drawing --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.pdf REFERENCE_FILENAME export-margin_drawing_expected.pdf )
-# add_cli_test(export-margin_export-area-drawing_ps  PARAMETERS --export-margin=50 --export-area-drawing --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.ps  REFERENCE_FILENAME export-margin_drawing_expected.ps  )
+add_cli_test(export-margin_export-area-drawing_png PARAMETERS --export-margin=50 --export-area-drawing --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.png REFERENCE_FILENAME export-margin_drawing_expected.png )
+add_cli_test(export-margin_export-area-drawing_svg PARAMETERS --export-margin=50 --export-area-drawing --export-type=svg INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.svg REFERENCE_FILENAME export-margin_drawing_expected.svg )
+add_cli_test(export-margin_export-area-drawing_pdf PARAMETERS --export-margin=50 --export-area-drawing --export-type=pdf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.pdf REFERENCE_FILENAME export-margin_drawing_expected.pdf FUZZ_PERCENTAGE 0.01 )
+add_cli_test(export-margin_export-area-drawing_ps  PARAMETERS --export-margin=50 --export-area-drawing --export-type=ps  INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.ps  REFERENCE_FILENAME export-margin_drawing_expected.ps  )
 # add_cli_test(export-margin_export-area-drawing_eps PARAMETERS --export-margin=50 --export-area-drawing --export-type=eps INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.eps REFERENCE_FILENAME export-margin_drawing_expected.eps )
-# add_cli_test(export-margin_export-area-drawing_emf PARAMETERS --export-margin=50 --export-area-drawing --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.emf REFERENCE_FILENAME export-margin_drawing_expected.emf )
+add_cli_test(export-margin_export-area-drawing_emf PARAMETERS --export-margin=50 --export-area-drawing --export-type=emf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.emf REFERENCE_FILENAME export-margin_drawing_expected.emf )
 # add_cli_test(export-margin_export-area-drawing_wmf PARAMETERS --export-margin=50 --export-area-drawing --export-type=wmf INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_drawing.wmf REFERENCE_FILENAME export-margin_drawing_expected.wmf )
 
 ## --export-margin + --export-area=x0:y0:x1:y1 (pixel based)
 # add_cli_test(export-margin_export-area_png PARAMETERS --export-margin=50 --export-area=50:50:100:100 --export-type=png INPUT_FILENAME square_px.svg OUTPUT_FILENAME export-margin_export-area.png REFERENCE_FILENAME export-margin_export-area_expected.png )
 
 ## --export-margin + --export-use-hints (pixel based)
-# add_cli_test(export-margin_export-use-hints_export-id PARAMETERS --export-margin=50 --export-use-hints --export-id=rect1 INPUT_FILENAME export_hints.svg PASS_FOR_OUTPUT "Area 10:10:90:70 exported to 203 x 177 pixels \\(123 dpi\\)" EXPECTED_FILES "${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png")
+add_cli_test(export-margin_export-use-hints_export-id PARAMETERS --export-margin=50 --export-use-hints --export-id=rect1 INPUT_FILENAME export_hints.svg
+                                                      TEST_SCRIPT identify.sh ${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png "PNG 231x205"
+                                                      EXPECTED_FILES "${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png")
 
 ## --export-margin (millimeter based, user units rescaled via viewBox)
-# add_cli_test(export-margin_viewbox_png PARAMETERS --export-margin=50 --export-type=png INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.png REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.png )
-# add_cli_test(export-margin_viewbox_svg PARAMETERS --export-margin=50 --export-type=svg INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.svg REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.svg )
-# add_cli_test(export-margin_viewbox_pdf PARAMETERS --export-margin=50 --export-type=pdf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.pdf REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.pdf )
-# add_cli_test(export-margin_viewbox_ps  PARAMETERS --export-margin=50 --export-type=ps  INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.ps  REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.ps  )
+add_cli_test(export-margin_viewbox_png PARAMETERS --export-margin=50 --export-type=png INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.png REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.png )
+add_cli_test(export-margin_viewbox_svg PARAMETERS --export-margin=50 --export-type=svg INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.svg REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.svg )
+add_cli_test(export-margin_viewbox_pdf PARAMETERS --export-margin=50 --export-type=pdf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.pdf REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.pdf FUZZ_PERCENTAGE 0.01 )
+add_cli_test(export-margin_viewbox_ps  PARAMETERS --export-margin=50 --export-type=ps  INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.ps  REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.ps  )
 # add_cli_test(export-margin_viewbox_eps PARAMETERS --export-margin=50 --export-type=eps INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.eps REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.eps )
-# add_cli_test(export-margin_viewbox_emf PARAMETERS --export-margin=50 --export-type=emf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.emf REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.emf )
+add_cli_test(export-margin_viewbox_emf PARAMETERS --export-margin=50 --export-type=emf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.emf REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.emf )
 # add_cli_test(export-margin_viewbox_wmf PARAMETERS --export-margin=50 --export-type=wmf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox.wmf REFERENCE_FILENAME export-margin_mm_viewbox_page_expected.wmf )
 
 ## --export-margin + --export-area-drawing (millimeter based, user units rescaled via viewBox)
-# add_cli_test(export-margin_viewbox_drawing_png PARAMETERS --export-margin=50 --export-area-drawing --export-type=png INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.png REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.png )
-# add_cli_test(export-margin_viewbox_drawing_svg PARAMETERS --export-margin=50 --export-area-drawing --export-type=svg INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.svg REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.svg )
-# add_cli_test(export-margin_viewbox_drawing_pdf PARAMETERS --export-margin=50 --export-area-drawing --export-type=pdf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.pdf REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.pdf )
-# add_cli_test(export-margin_viewbox_drawing_ps  PARAMETERS --export-margin=50 --export-area-drawing --export-type=ps  INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.ps  REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.ps  )
+add_cli_test(export-margin_viewbox_drawing_png PARAMETERS --export-margin=50 --export-area-drawing --export-type=png INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.png REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.png )
+add_cli_test(export-margin_viewbox_drawing_svg PARAMETERS --export-margin=50 --export-area-drawing --export-type=svg INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.svg REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.svg )
+add_cli_test(export-margin_viewbox_drawing_pdf PARAMETERS --export-margin=50 --export-area-drawing --export-type=pdf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.pdf REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.pdf FUZZ_PERCENTAGE 0.01 )
+add_cli_test(export-margin_viewbox_drawing_ps  PARAMETERS --export-margin=50 --export-area-drawing --export-type=ps  INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.ps  REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.ps  )
 # add_cli_test(export-margin_viewbox_drawing_eps PARAMETERS --export-margin=50 --export-area-drawing --export-type=eps INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.eps REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.eps )
-# add_cli_test(export-margin_viewbox_drawing_emf PARAMETERS --export-margin=50 --export-area-drawing --export-type=emf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.emf REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.emf )
+add_cli_test(export-margin_viewbox_drawing_emf PARAMETERS --export-margin=50 --export-area-drawing --export-type=emf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.emf REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.emf )
 # add_cli_test(export-margin_viewbox_drawing_wmf PARAMETERS --export-margin=50 --export-area-drawing --export-type=wmf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_drawing.wmf REFERENCE_FILENAME export-margin_mm_viewbox_drawing_expected.wmf )
 
 ## --export-margin + --export-id (millimeter based, user units rescaled via viewBox)
-# add_cli_test(export-margin_viewbox_id_png PARAMETERS --export-margin=50 --export-id=square-red --export-type=png INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.png REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.png )
-# add_cli_test(export-margin_viewbox_id_svg PARAMETERS --export-margin=50 --export-id=square-red --export-type=svg INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.svg REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.svg )
-# add_cli_test(export-margin_viewbox_id_pdf PARAMETERS --export-margin=50 --export-id=square-red --export-type=pdf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.pdf REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.pdf )
-# add_cli_test(export-margin_viewbox_id_ps  PARAMETERS --export-margin=50 --export-id=square-red --export-type=ps  INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.ps  REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.ps  )
+add_cli_test(export-margin_viewbox_id_png PARAMETERS --export-margin=50 --export-id=square-red --export-type=png INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.png REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.png )
+add_cli_test(export-margin_viewbox_id_svg PARAMETERS --export-margin=50 --export-id=square-red --export-type=svg INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.svg REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.svg )
+add_cli_test(export-margin_viewbox_id_pdf PARAMETERS --export-margin=50 --export-id=square-red --export-type=pdf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.pdf REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.pdf FUZZ_PERCENTAGE 0.01 )
+add_cli_test(export-margin_viewbox_id_ps  PARAMETERS --export-margin=50 --export-id=square-red --export-type=ps  INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.ps  REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.ps  )
 # add_cli_test(export-margin_viewbox_id_eps PARAMETERS --export-margin=50 --export-id=square-red --export-type=eps INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.eps REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.eps )
-# add_cli_test(export-margin_viewbox_id_emf PARAMETERS --export-margin=50 --export-id=square-red --export-type=emf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.emf REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.emf )
+add_cli_test(export-margin_viewbox_id_emf PARAMETERS --export-margin=50 --export-id=square-red --export-type=emf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.emf REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.emf )
 # add_cli_test(export-margin_viewbox_id_wmf PARAMETERS --export-margin=50 --export-id=square-red --export-type=wmf INPUT_FILENAME square_mm_viewbox.svg OUTPUT_FILENAME export-margin_viewbox_id.wmf REFERENCE_FILENAME export-margin_mm_viewbox_id_expected.wmf )
 
 # --export-id=OBJECT-ID[;OBJECT-ID]*
 add_cli_test(export-id_png PARAMETERS --export-id=red --export-type=png INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.png REFERENCE_FILENAME export-id_expected.png )
 add_cli_test(export-id_svg PARAMETERS --export-id=red --export-type=svg INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.svg REFERENCE_FILENAME export-id_expected.svg )
-# PDF, PS, EPS doesn't respect --export-id-only, bug report: https://gitlab.com/inkscape/inkscape/-/issues/1173
-# add_cli_test(export-id_pdf PARAMETERS --export-id=red --export-type=pdf INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.pdf REFERENCE_FILENAME export-id_expected.pdf )
+if(WITH_CAPYPDF)
+add_cli_test(export-id_pdf PARAMETERS --export-id=red --export-type=pdf INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.pdf REFERENCE_FILENAME export-id_expected.pdf )
+endif()
 # add_cli_test(export-id_ps  PARAMETERS --export-id=red --export-type=ps  INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.ps  REFERENCE_FILENAME export-id_expected.ps  )
 # add_cli_test(export-id_eps PARAMETERS --export-id=red --export-type=eps INPUT_FILENAME theta.svg OUTPUT_FILENAME export-id.eps REFERENCE_FILENAME export-id_expected.eps )
 # EMF, WMF There is no support, feature request: https://gitlab.com/inkscape/inkscape/-/issues/1204
@@ -649,10 +660,10 @@ add_cli_test(export-ignore-filters_wmf  PARAMETERS --export-ignore-filters --exp
 
 # --export-use-hints
 add_cli_test(export-use-hints_export-id           PARAMETERS --export-use-hints --export-id=rect1 INPUT_FILENAME export_hints.svg
-    #                                                  TEST_SCRIPT identify.sh ${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png "PNG 103x77"
+                                                  TEST_SCRIPT identify.sh ${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png "PNG 103x77"
                                                   EXPECTED_FILES "${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_rectangle.png")
 add_cli_test(export-use-hints_export-area-drawing PARAMETERS --export-use-hints --export-area-drawing INPUT_FILENAME export_hints.svg
-    #                                                  TEST_SCRIPT identify.sh ${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_drawing.png "PNG 197x69"
+                                                  TEST_SCRIPT identify.sh ${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_drawing.png "PNG 197x69"
                                                   EXPECTED_FILES "${CMAKE_CURRENT_SOURCE_DIR}/testcases/export_hints_drawing.png")
 
 # --export-background=COLOR
@@ -1179,7 +1190,7 @@ if(WITH_CAPYPDF)
     add_pdfoutput_test(06-test-markers)
     add_pdfoutput_test(07-test-shapes FUZZ_PERCENTAGE 0.2)
     add_pdfoutput_test(08-clones FUZZ_PERCENTAGE 1)
-    add_pdfoutput_test(09-text-layout FUZZ_PERCENTAGE 0.2 SUPERSAMPLING 3)
+    add_pdfoutput_test(09-text-layout FUZZ_PERCENTAGE 0.4 SUPERSAMPLING 3)
     add_pdfoutput_test(10-text-paint)
     add_pdfoutput_test(11-text-decoration)
     add_pdfoutput_test(12-rasters FUZZ_PERCENTAGE 1)

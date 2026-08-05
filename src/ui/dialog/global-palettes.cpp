@@ -289,7 +289,7 @@ void load_gimp_palette(PaletteFileData& palette, std::string const &path)
     if (std::strncmp("GIMP Palette", buf, 12) != 0) throw std::runtime_error(_("First line is wrong"));
 
     static auto const regex_rgb   = Glib::Regex::create("\\s*(\\d+)\\s+(\\d+)\\s+(\\d+)\\s*(?:\\s(.*\\S)\\s*)?$", Glib::Regex::CompileFlags::OPTIMIZE | Glib::Regex::CompileFlags::ANCHORED);
-    static auto const regex_name  = Glib::Regex::create("\\s*Name:\\s*(.*\\S)", Glib::Regex::CompileFlags::OPTIMIZE | Glib::Regex::CompileFlags::ANCHORED);
+    static auto const regex_name  = Glib::Regex::create("\\s*Name:\\s*(.*)\\s*", Glib::Regex::CompileFlags::OPTIMIZE | Glib::Regex::CompileFlags::ANCHORED);
     static auto const regex_cols  = Glib::Regex::create("\\s*Columns:\\s*(.*\\S)", Glib::Regex::CompileFlags::OPTIMIZE | Glib::Regex::CompileFlags::ANCHORED);
     static auto const regex_blank = Glib::Regex::create("\\s*(?:$|#)", Glib::Regex::CompileFlags::OPTIMIZE | Glib::Regex::CompileFlags::ANCHORED);
 
@@ -308,7 +308,9 @@ void load_gimp_palette(PaletteFileData& palette, std::string const &path)
             auto color = Color(space, data);
             color.setName(match.fetch(4));
 
-            if (!color.getName().empty()) {
+            if (color.getName().empty()) {
+                color.setName(rgba_to_hex(color.toRGBA(), false, true));
+            } else {
                 // Translate the name if present.
                 color.setName(g_dpgettext2(nullptr, "Palette", color.getName().c_str()));
             }
@@ -316,7 +318,9 @@ void load_gimp_palette(PaletteFileData& palette, std::string const &path)
             palette.colors.emplace_back(std::move(color));
         } else if (regex_name->match(buf, match)) {
             // Header entry for name.
-            palette.name = match.fetch(1);
+            if (!match.fetch(1).empty()) {
+                palette.name = match.fetch(1);
+            }
         } else if (regex_cols->match(buf, match)) {
             // Header entry for columns.
             palette.columns = std::clamp(std::stoi(match.fetch(1)), 1, 1000);

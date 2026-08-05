@@ -17,25 +17,11 @@ dispatch_pool::dispatch_pool(int size)
 
     for (int i = 0; i < num_threads; ++i) {
         // local_id of created threads is offset by 1 to allow calling thread to always be 0
-        _threads.emplace_back([i, this] { thread_func(local_id{i + 1}); });
+        _threads.emplace_back([i, this] (std::stop_token stop_token) { thread_func(stop_token, local_id{i + 1}); });
     }
 }
 
-dispatch_pool::~dispatch_pool()
-{
-    // TODO C++20: this would be completely trivial with jthread
-    // TODO C++20: dispatch_pool::~dispatch_pool() = default;
-    {
-        std::scoped_lock lk(_lock);
-        _shutdown = true;
-    }
-
-    _available_cv.notify_all();
-
-    for (auto &thread : _threads) {
-        thread.join();
-    }
-}
+dispatch_pool::~dispatch_pool() = default;
 
 void dispatch_pool::dispatch(int count, dispatch_func function)
 {
@@ -57,23 +43,13 @@ void dispatch_pool::dispatch(int count, dispatch_func function)
     _function = {};
 }
 
-void dispatch_pool::thread_func(local_id id)
+void dispatch_pool::thread_func(std::stop_token const &stop_token, local_id id)
 {
     int const thread_count = size();
 
     std::unique_lock lk(_lock);
 
-    // TODO C++20: no need for _shutdown member once stop_token is available
-    // TODO C++20: while (_cv.wait(lk, stop_token, [&] { ... }))
-    while (true) {
-        _available_cv.wait(lk, [&] { return _shutdown || _available_work < _target_work; });
-
-        if (_shutdown) {
-            // When shutdown is requested, stop immediately
-            return;
-        }
-
-        // Otherwise, execute the batch
+    while (_available_cv.wait(lk, stop_token, [&] { return _available_work < _target_work; })) {
         execute_batch(lk, id, thread_count);
     }
 }

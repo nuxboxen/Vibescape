@@ -26,7 +26,6 @@
 #include "ui/widget/color-notebook.h"
 #include "ui/widget/generic/popover-bin.h"
 #include "ui/widget/preferences-widget.h"
-#include "ui/widget/style-subject.h"
 
 namespace Glib {
 class ValueBase;
@@ -152,9 +151,6 @@ private:
     Gtk::TreeRow _clicked_item_row;
     UI::Widget::PopoverBin _popoverbin;
 
-    // Manage selection and apply style changes
-    UI::Widget::StyleSubject::Selection _subject;
-
     void _activateAction(const std::string& layerAction, const std::string& selectionAction);
 
     bool blendModePopup(int x, int y, Gtk::TreeModel::Row row);
@@ -176,10 +172,11 @@ private:
     void on_motion_motion(Gtk::EventControllerMotion const *controller, double x, double y);
 
     void _searchActivated();
-    
+
     void _handleEdited(const Glib::ustring& path, const Glib::ustring& new_text);
     void _handleTransparentHover(bool enabled);
     void _generateTranslucentItems(SPItem *parent);
+    void _updateIconVisibility();
 
     bool select_row( Glib::RefPtr<Gtk::TreeModel> const & model, Gtk::TreeModel::Path const & path, bool b );
 
@@ -197,10 +194,8 @@ private:
 
     friend class ObjectWatcher;
 
-    bool _translucency_enabled = false;
-    SPItem *_old_solid_item = nullptr;
-
     int _msg_id;
+    unsigned _translucency_key = 0;
     Gtk::Popover& _settings_menu;
     Gtk::Popover& _object_menu;
     std::shared_ptr<Colors::ColorSet> _colors;

@@ -23,6 +23,7 @@
 #include <gtkmm/picture.h>
 #include <gtkmm/settings.h>
 #include <gtkmm/switch.h>
+#include <gtkmm/version.h>
 #include <gtkmm/windowhandle.h>
 
 #include "inkscape-application.h"
@@ -238,7 +239,7 @@ StartScreen::StartScreen()
         if (auto page = templates.get_child_by_name(cat)) {
             page->reference();
             templates.remove(*page);
-            kinds->append_page(*page, cat);
+            kinds->append_page(*page, templates.get_category_label(cat));
             page->unreference();
         }
     }
@@ -421,7 +422,8 @@ StartScreen::load_document()
             }
 
             // Now we have file, open document.
-            if (auto [document, cancelled] = app->document_open(file); !cancelled) {
+            app->create_window(file);
+            if (auto document = app->get_active_document()) {
                 _finish(document);
             }
         }
@@ -515,9 +517,15 @@ StartScreen::refresh_theme(Glib::ustring theme_name)
 
     auto settings = Gtk::Settings::get_default();
     auto prefs = Inkscape::Preferences::get();
+    auto preferDarkTheme = prefs->getBool("/theme/preferDarkTheme", true);
 
     settings->property_gtk_theme_name() = theme_name;
-    settings->property_gtk_application_prefer_dark_theme() = prefs->getBool("/theme/preferDarkTheme", true);
+#if GTKMM_CHECK_VERSION(4, 20, 0)
+    settings->property_gtk_interface_color_scheme() =
+        preferDarkTheme ? Gtk::InterfaceColorScheme::DARK : Gtk::InterfaceColorScheme::LIGHT;
+#else
+    settings->property_gtk_application_prefer_dark_theme() = preferDarkTheme;
+#endif
     settings->property_gtk_icon_theme_name() = prefs->getString("/theme/iconTheme", prefs->getString("/theme/defaultIconTheme", ""));
 
     if (prefs->getBool("/theme/symbolicIcons", false)) {
@@ -578,21 +586,16 @@ StartScreen::theme_changed()
         prefs->setBool("/theme/preferDarkTheme", is_dark);
         prefs->setBool("/theme/darkTheme", is_dark);
         // Symbolic icon colours
-        if (get_color_value(row[cols.base]) == 0) {
+        if (!Colors::Color::parse((Glib::ustring)row[cols.base])) {
             prefs->setBool("/theme/symbolicDefaultBaseColors", true);
-            prefs->setBool("/theme/symbolicDefaultHighColors", true);
         } else {
             Glib::ustring prefix = "/theme/" + icons;
             prefs->setBool("/theme/symbolicDefaultBaseColors", false);
-            prefs->setBool("/theme/symbolicDefaultHighColors", false);
-            if (is_dark) {
-                prefs->setUInt(prefix + "/symbolicBaseColor", get_color_value(row[cols.base_dark]));
-            } else {
-                prefs->setUInt(prefix + "/symbolicBaseColor", get_color_value(row[cols.base]));
-            }
-            prefs->setUInt(prefix + "/symbolicSuccessColor", get_color_value(row[cols.success]));
-            prefs->setUInt(prefix + "/symbolicWarningColor", get_color_value(row[cols.warn]));
-            prefs->setUInt(prefix + "/symbolicErrorColor", get_color_value(row[cols.error]));
+            auto base_column = is_dark ? cols.base_dark : cols.base;
+            prefs->setColor(prefix + "/symbolicBaseColor", row[base_column]);
+            prefs->setColor(prefix + "/symbolicSuccessColor", row[cols.success]);
+            prefs->setColor(prefix + "/symbolicWarningColor", row[cols.warn]);
+            prefs->setColor(prefix + "/symbolicErrorColor", row[cols.error]);
         }
 
         refresh_theme(prefs->getString("/theme/gtkTheme", prefs->getString("/theme/defaultGtkTheme", "")));

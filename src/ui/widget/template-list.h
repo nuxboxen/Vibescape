@@ -48,6 +48,7 @@ public:
     SPDocument *new_document(Gtk::Widget* current_page = nullptr);
     void show_page(const Glib::ustring& name);
     const std::vector<Glib::ustring>& get_categories() const { return _categories; }
+    Glib::ustring get_category_label(Glib::ustring const &cat) const;
     void filter(Glib::ustring search);
     void focus();
 

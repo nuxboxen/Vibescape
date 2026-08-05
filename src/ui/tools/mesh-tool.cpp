@@ -57,6 +57,11 @@ MeshTool::MeshTool(SPDesktop *desktop)
     , show_handles(true)
     , edit_fill(true)
     , edit_stroke(true)
+    , mod_gradient_create(Modifiers::Modifier::get(Modifiers::Type::GRADIENT_CREATE))
+    , mod_node_insert(Modifiers::Modifier::get(Modifiers::Type::NODE_INSERT))
+    , mod_select_add_to(Modifiers::Modifier::get(Modifiers::Type::SELECT_ADD_TO))
+    , mod_select_force_drag(Modifiers::Modifier::get(Modifiers::Type::SELECT_FORCE_DRAG))
+    , mod_select_remove_from(Modifiers::Modifier::get(Modifiers::Type::SELECT_REMOVE_FROM))
 {
     // TODO: This value is overwritten in the root handler
     this->tolerance = 6;
@@ -489,8 +494,8 @@ bool MeshTool::root_handler(CanvasEvent const &event)
                         Inkscape::PaintTarget fill_or_stroke = it->is_fill ? Inkscape::FOR_FILL : Inkscape::FOR_STROKE;
                         GrDragger *dragger0 = _grdrag->getDraggerFor(it->item, POINT_MG_CORNER, it->corner0, fill_or_stroke);
                         GrDragger *dragger1 = _grdrag->getDraggerFor(it->item, POINT_MG_CORNER, it->corner1, fill_or_stroke);
-                        bool add    = (event.modifiers & GDK_SHIFT_MASK);
-                        bool toggle = (event.modifiers & GDK_CONTROL_MASK);
+                        bool add    = mod_select_add_to->active(event.modifiers);
+                        bool toggle = mod_select_remove_from->active(event.modifiers);
                         if ( !add && !toggle ) {
                             _grdrag->deselectAll();
                         }
@@ -510,14 +515,15 @@ bool MeshTool::root_handler(CanvasEvent const &event)
                     Geom::Point button_dt = _desktop->w2d(button_w);
                     // Check if object already has mesh... if it does,
                     // don't create new mesh with click-drag.
-                    if (contains_mesh && !(event.modifiers & GDK_CONTROL_MASK)) {
+                    if (contains_mesh && !mod_gradient_create->active(event.modifiers)) {
                         Inkscape::Rubberband::get(_desktop)->start(_desktop, button_dt);
                     }
 
-                    // remember clicked item, disregarding groups, honoring Alt; do nothing with Crtl to
-                    // enable Ctrl+doubleclick of exactly the selected item(s)
-                    if (!(event.modifiers & GDK_CONTROL_MASK)) {
-                        item_to_select = sp_event_context_find_item (_desktop, button_w, event.modifiers & GDK_ALT_MASK, TRUE);
+                    // remember clicked item, disregarding groups, honoring Alt; but do nothing
+                    // if we might be doing a create-doubleclick of exactly the selected item(s)
+                    if (!mod_gradient_create->active(event.modifiers)) {
+                        auto force_drag = mod_select_force_drag->active(event.modifiers);
+                        item_to_select = sp_event_context_find_item(_desktop, button_w, force_drag, true);
                     }
 
                     if (!selection->isEmpty()) {
@@ -601,7 +607,7 @@ bool MeshTool::root_handler(CanvasEvent const &event)
                 // Check if over line
                 auto over_curve = this->over_curve(event.pos);
 
-                if ( (event.modifiers & GDK_CONTROL_MASK) && (event.modifiers & GDK_ALT_MASK ) ) {
+                if (mod_node_insert->active(event.modifiers)) {
                     if (!over_curve.empty() && has_mesh(over_curve[0]->item)) {
                         split_near_point(over_curve[0]->item, mousepoint_doc);
                         ret = true;
@@ -609,8 +615,8 @@ bool MeshTool::root_handler(CanvasEvent const &event)
                 } else {
                     dragging = false;
 
-                    // Unless clicked with Ctrl (to enable Ctrl+doubleclick).
-                    if (event.modifiers & GDK_CONTROL_MASK && !(event.modifiers & GDK_SHIFT_MASK)) {
+                    // Unless clicked with intent to create (Ctrl+doubleclick by default).
+                    if (mod_gradient_create->active(event.modifiers) && !mod_select_add_to->active(event.modifiers)) {
                         Inkscape::Rubberband::get(_desktop)->stop();
                         ret = true;
                     } else {
@@ -631,7 +637,7 @@ bool MeshTool::root_handler(CanvasEvent const &event)
                                     // this was a rubberband drag
                                     if (r->getMode() == Rubberband::Mode::RECT) {
                                         Geom::OptRect const b = r->getRectangle();
-                                        if (!(event.modifiers & GDK_SHIFT_MASK)) {
+                                        if (!mod_select_add_to->active(event.modifiers)) {
                                             _grdrag->deselectAll();
                                         }
                                         _grdrag->selectRect(*b);
@@ -645,7 +651,7 @@ bool MeshTool::root_handler(CanvasEvent const &event)
                                 // possible change in selection during a double click with overlapping objects.
                             } else {
                                 // No dragging, select clicked item if any.
-                                if (event.modifiers & GDK_SHIFT_MASK) {
+                                if (mod_select_add_to->active(event.modifiers)) {
                                     selection->toggle(item_to_select);
                                 } else {
                                     _grdrag->deselectAll();
@@ -679,22 +685,17 @@ bool MeshTool::root_handler(CanvasEvent const &event)
             std::cout << "root_handler: GDK_KEY_PRESS" << std::endl;
 #endif
 
-            // FIXME: tip
-            switch (get_latin_keyval (event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt (at least on my machine)
-                case GDK_KEY_Meta_R:
-                    // sp_event_show_modifier_tip (this->defaultMessageContext(), event,
-                    //                             _("FIXME<b>Ctrl</b>: snap mesh angle"),
-                    //                             _("FIXME<b>Shift</b>: draw mesh around the starting point"),
-                    //                             NULL);
-                    break;
+            auto keyval = get_latin_keyval(event);
 
+            // FIXME: tip
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                // sp_event_show_modifier_tip (this->defaultMessageContext(), event,
+                //                             _("FIXME<b>Ctrl</b>: snap mesh angle"),
+                //                             _("FIXME<b>Shift</b>: draw mesh around the starting point"),
+                //                             NULL);
+            }
+
+            switch (keyval) {
                 case GDK_KEY_A:
                 case GDK_KEY_a:
                     if (mod_ctrl_only(event) && _grdrag->isNonEmpty()) {
@@ -787,19 +788,10 @@ bool MeshTool::root_handler(CanvasEvent const &event)
             }
         },
         [&] (KeyReleaseEvent const &event) {
-            switch (get_latin_keyval(event)) {
-                case GDK_KEY_Alt_L:
-                case GDK_KEY_Alt_R:
-                case GDK_KEY_Control_L:
-                case GDK_KEY_Control_R:
-                case GDK_KEY_Shift_L:
-                case GDK_KEY_Shift_R:
-                case GDK_KEY_Meta_L:  // Meta is when you press Shift+Alt
-                case GDK_KEY_Meta_R:
-                    defaultMessageContext()->clear();
-                    break;
-                default:
-                    break;
+            auto keyval = get_latin_keyval(event);
+
+            if (Modifiers::keyval_is_a_modifier(keyval)) {
+                defaultMessageContext()->clear();
             }
         },
         [&] (CanvasEvent const &event) {}

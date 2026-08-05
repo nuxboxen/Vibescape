@@ -40,7 +40,7 @@ Inkscape::Pixbuf *sp_generate_internal_bitmap(SPDocument *document,
                                               bool opaque,
                                               uint32_t const *checkerboard_color,
                                               double device_scale,
-                                              std::optional<Antialiasing> antialias)
+                                              std::optional<Inkscape::Antialiasing> antialias)
 {
     // Geometry
     if (area.hasZeroArea()) {

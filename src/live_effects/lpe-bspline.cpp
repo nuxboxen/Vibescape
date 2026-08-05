@@ -11,7 +11,7 @@
 #include <gtkmm/enums.h>                    // for Orientation
 #include <gtkmm/widget.h>                   // for Widget
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "live_effects/lpe-bspline.h"
 #include "object/sp-path.h"
 #include "preferences.h"
@@ -27,6 +27,10 @@ static constexpr double BSPLINE_TOL = 0.001;
 static constexpr double NO_POWER = 0.0;
 static constexpr double DEFAULT_START_POWER = 1.0 / 3.0;
 static constexpr double DEFAULT_END_POWER = 2.0 / 3.0;
+
+// This gap defines an extra translation on points to avoid zeros in some calculations that really
+// affect spiro maths. See https://gitlab.com/inkscape/inkscape/-/work_items/5658 for details.
+static Geom::Translate handle_cubic_gap(0.001, 0.001);
 
 Geom::Path sp_bspline_drawHandle(Geom::Point p, double helper_size);
 
@@ -397,6 +401,9 @@ void LPEBSpline::doBSplineFromWidget(Geom::PathVector &curve, double weight_amou
                 {
                     if (isNodePointSelected(point_at0) || !only_selected) {
                         point_at1 = sbasis_in.valueAt(weight_amount);
+                        if (!Geom::are_near(weight_amount, NO_POWER, BSPLINE_TOL)) {
+                            point_at1 *= handle_cubic_gap;
+                        }
                     } else {
                         point_at1 = (*cubic)[1];
                     }
@@ -410,8 +417,7 @@ void LPEBSpline::doBSplineFromWidget(Geom::PathVector &curve, double weight_amou
                     if (isNodePointSelected(point_at3) || !only_selected) {
                         point_at2 = in.pointAt(1 - weight_amount);
                         if (!Geom::are_near(weight_amount, NO_POWER, BSPLINE_TOL)) {
-                            point_at2 =
-                                Geom::Point(point_at2[X], point_at2[Y]);
+                            point_at2 *= handle_cubic_gap;
                         }
                     } else {
                         point_at2 = (*cubic)[2];
@@ -425,12 +431,12 @@ void LPEBSpline::doBSplineFromWidget(Geom::PathVector &curve, double weight_amou
                     (apply_with_weight && !Geom::are_near(weight_amount, NO_POWER, BSPLINE_TOL)))
                 {
                     if (isNodePointSelected(point_at0) || !only_selected) {
-                        point_at1 = in.pointAt(weight_amount);
+                        point_at1 = in.pointAt(weight_amount) * handle_cubic_gap;
                     } else {
                         point_at1 = in.initialPoint();
                     }
                     if (isNodePointSelected(point_at3) || !only_selected) {
-                        point_at2 = sbasis_in.valueAt(1 - weight_amount);
+                        point_at2 = sbasis_in.valueAt(1 - weight_amount) * handle_cubic_gap;
                     } else {
                         point_at2 = in.finalPoint();
                     }

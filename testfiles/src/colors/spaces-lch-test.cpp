@@ -60,7 +60,8 @@ INSTANTIATE_TEST_SUITE_P(ColorsSpacesLCH, normalize, testing::Values(
 TEST(ColorsSpacesLCH, randomConversion)
 {
     // Isolate conversion functions
-    EXPECT_TRUE(RandomPassFunc(Space::Lch::fromLab, Space::Lch::toLab, 1000));
+    EXPECT_TRUE(RandomPassFunc(Space::Lch::profileToSpace<double>,
+                               Space::Lch::spaceToProfile<double>, 1000));
 
     // Full stack conversion, can not be enabled until clamp is taken off.
     //EXPECT_TRUE(RandomPassthrough(LCH, XYZ, 1000));

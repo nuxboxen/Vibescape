@@ -62,7 +62,7 @@ Linked&lt;/small&gt;</property>
           <class name="linked"></class>
         </style>
         <child>
-          <object class="GtkEntry" id="href">
+          <object class="gtkmm__CustomObject_TextEntry" id="href">
             <property name="max-width-chars">5</property>
             <property name="focusable">True</property>
             <property name="hexpand">True</property>

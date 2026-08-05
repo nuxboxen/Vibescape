@@ -17,9 +17,7 @@
 #include <map>
 #include <memory>
 #include <unordered_set>
-
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include <vector>
 
 #include <glibmm/ustring.h>
 
@@ -49,35 +47,20 @@ struct OTVarAxis
     // compare axis definition, ignore set value
     bool same_definition(const OTVarAxis& other) const {
         return
+            tag     == other.tag     &&
+            name    == other.name    &&
             minimum == other.minimum &&
-            def == other.def &&
-            maximum == other.maximum &&
-            index == other.index &&
-            tag == other.tag;
+            def     == other.def     &&
+            maximum == other.maximum;
     }
 
+    std::string tag;
+    Glib::ustring name;
     double minimum = 0;
     double def = 500; // Default
     double maximum = 1000;
     double set_val = 500;
-    int index = -1;  // Index in OpenType file (since we use a map).
-    std::string tag;
 };
-
-// A particular instance of a variable font.
-// A map indexed by axis name with value.
-struct OTVarInstance
-{
-    std::map<Glib::ustring, double> axes;
-};
-
-inline double FTFixedToDouble (FT_Fixed value) {
-    return static_cast<FT_Int32>(value) / 65536.0;
-}
-
-inline FT_Fixed FTDoubleToFixed (double value) {
-    return static_cast<FT_Fixed>(value * 65536);
-}
 
 struct SVGGlyphEntry
 {
@@ -94,11 +77,12 @@ void readOpenTypeTableList (hb_font_t* hb_font,
 void readOpenTypeGsubTable (hb_font_t* hb_font,
                             std::map<Glib::ustring, OTSubstitution >& tables);
 
-void readOpenTypeFvarAxes  (const FT_Face ft_face,
-                            std::map<Glib::ustring, OTVarAxis>& axes);
+// Read the variation font axes parameters including set values. Axis order is defined by font.
+void readOpenTypeFvarAxes  (hb_font_t* hb_font,
+                            std::vector<OTVarAxis>& axes);
 
-void readOpenTypeFvarNamed (const FT_Face ft_face,
-                            std::map<Glib::ustring, OTVarInstance>& named);
+// Construct a map of variable font named instances with names as key and corresponding Pango string as data.
+void readOpenTypeFvarNamedInstances (hb_font_t* hb_font, std::map<Glib::ustring, Glib::ustring>& named_instances);
 
 void readOpenTypeSVGTable  (hb_font_t* hb_font,
                             std::map<unsigned int, SVGGlyphEntry>& glyphs,

@@ -14,8 +14,13 @@
 
 #include "actions-extra-data.h"
 
+#include <giomm/action.h>
 #include <glibmm/i18n.h>
 #include <glibmm/regex.h>
+
+#include "document.h"
+#include "inkscape-application.h"
+#include "inkscape-window.h"
 
 std::vector<Glib::ustring> InkActionExtraData::get_actions()
 {
@@ -100,6 +105,45 @@ bool InkActionExtraData::isSameContext(Glib::ustring const &action_one, Glib::us
     }
     // The same tool means the same context, or if the tool is all tools (i.e. tool-base)
     return ones[1] == twos[1] || ones[1] == "all" || twos[1] == "all";
+}
+
+bool action_requires_parameter(Glib::ustring const &action_name)
+{
+    auto const dot = action_name.find('.');
+    auto const action_domain = std::string_view{action_name.c_str(), dot};
+    auto const name_without_domain = action_name.substr(dot + 1);
+
+    auto iapp = InkscapeApplication::instance();
+
+    Glib::RefPtr<Gio::Action> action;
+    if (action_domain == "app") {
+        auto gapp = iapp->gtk_app();
+
+        action = gapp->lookup_action(name_without_domain);
+    } else if (action_domain == "doc") {
+        auto const doc = iapp->get_active_document();
+        auto action_group = doc->getActionGroup();
+
+        action = action_group->lookup_action(name_without_domain);
+    } else if (action_domain == "win") {
+        auto const win = iapp->get_active_window();
+
+        action = win->lookup_action(name_without_domain);
+    }
+
+    if (action != nullptr) {
+        // glibmm's `get_parameter_type()` is invalid if used when the
+        // parameter type is null.
+        return g_action_get_parameter_type(action->gobj()) != nullptr;
+    } else if (action_domain == "tool") {
+        // Tools handle their own action shortcuts without parameters.
+        return false;
+    }
+
+    // For any other action, assume the worst as we do not have sufficient
+    // information.
+    g_warning("Unknown action %s", action_name.c_str());
+    return true;
 }
 
 /*

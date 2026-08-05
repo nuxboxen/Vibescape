@@ -22,7 +22,7 @@ endif()
 if(WITH_ASAN)
     list(APPEND INKSCAPE_CXX_FLAGS "-fsanitize=address -fno-omit-frame-pointer")
     list(APPEND INKSCAPE_LIBS "-fsanitize=address")
-else()
+elseif(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Undefine first, to suppress 'warning: "_FORTIFY_SOURCE" redefined'
     list(APPEND INKSCAPE_CXX_FLAGS "-U_FORTIFY_SOURCE")
     list(APPEND INKSCAPE_CXX_FLAGS "-D_FORTIFY_SOURCE=2")
@@ -57,6 +57,9 @@ if (CMAKE_COMPILER_IS_GNUCC)
     if(CXX_COMPILER_VERSION VERSION_GREATER 8.0)
         list(APPEND INKSCAPE_CXX_FLAGS_DEBUG "-fstack-clash-protection -fcf-protection")
     endif()
+endif()
+if(APPLE)
+    list(APPEND INKSCAPE_CXX_FLAGS "-fexperimental-library") # for jthread, stop_token
 endif()
 
 # Define the flags for profiling if desired:
@@ -190,45 +193,16 @@ if(NOT WITH_INTERNAL_ADAPTAGRAMS)
 endif()
 
 if(WITH_CAPYPDF)
-  pkg_check_modules(CAPYPDF IMPORTED_TARGET capypdf>=0.18)
-  if(CAPYPDF_FOUND)
-    add_library(Inkscape::CapyPDF ALIAS PkgConfig::CAPYPDF)
-  else()
-    if(APPLE)
-      message(STATUS "New CMYK PDF exporter disabled on macOS")
-      set(WITH_CAPYPDF OFF)
-    else()
-      set(CAPY_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/deps)
-      set(CAPY_LIBDIR ${CAPY_PREFIX}/${CMAKE_INSTALL_LIBDIR})
-      include(ExternalProject)
-      ExternalProject_Add(capypdf
-          URL https://github.com/jpakkane/capypdf/releases/download/0.18.0/capypdf-0.18.0.tar.xz
-          URL_HASH SHA256=bda2c0cbbc60b461b1c5d64c50cdecfee6e90b3c9ee28d33212412771caaafd4
-          DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-          CONFIGURE_COMMAND meson setup . ../capypdf --libdir=${CAPY_LIBDIR} --prefix=${CAPY_PREFIX}
-          BUILD_COMMAND meson compile
-          INSTALL_COMMAND meson install
-      )
-      add_library(CapyPDF_LIB INTERFACE)
-      target_include_directories(CapyPDF_LIB INTERFACE "${CAPY_PREFIX}/include/capypdf-0")
-      target_link_directories(CapyPDF_LIB INTERFACE "${CAPY_LIBDIR}")
-      target_link_libraries(CapyPDF_LIB INTERFACE -lcapypdf)
-      add_library(Inkscape::CapyPDF ALIAS CapyPDF_LIB)
-      list(APPEND CMAKE_INSTALL_RPATH ${CAPY_LIBDIR})
-      if(WIN32)
-        # DLL needs to be copied for tests to run
-        ExternalProject_Add_Step(capypdf copy-dll
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CAPY_PREFIX}/bin/libcapypdf-0.dll" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libcapypdf-0.dll"
-            DEPENDEES install
-            BYPRODUCTS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/libcapypdf-0.dll"
-        )
-      endif()
+    if(NOT WITH_INTERNAL_CAPYPDF)
+        pkg_check_modules(CAPYPDF QUIET IMPORTED_TARGET capypdf>=0.21)
+        if(CAPYPDF_FOUND)
+            add_library(Inkscape::CapyPDF ALIAS PkgConfig::CAPYPDF)
+        else()
+            message(STATUS "CapyPDF not found, using internal copy in src/3rdparty/capypdf")
+            set(WITH_INTERNAL_CAPYPDF ON CACHE BOOL "Prefer internal copy of capypdf" FORCE)
+        endif()
     endif()
-  endif()
-endif()
-if(WITH_CAPYPDF)
-  list(APPEND INKSCAPE_LIBS Inkscape::CapyPDF)
-  add_definitions(-DWITH_CAPYPDF)
+    add_definitions(-DWITH_CAPYPDF)
 endif()
 
 if(WITH_POPPLER)

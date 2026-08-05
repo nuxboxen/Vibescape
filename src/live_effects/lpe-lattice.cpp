@@ -22,7 +22,7 @@
 #include <2geom/sbasis-2d.h>
 #include <2geom/bezier-to-sbasis.h>
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "object/sp-lpe-item.h"
 
 using namespace Geom;

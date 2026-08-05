@@ -16,16 +16,11 @@
  *
  */
 
-#include "path-outline.h"
-
 #include <vector>
 
 #include "document.h"
-#include "path-chemistry.h" // Should be moved to path directory
 #include "selection.h"
 #include "style.h"
-
-#include "display/curve.h"  // Should be moved to path directory
 
 #include "helper/geom.h"    // pathv_to_linear_and_cubic()
 
@@ -40,6 +35,10 @@
 #include "object/sp-shape.h"
 #include "object/sp-text.h"
 #include "object/sp-flowtext.h"
+
+#include "path-chemistry.h"
+#include "path-curve.h"
+#include "path-outline.h"
 
 #include "svg/svg.h"
 
@@ -142,7 +141,7 @@ item_find_paths(const SPItem *item, Geom::PathVector& fill, Geom::PathVector& st
     if (!style->stroke_dasharray.values.empty() && style->stroke_dasharray.is_valid()) {
         // We have dashes!
         origin->ConvertWithBackData(0.005); // Approximate by polyline
-        origin->DashPolylineFromStyle(style, scale, 0);
+        origin->DashPolyline(style->stroke_dasharray.get_computed(), style->stroke_dashoffset.computed, scale, 0);
         auto bounds = Geom::bounds_fast(pathv);
         if (bounds) {
             double size = Geom::L2(bounds->dimensions());

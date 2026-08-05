@@ -9,7 +9,7 @@
    viewBox="0 0 816 1056"
    sodipodi:docname="XObj_layer.pdf"
    standalone="no"
-   inkscape:version="1.5-dev (98413dd718, 2026-02-08, custom)"
+   inkscape:version="1.5-dev (6f35fa1fa1, 2026-06-26, custom)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -26,14 +26,14 @@
        clipPathUnits="userSpaceOnUse"
        id="clipPath1">
       <path
-         d="M 100,100 H 200.00001 V 200.00001 H 100 Z"
+         d="M 100,100 H 200 V 200.0000001 H 100 Z"
          id="path1" />
     </clipPath>
     <clipPath
        clipPathUnits="userSpaceOnUse"
        id="clipPath3">
       <path
-         d="m 300.00001,300.00001 h 100 v 100 h -100 z"
+         d="m 300.0000001,300.0000001 h 100 v 100 h -100 z"
          id="path3" />
     </clipPath>
     <view
@@ -46,14 +46,14 @@
        clipPathUnits="userSpaceOnUse"
        id="clipPath5">
       <path
-         d="M 100,100 H 200.00001 V 200.00001 H 100 Z"
+         d="M 100,100 H 200 V 200.0000001 H 100 Z"
          id="path5" />
     </clipPath>
     <clipPath
        clipPathUnits="userSpaceOnUse"
        id="clipPath7">
       <path
-         d="m 300.00001,300.00001 h 100 v 100 h -100 z"
+         d="m 300.0000001,300.0000001 h 100 v 100 h -100 z"
          id="path7" />
     </clipPath>
   </defs>
@@ -73,14 +73,14 @@
     <path
        d="M 100,100 H 200 V 200 H 100 Z"
        style="fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none"
-       transform="matrix(1.3333333,0,0,-1.3333333,0,1056)"
+       transform="matrix(1.333333333,0,0,-1.333333333,0,1056)"
        clip-path="url(#clipPath1)"
        opacity="1"
        id="path2" />
     <path
        d="M 100,100 H 200 V 200 H 100 Z"
        style="fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none"
-       transform="matrix(1.3333333,0,0,-1.3333333,836,1056)"
+       transform="matrix(1.333333333,0,0,-1.333333333,836,1056)"
        clip-path="url(#clipPath5)"
        opacity="1"
        id="path6" />
@@ -92,14 +92,14 @@
     <path
        d="M 300,300 H 400 V 400 H 300 Z"
        style="fill:#0000ff;fill-opacity:1;fill-rule:nonzero;stroke:none"
-       transform="matrix(1.3333333,0,0,-1.3333333,0,1056)"
+       transform="matrix(1.333333333,0,0,-1.333333333,0,1056)"
        clip-path="url(#clipPath3)"
        opacity="1"
        id="path4" />
     <path
        d="M 300,300 H 400 V 400 H 300 Z"
        style="fill:#0000ff;fill-opacity:1;fill-rule:nonzero;stroke:none"
-       transform="matrix(1.3333333,0,0,-1.3333333,836,1056)"
+       transform="matrix(1.333333333,0,0,-1.333333333,836,1056)"
        clip-path="url(#clipPath7)"
        opacity="1"
        id="path8" />

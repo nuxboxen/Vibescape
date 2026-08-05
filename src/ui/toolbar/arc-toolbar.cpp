@@ -238,7 +238,8 @@ void ArcToolbar::_valueChanged(Glib::RefPtr<Gtk::Adjustment> const &adj, Glib::u
     }
 
     if (modified) {
-        DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Ellipse: Change radius"), INKSCAPE_ICON("draw-ellipse"));
+        DocumentUndo::maybeDone(_desktop->getDocument(), value_name.c_str(), RC_("Undo", "Ellipse: Change radius"),
+                                INKSCAPE_ICON("draw-ellipse"));
     }
 }
 

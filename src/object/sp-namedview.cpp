@@ -72,7 +72,6 @@ void SPNamedView::build(SPDocument *document, Inkscape::XML::Node *repr) {
     readAttr(SPAttr::UNITS);
     readAttr(SPAttr::VIEWONLY);
     readAttr(SPAttr::SHOWGUIDES);
-    readAttr(SPAttr::SHOWGRIDS);
     readAttr(SPAttr::GRIDTOLERANCE);
     readAttr(SPAttr::GUIDETOLERANCE);
     readAttr(SPAttr::OBJECTTOLERANCE);
@@ -198,6 +197,12 @@ void SPNamedView::modified(unsigned int flags)
 
         updateGuides();
     }
+
+    if (flags & SP_OBJECT_CHILD_MODIFIED_FLAG) {
+        // Ensure that the interface stays in sync with grid visibility.
+        updateGrids();
+    }
+
     // Add desk color and checkerboard pattern to desk view
     for (auto desktop : views) {
         set_desk_color(desktop);
@@ -287,10 +292,6 @@ void SPNamedView::set(SPAttr key, const gchar* value) {
         break;
     case SPAttr::INKSCAPE_LOCKGUIDES:
         lockguides.readOrUnset(value);
-        break;
-    case SPAttr::SHOWGRIDS:
-        grids_visible.readOrUnset(value);
-        updateGrids();
         break;
     case SPAttr::GRIDTOLERANCE:
         snap_manager.snapprefs.setGridTolerance(value ? g_ascii_strtod(value, nullptr) : 10);
@@ -478,6 +479,8 @@ void SPNamedView::remove_child(Inkscape::XML::Node *child) {
                 break;
             }
         }
+
+        updateGrids();
     } else {
         for (auto it = guides.begin(); it != guides.end(); ++it) {
             if ((*it)->getRepr() == child) {
@@ -548,20 +551,18 @@ void sp_namedview_window_from_document(SPDesktop *desktop)
     int default_size = prefs->getInt("/options/defaultwindowsize/value", PREFS_WINDOW_SIZE_NATURAL);
     bool new_document = (nv->window_width <= 0) || (nv->window_height <= 0);
 
-    // restore window size and position stored with the document
+    // restore window size stored with the document
     auto win = desktop->getInkscapeWindow();
     g_assert(win);
 
     if (window_geometry == PREFS_WINDOW_GEOMETRY_LAST) {
         gint pw = prefs->getInt("/desktop/geometry/width", -1);
         gint ph = prefs->getInt("/desktop/geometry/height", -1);
-        gint px = prefs->getInt("/desktop/geometry/x", -1);
-        gint py = prefs->getInt("/desktop/geometry/y", -1);
         gint full = prefs->getBool("/desktop/geometry/fullscreen");
         gint maxed = prefs->getBool("/desktop/geometry/maximized");
         if (pw>0 && ph>0) {
 
-            Gdk::Rectangle monitor_geometry = Inkscape::UI::get_monitor_geometry_at_point(px, py);
+            Gdk::Rectangle monitor_geometry = Inkscape::UI::get_monitor_geometry_at_point(nv->window_x, nv->window_y);
             pw = std::min(pw, monitor_geometry.get_width());
             ph = std::min(ph, monitor_geometry.get_height());
             desktop->setWindowSize({pw, ph});
@@ -777,20 +778,42 @@ void SPNamedView::toggleShowGrids()
 
 void SPNamedView::setShowGrids(bool v)
 {
+    bool hasEnabledGrid = false;
+    for (auto grid : grids) {
+        if (grid->isEnabled()) {
+            hasEnabledGrid = true;
+
+            break;
+        }
+    }
+
+    if (v && !hasEnabledGrid) {
+        SPGrid::create_new(document, getRepr(), GridType::RECTANGULAR);
+
+        requestModified(SP_OBJECT_MODIFIED_FLAG);
+
+        return;
+    }
+
     {
         DocumentUndo::ScopedInsensitive ice(document);
 
-        if (v && grids.empty())
-            SPGrid::create_new(document, getRepr(), GridType::RECTANGULAR);
-
-        getRepr()->setAttributeBoolean("showgrid", v);
+        for (auto grid : grids) {
+            grid->setVisible(v);
+        }
     }
-    requestModified(SP_OBJECT_MODIFIED_FLAG);
 }
 
 bool SPNamedView::getShowGrids()
 {
-    return grids_visible;
+    // Return true if any grid is currently visible.
+    for (auto grid : grids) {
+        if (grid->isEnabled() && grid->isVisible()) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void SPNamedView::setShowGuides(bool v)
@@ -842,26 +865,12 @@ bool SPNamedView::getLockGuides()
     return false;
 }
 
-void SPNamedView::newGridCreated() {
-    if (grids_visible) return;
-
-    _sync_grids = false;
-    setShowGrids(true);
-    _sync_grids = true;
-}
-
 void SPNamedView::updateGrids()
 {
     if (auto saction = std::dynamic_pointer_cast<Gio::SimpleAction>(
                 document->getActionGroup()->lookup_action("show-grids"))) {
 
         saction->change_state(getShowGrids());
-    }
-    if (_sync_grids) {
-        DocumentUndo::ScopedInsensitive ice(document);
-        for (auto grid : grids) {
-            grid->setVisible(getShowGrids());
-        }
     }
 }
 

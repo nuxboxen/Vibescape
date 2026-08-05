@@ -60,6 +60,9 @@ private:
 
     sigc::connection sel_changed_connection;
 
+    Modifiers::Modifier *mod_freehand_angle_snapping;
+    Modifiers::Modifier *mod_select_add_to;
+
     void drag(Geom::Point p, unsigned state);
     void finishItem();
     void cancel();

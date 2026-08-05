@@ -52,7 +52,6 @@
             <property name="halign">end</property>
             <property name="valign">start</property>
             <property name="hexpand">True</property>
-            <property name="has-frame">False</property>
             <child>
               <object class="GtkImage">
                 <property name="icon-name">window-close</property>

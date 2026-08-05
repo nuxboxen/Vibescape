@@ -8,10 +8,12 @@
 
 #include "recolor-art-manager.h"
 
+#include <glibmm/main.h>
 #include <gtkmm/menubutton.h>
 
 #include "object/sp-gradient.h"
 #include "object/sp-pattern.h"
+#include "object/sp-text.h"
 #include "object/sp-use.h"
 #include "object/sp-marker.h"
 #include "style.h"
@@ -105,6 +107,19 @@ RecolorArtManager::RecolorArtManager()
 {
     popover.set_autohide(false);
     popover.set_child(widget);
+
+    // Because our popover does not autohide, Gtk doesn't do it's normal good job of ensuring
+    // the popup has window focus. It's easy for the button that launched the popup to still be
+    // focused (which among other things, means that Escape doesn't directly close the popup).
+    // So we manually trigger a "tab forward" event once the popup is shown (but we wait until
+    // Gtk has settled down first in an idle callback, because if we don't do that, the popup may
+    // not ready to receive focus, which seems to happen every time *but* the first popup event)
+    popover.signal_show().connect([this] {
+        Glib::signal_idle().connect([this] {
+            popover.child_focus(Gtk::DirectionType::TAB_FORWARD);
+            return false;
+        });
+    });
 }
 
 bool RecolorArtManager::checkSelection(Inkscape::Selection *selection)
@@ -120,6 +135,7 @@ bool RecolorArtManager::checkSelection(Inkscape::Selection *selection)
 
     return is<SPGroup>(item) ||
            is<SPUse>(item) ||
+           is<SPText>(item) ||
            item->getMaskObject() ||
            has_colors_pattern(item);
 }
@@ -136,7 +152,7 @@ bool RecolorArtManager::checkMarkerObject(SPMarker *marker)
 
     MoreThan1ColorChecker check;
     for (auto const &child : marker->children) {
-        
+
         if (auto item = cast<SPItem>(&child)) {
             if (item->style) {
                 if (check(item->style->fill) || check(item->style->stroke)) {

@@ -252,15 +252,16 @@ RegisteredScalarUnit::RegisteredScalarUnit(Glib::ustring const &label, Glib::ust
                                            Glib::ustring const &key,
                                            RegisteredUnitMenu &rum, Registry &wr,
                                            Inkscape::XML::Node * const repr_in, SPDocument * const doc_in,
-                                           RSU_UserUnits const user_units)
-    : RegisteredWidget<ScalarUnit>(label, tip, UNIT_TYPE_LINEAR, Glib::ustring{}, rum.getUnitMenu()),
+                                           RSU_UserUnits const user_units,
+                                           bool should_convert_limits)
+    : RegisteredWidget<ScalarUnit>(label, tip, UNIT_TYPE_LINEAR, Glib::ustring{}, rum.getUnitMenu(), should_convert_limits),
       _um(nullptr)
 {
     init_parent(key, wr, repr_in, doc_in);
 
     setProgrammatically = false;
 
-    initScalar(-1e6, 1e6);
+    initScalar(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setUnit(rum.getUnitMenu()->getUnitAbbr());
     setDigits(2);
     _um = rum.getUnitMenu();
@@ -291,7 +292,7 @@ RegisteredScalarUnit::on_value_changed()
                 // check to see if scaling is uniform
                 if(Geom::are_near((root->viewBox.width() * root->height.computed) / (root->width.computed * root->viewBox.height()), 1.0, Geom::EPSILON)) {
                     scale = (root->viewBox.width() / root->width.computed + root->viewBox.height() / root->height.computed)/2.0;
-                } else if (_user_units == RSU_x) { 
+                } else if (_user_units == RSU_x) {
                     scale = root->viewBox.width() / root->width.computed;
                 } else {
                     scale = root->viewBox.height() / root->height.computed;
@@ -323,7 +324,7 @@ RegisteredScalar::RegisteredScalar(Glib::ustring const &label, Glib::ustring con
     init_parent(key, wr, repr_in, doc_in);
 
     setProgrammatically = false;
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_changed_connection = signal_value_changed().connect(sigc::mem_fun(*this, &RegisteredScalar::on_value_changed));
@@ -478,7 +479,7 @@ RegisteredInteger::RegisteredInteger(Glib::ustring const &label, Glib::ustring c
 {
     init_parent(key, wr, repr_in, doc_in);
 
-    setRange(0, 1e6);
+    setRange(0, Scalar::COMMON_MAX);
     setDigits(0);
     setIncrements(1, 10);
 
@@ -518,7 +519,7 @@ RegisteredTransformedPoint::RegisteredTransformedPoint(Glib::ustring const &labe
 {
     init_parent(key, wr, repr_in, doc_in);
 
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_x_changed_connection = signal_x_value_changed().connect(sigc::mem_fun(*this, &RegisteredTransformedPoint::on_value_changed));
@@ -580,7 +581,7 @@ RegisteredVector::RegisteredVector(Glib::ustring const &label, Glib::ustring con
 {
     init_parent(key, wr, repr_in, doc_in);
 
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_x_changed_connection = signal_x_value_changed().connect(sigc::mem_fun(*this, &RegisteredVector::on_value_changed));
@@ -659,7 +660,7 @@ RegisteredRandom::RegisteredRandom(Glib::ustring const &label, Glib::ustring con
     init_parent(key, wr, repr_in, doc_in);
 
     setProgrammatically = false;
-    setRange(-1e6, 1e6);
+    setRange(Scalar::COMMON_MIN, Scalar::COMMON_MAX);
     setDigits(2);
     setIncrements(0.1, 1.0);
     _value_changed_connection = signal_value_changed().connect(sigc::mem_fun(*this, &RegisteredRandom::on_value_changed));

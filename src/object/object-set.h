@@ -369,7 +369,7 @@ public:
     //item groups operations
     //in selection-chemistry.cpp
     void deleteItems(bool skip_undo = false);
-    void duplicate(bool suppressDone = false, bool duplicateLayer = false);
+    void duplicate(bool suppressDone = false, bool duplicateLayer = false, bool includeHidden = false);
     void clone(bool skip_undo = false);
 
     /**

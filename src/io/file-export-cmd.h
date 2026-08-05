@@ -21,6 +21,7 @@
 
 class SPDocument;
 class SPItem;
+class SPObject;
 namespace Inkscape {
 namespace Extension {
 class Output;
@@ -47,6 +48,7 @@ public:
 private:
     ExportAreaType export_area_type{ExportAreaType::Unset};
     Glib::ustring export_area{};
+    void fit_to_export_area(SPDocument *doc, SPObject *object);
     Inkscape::Colors::Color get_bgcolor(SPDocument *doc);
     std::string get_filename_out(std::string filename_in = "", std::string object_id = "");
     int do_export_svg(SPDocument *doc, std::string const &filename_in);

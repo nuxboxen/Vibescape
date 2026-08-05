@@ -101,6 +101,27 @@ void PathVectorNodeSatellites::updateSteps(size_t steps, bool apply_no_radius, b
     }
 }
 
+void PathVectorNodeSatellites::updateAngle(double angle, bool apply_no_radius, bool apply_with_radius,
+                                           bool only_selected)
+{
+    for (auto &_nodesatellite : _nodesatellites) {
+        for (auto &j : _nodesatellite) {
+            if ((!apply_no_radius && j.amount == 0) ||
+                (!apply_with_radius && j.amount != 0))
+            {
+                continue;
+            }
+            if (only_selected) {
+                if (j.selected) {
+                    j.angle = angle;
+                }
+            } else {
+                j.angle = angle;
+            }
+        }
+    }
+}
+
 void PathVectorNodeSatellites::updateAmount(double radius, bool apply_no_radius, bool apply_with_radius,
                                             bool only_selected, bool use_knot_distance, bool flexible)
 {

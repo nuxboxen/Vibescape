@@ -26,6 +26,7 @@ using namespace std::literals;
 #include "document.h"
 #include "document-undo.h"
 #include "desktop.h"
+#include "preferences.h"
 #include "selection.h"
 #include "include/gtkmm_version.h"
 

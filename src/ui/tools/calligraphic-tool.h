@@ -21,6 +21,7 @@
 
 #include <deque>
 #include <2geom/pathvector.h>
+#include "ui/modifiers.h"
 #include "ui/tools/dynamic-base.h"
 
 class SPItem;
@@ -60,6 +61,10 @@ private:
     CanvasItemPtr<CanvasItemBpath> hatch_area;
     bool just_started_drawing = false;
     bool trace_bg = false;
+
+    Modifiers::Modifier *mod_calli_hatching;
+    Modifiers::Modifier *mod_calli_subtract;
+    Modifiers::Modifier *mod_calli_unionize;
 
 	void clear_current();
 	void set_to_accumulated(bool unionize, bool subtract);

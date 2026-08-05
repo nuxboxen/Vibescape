@@ -26,7 +26,7 @@
 #include "selection.h"
 
 #include "actions/actions-tools.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "live_effects/effect.h"
 #include "live_effects/lpeobject.h"
 #include "object/sp-item.h"

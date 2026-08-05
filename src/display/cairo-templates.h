@@ -67,7 +67,7 @@ void ink_cairo_surface_blend_internal(cairo_surface_t *out, cairo_surface_t *in1
     // NOTE
     // This probably doesn't help much here.
     // It would be better to render more than 1 tile at a time.
-    auto const pool = get_global_dispatch_pool();
+    auto const pool = Inkscape::get_global_dispatch_pool();
     pool->dispatch_threshold(h, (w * h) > POOL_THRESHOLD, [&](int i, int) {
         for (int j = 0; j < w; ++j) {
             acc_out.set(j, i, blend(acc_in1.get(j, i), acc_in2.get(j, i)));
@@ -84,7 +84,7 @@ void ink_cairo_surface_filter_internal(cairo_surface_t *out, cairo_surface_t *in
     // NOTE
     // This probably doesn't help much here.
     // It would be better to render more than 1 tile at a time.
-    auto const pool = get_global_dispatch_pool();
+    auto const pool = Inkscape::get_global_dispatch_pool();
     pool->dispatch_threshold(h, (w * h) > POOL_THRESHOLD, [&](int i, int) {
         for (int j = 0; j < w; ++j) {
             acc_out.set(j, i, filter(acc_in.get(j, i)));
@@ -101,7 +101,7 @@ void ink_cairo_surface_synthesize_internal(cairo_surface_t *out, int x0, int y0,
     // This probably doesn't help much here.
     // It would be better to render more than 1 tile at a time.
     int const limit = (x1 - x0) * (y1 - y0);
-    auto const pool = get_global_dispatch_pool();
+    auto const pool = Inkscape::get_global_dispatch_pool();
     pool->dispatch_threshold(y1 - y0, limit > POOL_THRESHOLD, [&](int y, int) {
         int const i = y0 + y;
 

@@ -62,7 +62,7 @@ std::array<Geom::Line, 6> HSLuv::get_bounds(double l)
  * @param h Hue.
  * @return The maximum chromaticity.
  */
-static double max_chroma_for_lh(double l, double h)
+double max_chroma_for_lh(double l, double h)
 {
     double min_len = std::numeric_limits<double>::max();
     auto const ray = Geom::Ray(Geom::Point(0, 0), Geom::rad_from_deg(h));
@@ -80,76 +80,6 @@ static double max_chroma_for_lh(double l, double h)
     }
 
     return min_len;
-}
-
-/**
- * Convert a color from the the HSLuv colorspace to the LCH colorspace.
- *
- * @param in_out[in,out] The HSLuv color converted to a LCH color.
- */
-void HSLuv::toLuv(std::vector<double> &in_out)
-{
-    double h = in_out[0] * 360;
-    double s = in_out[1] * 100;
-    double l = in_out[2] * 100;
-    double c;
-
-    /* White and black: disambiguate chroma */
-    if (l > 99.9999999 || l < 0.00000001) {
-        c = 0.0;
-    } else {
-        c = max_chroma_for_lh(l, h) / 100.0 * s;
-    }
-
-    /* Grays: disambiguate hue */
-    if (s < 0.00000001) {
-        h = 0.0;
-    }
-
-    double sinhrad, coshrad;
-    Geom::sincos(Geom::rad_from_deg(h), sinhrad, coshrad);
-    double u = coshrad * c;
-    double v = sinhrad * c;
-
-    in_out[0] = l;
-    in_out[1] = u;
-    in_out[2] = v;
-}
-
-/**
- * Convert a color from the the LCH colorspace to the HSLuv colorspace.
- *
- * @param in_out[in,out] The LCH color converted to a HSLuv color.
- */
-void HSLuv::fromLuv(std::vector<double> &in_out)
-{
-    double l = in_out[0];
-    auto uv = Geom::Point(in_out[1], in_out[2]);
-    double h;
-    double const c = uv.length();
-
-    /* Grays: disambiguate hue */
-    if (c < 0.00000001) {
-        h = 0;
-    } else {
-        h = Geom::deg_from_rad(Geom::atan2(uv));
-        if (h < 0.0) {
-            h += 360.0;
-        }
-    }
-
-    double s;
-
-    /* White and black: disambiguate saturation */
-    if (l > 99.9999999 || l < 0.00000001) {
-        s = 0.0;
-    } else {
-        s = c / max_chroma_for_lh(l, h) * 100.0;
-    }
-
-    in_out[0] = h / 360;
-    in_out[1] = s / 100;
-    in_out[2] = l / 100;
 }
 
 }; // namespace Inkscape::Colors::Space

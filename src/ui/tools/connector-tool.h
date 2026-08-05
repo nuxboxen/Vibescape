@@ -16,6 +16,7 @@
 #include <2geom/pathvector.h>
 
 #include "object/weakptr.h"
+#include "ui/modifiers.h"
 #include "ui/tools/tool-base.h"
 #include "xml/node-observer.h"
 
@@ -159,6 +160,9 @@ private:
     CCToolLayerNodeObserver &layerNodeObserver() { return *this; }
     friend CCToolShapeNodeObserver;
     friend CCToolLayerNodeObserver;
+
+    Modifiers::Modifier *mod_select_add_to;
+    Modifiers::Modifier *mod_select_force_drag;
 };
 
 void cc_selection_set_avoid(SPDesktop *, bool const set_ignore);

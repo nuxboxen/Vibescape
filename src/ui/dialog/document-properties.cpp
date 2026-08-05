@@ -63,6 +63,7 @@ public:
     GridWidget(SPGrid *obj);
 
     void update();
+    void updateModularGridLimits();
     SPGrid *getGrid() { return _grid; }
     XML::Node *getGridRepr() { return _repr; }
 
@@ -967,8 +968,6 @@ void DocumentProperties::build_scripting()
 
     _EmbeddedContent.get_buffer()->signal_changed().connect(sigc::mem_fun(*this, &DocumentProperties::editEmbeddedScript));
 
-    populate_script_lists();
-
     _ExternalScriptsListScroller.set_child(_ExternalScriptsList);
     _ExternalScriptsListScroller.set_has_frame(true);
     _ExternalScriptsListScroller.set_policy(Gtk::PolicyType::NEVER, Gtk::PolicyType::ALWAYS);
@@ -989,16 +988,12 @@ void DocumentProperties::build_scripting()
     connect_remove_popup_menu(_ExternalScriptsList, _popoverbin, sigc::mem_fun(*this, &DocumentProperties::removeExternalScript));
     connect_remove_popup_menu(_EmbeddedScriptsList, _popoverbin, sigc::mem_fun(*this, &DocumentProperties::removeEmbeddedScript));
 
-    //TODO: review this observers code:
-    if (auto document = getDocument()) {
-        std::vector<SPObject *> current = document->getResourceList( "script" );
-        if (! current.empty()) {
-            _scripts_observer.set((*(current.begin()))->parent);
-        }
-        _scripts_observer.signal_changed().connect([this](auto, auto){populate_script_lists();});
-        onEmbeddedScriptSelectRow();
-        onExternalScriptSelectRow();
-    }
+    populate_script_lists();
+    _scripts_observer.signal_changed().connect([this](auto, auto){populate_script_lists();});
+
+    // Set initial button sensitivity
+    onEmbeddedScriptSelectRow();
+    onExternalScriptSelectRow();
 }
 
 void DocumentProperties::build_metadata()
@@ -1293,6 +1288,8 @@ void DocumentProperties::editEmbeddedScript(){
 void DocumentProperties::populate_script_lists(){
     _ExternalScriptsListStore->clear();
     _EmbeddedScriptsListStore->clear();
+    _scripts_observer.set(nullptr);
+
     auto document = getDocument();
     if (!document)
         return;
@@ -1596,6 +1593,7 @@ void DocumentProperties::documentReplaced()
             _cms_connection = document->getDocumentCMS().connectChanged(sigc::mem_fun(*this, &DocumentProperties::populate_linked_profiles_box));
         }
         populate_linked_profiles_box();
+        populate_script_lists();
         update_widgets();
         rebuild_gridspage();
     }
@@ -1618,8 +1616,6 @@ void DocumentProperties::onNewGrid(GridType grid_type)
 
     auto repr = desktop->getNamedView()->getRepr();
     SPGrid::create_new(document, repr, grid_type);
-    // flip global switch, so snapping to grid works
-    desktop->getNamedView()->newGridCreated();
 
     DocumentUndo::done(document, RC_("Undo", "Create new grid"), INKSCAPE_ICON("document-properties"));
 
@@ -1692,7 +1688,7 @@ GridWidget::GridWidget(SPGrid *grid)
             "snapvisiblegridlinesonly", _wr, false, repr, doc);
 
     _visible = Gtk::make_managed<Inkscape::UI::Widget::RegisteredToggleButton>("",
-            _("Determines whether the grid is displayed or not. Objects are still snapped to invisible grids."),
+            _("Determines whether the grid is displayed or not."),
             "visible", _wr, false, repr, doc,
             "object-visible", "object-hidden");
     _visible->set_child(*Gtk::make_managed<Gtk::Image>(Gio::ThemedIcon::create("object-visible")));
@@ -1778,29 +1774,29 @@ GridWidget::GridWidget(SPGrid *grid)
                 _("Grid _units:"), "units", _wr, repr, doc);
     _origin_x = Gtk::make_managed<RegisteredScalarUnit>(
                 _("_Origin X:"), _("X coordinate of grid origin"), "originx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _origin_y = Gtk::make_managed<RegisteredScalarUnit>(
                 _("O_rigin Y:"), _("Y coordinate of grid origin"), "originy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
     _spacing_x = Gtk::make_managed<RegisteredScalarUnit>(
                 "-", _("Distance between vertical grid lines"), "spacingx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _spacing_y = Gtk::make_managed<RegisteredScalarUnit>(
                 "-", _("Distance between horizontal grid lines"), "spacingy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
 
     _gap_x = Gtk::make_managed<RegisteredScalarUnit>(
                 _("Gap _X:"), _("Horizontal distance between blocks"), "gapx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _gap_y = Gtk::make_managed<RegisteredScalarUnit>(
                 _("Gap _Y:"), _("Vertical distance between blocks"), "gapy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
     _margin_x = Gtk::make_managed<RegisteredScalarUnit>(
                 _("_Margin X:"), _("Right and left margins"), "marginx",
-                *_units, _wr, repr, doc, RSU_x);
+                *_units, _wr, repr, doc, RSU_x, true);
     _margin_y = Gtk::make_managed<RegisteredScalarUnit>(
                 _("M_argin Y:"), _("Top and bottom margins"), "marginy",
-                *_units, _wr, repr, doc, RSU_y);
+                *_units, _wr, repr, doc, RSU_y, true);
 
     _angle_x = Gtk::make_managed<RegisteredScalar>(
         _("An_gle of X:"), _("Angle of x-axis relative to horizontal direction"), "gridanglex", _wr, repr, doc);
@@ -1986,6 +1982,11 @@ GridWidget::GridWidget(SPGrid *grid)
         cur_grid->attach(*rs, 0, row++, width);
     }
 
+    // Don't allow negative values for spacing or block width/height.
+    for (auto rs : std::to_array<Scalar *>({_spacing_x, _spacing_y})) {
+        rs->setRange(0, Scalar::COMMON_MAX);
+    }
+
     left_col->attach(*_angle_y_vertical, 0, row++, 2);
     left_col->attach(*_swap_axes, 0, row++, 2);
     right_col->attach(*_no_of_lines, 0, row++, 2);
@@ -1995,6 +1996,12 @@ GridWidget::GridWidget(SPGrid *grid)
             _modified_signal.block();
             update();
             _modified_signal.unblock();
+        } else if (_grid->getType() == GridType::MODULAR) {
+            // Even if we're updating already from a separate "changed" signal, we want to update
+            // grid limits. Each spinbutton will have its own handler that marks the widget
+            // registry as "updating" while it changes the grid. But here, we want to update the
+            // limits on the OTHER spinbuttons in the dialog even if that's happening.
+            updateModularGridLimits();
         }
     });
     update();
@@ -2088,6 +2095,8 @@ void GridWidget::update()
         _gap_y->setValueKeepUnit(gap.y(), "px");
         _margin_x->setValueKeepUnit(margin.x(), "px");
         _margin_y->setValueKeepUnit(margin.y(), "px");
+
+        updateModularGridLimits();
     }
 
     _grid_color->setColor(_grid->getMajorColor());
@@ -2115,6 +2124,15 @@ void GridWidget::update()
     _id->set_tooltip_text(id);
 
     _wr.setUpdating(false);
+}
+
+void GridWidget::updateModularGridLimits()
+{
+    auto unit = _units->getUnit()->abbr;
+    _gap_x->setRange(-_spacing_x->getValue(unit) / 2.0, Scalar::COMMON_MAX);
+    _gap_y->setRange(-_spacing_y->getValue(unit) / 2.0, Scalar::COMMON_MAX);
+    _margin_x->setRange(-_spacing_x->getValue(unit) / 2.0, _gap_x->getValue(unit) / 2.0);
+    _margin_y->setRange(-_spacing_y->getValue(unit) / 2.0, _gap_y->getValue(unit) / 2.0);
 }
 
 } // namespace Widget

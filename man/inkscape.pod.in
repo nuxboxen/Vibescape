@@ -251,13 +251,13 @@ it can be used in combination with L<--export-use-hints>.
 
 =item B<-a> I<x0:y0:x1:y1>, B<--export-area>=I<x0:y0:x1:y1>
 
-In PNG export, set the exported area of the document, specified in px 
+In SVG, PNG, PDF, PS, and EPS export, set the exported area of the document, specified in px 
 (1/96 in). The default is to export the entire document page. The point 
 (0,0) is the lower-left corner.
 
 =item B<--export-area-snap>
 
-For PNG export, snap the export area outwards to the nearest integer px 
+In SVG, PNG, PDF, PS, and EPS export, snap the export area outwards to the nearest integer px 
 values. If you are using the default export resolution of
 96 dpi and your graphics are pixel-snapped to minimize antialiasing,
 this switch allows you to preserve this alignment even if you are
@@ -287,8 +287,8 @@ L<--export-dpi> setting (or the DPI hint if used with L<--export-use-hints>).
 =item B<--export-margin>=I<MARGIN>
 
 Adds a margin around the exported area. The size of the margin is
-specified in units of page size (for SVG) or millimeters (for PS/PDF).
-The option currently has no effect for other export formats.
+specified in units of page size. The option currently has no effect for EPS
+or WMF export formats.
 
 =item B<-i> I<ID>, B<--export-page>=I<all|n[,a-b]*>
 

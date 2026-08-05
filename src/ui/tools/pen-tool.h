@@ -110,13 +110,13 @@ private:
     //creates a CUSP node
     void _bsplineSpiroOff();
     //continues the existing curve in bspline or spiro mode
-    void _bsplineSpiroStartAnchor(bool shift);
+    void _bsplineSpiroStartAnchor(bool cusp_node);
     //continues the existing curve with the union node in bspline or spiro modes
     void _bsplineSpiroStartAnchorOn();
     //continues an existing curve with the union node in CUSP mode
     void _bsplineSpiroStartAnchorOff();
     //modifies the "red_curve" when it detects movement
-    void _bsplineSpiroMotion(guint const state);
+    void _bsplineSpiroMotion(bool cusp_node, bool move_prev);
     //closes the curve with the last node in bspline or spiro mode
     void _bsplineSpiroEndAnchorOn();
     //closes the curve with the last node in CUSP mode
@@ -140,7 +140,7 @@ private:
 
     void _setToNearestHorizVert(Geom::Point &pt, guint const state) const;
 
-    void _setAngleDistanceStatusMessage(Geom::Point const p, int pc_point_to_compare, gchar const *message);
+    void _setAngleDistanceStatusMessage(Geom::Point const p, int pc_point_to_compare, Glib::ustring const &message);
 
     void _lastpointToLine();
     void _lastpointToCurve();
@@ -162,6 +162,14 @@ private:
     Util::ActionAccel _acc_to_line;
     Util::ActionAccel _acc_to_curve;
     Util::ActionAccel _acc_to_guides;
+
+    Modifiers::Modifier *mod_freehand_angle_snapping;
+    Modifiers::Modifier *mod_freehand_dot;
+    Modifiers::Modifier *mod_move_no_snapping;
+    Modifiers::Modifier *mod_pen_cusp_node;
+    Modifiers::Modifier *mod_pen_move_prev;
+    Modifiers::Modifier *mod_pen_switch_axis;
+    Modifiers::Modifier *mod_select_add_to;
 };
 
 } // namespace Inkscape:UI::Tools

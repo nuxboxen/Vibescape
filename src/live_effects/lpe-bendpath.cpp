@@ -13,7 +13,7 @@
 #include "inkscape.h"
 #include "preferences.h"
 #include "selection.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "object/sp-lpe-item.h"
 #include "ui/knot/knot-holder.h"
 #include "ui/knot/knot-holder-entity.h"

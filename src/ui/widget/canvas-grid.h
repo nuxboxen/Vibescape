@@ -54,9 +54,9 @@ namespace Widget {
 
 class Canvas;
 class CanvasNotice;
+class DesktopTabControls;
 class Ruler;
 class Stack;
-class TabsWidget;
 
 /**
  * A Gtk::Grid widget that contains rulers, scrollbars, buttons, and, of course, the canvas.
@@ -99,7 +99,7 @@ public:
     Gtk::ToggleButton *GetCmsAdjust()  { return &_cms_adjust; }
     Gtk::CheckButton  *GetStickyZoom();
     Dialog::CommandPalette *getCommandPalette() { return _command_palette.get(); }
-    Inkscape::UI::Widget::TabsWidget *getTabsWidget() { return _tabs_widget.get(); }
+    Inkscape::UI::Widget::DesktopTabControls *getTabsWidget() { return _tabs_widget.get(); }
 
     // Motion event handler, and delayed snap event callback.
     void rulerMotion(MotionEvent const &event, bool horiz);
@@ -127,7 +127,7 @@ private:
     Gtk::Overlay _canvas_overlay;
     Gtk::Grid _subgrid;
     Inkscape::UI::Widget::Stack *_canvas_stack;
-    std::unique_ptr<Inkscape::UI::Widget::TabsWidget> _tabs_widget;
+    std::unique_ptr<Inkscape::UI::Widget::DesktopTabControls> _tabs_widget;
 
     Glib::RefPtr<Gtk::Adjustment> _hadj;
     Glib::RefPtr<Gtk::Adjustment> _vadj;

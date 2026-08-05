@@ -33,7 +33,8 @@ bool _cmsWriteTag(cmsHPROFILE hProfile, cmsTagSignature tag, std::string const &
     auto ContextID = cmsGetProfileContextID(hProfile);
     if (auto mlu = cmsMLUalloc(ContextID, 1)) {
         std::wstring wide_string = utf8_to_wstring(value);
-        if (cmsMLUsetWide(mlu,  "en", "US", wide_string.c_str())) {
+        // Todo: Use cmsMLUsetUTF8() when widely available.
+        if (cmsMLUsetWide(mlu, "en", "US", wide_string.c_str())) {
             result = cmsWriteTag(hProfile, tag,  mlu);
         }
         cmsMLUfree(mlu);
@@ -80,6 +81,19 @@ std::shared_ptr<Profile> Profile::create_from_data(std::string const &contents)
     if (cmsHPROFILE profile = cmsOpenProfileFromMem(contents.data(), contents.size()))
         return Profile::create(profile, "", false);
     return nullptr;
+}
+
+/**
+ * Construct a D65 gray identity profile.
+ */
+std::shared_ptr<Profile> Profile::create_gray()
+{
+    cmsCIExyY D65;
+    cmsWhitePointFromTemp(&D65, 6504);
+    auto gammaCurve = cmsBuildGamma(NULL, 2.158); // Gamma curve for luminosity
+    auto hProfile = cmsCreateGrayProfile(&D65, gammaCurve);
+    cmsFreeToneCurve(gammaCurve);
+    return Profile::create(hProfile);
 }
 
 /**
@@ -207,7 +221,7 @@ std::string Profile::getName(bool sanitize) const
         // allocate buffer at least byteLen bytes in size
         constexpr int wc = sizeof(wchar_t);
         std::vector<wchar_t> data((byteLen + wc - 1) / wc);
-        // lcms returns nul-terminated wide string
+        // Todo: Use cmsGetProfileInfoUTF8() when widely available.
         auto readLen = cmsGetProfileInfo(_handle, cmsInfoDescription, "en", "US", data.data(), byteLen);
         if (readLen < byteLen) {
             g_warning("Profile::get_name(): icc data read less than expected!");

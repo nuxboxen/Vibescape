@@ -159,7 +159,7 @@ bool Color::convert(Color const &other)
  */
 bool Color::convert(std::shared_ptr<Space::AnySpace> to_space)
 {
-    if (!to_space || !to_space->isValid()) {
+    if (!to_space || !to_space->hasValidCmsProfile()) {
         return false;
     }
 

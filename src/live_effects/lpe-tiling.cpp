@@ -34,7 +34,7 @@
 #include "preferences.h"
 #include "style.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "helper/geom.h"
 #include "live_effects/lpeobject.h"
 #include "object/sp-item-group.h"
@@ -1196,7 +1196,7 @@ LPETiling::doBeforeEffect (SPLPEItem const* lpeitem)
     random_y.clear();
     random_s.clear();
     random_r.clear();
-    if (prev_unit != unit.get_abbreviation()) {
+    if (!prev_unit.empty() && prev_unit != unit.get_abbreviation()) {
         double newgapx = Inkscape::Util::Quantity::convert(gapx, prev_unit, unit.get_abbreviation());
         double newgapy = Inkscape::Util::Quantity::convert(gapy, prev_unit, unit.get_abbreviation());
         gapx.param_set_value(newgapx);

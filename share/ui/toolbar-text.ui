@@ -113,7 +113,7 @@
       </object>
     </child>
     <child>
-      <object class="GtkBox" id="font_size_box">
+      <object class="gtkmm__CustomObject_FontSizeSelector" id="font_size">
         <property name="width-request">70</property>
       </object>
     </child>

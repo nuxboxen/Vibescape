@@ -242,11 +242,6 @@ sp_desktop_set_style(Inkscape::ObjectSet *set, SPDesktop *desktop, SPCSSAttr *cs
 
 // 3. If nobody has intercepted the signal, apply the style to the selection
     if (!intercepted) {
-        // If we have an event context, update its cursor (TODO: it could be neater to do this with the signal sent above, but what if the signal gets intercepted?)
-        if (auto const tool = desktop->getTool()) {
-            tool->use_tool_cursor();
-        }
-
         // Remove text attributes if not text...
         // Do this once in case a zillion objects are selected.
         SPCSSAttr *css_no_text = sp_repr_css_attr_new();
@@ -400,7 +395,7 @@ objects_query_fillstroke (const std::vector<SPItem*> &objects, SPStyle *style_re
     paint_res->set = true;
 
     bool paintImpossible = true;
-    Colors::ColorSet colors;
+    Inkscape::Colors::ColorSet colors;
 
     for (auto obj : objects) {
         if (!obj) {
@@ -1765,19 +1760,19 @@ sp_desktop_query_style_from_list (const std::vector<SPItem*> &list, SPStyle *sty
 int
 sp_desktop_query_style(SPDesktop *desktop, SPStyle *style, int property)
 {
+    auto selection = desktop->getSelection();
+    if (!selection || selection->isEmpty()) {
+        return QUERY_STYLE_NOTHING;
+    }
+
     // Used by text tool and in gradient dragging. See connectQueryStyle.
     int ret = desktop->_query_style_signal.emit(style, property);
-
     if (ret != QUERY_STYLE_NOTHING) {
         return ret; // subselection returned a style, pass it on
     }
 
     // otherwise, do querying and averaging over selection
-    if (auto selection = desktop->getSelection()) {
-        return sp_desktop_query_style_from_list(selection->items_vector(), style, property);
-    }
-
-    return QUERY_STYLE_NOTHING;
+    return sp_desktop_query_style_from_list(selection->items_vector(), style, property);
 }
 
 /*

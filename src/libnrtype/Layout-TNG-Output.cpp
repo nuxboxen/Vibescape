@@ -18,13 +18,13 @@
 #include "livarot/Path.h"
 #include "font-instance.h"
 #include "extension/internal/cairo-render-context.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "libnrtype/font-factory.h"
 #include "util-string/symbol-convert.h"
 #include "style-text.h"
 
-using Extension::Internal::CairoRenderContext;
-using Extension::Internal::CairoGlyphInfo;
+using Inkscape::Extension::Internal::CairoRenderContext;
+using Inkscape::Extension::Internal::CairoGlyphInfo;
 
 namespace Inkscape {
 namespace Text {

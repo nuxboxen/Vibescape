@@ -14,6 +14,7 @@
 
 #include "measure-tool.h"
 
+#include <cmath>
 #include <iomanip>
 
 #include <2geom/path-intersection.h>
@@ -21,7 +22,6 @@
 #include <2geom/sbasis-to-bezier.h>
 
 #include "desktop-style.h"
-#include "desktop.h"
 #include "document-undo.h"
 #include "layer-manager.h"
 #include "message-context.h"
@@ -530,18 +530,29 @@ static std::optional<Geom::Point> explicit_base_tmp;
 
 MeasureTool::MeasureTool(SPDesktop *desktop)
     : ToolBase(desktop, "/tools/measure", "measure.svg")
+    , mod_freehand_angle_snapping(Modifiers::Modifier::get(Modifiers::Type::FREEHAND_ANGLE_SNAPPING))
+    , mod_measure_knot_dialog(Modifiers::Modifier::get(Modifiers::Type::MEASURE_KNOT_DIALOG))
+    , mod_measure_select_segment(Modifiers::Modifier::get(Modifiers::Type::MEASURE_SELECT_SEGMENT))
+    , mod_move_no_snapping(Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING))
+    , mod_select_in_groups(Modifiers::Modifier::get(Modifiers::Type::SELECT_IN_GROUPS))
 {
     start_p = readMeasurePoint(true);
     end_p = readMeasurePoint(false);
 
     // create the knots
-    this->knot_start = new SPKnot(desktop, _("Measure start, <b>Shift+Click</b> for position dialog"),
+    auto start_tip = Glib::ustring::compose(
+        _("Measure start, <b>%1+Click</b> for position dialog"), mod_measure_knot_dialog->get_label()
+    );
+    this->knot_start = new SPKnot(desktop, start_tip.c_str(),
                                   Inkscape::CANVAS_ITEM_CTRL_TYPE_POINT, "CanvasItemCtrl:MeasureTool");
     this->knot_start->updateCtrl();
     this->knot_start->moveto(start_p);
     this->knot_start->show();
 
-    this->knot_end = new SPKnot(desktop, _("Measure end, <b>Shift+Click</b> for position dialog"),
+    auto end_tip = Glib::ustring::compose(
+        _("Measure end, <b>%1+Click</b> for position dialog"), mod_measure_knot_dialog->get_label()
+    );
+    this->knot_end = new SPKnot(desktop, end_tip.c_str(),
                                 Inkscape::CANVAS_ITEM_CTRL_TYPE_POINT, "CanvasItemCtrl:MeasureTool");
     this->knot_end->updateCtrl();
     this->knot_end->moveto(end_p);
@@ -600,7 +611,7 @@ void MeasureTool::reverseKnots()
 
 void MeasureTool::knotClickHandler(SPKnot *knot, guint state)
 {
-    if (state & GDK_SHIFT_MASK) {
+    if (mod_measure_knot_dialog->active(state)) {
         auto prefs = Preferences::get();
         auto const unit_name =  prefs->getString("/tools/measure/unit", "px");
         explicit_base = explicit_base_tmp;
@@ -611,9 +622,9 @@ void MeasureTool::knotClickHandler(SPKnot *knot, guint state)
 void MeasureTool::knotStartMovedHandler(SPKnot */*knot*/, Geom::Point const &ppointer, guint state)
 {
     Geom::Point point = this->knot_start->position();
-    if (state & GDK_CONTROL_MASK) {
+    if (mod_freehand_angle_snapping->active(state)) {
         spdc_endpoint_snap_rotation(this, point, end_p, state);
-    } else if (!(state & GDK_SHIFT_MASK)) {
+    } else if (!mod_move_no_snapping->active(state)) {
         SnapManager &snap_manager = _desktop->getNamedView()->snap_manager;
         snap_manager.setup(_desktop);
         Inkscape::SnapCandidatePoint scp(point, Inkscape::SNAPSOURCE_OTHER_HANDLE);
@@ -632,9 +643,9 @@ void MeasureTool::knotStartMovedHandler(SPKnot */*knot*/, Geom::Point const &ppo
 void MeasureTool::knotEndMovedHandler(SPKnot */*knot*/, Geom::Point const &ppointer, guint state)
 {
     Geom::Point point = this->knot_end->position();
-    if (state & GDK_CONTROL_MASK) {
+    if (mod_freehand_angle_snapping->active(state)) {
         spdc_endpoint_snap_rotation(this, point, start_p, state);
-    } else if (!(state & GDK_SHIFT_MASK)) {
+    } else if (!mod_move_no_snapping->active(state)) {
         SnapManager &snap_manager = _desktop->getNamedView()->snap_manager;
         snap_manager.setup(_desktop);
         Inkscape::SnapCandidatePoint scp(point, Inkscape::SNAPSOURCE_OTHER_HANDLE);
@@ -731,7 +742,7 @@ bool MeasureTool::root_handler(CanvasEvent const &event)
     },
     [&] (MotionEvent const &event) {
         if (!(event.modifiers & GDK_BUTTON1_MASK)) {
-            if (!(event.modifiers & GDK_SHIFT_MASK)) {
+            if (!mod_move_no_snapping->active(event.modifiers)) {
                 auto const motion_dt = _desktop->w2d(event.pos);
 
                 auto &snap_manager = _desktop->getNamedView()->snap_manager;
@@ -744,7 +755,7 @@ bool MeasureTool::root_handler(CanvasEvent const &event)
                 snap_manager.unSetup();
             }
             last_pos = event.pos;
-            showInfoBox(last_pos, event.modifiers & GDK_CONTROL_MASK);
+            showInfoBox(last_pos, mod_select_in_groups->active(event.modifiers));
         } else {
             if (pathmeasure) {
                 measure_path_items.clear();
@@ -760,9 +771,9 @@ bool MeasureTool::root_handler(CanvasEvent const &event)
             auto const motion_dt = _desktop->w2d(event.pos);
             end_p = motion_dt;
 
-            if (event.modifiers & GDK_CONTROL_MASK) {
+            if (mod_freehand_angle_snapping->active(event.modifiers)) {
                 spdc_endpoint_snap_rotation(this, end_p, start_p, event.modifiers);
-            } else if (!(event.modifiers & GDK_SHIFT_MASK)) {
+            } else if (!mod_move_no_snapping->active(event.modifiers)) {
                 auto &snap_manager = _desktop->getNamedView()->snap_manager;
                 snap_manager.setup(_desktop);
                 auto scp = SnapCandidatePoint(end_p, SNAPSOURCE_OTHER_HANDLE);
@@ -785,19 +796,19 @@ bool MeasureTool::root_handler(CanvasEvent const &event)
         }
 
         // Clicking on a curve or angle that is highlighted with the pathmeasure feature
-        bool shift = event.modifiers & GDK_SHIFT_MASK;
+        bool select_segment = mod_measure_select_segment->active(event.modifiers);
         auto affine = over ? over->i2dt_affine() : Geom::Affine();
         bool move_measure_path = false;
         if (pathmeasure && pathmeasure->mode == PathMeasure::Mode::CORNER) {
             if (auto pts = pathmeasure->getCornerAnglePoints()) {
                 last_end = {};
                 start_p = (*pts)[1] * affine;
-                end_p = (*pts)[shift ? 2 : 0] * affine;
+                end_p = (*pts)[select_segment ? 2 : 0] * affine;
                 move_measure_path = true;
             }
         } else if (pathmeasure && pathmeasure->mode == PathMeasure::Mode::SEGMENT) {
             last_end = {};
-            auto path = shift ? pathmeasure->curvePath(0.1) : pathmeasure->segmentPath();
+            auto path = select_segment ? pathmeasure->curvePath(0.1) : pathmeasure->segmentPath();
             start_p = path.initialPoint() * affine;
             end_p = path.finalPoint() * affine;
             move_measure_path = true;
@@ -815,9 +826,9 @@ bool MeasureTool::root_handler(CanvasEvent const &event)
         knot_start->show();
         if (last_end) {
             end_p = _desktop->w2d(*last_end);
-            if (event.modifiers & GDK_CONTROL_MASK) {
+            if (mod_freehand_angle_snapping->active(event.modifiers)) {
                 spdc_endpoint_snap_rotation(this, end_p, start_p, event.modifiers);
-            } else if (!(event.modifiers & GDK_SHIFT_MASK)) {
+            } else if (!mod_move_no_snapping->active(event.modifiers)) {
                 auto &snap_manager = _desktop->getNamedView()->snap_manager;
                 snap_manager.setup(_desktop);
                 auto scp = SnapCandidatePoint(end_p, SNAPSOURCE_OTHER_HANDLE);
@@ -984,9 +995,18 @@ void MeasureTool::toMarkDimension()
     Glib::ustring total = Inkscape::ustring::format_classic(std::fixed, std::setprecision(precision), totallengthval * scale);
     total += unit_name;
 
-    double textangle = Geom::rad_from_deg(180) - ray.angle();
-    if (_desktop->yaxisdown()) {
-        textangle = ray.angle() - Geom::rad_from_deg(180);
+    double textangle = ray.angle();
+
+    // Normalize the angle to within the range [-π/2, π/2] to ensure text is not
+    // upside down.
+    if (textangle < -M_PI_2) {
+        textangle += M_PI;
+    } else if (textangle > M_PI_2) {
+        textangle -= M_PI;
+    }
+
+    if (!_desktop->yaxisdown()) {
+        textangle = -textangle;
     }
 
     setLabelText(total, middle, fontsize, textangle, color);
@@ -1393,7 +1413,11 @@ void MeasureTool::showInfoBox(Geom::Point cursor, bool into_groups)
                             segment_bpath->set_bpath(segment_path * over->i2dt_affine(), true);
                             measure_path_items.emplace_back(std::move(segment_bpath));
                             addCanvasItemText(measure_path_items, segment_path.pointAt(0.5) * over->i2dt_affine(), Util::format_number(segment_length, precision) + " " + unit_name, fontsize, {0.5, 0.5});
-                            defaultMessageContext()->setF(NORMAL_MESSAGE, _("<b>Select Curve</b> by clicking or SHIFT+click to select just the one segment."));
+                            defaultMessageContext()->setF(
+                                NORMAL_MESSAGE,
+                                _("<b>Select Curve</b> by clicking or <b>%s+Click</b> to select just the one segment."),
+                                mod_measure_select_segment->get_label().c_str()
+                            );
                         } else {
                             defaultMessageContext()->setF(NORMAL_MESSAGE, _("<b>Select Segment</b> by clicking to measure against the baseline."));
 
@@ -1438,7 +1462,8 @@ void MeasureTool::showInfoBox(Geom::Point cursor, bool into_groups)
             }
             add_label(measurement(_("Length"), item_length));
         } else if (is<SPGroup>(over)) {
-            add_label(_("Press 'CTRL' to measure into group"));
+            add_label(Glib::ustring::compose(_("Press '%1' to measure into group"),
+                                             mod_select_in_groups->get_label()));
         }
 
         add_label(measurement("Y", item_y));

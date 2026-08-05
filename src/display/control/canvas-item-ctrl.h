@@ -62,6 +62,7 @@ public:
     void set_click(bool click = true);
     void set_hover(bool hover = true);
     void set_normal(bool selected = false);
+    void set_preferred_size_parity(int value);
 
     // do not call directly; only used for invisible handle
     void _set_size(int size);
@@ -96,6 +97,8 @@ private:
     int _width  = 5;
     HandleSize _rel_size = HandleSize::NORMAL;
     Geom::Point _pos;
+    // preferred size parity in logical pixels -1 disabled, 0-even, 1-odd >1 minimum size and parity
+    int _size_parity = -1;
 
     // get effective stroke width
     float get_stroke_width() const;

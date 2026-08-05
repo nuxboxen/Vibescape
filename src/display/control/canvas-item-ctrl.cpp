@@ -27,6 +27,11 @@
 
 // Render handles at different sizes and save them to "handles.png".
 constexpr bool DUMP_HANDLES = false;
+constexpr bool DRAW_BOUNDS = true;
+
+// size range
+constexpr int MIN_INDEX = 1;
+constexpr int MAX_INDEX = 15;
 
 namespace Inkscape {
 
@@ -67,9 +72,10 @@ void CanvasItemCtrl::_dump()
     if (!first_run) return;
     first_run = false;
 
-    constexpr int step = 40;
-    constexpr int h = 15;
-    constexpr auto types = std::to_array({
+    constexpr int step = 60;
+    constexpr int h = MAX_INDEX;
+    constexpr bool iterate_all_types = true;
+    std::vector<CanvasItemCtrlType> types = {
         CANVAS_ITEM_CTRL_TYPE_ADJ_HANDLE, CANVAS_ITEM_CTRL_TYPE_ADJ_SKEW, CANVAS_ITEM_CTRL_TYPE_ADJ_ROTATE,
         CANVAS_ITEM_CTRL_TYPE_ADJ_CENTER, CANVAS_ITEM_CTRL_TYPE_ADJ_SALIGN, CANVAS_ITEM_CTRL_TYPE_ADJ_CALIGN,
         CANVAS_ITEM_CTRL_TYPE_ADJ_MALIGN,
@@ -80,9 +86,16 @@ void CanvasItemCtrl::_dump()
         CANVAS_ITEM_CTRL_TYPE_NODE_SMOOTH,
         CANVAS_ITEM_CTRL_TYPE_GUIDE_HANDLE,
         CANVAS_ITEM_CTRL_TYPE_POINTER, // pointy, triangular handle
-    });
-    // device scale to use; 1 - low res, 2 - high res
+    };
+    // device scale to use; 1 - low res, 2 - high res, 3 - very high res
     constexpr int scale = 1;
+
+    if (iterate_all_types) {
+        types.clear();
+        for (int i = 0; i < RUBBERBAND_RECT; i++) {
+            types.push_back(static_cast<CanvasItemCtrlType>(i));
+        }
+    }
 
     auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, (types.size() + 1) * step * scale, (h + 1) * step * scale);
     cairo_surface_set_device_scale(surface->cobj(), 1, 1);
@@ -120,6 +133,12 @@ void CanvasItemCtrl::_dump()
         for (auto type : types) {
             set_type(type);
             set_size_via_index(size);
+            if (type == CANVAS_ITEM_CTRL_TYPE_ADJ_HANDLE || type == CANVAS_ITEM_CTRL_TYPE_ADJ_ROTATE ||
+                type == CANVAS_ITEM_CTRL_TYPE_ADJ_CALIGN) {
+                _anchor = SP_ANCHOR_SOUTH_EAST;
+            } else {
+                _anchor = SP_ANCHOR_CENTER;
+            }
             _position = Geom::IntPoint{i++, size} * step;
             _update(false);
             _render(buf);
@@ -222,9 +241,6 @@ void CanvasItemCtrl::_set_size(int size)
     });
 }
 
-constexpr int MIN_INDEX = 1;
-constexpr int MAX_INDEX = 15;
-
 static int get_size_default() {
     return Preferences::get()->getIntLimited("/options/grabsize/value", 3, MIN_INDEX, MAX_INDEX);
 }
@@ -313,6 +329,17 @@ void CanvasItemCtrl::set_normal(bool selected)
         _handle.click = false;
         _built.reset();
         request_update();
+    });
+}
+
+void CanvasItemCtrl::set_preferred_size_parity(int value)
+{
+    defer([=, this] {
+        if (_size_parity == value) {
+            return;
+        }
+        _size_parity = value;
+        request_redraw();
     });
 }
 
@@ -499,6 +526,15 @@ void CanvasItemCtrl::_render(CanvasItemBuffer &buf) const
 
     auto const [x, y] =
         CanvasItem::align_to_pixels05(_pos, _cache->get_width(), buf.device_scale) - center_offset - buf.rect.min();
+
+    if constexpr (DUMP_HANDLES && DRAW_BOUNDS) {
+        // draw bitmap bounds
+        buf.cr->rectangle(x, y, cache_size.x() / _cache->get_device_scale(),
+                          cache_size.y() / _cache->get_device_scale());
+        buf.cr->set_source_rgba(0, 1, 0.5, 0.5);
+        buf.cr->fill();
+    }
+
     cairo_set_source_surface(buf.cr->cobj(), const_cast<cairo_surface_t *>(_cache->cobj()), x, y); // C API is const-incorrect.
     buf.cr->paint();
 }
@@ -536,7 +572,12 @@ void CanvasItemCtrl::build_cache(int device_scale) const
     // fixed-size outline
     auto outline_width = pixel_fit(style.outline_width());
     // handle size
-    auto size = std::floor(width * device_scale) / device_scale;
+    auto size = width; // final rounding and pixel alignment done by renderer based on shape other parameters
+
+    auto preferred_parity = -1;
+    if (_size_parity >= 0 && size >= _size_parity) {
+        preferred_parity = (_size_parity * device_scale) & 1;
+    }
 
     _cache = Handles::draw({
         .shape = _shape_set ? _shape : style.shape(),
@@ -545,10 +586,10 @@ void CanvasItemCtrl::build_cache(int device_scale) const
         .outline = style.getOutline(),
         .stroke_width = stroke_width,
         .outline_width = outline_width,
-        .width = (int)std::lround((2 * outline_width + stroke_width + size) * device_scale),
         .size = size,
         .angle = _angle,
-        .device_scale = device_scale
+        .device_scale = device_scale,
+        .size_parity = preferred_parity
     });
 }
 

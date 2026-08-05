@@ -371,9 +371,9 @@ int sp_object_compare_position(SPObject const *first, SPObject const *second)
         if ( ancestor ) {
             // we have an object and its ancestor (should not happen when sorting selection)
             if (ancestor == first) {
-                result = 1;
-            } else if (ancestor == second) {
                 result = -1;
+            } else if (ancestor == second) {
+                result = 1;
             } else {
                 SPObject const *to_first = AncestorSon(first, ancestor);
                 SPObject const *to_second = AncestorSon(second, ancestor);

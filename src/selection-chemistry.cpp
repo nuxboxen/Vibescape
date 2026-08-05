@@ -39,7 +39,7 @@
 #include "display/cairo-utils.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-drawing.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "display/drawing.h"
 #include "document-undo.h"
 #include "file.h"
@@ -396,7 +396,7 @@ static void add_ids_recursive(std::vector<const gchar *> &ids, SPObject *obj)
     }
 }
 
-void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer)
+void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer, bool includeHidden)
 {
     if(duplicateLayer && !desktop() ){
         //TODO: understand why layer management is tied to desktop and not to document.
@@ -487,7 +487,7 @@ void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer)
         }
         SPObject *old_obj = doc->getObjectByRepr(old_repr);
         SPObject *new_obj = doc->getObjectByRepr(copy);
-        if (old_obj && new_obj) {
+        if (old_obj && new_obj && !old_obj->_tmpsuccessor) {
             old_obj->setTmpSuccessor(new_obj);
         }
         if (relink_clones) {
@@ -512,7 +512,7 @@ void ObjectSet::duplicate(bool suppressDone, bool duplicateLayer)
             // please roll back or make some more loops to handle well, keep as it for speed
             // and simplicity
             auto itm = cast<SPItem>(doc->getObjectByRepr(node));
-            if (!sp_repr_is_def(node) && (!itm || !itm->isHidden())) {
+            if (!sp_repr_is_def(node) && includeHidden || (!itm || !itm->isHidden())) {
                 newsel.push_back(node);
             }
         }
@@ -771,14 +771,6 @@ Inkscape::XML::Node* ObjectSet::group(bool is_anchor) {
     Inkscape::XML::Node *topmost = p.back();
     Inkscape::XML::Node *topmost_parent = topmost->parent();
 
-    // Find the topmost object first
-    for(auto current : p){
-        if (current->parent() == topmost_parent) {
-            if (current->position() > topmost->position()) {
-                topmost = current;
-            }
-        }
-    }
     // Add as close to the top as we can get it
     topmost_parent->addChild(group, topmost);
 

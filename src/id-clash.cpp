@@ -42,7 +42,7 @@ enum ID_REF_TYPE { REF_HREF, REF_STYLE, REF_SHAPES, REF_URL, REF_CLIPBOARD };
 
 struct IdReference {
     ID_REF_TYPE type;
-    SPObject *elem;
+    Inkscape::XML::Node *repr;
     const char *attr;  // property or href-like attribute
 };
 
@@ -115,9 +115,9 @@ static void
 fix_ref(IdReference const &idref, SPObject *to_obj, const char *old_id) {
     switch (idref.type) {
         case REF_HREF: {
-            if (idref.elem->getAttribute(idref.attr)) {
+            if (idref.repr->attribute(idref.attr)) {
                 gchar *new_uri = g_strdup_printf("#%s", to_obj->getId());
-                Glib::ustring value = idref.elem->getAttribute(idref.attr);
+                Glib::ustring value = idref.repr->attribute(idref.attr);
                 // look to values stores as separated id references like inkscape::path-effect or LPE satellites param
                 Glib::ustring old = "#";
                 old += old_id;
@@ -128,18 +128,18 @@ fix_ref(IdReference const &idref, SPObject *to_obj, const char *old_id) {
                     } else {
                         value = value.replace(posid - 1, old.size(), new_uri);
                     }
-                    idref.elem->setAttribute(idref.attr, value.c_str());
+                    idref.repr->setAttribute(idref.attr, value.c_str());
                 }
                 g_free(new_uri);
             }
             break;
         }
         case REF_STYLE: {
-            sp_style_set_property_url(idref.elem, idref.attr, to_obj, false);
+            sp_style_set_property_url_on_repr(idref.repr, idref.attr, to_obj, false);
             break;
         }
         case REF_SHAPES: {
-            SPCSSAttr* css = sp_repr_css_attr (idref.elem->getRepr(), "style");
+            SPCSSAttr* css = sp_repr_css_attr (idref.repr, "style");
             std::string prop = sp_repr_css_property (css, idref.attr, nullptr);
             std::string oid; oid.append("url(#").append(old_id).append(")");
             auto pos = prop.find(oid);
@@ -147,7 +147,7 @@ fix_ref(IdReference const &idref, SPObject *to_obj, const char *old_id) {
                 std::string nid; nid.append("url(#").append(to_obj->getId()).append(")");
                 prop.replace(pos, oid.size(), nid);
                 sp_repr_css_set_property (css, idref.attr, prop.c_str());
-                sp_repr_css_set (idref.elem->getRepr(), css, "style");
+                sp_repr_css_set (idref.repr, css, "style");
             } else {
                 std::cerr << "Failed to switch id -- shouldn't happen" << std::endl;
             }
@@ -155,32 +155,28 @@ fix_ref(IdReference const &idref, SPObject *to_obj, const char *old_id) {
         }
         case REF_URL: {
             gchar *url = g_strdup_printf("url(#%s)", to_obj->getId());
-            idref.elem->setAttribute(idref.attr, url);
+            idref.repr->setAttribute(idref.attr, url);
             g_free(url);
             break;
         }
         case REF_CLIPBOARD: {
-            SPCSSAttr *style = sp_repr_css_attr(idref.elem->getRepr(), "style");
+            SPCSSAttr *style = sp_repr_css_attr(idref.repr, "style");
             gchar *url = g_strdup_printf("url(#%s)", to_obj->getId());
             sp_repr_css_set_property(style, idref.attr, url);
             g_free(url);
             Glib::ustring style_string;
             sp_repr_css_write_string(style, style_string);
-            idref.elem->setAttributeOrRemoveIfEmpty("style", style_string);
+            idref.repr->setAttributeOrRemoveIfEmpty("style", style_string);
             break;
         }
     }
 }
 
-/**
- *  Build a table of places where IDs are referenced, for a given element.
- *  FIXME: There are some types of references not yet dealt with here
- *         (e.g., ID selectors in CSS stylesheets, and references in scripts).
- */
-static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipboard)
+// Note: elem might be null in some cases (like inkscape:clipboard handling, where its SPObject
+//  counterpart does not exist). So guard any uses of it.
+static void _find_references_helper(SPObject *elem, Inkscape::XML::Node *repr_elem, refmap_type &refmap)
 {
-    if (elem->cloned) return;
-    Inkscape::XML::Node *repr_elem = elem->getRepr();
+    if (elem && elem->cloned) return;
     if (!repr_elem) return;
     if (repr_elem->type() != Inkscape::XML::NodeType::ELEMENT_NODE) return;
 
@@ -193,17 +189,13 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
                 if (value) {
                     auto uri = extract_uri(value);
                     if (uri[0] == '#') {
-                        IdReference idref = { REF_CLIPBOARD, elem, attr };
+                        IdReference idref = { REF_CLIPBOARD, repr_elem, attr };
                         refmap[uri.c_str() + 1].push_back(idref);
                     }
                 }
             }
 
         }
-        // TODO: uncomment if clipboard issues
-        // if (!from_clipboard) {
-        // return; // nothing more to do for inkscape:clipboard elements
-        //}
     }
     if (!std::strcmp(repr_elem->name(), "inkscape:path-effect")) {
         auto lpeobj = cast<LivePathEffectObject>(elem);
@@ -235,7 +227,7 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
                                             }
                                         }
 
-                                        IdReference idref = {REF_HREF, elem, p->param_key.c_str()};
+                                        IdReference idref = {REF_HREF, repr_elem, p->param_key.c_str()};
                                         SPObject *refobj = elem->document->getObjectById(id);
                                         // special tweak to allow clone original LPE keep cloned on copypase without
                                         // operand also added to path parameters
@@ -290,7 +282,7 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
                 while (strarray[i]) {
                     if (strarray[i][0] == '#') {
                         std::string id(strarray[i] + 1);
-                        IdReference idref = {REF_HREF, elem, attr};
+                        IdReference idref = {REF_HREF, repr_elem, attr};
                         refmap[id].push_back(idref);
                     }
                     i++;
@@ -298,6 +290,23 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
                 g_strfreev(strarray);
             }
         }
+    }
+
+    /* check for other url(#...) references */
+    for (auto attr : other_url_properties) {
+        const gchar *value = repr_elem->attribute(attr);
+        if (value) {
+            auto uri = extract_uri(value);
+            if (uri[0] == '#') {
+                IdReference idref = { REF_URL, repr_elem, attr };
+                refmap[uri.c_str() + 1].push_back(idref);
+            }
+        }
+    }
+
+    // After this point, we are evalutating SPObject-specific properties and children
+    if (!elem) {
+        return;
     }
 
     SPStyle *style = elem->style;
@@ -310,7 +319,7 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
             const SPObject *obj = paint->href->getObject();
             if (obj) {
                 const gchar *id = obj->getId();
-                IdReference idref = { REF_STYLE, elem, SPIPaint_properties[i] };
+                IdReference idref = { REF_STYLE, repr_elem, SPIPaint_properties[i] };
                 refmap[id].push_back(idref);
             }
         }
@@ -325,7 +334,7 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
             if (!obj)
                 continue;
             auto shape_id = obj->getId();
-            IdReference idref = { REF_SHAPES, elem, SPIShapes_properties[i] };
+            IdReference idref = { REF_SHAPES, repr_elem, SPIShapes_properties[i] };
             refmap[shape_id].push_back(idref);
         }
     }
@@ -336,7 +345,7 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
         const SPObject *obj = filter->href->getObject();
         if (obj) {
             const gchar *id = obj->getId();
-            IdReference idref = { REF_STYLE, elem, "filter" };
+            IdReference idref = { REF_STYLE, repr_elem, "filter" };
             refmap[id].push_back(idref);
         }
     }
@@ -348,19 +357,7 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
         if (value) {
             auto uri = extract_uri(value);
             if (uri[0] == '#') {
-                IdReference idref = { REF_STYLE, elem, markers[i] };
-                refmap[uri.c_str() + 1].push_back(idref);
-            }
-        }
-    }
-
-    /* check for other url(#...) references */
-    for (auto attr : other_url_properties) {
-        const gchar *value = repr_elem->attribute(attr);
-        if (value) {
-            auto uri = extract_uri(value);
-            if (uri[0] == '#') {
-                IdReference idref = { REF_URL, elem, attr };
+                IdReference idref = { REF_STYLE, repr_elem, markers[i] };
                 refmap[uri.c_str() + 1].push_back(idref);
             }
         }
@@ -369,7 +366,22 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
     // recurse
     for (auto& child: elem->children)
     {
-        find_references(&child, refmap, from_clipboard);
+        _find_references_helper(&child, child.getRepr(), refmap);
+    }
+}
+
+/**
+ *  Build a table of places where IDs are referenced, for a given element.
+ *  FIXME: There are some types of references not yet dealt with here
+ *         (e.g., ID selectors in CSS stylesheets, and references in scripts).
+ */
+static void find_references(SPDocument *doc, refmap_type &refmap)
+{
+    _find_references_helper(doc->getRoot(), doc->getReprRoot(), refmap);
+
+    // Also search clipboard (which doesn't have its own SPObject, so won't be found in above call)
+    if (auto clipboard = sp_repr_lookup_name(doc->getReprRoot(), "inkscape:clipboard", 1)) {
+        _find_references_helper(nullptr, clipboard, refmap);
     }
 }
 
@@ -378,7 +390,7 @@ static void find_references(SPObject *elem, refmap_type &refmap, bool from_clipb
  *  a list of those changes that will require fixing up references.
  */
 static void change_clashing_ids(SPDocument *imported_doc, SPDocument *current_doc, SPObject *elem,
-                                refmap_type const &refmap, id_changelist_type *id_changes, bool from_clipboard)
+                                refmap_type const &refmap, id_changelist_type *id_changes)
 {
     const gchar *id = elem->getId();
     bool fix_clashing_ids = true;
@@ -398,15 +410,6 @@ static void change_clashing_ids(SPDocument *imported_doc, SPDocument *current_do
                     fix_clashing_ids = false;
                  }
              }
-        }
-
-        auto lpeobj = cast<LivePathEffectObject>(elem);
-        if (lpeobj) {
-            SPObject *cd_obj = current_doc->getObjectById(id);
-            auto cd_lpeobj = cast<LivePathEffectObject>(cd_obj);
-            if (cd_lpeobj && lpeobj->is_similar(cd_lpeobj)) {
-                fix_clashing_ids = from_clipboard;
-            }
         }
 
         if (fix_clashing_ids) {
@@ -432,7 +435,7 @@ static void change_clashing_ids(SPDocument *imported_doc, SPDocument *current_do
     // recurse
     for (auto& child: elem->children)
     {
-        change_clashing_ids(imported_doc, current_doc, &child, refmap, id_changes, from_clipboard);
+        change_clashing_ids(imported_doc, current_doc, &child, refmap, id_changes);
     }
 }
 
@@ -461,14 +464,14 @@ fix_up_refs(refmap_type const &refmap, const id_changelist_type &id_changes)
  *  clash with IDs in the existing document are changed, and references to
  *  those IDs are updated accordingly.
  */
-void prevent_id_clashes(SPDocument *imported_doc, SPDocument *current_doc, bool from_clipboard)
+void prevent_id_clashes(SPDocument *imported_doc, SPDocument *current_doc)
 {
     refmap_type refmap;
     id_changelist_type id_changes;
     SPObject *imported_root = imported_doc->getRoot();
 
-    find_references(imported_root, refmap, from_clipboard);
-    change_clashing_ids(imported_doc, current_doc, imported_root, refmap, &id_changes, from_clipboard);
+    find_references(imported_doc, refmap);
+    change_clashing_ids(imported_doc, current_doc, imported_root, refmap, &id_changes);
     fix_up_refs(refmap, id_changes);
 }
 
@@ -482,7 +485,7 @@ change_def_references(SPObject *from_obj, SPObject *to_obj)
     SPDocument *current_doc = from_obj->document;
     std::string old_id(from_obj->getId());
 
-    find_references(current_doc->getRoot(), refmap, false);
+    find_references(current_doc, refmap);
 
     refmap_type::const_iterator pos = refmap.find(old_id);
     if (pos != refmap.end()) {
@@ -606,7 +609,7 @@ void rename_id(SPObject *elem, Glib::ustring const &new_name)
 
     SPDocument *current_doc = elem->document;
     refmap_type refmap;
-    find_references(current_doc->getRoot(), refmap, false);
+    find_references(current_doc, refmap);
 
     std::string old_id(elem->getId());
     if (current_doc->getObjectById(id)) {

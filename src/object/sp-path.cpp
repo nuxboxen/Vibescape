@@ -28,7 +28,7 @@
 #include "sp-lpe-item.h"
 #include "style.h"
 
-#include "display/curve.h"
+#include "path/path-curve.h"
 #include "helper/geom-curves.h"
 #include "live_effects/effect.h"
 #include "live_effects/lpeobject-reference.h"

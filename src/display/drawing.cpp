@@ -14,7 +14,6 @@
 #include "drawing.h"
 
 #include <array>
-#include <thread>
 
 #include "cairo-utils.h"
 #include "control/canvas-item-drawing.h"
@@ -43,22 +42,13 @@ static auto rendermode_to_renderflags(RenderMode mode)
     }
 }
 
-static auto default_numthreads()
-{
-    auto ret = std::thread::hardware_concurrency();
-    return ret == 0 ? 4 : ret; // Sensible fallback if not reported.
-}
-
-Drawing::Drawing(Inkscape::CanvasItemDrawing *canvas_item_drawing)
-    : _canvas_item_drawing(canvas_item_drawing)
-    , _grayscale_matrix(std::vector<double>(grayscale_matrix.begin(), grayscale_matrix.end()))
+Drawing::Drawing()
+    : _grayscale_matrix(std::vector<double>(grayscale_matrix.begin(), grayscale_matrix.end()))
     , _outline_color{0xFF}
     , _clip_outline_color{0xFF}
     , _mask_outline_color{0xFF}
     , _image_outline_color{0xFF}
-{
-    _loadPrefs();
-}
+{}
 
 Drawing::~Drawing()
 {
@@ -239,6 +229,11 @@ void Drawing::setAntialiasingOverride(std::optional<Antialiasing> antialiasing_o
     });
 }
 
+void Drawing::setNumDispatchThreads(int num)
+{
+    set_num_dispatch_threads(num);
+}
+
 void Drawing::update(Geom::IntRect const &area, Geom::Affine const &affine, unsigned flags, unsigned reset)
 {
     if (_root) {
@@ -270,9 +265,9 @@ void Drawing::render(DrawingContext &dc, Geom::IntRect const &area, unsigned fla
     }
 }
 
-DrawingItem *Drawing::pick(Geom::Point const &p, double delta, unsigned flags)
+DrawingItem *Drawing::pick(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags)
 {
-    return _root->pick(p, delta, flags);
+    return _root->pick(p, delta, area_world, flags);
 }
 
 void Drawing::snapshot()
@@ -323,62 +318,6 @@ void Drawing::_clearCache()
     std::copy(_cached_items.begin(), _cached_items.end(), std::back_inserter(to_uncache));
     for (auto item : to_uncache) {
         item->_setCached(false, true);
-    }
-}
-
-void Drawing::_loadPrefs()
-{
-    auto prefs = Inkscape::Preferences::get();
-
-    // Set the initial values of preferences.
-    _outline_color       = prefs->getColor     ("/options/wireframecolors/default",      "#000000"); // Black object outlines by default.
-    _clip_outline_color  = prefs->getColor     ("/options/wireframecolors/clips",        "#00ff00"); // Green clip outlines by default.
-    _mask_outline_color  = prefs->getColor     ("/options/wireframecolors/masks",        "#0000ff"); // Blue mask outlines by default.
-    _image_outline_color = prefs->getColor     ("/options/wireframecolors/images",       "#ff0000"); // Red image outlines by default.
-    _image_outline_mode  = prefs->getBool      ("/options/rendering/imageinoutlinemode", false);
-    _filter_quality      = prefs->getIntLimited("/options/filterquality/value",          0, Filters::FILTER_QUALITY_WORST, Filters::FILTER_QUALITY_BEST);
-    _blur_quality        = prefs->getInt       ("/options/blurquality/value",            0);
-    _use_dithering       = prefs->getBool      ("/options/dithering/value",              true);
-    _cursor_tolerance    = prefs->getDouble    ("/options/cursortolerance/value",        1.0);
-    _select_zero_opacity = prefs->getBool      ("/options/selection/zeroopacity",        false);
-
-    // Enable caching only for the Canvas's drawing, since only it is persistent.
-    if (_canvas_item_drawing) {
-        // Preference is stored in MiB; convert to bytes, taking care not to overflow.
-        _cache_budget = (size_t{1} << 20) * prefs->getIntLimited("/options/renderingcache/size", 64, 0, 4096);
-    } else {
-        _cache_budget = 0;
-    }
-
-    // Set the global variable governing the number of threads, and track it too. (This is ugly, but hopefully
-    // transitional.)
-    set_num_dispatch_threads(prefs->getIntLimited("/options/threading/numthreads", default_numthreads(), 1, 256));
-
-    // Similarly, enable preference tracking only for the Canvas's drawing.
-    if (_canvas_item_drawing) {
-        std::unordered_map<std::string, std::function<void (Preferences::Entry const &)>> actions;
-
-        // Todo: (C++20) Eliminate this repetition by baking the preference metadata into the variables themselves using structural templates.
-        actions.emplace("/options/wireframecolors/default",      [this] (auto &entry) { setOutlineColor(entry.getColor("#000000")); });
-        actions.emplace("/options/wireframecolors/clips",        [this] (auto &entry) { setClipOutlineColor (entry.getColor("#00ff00")); });
-        actions.emplace("/options/wireframecolors/masks",        [this] (auto &entry) { setMaskOutlineColor (entry.getColor("#0000ff")); });
-        actions.emplace("/options/wireframecolors/images",       [this] (auto &entry) { setImageOutlineColor(entry.getColor("#ff0000")); });
-        actions.emplace("/options/rendering/imageinoutlinemode", [this] (auto &entry) { setImageOutlineMode(entry.getBool(false)); });
-        actions.emplace("/options/filterquality/value",          [this] (auto &entry) { setFilterQuality(entry.getIntLimited(0, Filters::FILTER_QUALITY_WORST, Filters::FILTER_QUALITY_BEST)); });
-        actions.emplace("/options/blurquality/value",            [this] (auto &entry) { setBlurQuality(entry.getInt(0)); });
-        actions.emplace("/options/dithering/value",              [this] (auto &entry) { setDithering(entry.getBool(true)); });
-        actions.emplace("/options/cursortolerance/value",        [this] (auto &entry) { setCursorTolerance(entry.getDouble(1.0)); });
-        actions.emplace("/options/selection/zeroopacity",        [this] (auto &entry) { setSelectZeroOpacity(entry.getBool(false)); });
-        actions.emplace("/options/renderingcache/size",          [this] (auto &entry) { setCacheBudget((1 << 20) * entry.getIntLimited(64, 0, 4096)); });
-        actions.emplace("/options/threading/numthreads", [this](auto &entry) {
-            set_num_dispatch_threads(entry.getIntLimited(default_numthreads(), 1, 256));
-        });
-
-        _pref_tracker = Inkscape::Preferences::PreferencesObserver::create("/options", [actions = std::move(actions)] (auto &entry) {
-            auto it = actions.find(entry.getPath());
-            if (it == actions.end()) return;
-            it->second(entry);
-        });
     }
 }
 
@@ -443,9 +382,9 @@ void Drawing::setExact()
 /*
  * Set the opacity of the drawing root drawing-item
  */
-void Drawing::setOpacity(double opacity)
+void Drawing::setOpacityOverride(std::optional<double> opacity)
 {
-    _root->setOpacity(opacity);
+    _root->setOpacityOverride(opacity);
 }
 
 } // namespace Inkscape

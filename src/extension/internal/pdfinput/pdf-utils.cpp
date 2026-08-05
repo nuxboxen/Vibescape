@@ -123,6 +123,11 @@ Geom::Rect getRect(_POPPLER_CONST PDFRectangle *box)
     return Geom::Rect(box->x1, box->y1, box->x2, box->y2);
 }
 
+Geom::Rect getRect(_POPPLER_CONST PDFRectangle &box)
+{
+    return Geom::Rect(box.x1, box.y1, box.x2, box.y2);
+}
+
 Geom::PathVector getPathV(_POPPLER_CONST GfxPath *path) 
 {
     if (!path) {

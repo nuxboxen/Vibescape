@@ -13,7 +13,7 @@
  */
 
 #include "live_effects/lpe-circle_with_radius.h"
-#include "display/curve.h"
+#include "path/path-curve.h"
 
 // You might need to include other 2geom files. You can add them here:
 #include <2geom/circle.h>

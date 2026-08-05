@@ -48,7 +48,7 @@ public:
     void toggleHideAllLayers(bool hide);
     void toggleLockAllLayers(bool lock);
     void toggleLockOtherLayers(SPObject *object, bool force_lock = false);
-    SPObject *layerForObject(SPObject *object);
+    SPObject *layerForObject(SPObject *object) const;
     std::list<SPItem *> getAllLayers();
     bool isLayer(SPObject *object) const;
     static SPGroup *asLayer(SPObject *object);

@@ -113,6 +113,8 @@
 
 using Inkscape::IO::Resource::UIS;
 
+using EffectDict = std::map<Glib::ustring, Glib::ustring>;
+
 // This is a bit confusing as there are two ways to handle command line arguments and files
 // depending on if the Gio::Application::Flags::HANDLES_OPEN and/or Gio::Application::Flags::HANDLES_COMMAND_LINE
 // flags are set. If the open flag is set and the command line not, the all the remainng arguments
@@ -405,9 +407,6 @@ SPDesktop *InkscapeApplication::desktopOpen(SPDocument *document, bool new_windo
         assert(_active_desktop   == desktop);
         assert(_active_selection == desktop->getSelection());
         assert(_active_document  == document);
-
-        // Resize the window to match the document properties
-        sp_namedview_window_from_document(desktop);
 
         win->present();
     }
@@ -786,10 +785,6 @@ void InkscapeApplication::create_window(Glib::RefPtr<Gio::File> const &file)
     if (file) {
         std::tie(document, cancelled) = document_open(file);
         if (document) {
-            // Remember document so much that we'll add it to recent documents
-            auto docname = document->getDocumentName();
-            Inkscape::IO::addInkscapeRecentSvg(file->get_path(), docname ? docname : "");
-
             auto old_document = _active_document;
             bool replace = old_document && old_document->getVirgin();
 
@@ -1903,16 +1898,20 @@ int InkscapeApplication::get_number_of_windows() const {
  * Adds effect to Gio::Actions
  *
  *  \c effect is Filter or Extension
- *  \c show_prefs is used to show preferences dialog
+ *  \c prefs is a set of preferences to set for `effect`
 */
-void action_effect(Inkscape::Extension::Effect* effect, bool show_prefs) {
+void action_effect(Inkscape::Extension::Effect* effect, EffectDict prefs) {
     auto desktop = InkscapeApplication::instance()->get_active_desktop();
     if (!effect->check()) {
         auto handler = Inkscape::ErrorReporter((bool)desktop);
         handler.handleError(effect->get_name(), effect->getErrorReason());
-    } else if (effect->_workingDialog && show_prefs && desktop) {
+    } else if (effect->_workingDialog && prefs.empty() && desktop) {
         effect->prefs(desktop);
     } else {
+        // Set each of the given preferences
+        for (auto const& [key, val] : prefs) {
+            effect->set_param_any(key.c_str(), val);
+        }
         auto document = InkscapeApplication::instance()->get_active_document();
         effect->effect(desktop, document);
     }
@@ -1940,10 +1939,15 @@ void InkscapeApplication::init_extension_action_data() {
 
         auto app = this;
         if (auto gapp = gtk_app()) {
-            auto action = gapp->add_action(aid, [effect](){ action_effect(effect, true); });
-            auto action_noprefs = gapp->add_action(aid + ".noprefs", [effect](){ action_effect(effect, false); });
+            auto action = gapp->add_action(aid, [effect](){ action_effect(effect, {}); });
+            auto action_noprefs = gapp->add_action(aid + ".noprefs", [effect](){ action_effect(effect, {}); });
+            auto action_prefs = gapp->add_action_with_parameter(aid + ".prefs", Glib::VariantType("a{ss}"), [effect](const Glib::VariantBase& value){
+                auto d = Glib::VariantBase::cast_dynamic<Glib::Variant<EffectDict>>(value);
+                action_effect(effect, d.get());
+            });
             _effect_actions.emplace_back(action);
             _effect_actions.emplace_back(action_noprefs);
+            _effect_actions.emplace_back(action_prefs);
         }
 
         if (effect->hidden_from_menu()) continue;
@@ -1958,12 +1962,14 @@ void InkscapeApplication::init_extension_action_data() {
         if (effect->is_filter_effect()) {
             std::vector<std::vector<Glib::ustring>>raw_data_filter =
                 {{ action_id, effect->get_name(), "Filters", description },
-                { action_id + ".noprefs", Glib::ustring(effect->get_name()) + " " + _("(No preferences)"), "Filters (no prefs)", description }};
+                { action_id + ".noprefs", Glib::ustring(effect->get_name()) + " " + _("(No preferences)"), "Filters (no prefs)", description },
+                { action_id + ".prefs",   Glib::ustring(effect->get_name()) + " " + _("(Preferences)"),    "Filters (prefs)",    description }};
             app->get_action_extra_data().add_data(raw_data_filter);
         } else {
             std::vector<std::vector<Glib::ustring>>raw_data_effect =
                 {{ action_id, effect->get_name(), "Extensions", description },
-                { action_id + ".noprefs", Glib::ustring(effect->get_name()) + " " + _("(No preferences)"), "Extensions (no prefs)", description }};
+                { action_id + ".noprefs", Glib::ustring(effect->get_name()) + " " + _("(No preferences)"), "Extensions (no prefs)", description },
+                { action_id + ".prefs",   Glib::ustring(effect->get_name()) + " " + _("(Preferences)"),    "Extensions (prefs)",    description }};
             app->get_action_extra_data().add_data(raw_data_effect);
         }
 

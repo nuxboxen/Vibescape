@@ -35,6 +35,8 @@ public:
     int editMarkerMode = -1;
 
 private:
+    Modifiers::Modifier *mod_select_force_drag;
+
     sigc::connection sel_changed_connection;
     ShapeRecord get_marker_transform(SPShape *shape, SPItem *parent_item, SPMarker *sp_marker, SPMarkerLoc marker_type);
 };

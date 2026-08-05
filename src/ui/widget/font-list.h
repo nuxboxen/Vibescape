@@ -10,6 +10,7 @@
 
 #include <giomm/liststore.h>
 #include <gtkmm/builder.h>
+#include <gtkmm/flowbox.h>
 #include <gtkmm/grid.h>
 #include <gtkmm/comboboxtext.h>
 #include <gtkmm/gridview.h>
@@ -24,6 +25,7 @@
 #include "util/font-discovery.h"
 #include "util/font-tags.h"
 #include "font-selector-interface.h"
+#include "font-size-selector.h"
 #include "generic/number-combo-box.h"
 #include "generic/popover-menu.h"
 #include "ui/text_filter.h"
@@ -72,6 +74,7 @@ private:
     void add_categories();
     void update_categories(const std::string& tag, bool select);
     void update_filterbar();
+    void filters_updated();
     Gtk::Box* create_pill_box(const Glib::ustring& display_name, const Glib::ustring& tag, bool tags);
     void sync_font_tag(const FontTag* ftag, bool selected);
     void scroll_to_row(int index);
@@ -89,7 +92,7 @@ private:
     Gtk::GridView& _font_grid;
     Gtk::ListView& _font_list;
     Gtk::SearchEntry2& _search;
-    Gtk::Box& _tag_box;
+    Gtk::FlowBox& _tag_box;
     Gtk::Box& _info_box;
     Gtk::Box& _progress_box;
     Gtk::Entry& _grid_sample_entry;
@@ -110,7 +113,7 @@ private:
     bool _list_visible = true;
     FontOrder _order = FontOrder::ByFamily;
     Glib::ustring _filter;
-    NumberComboBox& _font_size;
+    FontSizeSelector& _font_size;
     Gtk::Scale& _font_size_scale;
     Glib::ustring _current_fspec;
     double _current_fsize = 0.0;
