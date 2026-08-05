@@ -16,6 +16,7 @@
 
 #include "scale-bar.h"
 #include "spin-button.h"
+#include "ui/icon-names.h"
 
 namespace Inkscape::UI::Widget {
 
@@ -69,6 +70,12 @@ public:
         return os.str();
     }
 
+    void set_icon(std::string path, std::string tooltip)
+    {
+        _icon.set_from_icon_name(INKSCAPE_ICON(path));
+        _icon.set_tooltip_text(tooltip);
+    }
+
 private:
     void construct()
     {
@@ -88,13 +95,16 @@ private:
         _scale.set_hexpand();
         _scale.set_adjustment(get_adjustment()); 
 
+        _icon.set_margin_start(12);
+
+        append(_icon);
         append(_scale);
         append(_spin);
     }
 
     ScaleBar _scale;
     InkSpinButton _spin;
-
+    Gtk::Image _icon;
 };
 
 } // namespace Inkscape::UI::Widget
