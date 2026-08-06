@@ -314,7 +314,7 @@ static SPGradient *sp_gradient_fork_private_if_necessary(SPGradient *gr, SPGradi
     }
 }
 
-SPGradient *sp_gradient_fork_vector_if_necessary(SPGradient *gr)
+static SPGradient *sp_gradient_fork_vector_if_necessary(SPGradient *gr)
 {
 #ifdef SP_GR_VERBOSE
     g_message("sp_gradient_fork_vector_if_necessary(%p)", gr);
@@ -346,11 +346,17 @@ SPGradient *sp_gradient_get_forked_vector_if_necessary(SPGradient *gradient, boo
 #ifdef SP_GR_VERBOSE
     g_message("sp_gradient_get_forked_vector_if_necessary(%p, %d)", gradient, force_vector);
 #endif
-    SPGradient *vector = gradient->getVector(force_vector);
-    vector = sp_gradient_fork_vector_if_necessary (vector);
-    if ( gradient != vector && gradient->ref->getObject() != vector ) {
-        sp_gradient_repr_set_link(gradient->getRepr(), vector);
+    auto vector = gradient->getVector(force_vector);
+    if (!vector) {
+        return vector;
     }
+
+    vector = sp_gradient_fork_vector_if_necessary(vector);
+    if (gradient != vector && gradient->ref->getObject() != vector) {
+        sp_gradient_repr_set_link(gradient->getRepr(), vector);
+        gradient->repr_clear_vector(); // remove any stops now that we link to a vector
+    }
+
     return vector;
 }
 
@@ -1020,15 +1026,9 @@ void sp_item_gradient_stop_set_style(SPItem *item, GrPointType point_type, guint
 
     if (is<SPLinearGradient>(gradient) || is<SPRadialGradient>(gradient) ) {
 
-        SPGradient *vector = gradient->getVector();
-
+        auto vector = sp_gradient_get_forked_vector_if_necessary(gradient);
         if (!vector) // orphan!
             return;
-
-        vector = sp_gradient_fork_vector_if_necessary (vector);
-        if ( gradient != vector && gradient->ref->getObject() != vector ) {
-            sp_gradient_repr_set_link(gradient->getRepr(), vector);
-        }
 
         switch (point_type) {
             case POINT_LG_BEGIN:
@@ -1120,14 +1120,9 @@ void sp_gradient_reverse_vector(SPGradient* gradient) {
     if (!gradient)
         return;
 
-    SPGradient *vector = gradient->getVector();
+    auto vector = sp_gradient_get_forked_vector_if_necessary(gradient);
     if (!vector) // orphan!
         return;
-
-    vector = sp_gradient_fork_vector_if_necessary (vector);
-    if ( gradient != vector && gradient->ref->getObject() != vector ) {
-        sp_gradient_repr_set_link(gradient->getRepr(), vector);
-    }
 
     std::vector<SPObject *> child_objects;
     std::vector<Inkscape::XML::Node *>child_reprs;
@@ -1168,14 +1163,9 @@ void sp_item_gradient_invert_vector_color(SPItem *item, Inkscape::PaintTarget fi
     if (!gradient)
         return;
 
-    SPGradient *vector = gradient->getVector();
+    auto vector = sp_gradient_get_forked_vector_if_necessary(gradient);
     if (!vector) // orphan!
         return;
-
-    vector = sp_gradient_fork_vector_if_necessary (vector);
-    if ( gradient != vector && gradient->ref->getObject() != vector ) {
-        sp_gradient_repr_set_link(gradient->getRepr(), vector);
-    }
 
     for (auto &child: vector->children) {
         if (auto stop = cast<SPStop>(&child)) {
@@ -1273,7 +1263,7 @@ void sp_item_gradient_set_coords(SPItem *item, GrPointType point_type, guint poi
                 Geom::Point end(lg->x2.computed, lg->y2.computed);
                 double offset = Geom::LineSegment(begin, end).nearestTime(p);
                 offset = midpoint_offset_hack(offset);
-                SPGradient *vector = sp_gradient_get_forked_vector_if_necessary (lg, false);
+                auto vector = sp_gradient_get_forked_vector_if_necessary(lg);
                 lg->ensureVector();
                 lg->vector.stops.at(point_i).offset = offset;
                 if (SPStop* stopi = sp_get_stop_i(vector, point_i)) {
@@ -1370,7 +1360,7 @@ void sp_item_gradient_set_coords(SPItem *item, GrPointType point_type, guint poi
                 Geom::Point end   = Geom::Point (rg->cx.computed + rg->r.computed, rg->cy.computed);
                 double offset = Geom::LineSegment(start, end).nearestTime(p);
                 offset = midpoint_offset_hack(offset);
-                SPGradient *vector = sp_gradient_get_forked_vector_if_necessary (rg, false);
+                auto vector = sp_gradient_get_forked_vector_if_necessary(rg);
                 rg->ensureVector();
                 rg->vector.stops.at(point_i).offset = offset;
                 if (SPStop* stopi = sp_get_stop_i(vector, point_i)) {
@@ -1389,7 +1379,7 @@ void sp_item_gradient_set_coords(SPItem *item, GrPointType point_type, guint poi
                 Geom::Point end   = Geom::Point (rg->cx.computed, rg->cy.computed - rg->r.computed);
                 double offset = Geom::LineSegment(start, end).nearestTime(p);
                 offset = midpoint_offset_hack(offset);
-                SPGradient *vector = sp_gradient_get_forked_vector_if_necessary(rg, false);
+                auto vector = sp_gradient_get_forked_vector_if_necessary(rg);
                 rg->ensureVector();
                 rg->vector.stops.at(point_i).offset = offset;
                 if (SPStop* stopi = sp_get_stop_i(vector, point_i)) {
@@ -1644,6 +1634,7 @@ SPGradient *sp_item_set_gradient(SPItem *item, SPGradient *gr, SPGradientType ty
             if ( current != gr && current->getVector() != gr ) {
                 // href is not the vector
                 sp_gradient_repr_set_link(current->getRepr(), gr);
+                current->repr_clear_vector(); // remove any stops now that we link to a vector
             }
             item->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG | SP_OBJECT_STYLE_MODIFIED_FLAG);
             return current;
