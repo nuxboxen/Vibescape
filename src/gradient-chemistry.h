@@ -65,8 +65,7 @@ void sp_object_ensure_stroke_gradient_normalized (SPObject *object);
 SPGradient *sp_gradient_convert_to_userspace (SPGradient *gr, SPItem *item, const char *property);
 SPGradient *sp_gradient_reset_to_userspace (SPGradient *gr, SPItem *item);
 
-SPGradient *sp_gradient_fork_vector_if_necessary (SPGradient *gr);
-SPGradient *sp_gradient_get_forked_vector_if_necessary(SPGradient *gradient, bool force_vector);
+SPGradient *sp_gradient_get_forked_vector_if_necessary(SPGradient *gradient, bool force_vector = false);
 
 
 SPStop* sp_last_stop(SPGradient *gradient);
