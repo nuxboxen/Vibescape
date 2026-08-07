@@ -159,7 +159,7 @@
        style="display:inline"
        inkscape:label="snap-grid-lines-symbolic">
       <rect
-         style="display:inline;opacity:0;fill:none;fill-opacity:0;stroke:none"
+         opacity="0"
          id="rect149-0"
          width="16"
          height="16"

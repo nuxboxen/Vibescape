@@ -176,7 +176,7 @@
        style="display:inline"
        inkscape:label="distribute-unclump-colors">
       <rect
-         style="display:inline;opacity:0;fill:none;fill-opacity:0;stroke:none"
+         opacity="0"
          id="rect5769-4"
          width="16"
          height="16"

@@ -149,7 +149,7 @@
        style="display:inline"
        inkscape:label="path-mask-edit-symbolic">
       <rect
-         style="display:inline;opacity:0;fill:none;fill-opacity:0;stroke:none"
+         opacity="0"
          id="rect5731-9"
          width="16"
          height="16"

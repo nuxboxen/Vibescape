@@ -159,7 +159,7 @@
        style="display:inline"
        inkscape:label="spray-over-visible">
       <rect
-         style="display:inline;opacity:0;fill:none;fill-opacity:0;stroke:none"
+         opacity="0"
          id="rect97"
          width="16"
          height="16"

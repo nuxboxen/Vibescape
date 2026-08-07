@@ -235,7 +235,7 @@
             <property name="hexpand">true</property>
             <property name="hexpand-set">false</property>
             <property name="halign">end</property>
-            <property name="tooltip-text" translatable="yes">Dialog options</property>
+            <property name="tooltip-text" translatable="yes">Font preview options</property>
             <property name="focusable">True</property>
             <property name="focus-on-click">False</property>
             <property name="receives-default">True</property>
