@@ -148,7 +148,7 @@
        style="display:inline"
        inkscape:label="target-center">
       <rect
-         style="display:inline;opacity:0;fill:none;fill-opacity:0;stroke:none"
+         opacity="0"
          id="rect38"
          width="16"
          height="16"
