@@ -58,7 +58,7 @@ namespace Inkscape::UI::Dialog {
 class TextEdit final : public DialogBase
 {
 public:
-    TextEdit();
+    TextEdit(bool use_browser); // use_browser turns on the new "unified font dialog" mode
     ~TextEdit() final;
 
     void documentReplaced() final;

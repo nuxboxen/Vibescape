@@ -2156,12 +2156,6 @@ void InkscapePreferences::initPageUI()
         _page_windows.add_line( true, "", _win_hide_task, "",
                                 _("Whether dialog windows are to be hidden in the window manager taskbar"));
     }
-    _page_windows.add_group_header( _("Text and Font dialog"));
-    std::vector<PrefItem> lister = {
-        { _("List fonts and styles"), 0, _("List fonts and styles separately"), true },
-        { _("Unified font browser"), 1, _("Show all font styles in a single list or tree view") }
-    };
-    _page_windows.add_line(true, _("Font selector"), *Gtk::make_managed<PrefRadioButtons>(lister, "/options/font/browser"), "", "", true, reset_icon());
 
     _page_windows.add_group_header( _("Miscellaneous"));
 
