@@ -2,11 +2,6 @@
 <interface>
   <placeholder width="238" height="152"></placeholder>
   <requires lib="gtk" version="4.0"></requires>
-  <object class="GtkAdjustment" id="adjustment-font-size">
-    <property name="upper">20</property>
-    <property name="step-increment">1</property>
-    <property name="page-increment">2</property>
-  </object>
   <object class="GtkAdjustment" id="adjustment-size">
     <property name="lower">100</property>
     <property name="upper">400</property>
@@ -415,17 +410,6 @@
             <property name="margin-top">2</property>
             <property name="margin-bottom">2</property>
             <property name="valign">center</property>
-          </object>
-        </child>
-        <child>
-          <object class="GtkScale" id="font-size-scale">
-            <property name="hexpand">True</property>
-            <property name="focusable">True</property>
-            <property name="adjustment">adjustment-font-size</property>
-            <property name="round-digits">1</property>
-            <style>
-              <class name="small-slider"></class>
-            </style>
           </object>
         </child>
         <layout>

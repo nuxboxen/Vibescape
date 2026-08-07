@@ -114,7 +114,6 @@ private:
     FontOrder _order = FontOrder::ByFamily;
     Glib::ustring _filter;
     FontSizeSelector& _font_size;
-    Gtk::Scale& _font_size_scale;
     Glib::ustring _current_fspec;
     double _current_fsize = 0.0;
     bool _show_font_names = true;
