@@ -516,7 +516,7 @@ FontList::FontList(Glib::ustring preferences_path) :
     _font_variations.get_size_group(1)->add_widget(_font_size);
     _font_variations.connectChanged([this]{
         if (_update.pending()) return;
-        _signal_changed.emit();
+        _signal_fontspec_changed.emit();
     });
 
     set_hexpand();
@@ -715,7 +715,7 @@ FontList::FontList(Glib::ustring preferences_path) :
         }
         _font_variations.update(vars);
         _var_axes.set_visible(_font_variations.variations_present());
-        _signal_changed.emit();
+        _signal_fontspec_changed.emit();
     };
 
     _list_selection->signal_selection_changed().connect([font_selected, this](auto index, auto n) {
@@ -723,26 +723,10 @@ FontList::FontList(Glib::ustring preferences_path) :
             font_selected(element->font());
         }
     });
-    _font_list.signal_activate().connect([this](auto index) {
-        if (_update.pending()) return;
-
-        if (auto element = std::dynamic_pointer_cast<FontElement>(get_nth_font(index))) {
-            auto scoped = _update.block();
-            _signal_apply.emit();
-        }
-    });
 
     _grid_selection->signal_selection_changed().connect([font_selected, this](auto index, auto n) {
         if (auto element = std::dynamic_pointer_cast<FontElement>(get_selected_font())) {
             font_selected(element->font());
-        }
-    });
-    _font_grid.signal_activate().connect([this](auto index) {
-        if (_update.pending()) return;
-
-        if (auto element = std::dynamic_pointer_cast<FontElement>(get_nth_font(index))) {
-            auto scoped = _update.block();
-            _signal_apply.emit();
         }
     });
 
@@ -845,7 +829,7 @@ FontList::FontList(Glib::ustring preferences_path) :
 
         auto scoped = _update.block();
         if (size > 0) {
-            _signal_changed.emit();
+            _signal_fontsize_changed.emit();
         }
     });
     // TODO: pick better default based on prefs and document (like the text toolbar does)
