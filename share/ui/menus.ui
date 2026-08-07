@@ -1120,6 +1120,12 @@
           <attribute name="icon">dialog-text-and-font</attribute>
         </item>
         <item>
+          <attribute name="label" translatable="yes">Font _Browser...</attribute>
+          <attribute name="action">win.dialog-open</attribute>
+          <attribute name="target">FontBrowser</attribute>
+          <attribute name="icon">dialog-text-and-font</attribute>
+        </item>
+        <item>
           <attribute name="label" translatable="yes">SVG Font Editor...</attribute>
           <attribute name="action">win.dialog-open</attribute>
           <attribute name="target">SVGFonts</attribute>

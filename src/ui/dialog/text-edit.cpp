@@ -71,8 +71,12 @@ Glib::ustring const &getSamplePhrase()
 
 } // namespace
 
-TextEdit::TextEdit()
-    : DialogBase("/dialogs/textandfont", "Text")
+TextEdit::TextEdit(bool use_browser)
+    // This class is two dialogs in one, based off the "use_browser" flag
+    : DialogBase(
+        use_browser ? "/dialogs/fontbrowser" : "/dialogs/textandfont",
+        use_browser ? "FontBrowser" : "Text"
+      )
 
     , builder(create_builder("dialog-text-edit.glade"))
       // Font
@@ -94,12 +98,10 @@ TextEdit::TextEdit()
     , setasdefault_button      (get_widget<Gtk::Button>     (builder, "setasdefault_button"))
     , apply_button             (get_widget<Gtk::Button>     (builder, "apply_button"))
     , _apply_box               (get_widget<Gtk::Box>        (builder, "apply-box"))
+    , _use_browser{use_browser}
     , _undo{"doc.undo"}
     , _redo{"doc.redo"}
 {
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    _use_browser = prefs->getInt("/options/font/browser", 1) != 0;
-
     font_list = _use_browser ?
         Inkscape::UI::Widget::FontList::create_font_list("/font-selector") :
         Inkscape::UI::Widget::FontSelector::create_font_selector();

@@ -113,6 +113,7 @@ std::unique_ptr<DialogBase> DialogContainer::dialog_factory(Glib::ustring const 
     else if (dialog_type == "FilterEffects")      return std::make_unique<FilterEffectsDialog>();
     else if (dialog_type == "FilterGallery")      return std::make_unique<ExtensionsGallery>(ExtensionsGallery::Filters);
     else if (dialog_type == "Find")               return std::make_unique<Find>();
+    else if (dialog_type == "FontBrowser")        return std::make_unique<TextEdit>(true);
     else if (dialog_type == "FontCollections")    return std::make_unique<FontCollectionsManager>();
     else if (dialog_type == "IconPreview")        return std::make_unique<IconPreviewPanel>();
     else if (dialog_type == "LivePathEffect")     return std::make_unique<LivePathEffectEditor>();
@@ -123,7 +124,7 @@ std::unique_ptr<DialogBase> DialogContainer::dialog_factory(Glib::ustring const 
     else if (dialog_type == "SVGFonts")           return std::make_unique<SvgFontsDialog>();
     else if (dialog_type == "Swatches")           return std::make_unique<SwatchesPanel>(SwatchesPanel::Dialog);
     else if (dialog_type == "Symbols")            return std::make_unique<SymbolsDialog>();
-    else if (dialog_type == "Text")               return std::make_unique<TextEdit>();
+    else if (dialog_type == "Text")               return std::make_unique<TextEdit>(false);
     else if (dialog_type == "Trace")              return TraceDialog::create();
     else if (dialog_type == "Transform")          return std::make_unique<Transformation>();
     else if (dialog_type == "UndoHistory")        return std::make_unique<UndoHistory>();
