@@ -138,7 +138,7 @@ NodeTool::NodeTool(SPDesktop *desktop)
         selection->connectChanged(sigc::mem_fun(*this, &NodeTool::selection_changed));
 
     this->_mouseover_changed_connection.disconnect();
-    this->_mouseover_changed_connection = 
+    this->_mouseover_changed_connection =
         Inkscape::UI::ControlPoint::signal_mouseover_change.connect(sigc::mem_fun(*this, &NodeTool::mouseover_changed));
 
     if (this->_transform_handle_group) {
@@ -417,7 +417,7 @@ bool NodeTool::root_handler(CanvasEvent const &event)
                 rubberband->move(motion_dt);
                 _updateSelectionColor(event);
             }
-  
+
             auto touch_path = mod_select_touch_path->get_label();
             if (rubberband->getMode() == Rubberband::Mode::TOUCHPATH) {
                 defaultMessageContext()->setF(Inkscape::NORMAL_MESSAGE,
@@ -491,6 +491,24 @@ bool NodeTool::root_handler(CanvasEvent const &event)
 
     [&] (KeyPressEvent const &event) {
         _updateSelectionColor(event);
+
+        // checks if the modifier for touch path selection is active and sets the cursor accordingly
+
+        if (mod_select_touch_path->active(event.modifiersAfter())){
+            set_cursor("node-lasso.svg");
+            if(rubberband->isStarted()){
+               rubberband->setMode(Rubberband::Mode::TOUCHPATH);
+               rubberband->setHandle(RUBBERBAND_TOUCHPATH);
+        }
+
+        } else {
+           set_cursor("node.svg");
+           if(rubberband->isStarted()){
+              rubberband->setMode(Rubberband::Mode::RECT);
+              rubberband->setHandle(RUBBERBAND_RECT);
+           }
+        }
+
         rubberband->move(_desktop->point());
 
         // Unconfigurable shortcuts
@@ -542,8 +560,23 @@ bool NodeTool::root_handler(CanvasEvent const &event)
 
     [&] (KeyReleaseEvent const &event) {
         _updateSelectionColor(event);
+
+        if (mod_select_touch_path->active(event.modifiersAfter())){
+           set_cursor("node-lasso.svg");
+           if(rubberband->isStarted()){
+                rubberband->setMode(Rubberband::Mode::TOUCHPATH);
+                rubberband->setHandle(RUBBERBAND_TOUCHPATH);
+                }
+        } else {
+            set_cursor("node.svg");
+            if(rubberband->isStarted()){
+                rubberband->setMode(Rubberband::Mode::RECT);
+                rubberband->setHandle(RUBBERBAND_RECT);
+                }
+         }
         rubberband->move(_desktop->point());
         update_tip(event);
+
     },
 
     [&] (ButtonPressEvent const &event) {
@@ -556,9 +589,10 @@ bool NodeTool::root_handler(CanvasEvent const &event)
 
         if (event.num_press == 1) {
 
-            if (mod_select_touch_path->active(event.modifiers)) {
+            if (mod_select_touch_path->active(event.modifiersAfter())) {
                 rubberband->setMode(Rubberband::Mode::TOUCHPATH);
                 rubberband->setHandle(RUBBERBAND_TOUCHPATH);
+                set_cursor("node-lasso.svg");
             }
             rubberband->start(_desktop, desktop_pt, true);
             ret = true;
@@ -568,6 +602,7 @@ bool NodeTool::root_handler(CanvasEvent const &event)
     },
 
     [&] (ButtonReleaseEvent const &event) {
+
         if (event.button != 1) {
             return;
         }
@@ -578,6 +613,13 @@ bool NodeTool::root_handler(CanvasEvent const &event)
             select_point(event);
         }
         rubberband->stop();
+
+        if(mod_select_touch_path->active(event.modifiersAfter())){
+            set_cursor("node-lasso.svg");
+        } else {
+            set_cursor("node.svg");
+        }
+
         ret = true;
         return;
     },
