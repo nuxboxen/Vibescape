@@ -128,7 +128,6 @@ private:
     FontVariations _font_variations;
     Glib::ustring _prefs;
     sigc::scoped_connection _font_stream;
-    std::size_t _initializing = 0;
     sigc::scoped_connection _font_collections_update;
     sigc::scoped_connection _font_collections_selection;
     Gtk::Popover _charmap_popover;

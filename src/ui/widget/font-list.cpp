@@ -740,7 +740,6 @@ FontList::FontList(Glib::ustring preferences_path) :
         switch_view_mode(show_list->get_active());
     });
 
-    _initializing = 0;
     _info_box.set_visible(false);
     _progress_box.show();
 
@@ -795,7 +794,6 @@ FontList::FontList(Glib::ustring preferences_path) :
             for (auto&& family : _font_families) {
                 _fonts.insert(_fonts.end(), family.begin(), family.end());
             }
-            sort_fonts(_order);
             prepare_tags();
         }
         else if (auto p = Async::Msg::get_progress(msg)) {
@@ -810,17 +808,14 @@ FontList::FontList(Glib::ustring preferences_path) :
                 _fonts.insert(_fonts.end(), family.begin(), family.end());
                 _font_families.push_back(std::move(family));
             }
-            auto delta = _fonts.size() - _initializing;
-            // refresh fonts; at first more frequently, every new 100, but then more slowly, as it gets costly
-            if (delta > 500 || (_fonts.size() < 500 && delta > 100)) {
-                _initializing = _fonts.size();
-                sort_fonts(_order);
-            }
         }
         else if (Async::Msg::is_finished(msg)) {
             // hide progress
             _progress_box.set_visible(false);
             _info_box.set_visible();
+            // Only create the font list once finished - we've sen crashes when trying to render
+            // the list while fonts were being loaded in the background task.
+            sort_fonts(_order);
         }
     });
 
