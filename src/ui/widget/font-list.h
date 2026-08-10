@@ -47,8 +47,9 @@ public:
     // 
     void set_current_size(double size) override;
 
-    sigc::signal<void ()>& signal_changed() override { return _signal_changed; }
-    sigc::signal<void ()>& signal_apply() override { return _signal_apply; }
+    sigc::signal<void ()>& signal_fontspec_changed() override { return _signal_fontspec_changed; }
+    sigc::signal<void ()>& signal_fontsize_changed() override { return _signal_fontsize_changed; }
+    sigc::signal<void ()>& signal_set_default() override { return _signal_dummy; }
     sigc::signal<void (const Glib::ustring&)>& signal_insert_text() override { return _signal_insert_text; }
 
     Gtk::Widget* box() override { return this; }
@@ -84,8 +85,9 @@ private:
     int find_font(const Glib::ustring& fontspec, int from = 0, int count = -1) const;
     void switch_view_mode(bool show_list);
 
-    sigc::signal<void ()> _signal_changed;
-    sigc::signal<void ()> _signal_apply;
+    sigc::signal<void ()> _signal_fontspec_changed;
+    sigc::signal<void ()> _signal_fontsize_changed;
+    sigc::signal<void ()> _signal_dummy;
     sigc::signal<void (const Glib::ustring&)> _signal_insert_text;
     Glib::RefPtr<Gtk::Builder> _builder;
     Gtk::Grid& _main_grid;
