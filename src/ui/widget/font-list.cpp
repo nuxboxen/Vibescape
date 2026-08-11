@@ -417,7 +417,7 @@ FontList::FontList(Glib::ustring preferences_path) :
     if (font->is_injected()) return true;
 
     // filter for:
-    // - grouping fonts by family
+    // - grouping fonts by family (only used in list view, grid view shows all family members)
     _family_filter = Gtk::BoolFilter::create(Gtk::ClosureExpression<bool>::create([this](auto& item) {
         HANDLE_SPECIAL_FONT
 
@@ -549,7 +549,7 @@ FontList::FontList(Glib::ustring preferences_path) :
         item->signal_activate().connect([=, this] {
             _order = order;
             set_sort_icon();
-            sort_fonts(order);
+            sort_fonts();
             prefs->setInt(_prefs + "/font-order", static_cast<int>(_order));
         });
         sort_menu->append(*item);
@@ -815,7 +815,7 @@ FontList::FontList(Glib::ustring preferences_path) :
             _info_box.set_visible();
             // Only create the font list once finished - we've sen crashes when trying to render
             // the list while fonts were being loaded in the background task.
-            sort_fonts(_order);
+            sort_fonts();
         }
     });
 
@@ -834,7 +834,7 @@ FontList::FontList(Glib::ustring preferences_path) :
     // restore sorting
     _order = static_cast<FontOrder>(prefs->getIntLimited(_prefs + "/font-order", static_cast<int>(_order), static_cast<int>(FontOrder::_First), static_cast<int>(FontOrder::_Last)));
     set_sort_icon();
-    sort_fonts(_order);
+    sort_fonts();
 
     _font_tags.get_signal_tag_changed().connect([this](const FontTag* ftag, bool selected){
         sync_font_tag(ftag, selected);
@@ -865,8 +865,9 @@ void FontList::set_sort_icon() {
     }
 }
 
-void FontList::sort_fonts(FontOrder order) {
-    Inkscape::sort_fonts(_fonts, order, true);
+void FontList::sort_fonts()
+{
+    Inkscape::sort_fonts(_fonts, _order, true);
 
     sort_font_families(_font_families, true);
 
@@ -982,21 +983,13 @@ void FontList::rebuild_store() {
     // save selection
     auto fontspec = get_fontspec();
 
-    _font_list.set_visible(false); // hide tree view temporarily to speed up rebuild
-    _font_grid.set_visible(false);
-    _font_list.set_model(nullptr);
-    _font_grid.set_model(nullptr);
-
-    populate_font_store(_order == FontOrder::ByFamily);
+    populate_font_store();
 
     if (!_current_fspec.empty()) {
         add_font(_current_fspec, false);
     }
 
     apply_filters();
-
-    _font_list.set_visible();
-    _font_grid.set_visible();
     rebuild_ui();
 
     // reselect if that font is still available
@@ -1026,7 +1019,6 @@ void FontList::apply_filters(bool all_filters) {
     auto scoped = _update.block();
 
     if (all_filters) {
-        refilter(_family_filter);
         refilter(_font_filter);
     }
 
@@ -1059,33 +1051,70 @@ void FontList::rebuild_ui() {
 }
 
 // add fonts to the font store replacing its content
-void FontList::populate_font_store(bool by_family) {
+void FontList::populate_font_store()
+{
     _font_store->freeze_notify();
     _font_store->remove_all();
 
     // reserve first spot; it will be used for "missing" or "injected" fonts, as needed
     _font_store->append(FontElement::create_placeholder());
 
-    if (by_family) {
+    _font_store->thaw_notify();
+
+    // Now start loading fonts in chunks (to avoid blocking the UI when we have lots of fonts).
+    // Resets an existing idle handler (disconnecting any existing in-progress population).
+    _store_rebuild_on_idle = Glib::signal_idle().connect(
+        sigc::mem_fun(*this, &FontList::populate_font_store_chunk)
+    );
+}
+
+// Returns true if we have more work to do
+bool FontList::populate_font_store_chunk()
+{
+    _font_store->freeze_notify();
+
+    static guint CHUNK_SIZE = 20;
+    guint skip = _font_store->get_n_items();
+    guint stop = skip + CHUNK_SIZE;
+    guint count = 1; // start at one because we always have the placeholder
+
+    if (_order == FontOrder::ByFamily) {
         for (auto&& fam : _font_families) {
             auto& regular = get_family_font(fam);
             for (auto& font : fam) {
-                if (font == regular) {
-                    _font_store->append(FontElement::create_family(regular, fam));
+                if (count++ >= skip) {
+                    if (font == regular) {
+                        // In list view, children (family styles) will get created in
+                        // create_element_model().
+                        _font_store->append(FontElement::create_family(regular, fam));
+                    }
+                    else {
+                        // In list view, this will be filtered out in preference of child items
+                        // under the regular font. But in grid view, this will be visible.
+                        _font_store->append(FontElement::create_font(font));
+                    }
                 }
-                else {
-                    _font_store->append(FontElement::create_font(font));
-                }
+            }
+            if (count >= stop) {
+                break;
             }
         }
     }
     else {
         for (auto&& font : _fonts) {
-            _font_store->append(FontElement::create_font(font));
+            if (count++ >= skip) {
+                _font_store->append(FontElement::create_font(font));
+            }
+            if (count >= stop) {
+                break;
+            }
         }
     }
 
     _font_store->thaw_notify();
+
+    // return true (keep going) if we early-exited ourselves by stopping at a chunk limit
+    return count >= stop;
 }
 
 void FontList::update_font_count() {
