@@ -61,9 +61,6 @@ public:
     void updateAmmount(double amount);
     void setPathVectorNodeSatellites(PathVectorNodeSatellites *pathVectorNodeSatellites, bool write = true);
 
-    void set_oncanvas_looks(Inkscape::CanvasItemCtrlShape shape, uint32_t color);
-
-
     friend class FilletChamferKnotHolderEntity;
     friend class LPEFilletChamfer;
     ParamType paramType() const override { return ParamType::NODE_SATELLITE_ARRAY; };
@@ -71,8 +68,6 @@ private:
     NodeSatelliteArrayParam(const NodeSatelliteArrayParam &) = delete;
     NodeSatelliteArrayParam &operator=(const NodeSatelliteArrayParam &) = delete;
 
-    Inkscape::CanvasItemCtrlShape _knot_shape = Inkscape::CANVAS_ITEM_CTRL_SHAPE_DIAMOND;
-    guint32 _knot_color = 0xaaff8800;
     Geom::PathVector _hp;
     bool _use_distance = false;
     bool _global_knot_hide = false;

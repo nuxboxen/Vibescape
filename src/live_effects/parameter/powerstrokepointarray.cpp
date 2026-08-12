@@ -30,8 +30,6 @@ PowerStrokePointArrayParam::PowerStrokePointArrayParam( const Glib::ustring& lab
                         const Glib::ustring& key, Inkscape::UI::Widget::Registry* wr,
                         Effect* effect)
     : ArrayParam<Geom::Point>(label, tip, key, wr, effect, 0)
-    , knot_shape(Inkscape::CANVAS_ITEM_CTRL_SHAPE_DIAMOND)
-    , knot_color(0xff88ff00)
 {
 }
 
@@ -161,12 +159,6 @@ PowerStrokePointArrayParam::set_pwd2(Geom::Piecewise<Geom::D2<Geom::SBasis> > co
 {
     last_pwd2 = pwd2_in;
     last_pwd2_normal = pwd2_normal_in;
-}
-
-void PowerStrokePointArrayParam::set_oncanvas_looks(CanvasItemCtrlShape shape, uint32_t color)
-{
-    knot_shape = shape;
-    knot_color = color;
 }
 
 /*
@@ -340,8 +332,7 @@ PowerStrokePointArrayParamKnotHolderEntity::knot_click(guint state)
             PowerStrokePointArrayParamKnotHolderEntity *e = new PowerStrokePointArrayParamKnotHolderEntity(_pparam, _index+1);
             e->create(this->desktop, this->item, parent_holder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:PowerStroke",
                       _("<b>Stroke width control point</b>: drag to alter the stroke width. <b>Ctrl+click</b> adds a "
-                        "control point, <b>Ctrl+Alt+click</b> deletes it, <b>Shift+click</b> launches width dialog."),
-                      _pparam->knot_color);
+                        "control point, <b>Ctrl+Alt+click</b> deletes it, <b>Shift+click</b> launches width dialog."));
             parent_holder->add(e);
         }
     } else if ((state & GDK_ALT_MASK) || (state & GDK_SHIFT_MASK)) {
@@ -356,8 +347,7 @@ void PowerStrokePointArrayParam::addKnotHolderEntities(KnotHolder *knotholder, S
         PowerStrokePointArrayParamKnotHolderEntity *e = new PowerStrokePointArrayParamKnotHolderEntity(this, i);
         e->create(nullptr, item, knotholder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:PowerStroke",
                   _("<b>Stroke width control point</b>: drag to alter the stroke width. <b>Ctrl+click</b> adds a "
-                    "control point, <b>Ctrl+Alt+click</b> deletes it, <b>Shift+click</b> launches width dialog."),
-                  knot_color);
+                    "control point, <b>Ctrl+Alt+click</b> deletes it, <b>Shift+click</b> launches width dialog."));
         knotholder->add(e);
     }
 }

@@ -10,12 +10,10 @@
 #ifndef INKSCAPE_LIVEPATHEFFECT_PARAMETER_POINT_H
 #define INKSCAPE_LIVEPATHEFFECT_PARAMETER_POINT_H
 
-#include <cstdint>
 #include <optional>
 #include <2geom/point.h>
 #include <glibmm/ustring.h>
 
-#include "display/control/canvas-item-enums.h"
 #include "live_effects/parameter/parameter.h"
 #include "ui/widget/registered-widget.h"
 
@@ -66,8 +64,6 @@ public:
 
     void param_transform_multiply(Geom::Affine const & /*postmul*/, bool set) final;
 
-    void set_oncanvas_looks(Inkscape::CanvasItemCtrlShape shape, std::uint32_t color);
-
     bool providesKnotHolderEntities() const final { return true; }
     void addKnotHolderEntities(KnotHolder *knotholder, SPItem *item) final;
     ParamType paramType() const final { return ParamType::POINT; };
@@ -80,8 +76,6 @@ private:
     Geom::Point defvalue;
     bool liveupdate;
     KnotHolderEntity *_knot_entity = nullptr;
-    Inkscape::CanvasItemCtrlShape knot_shape = Inkscape::CANVAS_ITEM_CTRL_SHAPE_DIAMOND;
-    std::uint32_t knot_color = 0xffffff00;
     std::optional<Glib::ustring> handle_tip;
 };
 

@@ -91,7 +91,6 @@ private:
     bool _shape_set = false;
     bool _fill_set = false;
     bool _stroke_set = false;
-    bool _size_set = false;
     double _angle = 0; // Used for triangles, could be used for arrows.
     SPAnchorType _anchor = SP_ANCHOR_CENTER;
     int _width  = 5;

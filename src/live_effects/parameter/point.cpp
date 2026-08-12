@@ -176,12 +176,6 @@ void PointParam::on_value_changed()
     param_effect->refresh_widgets = true;
 }
 
-void PointParam::set_oncanvas_looks(CanvasItemCtrlShape shape, std::uint32_t const color)
-{
-    knot_shape = shape;
-    knot_color = color;
-}
-
 class PointParamKnotHolderEntity final : public KnotHolderEntity {
 public:
     PointParamKnotHolderEntity(PointParam * const p) : pparam{p} {}
@@ -249,7 +243,7 @@ PointParam::addKnotHolderEntities(KnotHolder *knotholder, SPItem *item)
     _knot_entity = new PointParamKnotHolderEntity(this);
     // TODO: can we ditch handleTip() etc. because we have access to handle_tip etc. itself???
     _knot_entity->create(nullptr, item, knotholder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:Point",
-                         handleTip(), knot_color);
+                         handleTip());
     knotholder->add(_knot_entity);
 }
 

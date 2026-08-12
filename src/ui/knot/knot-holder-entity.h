@@ -47,8 +47,7 @@ public:
     void create(SPDesktop *desktop, SPItem *item, KnotHolder *parent,
                 Inkscape::CanvasItemCtrlType type = Inkscape::CANVAS_ITEM_CTRL_TYPE_DEFAULT,
                 Glib::ustring const &name = "unknown",
-                char const *tip = "",
-                uint32_t color = 0xffffff00);
+                char const *tip = "");
 
     /* the get/set/click handlers are virtual functions; each handler class for a knot
        should be derived from KnotHolderEntity and override these functions */

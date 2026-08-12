@@ -270,9 +270,6 @@ LPERoughHatches::LPERoughHatches(LivePathEffectObject *lpeobject) :
     // hide the widgets for direction and bender vectorparams
     direction.widget_is_visible = false;
     bender.widget_is_visible = false;
-    // give distinguishing colors to direction and bender on-canvas params
-    direction.set_oncanvas_color(0x00ff7d00);
-    bender.set_oncanvas_color(0xffffb500);
 
     concatenate_before_pwd2 = false;
     show_orig_path = true;

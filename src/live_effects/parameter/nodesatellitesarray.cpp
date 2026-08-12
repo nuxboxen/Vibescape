@@ -41,12 +41,6 @@ NodeSatelliteArrayParam::NodeSatelliteArrayParam(const Glib::ustring &label, con
     param_widget_is_visible(false);
 }
 
-void NodeSatelliteArrayParam::set_oncanvas_looks(CanvasItemCtrlShape shape, uint32_t color)
-{
-    _knot_shape = shape;
-    _knot_color = color;
-}
-
 void NodeSatelliteArrayParam::setPathVectorNodeSatellites(PathVectorNodeSatellites *pathVectorNodeSatellites,
                                                           bool write)
 {
@@ -226,7 +220,7 @@ void NodeSatelliteArrayParam::addKnotHolderEntities(KnotHolder *knotholder, SPIt
                 }
                 FilletChamferKnotHolderEntity *e = new FilletChamferKnotHolderEntity(this, index);
                 e->create(nullptr, item, knotholder, Inkscape::CANVAS_ITEM_CTRL_TYPE_LPE, "LPE:Chamfer",
-                          tip, _knot_color);
+                          tip);
                 knotholder->add(e);
             }
             index++;
