@@ -62,12 +62,13 @@ public:
 
 private:
     void on_map() override;
-    void sort_fonts(FontOrder order);
+    void sort_fonts();
     void set_sort_icon();
     void apply_filters(bool all_filters = true);
     void rebuild_ui();
     void rebuild_store();
-    void populate_font_store(bool by_family);
+    void populate_font_store();
+    bool populate_font_store_chunk();
     void apply_filters_keep_selection(bool text_only = false);
     void add_font(const Glib::ustring& fontspec, bool select);
     bool select_font(const Glib::ustring& fontspec);
@@ -130,6 +131,7 @@ private:
     sigc::scoped_connection _font_stream;
     sigc::scoped_connection _font_collections_update;
     sigc::scoped_connection _font_collections_selection;
+    sigc::scoped_connection _store_rebuild_on_idle;
     Gtk::Popover _charmap_popover;
     CharacterViewer _charmap;
     std::shared_ptr<FontInstance> _current_font_instance; // for charmap only
