@@ -23,6 +23,8 @@
 #include <gtkmm/treeexpander.h>
 #include <gtkmm/treelistmodel.h>
 
+#include "desktop.h"
+#include "inkscape.h"
 #include "preferences.h"
 #include "ui/builder-utils.h"
 #include "ui/dialog/xml-tree.h"
@@ -66,6 +68,20 @@ Glib::ustring get_font_icon(FontInfo const &font, bool missing_font = false)
         return "generic-font-symbolic";
     }
     return {};
+}
+
+double get_default_font_size(int unit)
+{
+    double size = 10;
+    if (auto css = SP_ACTIVE_DESKTOP->getCurrentOrToolStyle("/tools/text", true)) {
+        SPStyle query;
+        query.mergeCSS(css);
+        size = query.font_size.computed;
+        sp_repr_css_attr_unref(css);
+    }
+    size = sp_style_css_size_px_to_units(size, unit);
+    size = sp_style_css_size_round_for_user_display(size);
+    return size;
 }
 
 // Gio models require Glib object-based elements,
@@ -835,9 +851,7 @@ FontList::FontList(Glib::ustring preferences_path)
             _signal_fontsize_changed.emit();
         }
     });
-    // TODO: pick better default based on prefs and document (like the text toolbar does)
-    //       See https://gitlab.com/inkscape/inkscape/-/work_items/6315
-    _font_size.setSize(sp_style_css_size_px_to_units(10, _font_size.getUnit()));
+    _font_size.setSize(get_default_font_size(_font_size.getUnit()));
 
     // restore sorting
     _order = static_cast<FontOrder>(prefs->getIntLimited(_prefs + "/font-order", static_cast<int>(_order),
