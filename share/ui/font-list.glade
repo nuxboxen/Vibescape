@@ -503,33 +503,27 @@
           <object class="GtkBox">
             <property name="hexpand">true</property>
             <property name="hexpand-set">true</property>
+            <property name="spacing">5</property>
             <child>
               <object class="GtkScale" id="preview-font-size">
                 <property name="hexpand">true</property>
                 <property name="hexpand-set">true</property>
                 <property name="halign">fill</property>
-                <property name="draw-value">True</property>
+                <property name="draw-value">False</property>
                 <property name="focusable">True</property>
                 <property name="adjustment">adjustment-size</property>
                 <property name="show-fill-level">True</property>
                 <property name="round-digits">0</property>
                 <property name="digits">0</property>
-                <property name="value-pos">right</property>
               </object>
             </child>
             <child>
-              <object class="GtkScale" id="grid-font-size">
-                <property name="hexpand">true</property>
-                <property name="hexpand-set">true</property>
-                <property name="halign">fill</property>
-                <property name="draw-value">True</property>
-                <property name="focusable">True</property>
-                <property name="adjustment">adjustment-grid-size</property>
-                <property name="show-fill-level">True</property>
-                <property name="round-digits">0</property>
-                <property name="digits">0</property>
-                <property name="value-pos">right</property>
-              </object>
+              <object class="GtkSpinButton" id="preview-font-size-value">
+               <property name="adjustment">adjustment-size</property>
+               <property name="numeric">True</property>
+               <property name="width-chars">5</property>
+               <property name="focusable">True</property>
+             </object>
             </child>
             <layout>
               <property name="column">1</property>
