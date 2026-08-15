@@ -270,7 +270,7 @@
     <child>
       <object class="GtkLabel">
         <property name="halign">start</property>
-        <property name="label" translatable="yes">Filter</property>
+        <property name="label" translatable="yes">Blur</property>
         <layout>
           <property name="column">0</property>
           <property name="row">0</property>
