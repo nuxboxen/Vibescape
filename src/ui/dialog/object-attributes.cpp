@@ -842,7 +842,7 @@ void details::AttributesPanel::update_filters(SPObject* object) {
         _blur.set_value(0);
         _blur.set_sensitive(false);
     }
-    _filter_primitive.set_visible(filters > 0);
+    _filter_primitive.set_visible(filters > 0 && !gaussian_blur);
     _blur.set_visible(gaussian_blur && filters > 0);
     _edit_filter.set_visible(!gaussian_blur && filters > 0);
     _clear_filters.set_visible(filters > 0);
