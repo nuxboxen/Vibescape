@@ -45,7 +45,8 @@ enum Triggers : Trigger {
     // bit 6 so categories and triggers can be combined.
     CLICK = 32,
     DRAG = 64,
-    SCROLL = 128,
+    DRAG_MIDDLE_BUTTON = 128,
+    SCROLL = 256,
 };
 
 /**
@@ -58,6 +59,7 @@ enum class Type {
     CANVAS_PAN_DRAG,      // Pan freely {CTRL+SHIFT+DRAG}
     CANVAS_PAN_X,         // Pan left and right {SHIFT+SCROLL}
     CANVAS_PAN_Y,         // Pan up and down {NOTHING+SCROLL}
+    CANVAS_DRAG_ZOOM,     // Pan and zoom the canvas {CTRL+MBUTTON2}
     CANVAS_ROTATE,        // Rotate CW and CCW {CTRL+SHIFT+SCROLL}
     CANVAS_ROTATE_DRAG,   // Rotate CW and CCW {CTRL+DRAG}
     CANVAS_ROTATE_RESET,  // Reset angle while rotating {CTRL+SHIFT+DRAG}
