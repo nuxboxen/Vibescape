@@ -136,6 +136,7 @@ private:
     sigc::scoped_connection _font_collections_update;
     sigc::scoped_connection _font_collections_selection;
     sigc::scoped_connection _store_rebuild_on_idle;
+    sigc::scoped_connection _preview_size_idle;
     Gtk::Popover _charmap_popover;
     CharacterViewer _charmap;
     std::shared_ptr<FontInstance> _current_font_instance; // for charmap only
