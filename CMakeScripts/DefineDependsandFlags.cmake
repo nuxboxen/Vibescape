@@ -340,7 +340,7 @@ list(APPEND INKSCAPE_LIBS GLibmm::GLibmm GTKmm::GTKmm)
 
 pkg_check_modules(GLYCIN QUIET IMPORTED_TARGET glycin-2>=2.2)
 if(GLYCIN_FOUND)
-    add_library(Inkscape::Glycin ALIAS PkgConfig::Glycin)
+    add_library(Inkscape::Glycin ALIAS PkgConfig::GLYCIN)
 else()
     message(STATUS "Glycin not found or too old, will compile it from source")
     include(ExternalProject)
