@@ -175,12 +175,16 @@ public:
     // get markup for a font badge - number of styles in a family
     Glib::ustring get_badge_markup() const
     {
-        if (_family.size() > 1) {
+        if (has_badge_markup_content()) {
             // count
             return Glib::ustring::compose("<small>  %1  </small>", _family.size());
         }
-        return {};
+        // Return a similarly shaped string but without the number, to keep general label sizes the
+        // same (GtkListViews need all items to be same height, and if this label is entirely
+        // hidden, it has an effect on the name/badge row height)
+        return "<small> </small>";
     }
+    bool has_badge_markup_content() const { return _family.size() > 1; }
     // get markup to render font preview
     Glib::ustring get_sample_markup(int font_size_percent, Glib::ustring sample_text)
     {
@@ -245,6 +249,44 @@ private:
     Glib::ustring _alt_fontspec;
 };
 
+class FixedHeightLabel : public Gtk::Label
+{
+public:
+    void set_fixed_height(int height)
+    {
+        _height = height;
+        queue_resize();
+    }
+
+private:
+    int _height;
+    mutable double _ratio;
+
+    void measure_vfunc(Gtk::Orientation const orientation, int const for_size, int &min, int &nat, int &min_baseline,
+                       int &nat_baseline) const override
+    {
+        Gtk::Label::measure_vfunc(orientation, for_size, min, nat, min_baseline, nat_baseline);
+
+        if (orientation == Gtk::Orientation::VERTICAL) {
+            _ratio = _height / (double)nat;
+            nat = _height;
+            nat_baseline *= _ratio;
+            min = nat;
+            min_baseline = nat_baseline;
+        }
+    }
+
+    void snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot) override
+    {
+        if (_ratio < 1) {
+            // scale down as needed to fit (no need to scale up, plus we want to stay inside our
+            // allocation)
+            snapshot->scale(_ratio, _ratio);
+        }
+        Gtk::Label::snapshot_vfunc(snapshot);
+    }
+};
+
 class CachedLabel : public Gtk::Box
 {
 public:
@@ -253,10 +295,12 @@ public:
         , _label{nullptr}
     {}
 
-    void set_markup(Glib::ustring const &markup)
+    void set_markup(Glib::ustring const &markup, int sample_font_size)
     {
         _markup = markup;
         _saved_texture.reset();
+
+        auto height = 18 * sample_font_size / 100;
 
         // Use an image if we already have a texture on disk. Else show a real label.
         auto filepath = get_cache_path();
@@ -268,9 +312,10 @@ public:
             }
             if (!_image) {
                 _image = Gtk::make_managed<Gtk::Picture>();
-                _image->set_can_shrink(false);
+                _image->set_content_fit(Gtk::ContentFit::SCALE_DOWN);
                 append(*_image);
             }
+            _image->set_size_request(-1, height);
             _image->set_filename(filepath);
         } else {
             if (_image) {
@@ -278,16 +323,18 @@ public:
                 _image = nullptr;
             }
             if (!_label) {
-                _label = Gtk::make_managed<Gtk::Label>();
+                _label = Gtk::make_managed<FixedHeightLabel>();
+                _label->set_halign(Gtk::Align::CENTER);
                 append(*_label);
             }
+            _label->set_fixed_height(height);
             _label->set_markup(markup);
         }
     }
 
 private:
     Gtk::Picture *_image;
-    Gtk::Label *_label;
+    FixedHeightLabel *_label;
     Glib::ustring _markup;
     Glib::RefPtr<Gdk::Texture> _saved_texture;
 
@@ -383,7 +430,6 @@ void on_set_up_listitem(Glib::RefPtr<Gtk::ListItem> const &list_item)
     lower->append(*name);
     auto badge = Gtk::make_managed<Gtk::Label>();
     badge->set_halign(Gtk::Align::CENTER);
-    badge->add_css_class("tag-box");
     lower->append(*badge);
     vbox->append(*upper);
     vbox->append(*lower);
@@ -426,11 +472,16 @@ void on_bind_listitem(int sample_font_size, bool show_name, Glib::ustring const 
     auto &name = dynamic_cast<Gtk::Label &>(*lower.get_first_child());
     auto &badge = dynamic_cast<Gtk::Label &>(*name.get_next_sibling());
 
-    sample.set_markup(element->get_sample_markup(sample_font_size, sample_text));
+    sample.set_markup(element->get_sample_markup(sample_font_size, sample_text), sample_font_size);
 
     if (show_name) {
         name.set_markup(element->get_name_markup());
         badge.set_markup(element->get_badge_markup());
+        if (element->has_badge_markup_content()) {
+            badge.add_css_class("tag-box");
+        } else {
+            badge.remove_css_class("tag-box");
+        }
     }
     name.set_visible(show_name);
     badge.set_visible(show_name);
@@ -496,7 +547,8 @@ void on_bind_griditem(int sample_font_size, bool show_name, Glib::ustring const 
     auto label = dynamic_cast<CachedLabel *>(box->get_first_child());
     auto name = dynamic_cast<Gtk::Label *>(label->get_next_sibling());
 
-    label->set_markup(element->get_sample_markup(sample_font_size, sample_text.empty() ? "Aa" : sample_text));
+    auto shown_text = sample_text.empty() ? "Aa" : sample_text;
+    label->set_markup(element->get_sample_markup(sample_font_size, shown_text), sample_font_size);
     if (show_name) {
         name->set_markup(element->get_full_name_markup());
     }
