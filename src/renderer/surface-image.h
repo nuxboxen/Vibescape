@@ -90,7 +90,7 @@ private:
     Glib::RefPtr<Glib::Bytes> _byte_cache; // Memory used by GlyImage until rendered
     std::string _mime_type;                // Remember opening mime type for saving
 
-    mutable GlyFrame *_frame; // Shared memory with Cairo::Surface
+    mutable GlyFrame *_frame = nullptr;    // Shared memory with Cairo::Surface
 };
 
 } // namespace Inkscape::Renderer
