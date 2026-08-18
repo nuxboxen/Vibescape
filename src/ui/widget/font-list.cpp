@@ -8,11 +8,13 @@
 #include <giomm/menu.h>
 #include <giomm/simpleactiongroup.h>
 #include <glibmm/markup.h>
+#include <glibmm/miscutils.h>
 #include <gtkmm/checkbutton.h>
 #include <gtkmm/filterlistmodel.h>
 #include <gtkmm/gridlayoutchild.h>
 #include <gtkmm/layoutmanager.h>
 #include <gtkmm/menubutton.h>
+#include <gtkmm/picture.h>
 #include <gtkmm/progressbar.h>
 #include <gtkmm/scrolledwindow.h>
 #include <gtkmm/searchentry2.h>
@@ -25,6 +27,8 @@
 
 #include "desktop.h"
 #include "inkscape.h"
+#include "io/resource.h"
+#include "io/sys.h"
 #include "preferences.h"
 #include "ui/builder-utils.h"
 #include "ui/dialog/xml-tree.h"
@@ -241,6 +245,123 @@ private:
     Glib::ustring _alt_fontspec;
 };
 
+class CachedLabel : public Gtk::Box
+{
+public:
+    CachedLabel()
+        : _image{nullptr}
+        , _label{nullptr}
+    {}
+
+    void set_markup(Glib::ustring const &markup)
+    {
+        _markup = markup;
+        _saved_texture.reset();
+
+        // Use an image if we already have a texture on disk. Else show a real label.
+        auto filepath = get_cache_path();
+        auto exists = Inkscape::IO::file_test(filepath.c_str(), G_FILE_TEST_EXISTS);
+        if (exists) {
+            if (_label) {
+                _label->unparent();
+                _label = nullptr;
+            }
+            if (!_image) {
+                _image = Gtk::make_managed<Gtk::Picture>();
+                _image->set_can_shrink(false);
+                append(*_image);
+            }
+            _image->set_filename(filepath);
+        } else {
+            if (_image) {
+                _image->unparent();
+                _image = nullptr;
+            }
+            if (!_label) {
+                _label = Gtk::make_managed<Gtk::Label>();
+                append(*_label);
+            }
+            _label->set_markup(markup);
+        }
+    }
+
+private:
+    Gtk::Picture *_image;
+    Gtk::Label *_label;
+    Glib::ustring _markup;
+    Glib::RefPtr<Gdk::Texture> _saved_texture;
+
+    Glib::ustring get_cache_folder()
+    {
+        return Inkscape::IO::Resource::get_path_string(Inkscape::IO::Resource::Domain::CACHE,
+                                                       Inkscape::IO::Resource::Type::NONE, "font-previews");
+    }
+
+    Glib::ustring get_cache_path()
+    {
+        // Escape the markup into a more filesystem-friendly version.
+        // Caution: if font names only differ by these characters, we'll have a cache collision
+        std::string basename = _markup;
+        for (char &c : basename) {
+            if (std::string(". !$*?'\"#-\\/<>()=\n").find(c) != std::string::npos) {
+                c = '_';
+            }
+        }
+        // version cache name, so we can clean up easily if format changes
+        basename = "v1_" + basename + ".png";
+
+        return Glib::build_filename(get_cache_folder(), basename, nullptr);
+    }
+
+    void snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot_in) override
+    {
+        // If we're rendering an image, just early exit - no special work needed
+        if (_image) {
+            Gtk::Box::snapshot_vfunc(snapshot_in);
+            return;
+        }
+
+        if (!_saved_texture) {
+            // Take snapshot of label
+            auto snapshot = Gtk::Snapshot::create();
+            snapshot_child(*_label, snapshot);
+
+            // Turn that snapshot into a texture
+            auto surface = get_native()->get_surface();
+            auto node_gobj = gtk_snapshot_to_node(snapshot->gobj());
+            if (!node_gobj) {
+                return; // not ready to render yet
+            }
+            auto renderer_gobj = gsk_renderer_new_for_surface(surface->gobj());
+            if (!renderer_gobj) {
+                gsk_render_node_unref(node_gobj);
+                return; // not ready to render yet
+            }
+            auto texture = Glib::wrap(gsk_renderer_render_texture(renderer_gobj, node_gobj, nullptr));
+            gsk_renderer_unrealize(renderer_gobj);
+            g_object_unref(renderer_gobj);
+            gsk_render_node_unref(node_gobj);
+
+            // Save that texture to disk when idle
+            auto folder = get_cache_folder();
+            auto path = get_cache_path();
+            Glib::signal_idle().connect(
+                [texture, folder, path] {
+                    g_mkdir_with_parents(folder.c_str(), 0700);
+                    texture->save_to_png(path);
+                    return false;
+                },
+                Glib::PRIORITY_LOW);
+
+            _saved_texture = texture;
+        }
+
+        // Use the saved texture as the requested snapshot
+        auto bbox = Gdk::Graphene::Rect(0, 0, _saved_texture->get_width(), _saved_texture->get_height());
+        snapshot_in->append_texture(_saved_texture, bbox);
+    }
+};
+
 // This function constructs a widget to show font info in a list view.
 // List view is capable of being transformed into a tree-like display too.
 void on_set_up_listitem(Glib::RefPtr<Gtk::ListItem> const &list_item)
@@ -252,8 +373,7 @@ void on_set_up_listitem(Glib::RefPtr<Gtk::ListItem> const &list_item)
     auto lower = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL, 4);
     vbox->set_margin_top(2);
     vbox->set_overflow(Gtk::Overflow::HIDDEN);
-    auto sample = Gtk::make_managed<Gtk::Label>();
-    sample->set_ellipsize(Pango::EllipsizeMode::END);
+    auto sample = Gtk::make_managed<CachedLabel>();
     sample->set_halign(Gtk::Align::START);
     sample->set_margin_start(2); // extra space for fonts extend past the bbox
     auto name = Gtk::make_managed<Gtk::Label>();
@@ -302,11 +422,12 @@ void on_bind_listitem(int sample_font_size, bool show_name, Glib::ustring const 
     auto &upper = dynamic_cast<Gtk::Box &>(*vbox->get_first_child());
     auto &lower = dynamic_cast<Gtk::Box &>(*upper.get_next_sibling());
     auto &icon = dynamic_cast<Gtk::Image &>(*upper.get_first_child());
-    auto &sample = dynamic_cast<Gtk::Label &>(*icon.get_next_sibling());
+    auto &sample = dynamic_cast<CachedLabel &>(*icon.get_next_sibling());
     auto &name = dynamic_cast<Gtk::Label &>(*lower.get_first_child());
     auto &badge = dynamic_cast<Gtk::Label &>(*name.get_next_sibling());
 
     sample.set_markup(element->get_sample_markup(sample_font_size, sample_text));
+
     if (show_name) {
         name.set_markup(element->get_name_markup());
         badge.set_markup(element->get_badge_markup());
@@ -346,7 +467,7 @@ Glib::RefPtr<Gio::ListStore<FontElement>> create_element_model(Glib::RefPtr<Glib
 void on_set_up_griditem(Glib::RefPtr<Gtk::ListItem> const &list_item)
 {
     auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 1);
-    auto sample = Gtk::make_managed<Gtk::Label>();
+    auto sample = Gtk::make_managed<CachedLabel>();
     auto name = Gtk::make_managed<Gtk::Label>();
     sample->set_halign(Gtk::Align::CENTER);
     sample->set_valign(Gtk::Align::CENTER);
@@ -372,7 +493,7 @@ void on_bind_griditem(int sample_font_size, bool show_name, Glib::ustring const 
     auto box = dynamic_cast<Gtk::Box *>(list_item->get_child());
     if (!box)
         return;
-    auto label = dynamic_cast<Gtk::Label *>(box->get_first_child());
+    auto label = dynamic_cast<CachedLabel *>(box->get_first_child());
     auto name = dynamic_cast<Gtk::Label *>(label->get_next_sibling());
 
     label->set_markup(element->get_sample_markup(sample_font_size, sample_text.empty() ? "Aa" : sample_text));
@@ -836,7 +957,7 @@ FontList::FontList(Glib::ustring preferences_path)
             // hide progress
             _progress_box.set_visible(false);
             _info_box.set_visible();
-            // Only create the font list once finished - we've sen crashes when trying to render
+            // Only create the font list once finished - we've seen crashes when trying to render
             // the list while fonts were being loaded in the background task.
             sort_fonts();
         }
