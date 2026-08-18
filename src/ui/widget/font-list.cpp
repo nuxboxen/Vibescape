@@ -824,14 +824,19 @@ FontList::FontList(Glib::ustring preferences_path)
         [](double val) { return Glib::ustring::format(std::fixed, std::setprecision(0), val) + "%"; });
     _preview_size_scale.set_value(_sample_font_size);
     _preview_size_spin.set_value(_sample_font_size);
-    _preview_size_scale.get_adjustment()->signal_value_changed().connect([this] {
-        auto value = _preview_size_scale.get_adjustment()->get_value();
-        _preview_size_spin.set_value(value);
-    });
     _preview_size_spin.signal_value_changed().connect([=, this] {
-        _sample_font_size = _preview_size_spin.get_value();
-        prefs->setInt(_prefs + "/preview-size", _sample_font_size);
-        rebuild_ui();
+        // We avoid rebuilding the UI while the user is dragging bar for performance reasons, so we wait until we're
+        // idle and see if we're still dragging at that point.
+        _preview_size_idle = Glib::signal_idle().connect([=, this] {
+            if (_preview_size_scale.has_css_class("dragging")) {
+                return true; // keep running this idle callback until the user releases the drag
+            }
+            // OK we're done with a drag (or were never in one) and can rebuild the UI
+            _sample_font_size = _preview_size_spin.get_value();
+            prefs->setInt(_prefs + "/preview-size", _sample_font_size);
+            rebuild_ui();
+            return false;
+        });
     });
     auto to_top = prefs->getBool(_prefs + "/font-size-top", false);
     set_font_size_layout(to_top);
