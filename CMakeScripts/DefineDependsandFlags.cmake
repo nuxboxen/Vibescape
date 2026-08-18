@@ -118,7 +118,6 @@ endif()
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(INKSCAPE_DEP REQUIRED IMPORTED_TARGET
                   harfbuzz>=2.6.5
-                  glycin-2
                   pangocairo>=1.44
                   pangoft2
                   fontconfig
@@ -338,6 +337,28 @@ if(NOT (GTKMM_FOUND AND GLIBMM_FOUND))
     pkg_check_modules(TMP-gtkmm-gstreamer gstreamer-player-1.0 REQUIRED)
 endif()
 list(APPEND INKSCAPE_LIBS GLibmm::GLibmm GTKmm::GTKmm)
+
+pkg_check_modules(GLYCIN QUIET IMPORTED_TARGET glycin-2>=2.2)
+if(GLYCIN_FOUND)
+    add_library(Inkscape::Glycin ALIAS PkgConfig::Glycin)
+else()
+    message(STATUS "Glycin not found or too old, will compile it from source")
+    include(ExternalProject)
+    ExternalProject_Add(glycin
+        URL https://gitlab.gnome.org/GNOME/glycin/-/archive/2.2.beta/glycin-2.2.beta.tar.bz2
+        URL_HASH SHA256=ab96e49e1437309258aac1073b0fa93f35041b54a9d885699edb401effe00083
+        CONFIGURE_COMMAND meson setup --libdir lib . ../glycin --prefix=${CMAKE_CURRENT_BINARY_DIR}/deps
+        BUILD_COMMAND meson install
+        INSTALL_COMMAND meson install
+    )
+    add_library(glycin_LIB INTERFACE)
+    target_include_directories(glycin_LIB INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/deps/include/glycin-2)
+    target_link_directories(glycin_LIB INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/deps/lib)
+    target_link_libraries(glycin_LIB INTERFACE -lglycin-2)
+    add_library(Inkscape::Glycin ALIAS glycin_LIB)
+    list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_CURRENT_BINARY_DIR}/deps/lib)
+endif()
+list(APPEND INKSCAPE_LIBS Inkscape::Glycin)
 
 if(WITH_LIBSPELLING)
     pkg_check_modules(LIBSPELLING IMPORTED_TARGET libspelling-1)
