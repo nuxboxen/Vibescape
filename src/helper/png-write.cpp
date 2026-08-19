@@ -415,7 +415,7 @@ ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
 
     if (!force_overwrite && !sp_ui_overwrite_file(Glib::filename_from_utf8(filename))) {
         // aborted overwrite
-	return EXPORT_ABORTED;
+        return EXPORT_ABORTED;
     }
 
     doc->ensureUpToDate();

@@ -357,6 +357,7 @@ else()
     target_link_libraries(glycin_LIB INTERFACE -lglycin-2)
     add_library(Inkscape::Glycin ALIAS glycin_LIB)
     list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_CURRENT_BINARY_DIR}/deps/lib)
+    set(CMAKE_CTEST_ENV "GLYCIN_DATA_DIR=${CMAKE_CURRENT_BINARY_DIR}/deps/share;${CMAKE_CTEST_ENV}")
 endif()
 list(APPEND INKSCAPE_LIBS Inkscape::Glycin)
 
