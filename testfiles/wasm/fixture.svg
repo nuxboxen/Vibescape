@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<!--
+  The fixture is deliberately awkward, because a convenient one cannot fail.
+
+  Nearly every geometric query has a coordinate system that the SVG specification names and
+  that Inkscape's internal answer differs from: document coordinates carry every ancestor
+  transform, SVG's user space carries none. In a document with no transforms those are the
+  same numbers, so a test written against such a document passes whichever one the host
+  returns. It is not testing the behaviour, it is agreeing with it.
+
+  The same applies elsewhere. Only translations were used at first, so a scale error was
+  invisible. Only hex colours, so resolving a named colour was never exercised. No nested
+  viewport, so "document" and "viewport" could not be told apart. Every one of those was a
+  place where the test could not fail for the reason it existed.
+
+  So: transforms that scale as well as translate, a nested viewport, colours in three
+  notations, an inherited style, and text that is not at the origin.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     width="400" height="400" viewBox="0 0 400 400">
+
+  <!-- Scale as well as translate: with translation alone, a host that forgot to apply the
+       scale would still produce the right numbers. -->
+  <!-- The rect carries its own transform on top of the group's, so "the element's own user
+       space" is distinguishable from both its parent's and the document's.
+
+       Note the comments sit OUTSIDE the group. firstChild and childNodes are defined over
+       nodes, not elements, so a comment inside would be the group's first child and would
+       change its child count. That is correct DOM behaviour and the tests assert it, so the
+       fixture keeps its commentary where it does not alter the structure being described. -->
+  <g id="group" transform="translate(100,50) scale(2)">
+    <rect id="box" x="10" y="20" width="30" height="40" transform="translate(7,3)"
+          style="fill:#ff0000;stroke:#000000;stroke-width:4"/>
+
+    <path id="line" d="M 0,0 L 100,0" style="fill:none;stroke:#000000;stroke-width:2"/>
+
+    <text id="label" x="10" y="150" style="font-size:16px">Hello</text>
+  </g>
+
+  <!-- A nested viewport. getCTM is defined against the nearest one, not the document, and
+       those differ only when a document has one. -->
+  <svg id="inner" x="200" y="200" width="100" height="100" viewBox="0 0 50 50">
+    <rect id="nested" x="5" y="5" width="10" height="10" style="fill:#00ff00"/>
+  </svg>
+
+  <!-- Colour written three ways, and one inherited rather than declared. A computed style
+       is supposed to resolve all four to the same notation; a specified style hands each
+       back as written, which is how the difference shows up. -->
+  <g id="painted" style="fill:rebeccapurple">
+    <rect id="named"    x="0" y="300" width="10" height="10" style="fill:rebeccapurple"/>
+    <rect id="functional" x="20" y="300" width="10" height="10" style="fill:rgb(102,51,153)"/>
+    <rect id="hex"      x="40" y="300" width="10" height="10" style="fill:#663399"/>
+    <rect id="inherited" x="60" y="300" width="10" height="10"/>
+  </g>
+
+  <sodipodi:namedview id="namedview"/>
+</svg>

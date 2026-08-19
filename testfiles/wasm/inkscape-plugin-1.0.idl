@@ -1,0 +1,414 @@
+// inkscape-plugin-1.0.idl — Inkscape WASM Plugin API, version 1.0 (DRAFT)
+//
+// NORMATIVE DEFINITION of the interface an Inkscape wasm plugin sees. Machine-readable so
+// bindings CAN be generated; that is not the point. Versioning is what makes it a standard.
+//
+// TARGETING THIS FROM A COMPILER. Everything needed is in this directory and nothing else is:
+//
+//   this file          what the operations are, and what each one is backed by
+//   LOWERING RULES     below -- how they cross the boundary, which is the actual ABI
+//   *.wat              the same rules exercised, by hand, with no toolchain involved
+//   run-tests.sh       runs them against a built Inkscape
+//   check-coverage.sh  cross-references this file against the host and the modules
+//
+// The .wat modules are the executable half of the specification. They were written against
+// this document rather than generated from it, which is the point: if they can be written by
+// hand from what is here, so can a compiler backend. Start with hello-plugin.wat for the
+// shape of a module, cover-*.wat for each area of the interface, and refuse-*.wat plus
+// trap-matrix.wat for what the host rejects and how.
+//
+// Syntax is Web IDL (the SVG2 spelling, not the 2004 OMG spelling). Web IDL is used as a
+// DEFINITION language, not an import mechanism: this is NOT the Component Model / WIT.
+//
+// SPELLING AUTHORITY.  Every operation is named by an existing published specification --
+// DOM Living Standard, SVG2, or CSSOM -- or, where no specification has ever described the
+// concept, is confined to the [Vendor] section and prefixed `ink`. Nothing is invented in
+// the standard sections. Each operation carries its authority and its Inkscape backing.
+//
+// SCOPE RULE.  Mutation is UNFILTERED: an authoring tool must be able to write markup for
+// semantics it does not itself execute (SMIL, scripting, foreignObject, RDF, foreign
+// namespaces). `XML::Node` is generic XML, and an element with no SPObject keeps its repr
+// node (sp-object.cpp:729), so this falls out for free. Queries are filtered to
+// SVG2/CSSOM INTERSECT what Inkscape actually implements.
+//
+// ============================================================================
+// LOWERING RULES (IDL -> wasm ABI). NORMATIVE. A conforming plugin in any language
+// imports exactly these (module, name, functype) triples; nothing else is the contract.
+// ============================================================================
+//
+//   Interface I, operation op  ->  import (module "org.inkscape.I", name "op")
+//
+//   The two strings ARE the contract; nothing about them is derived from any language.
+//   A C or Zig plugin writes them literally. Names are restricted to dot-joined identifier
+//   segments so that every binding language can emit them: a Java binding derives the module
+//   from a fully-qualified class name, which cannot contain ':', '/' or '@' -- so
+//   component-model-style names (wasi:filesystem/types@0.2.0) are excluded by construction.
+//
+//   TYPE MAPPING
+//     interface handle (Node, Document, Element, ...)   i32   0 = null
+//     boolean                                            i32   0 | 1
+//     long / unsigned long                               i32
+//     float (IDL) -- always f64 on the wire              f64
+//     DOMString in                                       i32 off, i32 len   (UTF-8, staging memory)
+//     DOMString out                                      i32 outoff, i32 outcap -> i32 (see below)
+//     DOMRect out                                        4 x f64 at outoff  (x, y, width, height)
+//     DOMMatrix out                                      6 x f64 at outoff  (a, b, c, d, e, f)
+//     DOMPoint out                                       2 x f64 at outoff  (x, y)
+//     nullable / absent result                           i32 present flag (0 = absent)
+//
+//   SINGLE SCALAR RETURN, OUT-PARAMS OTHERWISE. Not a VM limitation (wasm_capi.c:936
+//   records that multi-value broke the old single-return shape) but a binding-language one:
+//   a Java method returns one value. Out-params keep C, Zig and Java byte-identical at the
+//   boundary, which is the property under test.
+//
+//   STRING RETURN PROTOCOL -- closes plan §2b.1 (host_io.h conflates "absent" with
+//   "did not fit"; both return -1, so a plugin cannot distinguish a missing attribute from
+//   a short buffer). Every DOMString-returning operation takes (outoff, outcap) and returns:
+//        >= 0  ... byte length written at outoff   (fits: length <= outcap)
+//        -1    ... absent / null                    (distinct from the below)
+//        < -1  ... did NOT fit; required length is (-result - 1). Nothing written.
+//   A plugin sizes its buffer, retries once, and never truncates silently. `outcap` is
+//   mandatory: an out-offset without a capacity cannot be bounds-checked by the host.
+//
+//   BOUNDS CHECKING IS MANDATORY, NOT PER-EMBEDDER (plan §2b.3). Before any read or write
+//   the host MUST verify [off, off+len) lies inside wasm_memory_data_size, computed without
+//   integer overflow (`off >= 0 && len >= 0 && off <= n && len <= n - off`). Failure is a
+//   trap, never a silent clamp.
+//
+//   HANDLES. i32 indices into a per-invocation table. 0 is null. An unknown, stale, or
+//   wrong-type handle is a TRAP (own wasm_trap_t*), never a sentinel. The table dies with
+//   the invocation, so handles cannot be stashed across calls. Handles are NOT pointers and
+//   NOT stable across invocations.
+//
+//   GUARANTEE: a handle the host issues stays valid for the whole invocation. Nothing a
+//   plugin does invalidates one -- removing a node from the document does not, because the
+//   host holds the node alive precisely so that the handle it already gave out keeps working.
+//   The same object is also always given the same handle, so identity compares by value.
+//
+//   That guarantee is what makes the trap conditions avoidable, which matters more than it
+//   might appear. Every one of them can be tested by the guest BEFORE the call: handle
+//   validity follows from the guarantee above and from the compiler's own type information;
+//   a span can be checked against memory.size; "is this node a child of that one" is a
+//   parentNode comparison; "is this node itself" is an integer compare.
+//
+//   So a correct plugin never traps, and a generated one should be incapable of it: the
+//   expected shape is that a compiler emits the precondition test and its optimiser removes
+//   the tests it can prove redundant, exactly as a language runtime does for null and bounds
+//   checks. A trap arriving at the embedder is then a bug in the producer rather than a
+//   condition the plugin was supposed to handle -- which is the right reading, because wasm
+//   traps are not catchable by the guest at all. Only tagged THROWS are, and no host
+//   function raises one.
+//
+//   This is also why the error conditions DOM defines as exceptions (NotFoundError for a
+//   reference that is not a child, HierarchyRequestError for a cycle) are traps here rather
+//   than catchable results. In a dynamic language the caller attempts the operation and
+//   catches; against this ABI the caller tests first, because it can.
+//
+//   ERRORS. Operations that DOM defines as throwing raise a trap carrying the DOMException
+//   name. Rationale: pulling tag+payload out of a guest throw needs exn_read, which has no
+//   standard C spelling -- so errors travel host->guest as traps, and guest->host as a
+//   status code plus message in staging memory. Stock wasm.h only (plan §2b).
+//
+//   ENTRY POINT. The host calls one exported function; the `.inx` names it, because stock
+//   wasm.h has no lookup-export-by-name and javelina exports canonical Java names such as
+//   `org.inkscape.Plugin.effect(I)I`. Naming it in the .inx keeps the host engine-neutral
+//   and needs no compiler change:
+//        <wasm module="gnome.wasm" entry="org.inkscape.Plugin.effect(I)I"/>
+//   Signature: (param i32 document) (result i32 status). status 0 = ok; nonzero = failure,
+//   and the host rolls back via ExecutionEnv::undo(). The plugin MUST NOT commit undo;
+//   ExecutionEnv::commit() owns DocumentUndo::done() (plan §6).
+//
+//   STAGING MEMORY. The host is on both sides of instantiation, so no lookup-by-name (which
+//   stock wasm.h lacks) is ever required: if the plugin IMPORTS a memory the host supplied
+//   that extern itself; if the plugin EXPORTS one the host finds it by zipping
+//   wasm_module_exports with wasm_instance_exports positionally. Exactly one must hold, or
+//   the load fails.
+//   Arena discipline: the guest owns all offsets and passes them explicitly. The host never
+//   picks an offset and never writes outside a caller-supplied (outoff, outcap) span. This
+//   is what makes interleaved calls safe -- the offset-0 convention in HostIO does not
+//   survive a document API (plan §2b.2).
+//
+//   DOCUMENT SYNC. Item queries read the SPObject tree, which lags repr mutation. Every
+//   [Derived] operation implicitly calls SPDocument::ensureUpToDate() before reading, so a
+//   plugin may mutate and immediately measure. Resolves plan §6's open question in favour
+//   of implicit sync: an explicit flush call is a correctness footgun that every plugin
+//   author would have to know about.
+
+
+// ============================================================================
+// PART 1 -- MUTATION.  DOM Living Standard, over Inkscape::XML::Node. UNFILTERED.
+// ============================================================================
+
+// DOM constants are published as-is. Inkscape's enum class NodeType (xml/node.h:39) has
+// five members numbered from 0 starting at DOCUMENT_NODE; the host translates. Publishing
+// Inkscape's numbering instead would be an invented API wearing a DOM name.
+interface Node {
+  const unsigned short ELEMENT_NODE                = 1;
+  const unsigned short TEXT_NODE                   = 3;
+  const unsigned short PROCESSING_INSTRUCTION_NODE = 7;
+  const unsigned short COMMENT_NODE                = 8;
+  const unsigned short DOCUMENT_NODE               = 9;
+
+  readonly attribute unsigned short nodeType;      // DOM. <- XML::Node::type(), translated
+  readonly attribute DOMString      nodeName;      // DOM. <- name()      (qualified, e.g. "svg:path")
+  readonly attribute DOMString?     namespaceURI;  // DOM. <- prefix of name() via the ns map
+  readonly attribute DOMString      localName;     // DOM. <- name() after ':'
+
+  readonly attribute Document  ownerDocument;      // DOM. <- document()
+  readonly attribute Node?     parentNode;         // DOM. <- parent()
+  readonly attribute Node?     firstChild;         // DOM. <- firstChild()
+  readonly attribute Node?     lastChild;          // DOM. <- lastChild()
+  readonly attribute Node?     nextSibling;        // DOM. <- next()
+  readonly attribute Node?     previousSibling;    // DOM. <- prev()
+  readonly attribute NodeList  childNodes;         // DOM. <- childCount() + nthChild()
+
+           attribute DOMString? textContent;       // DOM. <- content() / setContent()
+
+  // DOM insertBefore(new, ref) takes the node to insert BEFORE; Inkscape's
+  // addChild(child, after) takes the node to insert AFTER. The wrapper inverts. Specified
+  // because getting it backwards is silent document corruption, not an error.
+  Node  insertBefore(Node node, Node? child);      // DOM. <- addChild(node, child->prev())
+  Node  appendChild(Node node);                    // DOM. <- appendChild()
+  Node  removeChild(Node child);                   // DOM. <- removeChild()
+  Node  replaceChild(Node node, Node child);       // DOM. <- addChild + removeChild
+
+  // XML::Node::duplicate() is unconditionally deep. `deep` is retained for DOM fidelity;
+  // deep=false is synthesized host-side (duplicate, then remove children).
+  Node  cloneNode(optional boolean deep = false);  // DOM. <- duplicate(Document*)
+};
+
+interface NodeList {                               // DOM. Live, as DOM requires.
+  readonly attribute unsigned long length;         //      <- childCount()
+  Node? item(unsigned long index);                 //      <- nthChild()
+};
+
+interface DOMStringList {                          // DOM L3 Core.
+  readonly attribute unsigned long length;
+  DOMString? item(unsigned long index);
+};
+
+interface Element : Node {
+  DOMString?    getAttribute(DOMString name);      // DOM. <- attribute()
+  void          setAttribute(DOMString name, DOMString value);   // DOM. <- setAttribute()
+  void          removeAttribute(DOMString name);   // DOM. <- removeAttribute()
+  boolean       hasAttribute(DOMString name);      // DOM. <- attribute() != null
+  DOMStringList getAttributeNames();               // DOM. <- attributeList()
+};
+
+interface Document : Node {
+  readonly attribute Element documentElement;      // DOM. <- root()
+
+  // createElementNS is primary: correct for foreign namespaces, which the unfiltered
+  // mutation rule requires. Inkscape's createElement takes a qualified name ("svg:path"),
+  // so the host resolves namespaceURI -> prefix.
+  Element createElementNS(DOMString? namespaceURI, DOMString qualifiedName);  // DOM.
+  Element createElement(DOMString localName);      // DOM. SVG namespace assumed.
+  Node    createTextNode(DOMString data);          // DOM. <- createTextNode()
+  Node    createComment(DOMString data);           // DOM. <- createComment()
+  Element? getElementById(DOMString elementId);    // DOM. <- SPDocument::getObjectById()
+};
+
+
+// ============================================================================
+// PART 2 -- DERIVED QUERIES.  SVG2 + CSSOM, over SPItem. FILTERED to what Inkscape backs.
+// This half is the justification for the project: none of it is derivable from attributes
+// without reimplementing font shaping, stroke geometry, filters and the style cascade.
+// [Derived] operations imply ensureUpToDate(). All return absent rather than a zero value
+// when the element has no SPObject -- a plugin must distinguish "not a thing with bounds"
+// from "zero-sized thing", which is exactly Geom::OptRect.
+// ============================================================================
+
+dictionary SVGBoundingBoxOptions {                 // SVG2. Maps onto visualBounds()'s bools.
+  boolean fill    = true;
+  boolean stroke  = false;
+  boolean markers = false;
+  boolean clipped = false;
+};
+
+[Derived]
+interface SVGGraphicsElement : Element {           // SVG2.
+  DOMRect?   getBBox(optional SVGBoundingBoxOptions options);
+                    // <- SPItem::visualBounds(affine, wfilter, wclip, wmask) / geometricBounds()
+                    //    (sp-item.h:243,253). inkex can produce only a geometric box, and
+                    //    for text not even that -- see PART 4 note.
+  DOMMatrix? getCTM();                             // <- i2doc_affine()  (sp-item.h:395)
+  DOMMatrix? getScreenCTM();                       // <- i2dt_affine()   (sp-item.h:400)
+                                                   //    ABSENT in the headless effect()
+                                                   //    overload (implementation.h:150): no
+                                                   //    desktop exists. Not identity -- absent.
+};
+
+[Derived]
+interface SVGGeometryElement : SVGGraphicsElement {   // SVG2. New in 2; replaces the deleted
+                                                     // SVGPathSegList with something better.
+  float     getTotalLength();                      // <- 2geom arc length
+  DOMPoint  getPointAtLength(float distance);      // <- 2geom Path::pointAt()
+  boolean   isPointInFill(DOMPoint point);         // <- SPDocument::getItemAtPoint()
+  boolean   isPointInStroke(DOMPoint point);       // <- needs stroke geometry: the same
+                                                   //    argument as getBBox, applied to hit-testing
+};
+
+// The gap inkex documents in its own source as impossible. Text::Layout backs all of it
+// (Layout-TNG.h) -- the correspondence is near 1:1, only spelled differently.
+[Derived]
+interface SVGTextContentElement : SVGGraphicsElement {    // SVG2.
+  long      getNumberOfChars();                    // <- iteratorToCharIndex()      :456
+  float     getComputedTextLength();               // <- bounds()                   :377
+  float     getSubStringLength(unsigned long charnum, unsigned long nchars);
+                                                   // <- bounds(tr, stroke, start, length) :377
+  DOMPoint  getStartPositionOfChar(unsigned long charnum);  // <- characterAnchorPoint() :530
+  DOMPoint  getEndPositionOfChar(unsigned long charnum);    // <- characterAnchorPoint() :530
+  DOMRect   getExtentOfChar(unsigned long charnum);         // <- characterBoundingBox() :550
+  float     getRotationOfChar(unsigned long charnum);       // <- characterBoundingBox() rotation out-param
+  long      getCharNumAtPosition(DOMPoint point);           // <- getNearestCursorPositionTo() :467
+};
+
+[Derived]
+interface SVGSVGElement : SVGGraphicsElement {     // SVG2.
+  NodeList getEnclosureList(DOMRect rect, SVGElement? referenceElement);
+                                                   // <- SPDocument::getItemsInBox()          (document.h:344)
+  NodeList getIntersectionList(DOMRect rect, SVGElement? referenceElement);
+                                                   // <- SPDocument::getItemsPartiallyInBox() (document.h:345)
+  boolean  checkEnclosure(Element element, DOMRect rect);
+  boolean  checkIntersection(Element element, DOMRect rect);
+};
+
+// CSSOM. The cascade -- what inkex approximates with cascaded_style() in 4 files. SVG2 defers
+// computed style to window.getComputedStyle(); there is no window, so the entry point is on
+// Document, which is the minimal honest adaptation. CSSValue is deliberately NOT used: it is
+// deprecated and was never fully implemented anywhere. Values are strings.
+[Derived]
+partial interface Document {
+  CSSStyleDeclaration getComputedStyle(Element elt);        // <- SPObject::style (sp-object.h:270)
+};
+
+interface CSSStyleDeclaration {                    // CSSOM. Read-only in 1.0.
+  readonly attribute unsigned long length;
+  DOMString  item(unsigned long index);
+  DOMString  getPropertyValue(DOMString property);
+};
+
+
+// ============================================================================
+// PART 3 -- SESSION TIER.  [Vendor], `ink` prefix. NOT standard surface.
+//
+// The document model is standardised; the editing-session model never has been, by anyone.
+// That is the boundary -- a statable principle, not a leftovers bin. It stays small because
+// most apparent session state is really document state: current layer is an attribute
+// (namedview/@inkscape:current-layer), pages are repr-backed (sp-page.cpp:605), path
+// booleans are guest-side compute, and undo is host-owned and never guest-visible.
+// Precedent for a session tier existing at all, and for its size: bpy.context is 22 members
+// for an entire mature application (rna_context.cc).
+// ============================================================================
+
+[Vendor]
+interface InkSelection {
+  // Per-element, not a positional list -- Blender's model (BezTriple.select_control_point,
+  // rna_curve.cc:949). Backed by the existing Selection object; only the INTERFACE is
+  // per-element, so Inkscape's storage is unchanged.
+  boolean       inkIsSelected(Element element);    // <- Selection::includes()
+  DOMStringList inkSelectedIds();                  // <- SelectionState::selected_ids (selection.h:56)
+
+  // Path-node selection. An SVG path node is an index into `d`, not an element, so the
+  // positional model is unavoidable here -- Blender's robustness does not transfer. Hence
+  // the explicit validity rule rather than a silent hazard: these indices are INVALIDATED
+  // by any mutation of `element`, and reading them afterwards is a trap. Unlike today's
+  // --selected-nodes=path:subpath:index, which goes stale silently.
+  unsigned long inkSelectedNodeCount(Element element);
+  boolean       inkSelectedNode(Element element, unsigned long i,
+                                out unsigned long subpath, out unsigned long node);
+                                                   // <- SelectionState::selected_nodes
+
+  // Mutable: builtins use selection as a working register (BlurEdge clears and re-adds).
+  // ExecutionEnv restores user-visible selection afterwards, so this is parity, not power.
+  void          inkSelectionClear();
+  void          inkSelectionAdd(Element element);
+};
+
+// .inx parameters. These have never been an API in Inkscape's extension system -- they are
+// arguments to the invocation, and Script passes them on argv today. Keeping them as
+// invocation input matches precedent AND is the only design that works in the headless
+// effect(SPDocument*) overload, where no desktop exists.
+[Vendor]
+interface InkParams {
+  DOMString? inkParamString(DOMString name);       // <- Effect::get_param_string()
+  double     inkParamFloat(DOMString name);        // <- Effect::get_param_float()
+  long       inkParamInt(DOMString name);          // <- Effect::get_param_int()
+  boolean    inkParamBool(DOMString name);         // <- Effect::get_param_bool()
+};
+
+// Cooperative cancellation. A plugin doing long work is expected to call inkIsCancelled() in
+// its outer loop and return early when it answers true.
+//
+// This is the standard arrangement for an in-process plugin API and has been since Photoshop's
+// TestAbort: a call cannot be interrupted from outside, and abandoning one mid-flight would
+// leave host state -- here the handle table and the document transaction -- in an unknown
+// condition. So the host raises a flag and the guest observes it.
+//
+// The call also services pending UI events, which is what allows the answer to change: the
+// guest runs on the main thread, so while it works the main loop does not, and without that
+// the user could never press the Cancel button that sets the flag.
+//
+// A plugin that never calls it cannot be cancelled. That is a property of running in-process
+// rather than of this interface -- a C plugin looping forever behind dlopen is no more
+// killable -- and it is stated here rather than discovered.
+[Vendor]
+interface InkCancellation {
+  boolean inkIsCancelled();
+};
+
+[Vendor]
+interface InkContext {
+  // Convenience for getElementById(namedview/@inkscape:current-layer); Grid::effect needs
+  // it and open-coding the lookup in every plugin is worse. Absent in headless.
+  readonly attribute Element? inkCurrentLayer;     // <- LayerManager::currentLayer()
+};
+
+// NOTE -- no `readonly attribute InkSelection selection` here, and no InkParams equivalent.
+// Web IDL would naturally group those behind container attributes, but the lowering rules
+// flatten every interface to its own wasm import module, and one module cannot be reached
+// "through" another: there is no object to hold, only (module, name) pairs. Declaring the
+// containers anyway would put two names in the published interface that no ABI symbol could
+// ever correspond to -- exactly the failure the completeness check exists to catch, an IDL
+// promising something the host cannot provide. The three vendor interfaces are siblings;
+// a plugin imports from whichever it needs.
+
+
+// ============================================================================
+// PART 4 -- NOT IN 1.0, and why. Absence here is a decision, not an oversight.
+// ============================================================================
+//
+//  SVGAnimated*      -- Inkscape has no animation engine (src/object/ has no SMIL objects),
+//                       so animVal has nothing to report. SVG2 says animVal mirrors baseVal
+//                       in a static context, so collapsing the wrapper is CONFORMANT for a
+//                       non-animating user agent, not a removed capability. Authoring
+//                       <animate> never went through these objects and still works: it is
+//                       createElementNS + setAttribute like any other markup.
+//  SVGPathSegList    -- REMOVED IN SVG2. Path data crosses as the `d` string; the guest
+//                       parses it. inkex.paths proves guest-side parsing is fine.
+//  SVGList<T>        -- SVGNumberList/LengthList/TransformList: live mutable list objects
+//                       over attribute strings. Large handle-lifetime surface, no capability
+//                       gain over parsing the string.
+//  SVGLength/SVGAngle-- Taken as VOCABULARY only (SVG_LENGTHTYPE_MM etc. name the units),
+//                       never as live attribute-backed objects.
+//  CSSValue          -- Deprecated; never fully implemented anywhere. Strings instead.
+//  ~120 per-element interfaces (SVGRectElement, SVGCircleElement, ...) -- typed attribute
+//                       accessors. getAttribute covers it.
+//  Attr / NamedNodeMap -- Inkscape's own node.h says the tree covers "everything except
+//                       attributes". Dropping these matches the internals, not fights them.
+//  Events, SMIL, views, DocumentTraversal, selectors -- no host backing.
+//  Path booleans / offset / stroke-to-path -- src/livarot implements them and SVG never
+//                       specified them, but they are pure document operations: the guest
+//                       compiles its own. A host round-trip would marshal path data both
+//                       ways for no gain. Exposing them would be "spec plus some helpers
+//                       Inkscape happens to have", which is the weaker claim.
+//  Action invocation -- deliberately absent. Calling app.path-union from a guest is farming
+//                       the work back out: the failure mode this project deletes. Plugins
+//                       are peers of builtins because they manipulate the document directly,
+//                       which is all a builtin does (Grid::effect is create/set/append plus
+//                       queries). Also the known Blender wart: bpy.ops from Python needs
+//                       temp_override() context construction.
+//
+// FALSIFIER for this whole partition: implement something that is not a composition of
+// existing actions -- the Yard Gnome Generator test. If it needs anything above, the
+// partition is wrong.
