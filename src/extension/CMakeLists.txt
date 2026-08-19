@@ -189,6 +189,16 @@ if(WITH_CAPYPDF)
     )
 endif()
 
+if(WITH_WASM)
+    target_sources(inkscape_base PRIVATE
+        implementation/wasm-abi.cpp
+        implementation/wasm-backend.cpp
+
+        implementation/wasm-abi.h
+        implementation/wasm-backend.h
+    )
+endif()
+
 if(WITH_POPPLER)
     target_sources(inkscape_base PRIVATE
         internal/pdfinput/pdf-utils.cpp

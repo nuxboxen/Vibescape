@@ -408,6 +408,23 @@ if(WITH_GNU_READLINE)
   endif()
 endif()
 
+# A WebAssembly engine is a header plus a library, with no pkg-config module to query, so
+# this looks for the community C API header by name rather than for a specific engine. Any
+# engine implementing wasm.h substitutes by pointing WASM_ROOT at it.
+if(WITH_WASM)
+  find_path(WASM_INCLUDE_DIR wasm.h HINTS ${WASM_ROOT} PATH_SUFFIXES include)
+  find_library(WASM_LIBRARY NAMES javelina wasm HINTS ${WASM_ROOT} PATH_SUFFIXES lib build build-pic)
+  if(WASM_INCLUDE_DIR AND WASM_LIBRARY)
+    message(STATUS "Found WebAssembly engine: ${WASM_LIBRARY}")
+    include_directories(SYSTEM ${WASM_INCLUDE_DIR})
+    list(APPEND INKSCAPE_LIBS ${WASM_LIBRARY})
+    add_definitions(-DWITH_WASM)
+  else()
+    message(STATUS "Did not find a WebAssembly engine (set WASM_ROOT); WebAssembly extensions disabled")
+    set(WITH_WASM OFF)
+  endif()
+endif()
+
 if(WITH_IMAGE_MAGICK)
     # we want "<" but pkg_check_modules only offers "<=" for some reason; let's hope nobody actually has 7.0.0
     pkg_check_modules(MAGICK IMPORTED_TARGET ImageMagick++<=7)

@@ -146,6 +146,13 @@ Extension::Extension(Inkscape::XML::Node *in_repr, ImplementationHolder implemen
                     break;
                 }
             }
+        } else if (!strcmp(chname, "wasm")) { // TODO: should these be parsed in their respective Implementation?
+            for (auto child = child_repr->firstChild(); child != nullptr; child = child->next()) {
+                if (child->type() == Inkscape::XML::NodeType::ELEMENT_NODE) { // skip non-element nodes (see LP #1372200)
+                    _deps.push_back(std::make_unique<Dependency>(child, this, Dependency::TYPE_FILE));
+                    break;
+                }
+            }
         } else {
             // We could do some sanity checking here.
             // However, we don't really know which additional elements Extension subclasses might need...

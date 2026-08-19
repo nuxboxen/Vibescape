@@ -100,6 +100,7 @@ option(ENABLE_POPPLER_CAIRO "Compile with support of libpoppler-cairo for render
 option(WITH_IMAGE_MAGICK "Compile with support of ImageMagick for raster extensions and image import resolution (requires ImageMagick 6; set to OFF if you prefer GraphicsMagick)" ON)
 option(WITH_GRAPHICS_MAGICK "Compile with support of GraphicsMagick for raster extensions and image import resolution" ON)
 option(WITH_LIBCDR "Compile with support of libcdr for CorelDRAW Diagrams" ON)
+option(WITH_WASM "Compile with support for WebAssembly extensions" ON)
 option(WITH_LIBVISIO "Compile with support of libvisio for Microsoft Visio Diagrams" ON)
 option(WITH_LIBWPG "Compile with support of libwpg for WordPerfect Graphics" ON)
 option(WITH_LIBSPELLING "Compile with support of libspelling" ON)

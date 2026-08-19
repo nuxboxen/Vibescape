@@ -89,6 +89,7 @@ enum ModuleImpType
     MODULE_EXTENSION,   // implementation/script.h python extensions
     MODULE_XSLT,        // implementation/xslt.h xml transform extensions
     MODULE_PLUGIN,      // plugins/*/*.h C++ extensions
+    MODULE_WASM,        // implementation/wasm-backend.h WebAssembly extensions
     MODULE_UNKNOWN_IMP  // No implementation, so nothing created.
 };
 
