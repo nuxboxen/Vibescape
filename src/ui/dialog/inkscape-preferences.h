@@ -315,6 +315,7 @@ protected:
     UI::Widget::PrefCheckButton _win_hide_task;
     UI::Widget::PrefCheckButton _win_save_viewport;
     UI::Widget::PrefCheckButton _win_zoom_resize;
+    UI::Widget::PrefCheckButton _win_version_in_title;
 
     UI::Widget::PrefCheckButton _pencil_average_all_sketches;
 
