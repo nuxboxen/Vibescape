@@ -530,10 +530,12 @@ public:
     template <typename T>
     void maybeConstruct(T const &obj, bool force = false)
     {
+#ifndef INKSCAPE_UNIT_TEST
         ObjectPtr addr = &obj;
         if (get()._constructs.find(addr) == get()._constructs.end() || force) {
             _populate(obj);
         }
+#endif
     }
     // Expand the given object by adding data to it
     void _populate(Geom::PathVector const &pv)

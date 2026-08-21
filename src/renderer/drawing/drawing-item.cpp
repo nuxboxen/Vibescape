@@ -12,7 +12,6 @@
 #include "colors/manager.h"
 #include "colors/spaces/base.h"
 
-#include "renderer/code-builder.h"
 #include "renderer/context.h"
 #include "renderer/drawing-filters/filter.h"
 #include "renderer/drawing-filters/primitive.h"
@@ -251,37 +250,6 @@ void DrawingItem::setSensitive(bool sensitive)
     defer([=, this] { // Must be deferred, since in bitfield.
         _sensitive = sensitive;
     });
-}
-
-void DrawingItem::setStyle(SPStyle const *style, SPStyle const *context_style)
-{
-    if (style && drawing()._code_build) {
-        CodeBuilder::get().maybeConstruct(*style);
-        if (context_style) {
-            CodeBuilder::get().maybeConstruct(*context_style);
-            CodeBuilder::Call(*this, "setStyle", true) << style << context_style;
-        } else {
-            CodeBuilder::Call(*this, "setStyle", true) << style;
-        }
-    }
-
-    defer([this, style_obj = DrawingStyle(style, context_style)] () mutable {
-        _style = std::move(style_obj);
-    });
-}
-
-void DrawingItem::setChildrenStyle(SPStyle const *style)
-{
-    if (style) {
-        if (drawing()._code_build) CodeBuilder::get().maybeConstruct(*style);
-        CodeBuilder::Call(*this, "setChildrenStyle") << style;
-    }
-    defer([this, style] () mutable {
-        _style.set_context_style(style);
-    });
-    for (auto &i : _children) {
-        i.setChildrenStyle(style);
-    }
 }
 
 /**

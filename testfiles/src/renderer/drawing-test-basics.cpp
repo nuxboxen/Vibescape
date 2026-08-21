@@ -17,9 +17,6 @@ TEST_F(DrawingTest, TreeOfObjects)
     draw.render(*context, {0, 0, 21, 21}, 0);
 }
 
-// RENDERER-FIXME - need setStyle() versions for StyleMockSource, but templating that ends up pushing the mock
-//                  through CodeBuilder, which then hits issue of building calls to the mock.
-#if 0
 TEST_F(DrawingTest, PartialRender)
 {
     prepare_test({21, 21}, cmyk_cpp);
@@ -61,7 +58,6 @@ TEST_F(DrawingTest, PartialRender)
         EXPECT_TRUE(VectorIsNear(get_pixel(xy, xy), {1, 0, 0, 0, 0.1}, 0.01));
     }
 }
-#endif
 
 /*
   Local Variables:

@@ -24,6 +24,8 @@
 
 #include "style-enums.h"
 
+#include "renderer/code-builder.h"
+
 #include "drawing-item-tags.h"
 #include "drawing-options.h"
 #include "drawing.h"
@@ -98,8 +100,6 @@ public:
     void setVisible(bool visible);
     bool sensitive() const { return _sensitive; }
     void setSensitive(bool sensitive);
-    void setStyle(SPStyle const *style, SPStyle const *context_style = nullptr);
-    void setChildrenStyle(SPStyle const *style);
     void setOpacity(float opacity);
     void setOpacityOverride(std::optional<double> opacity);
     void setAntialiasing(Antialiasing antialias);
@@ -113,6 +113,39 @@ public:
     void setZOrder(unsigned zorder);
     void setItemBounds(Geom::OptRect const &bounds);
     void setFilterRenderer(std::unique_ptr<DrawingFilter::Filter> renderer);
+
+    template <typename StyleSource>
+    void setStyle(StyleSource const *style, StyleSource const *context_style = nullptr)
+    {
+        if (style && drawing()._code_build) {
+            CodeBuilder::get().maybeConstruct(*style);
+            if (context_style) {
+                CodeBuilder::get().maybeConstruct(*context_style);
+                CodeBuilder::Call(*this, "setStyle", true) << style << context_style;
+            } else {
+                CodeBuilder::Call(*this, "setStyle", true) << style;
+            }
+        }
+
+        defer([this, style_obj = DrawingStyle(style, context_style)] () mutable {
+            _style = std::move(style_obj);
+        });
+    }
+
+    template <typename StyleSource>
+    void setChildrenStyle(StyleSource const *style)
+    {
+        if (style && drawing()._code_build) {
+            CodeBuilder::get().maybeConstruct(*style);
+            CodeBuilder::Call(*this, "setChildrenStyle") << style;
+        }
+        defer([this, style] () mutable {
+            _style.set_context_style(style);
+        });
+        for (auto &i : _children) {
+            i.setChildrenStyle(style);
+        }
+    }
 
     void setKey(unsigned key) { _key = key; }
     unsigned key() const { return _key; }
