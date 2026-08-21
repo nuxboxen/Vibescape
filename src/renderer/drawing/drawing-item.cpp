@@ -694,8 +694,12 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     // When this happens, we want to enforce the use of RGB so the results can
     // be combined correctly. Use of INT8 surface can only combine with other INT8 surfaces
     static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+
     auto interp_space = _style.color_interpolation;
-    auto target_space = (!interp_space && dc.getColorSpace()) ? srgb : interp_space;
+    auto parent_space = dc.getSurfaceColorSpace();
+    // Checking parent_space here disables color interpolation when parent surface
+    // is an Integer surface which we don't support any color space conversions for
+    auto target_space = parent_space && interp_space ? interp_space : parent_space;
 
     std::unique_lock<std::mutex> lock;
 
@@ -744,7 +748,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
         || _blend_mode != SP_CSS_BLEND_NORMAL     // 5. it has blend mode
         || _isolation == SP_CSS_ISOLATION_ISOLATE // 6. it is isolated
         || (_child_type == ChildType::ROOT && isolate_root) // 7. it is the root and needs isolation
-        || (dc.getColorSpace() != target_space)   // 9. different rendering color spaces
+        || (parent_space != target_space)         // 9. different rendering color spaces
         || (bool)_cache                           // 8. it is to be cached
         ;
 
@@ -857,7 +861,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     // converted to sRGB when the dc has a non-null color space set.
     auto src_space = intermediate->getColorSpace();
     auto dest_space = dc.getSurfaceColorSpace();
-    if (!src_space && dest_space) {
+    if (!src_space && dest_space) { // This should never happen, keep as reference
         // This means the destination is floating point and the source is integer
         std::cerr << "Warning: Slowly converting from Integer to Floating point in drawing surface!\n";
         auto floating_surface = intermediate->convertedToFloat();

@@ -9,7 +9,8 @@
 #define INKSCAPE_UI_WIDGET_CANVAS_PIXELSTREAMER_H
 
 #include <2geom/int-point.h>
-#include <cairomm/surface.h>
+
+#include "renderer/surface.h"
 
 namespace Inkscape {
 namespace UI {
@@ -43,7 +44,7 @@ public:
      * The surface must be returned to the PixelStreamer by calling finish(), in order to deallocate
      * GL resourecs.
      */
-    virtual Cairo::RefPtr<Cairo::ImageSurface> request(Geom::IntPoint const &dimensions, bool nogl = false) = 0;
+    virtual std::shared_ptr<Renderer::Surface> request(Geom::IntPoint const &dimensions, bool nogl = false) = 0;
 
     /**
      * Give back a drawing surface produced by request(), uploading the contents to the currently bound texture.
@@ -52,7 +53,7 @@ public:
      * If junk is true, then the surface will be junked instead, meaning nothing will be done with the contents,
      * and its GL resources will simply be deallocated.
      */
-    virtual void finish(Cairo::RefPtr<Cairo::ImageSurface> surface, bool junk = false) = 0;
+    virtual void finish(std::shared_ptr<Renderer::Surface> surface, bool junk = false) = 0;
 };
 
 } // namespace Widget

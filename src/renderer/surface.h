@@ -48,7 +48,7 @@ public:
     /**
      * Import into this surface a legacy sRGB ARGB32 formatted cairo surface. It will convert from int to float.
      */
-    explicit Surface(Cairo::RefPtr<Cairo::ImageSurface> const &argb32_source);
+    explicit Surface(Cairo::RefPtr<Cairo::ImageSurface> const &argb32_source, bool convert = true);
 
     /**
      * Return a copy of this INT surface as a float surface or visa versa. Returns self if already in that format.
@@ -147,6 +147,13 @@ public:
      * Set the mime data information when this surface was constructed from outside images.
      */
     void setMimeData(std::string const &format, std::string const &data);
+
+    /**
+     * Set and get a user datum against the surface using a key. Does not store this against
+     * the cairo surface itself, only stored in the local object.
+     */
+    void setUserData(const void *key, void *datum) { _user_data[key] = datum; }
+    void *getUserData(const void *key) { return _user_data[key]; }
 
     /**
      * Get the first valid mime type data from this surface. see setMimeData.
@@ -267,6 +274,7 @@ protected:
     const double _device_scale;
     mutable std::shared_ptr<Colors::Space::AnySpace> _color_space;
 
+    std::map<const void *, void *> _user_data;
 public:
 #ifdef UNIT_TEST
     /**

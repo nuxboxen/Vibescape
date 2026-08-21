@@ -27,13 +27,17 @@ Surface::Surface(Geom::IntPoint const &dimensions, int device_scale, std::shared
     , _color_space(color_space)
 {}
 
-Surface::Surface(Cairo::RefPtr<Cairo::ImageSurface> const &argb32_source)
+Surface::Surface(Cairo::RefPtr<Cairo::ImageSurface> const &argb32_source, bool convert)
     : _dimensions{argb32_source->get_width(), argb32_source->get_height()}
     , _device_scale{argb32_source->get_device_scale()}
-    , _color_space(Colors::Manager::get().find(Colors::Space::Type::RGB))
 {
-    auto pa = PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(getCairoSurfaces()[0]);
-    PixelAccess<CAIRO_FORMAT_ARGB32, 3>(argb32_source).convertTypeInto(pa);
+    if (convert) {
+        _color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
+        auto pa = PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(getCairoSurfaces()[0]);
+        PixelAccess<CAIRO_FORMAT_ARGB32, 3>(argb32_source).convertTypeInto(pa);
+    } else {
+        _surfaces.emplace_back(argb32_source);
+    }
 }
 
 #ifdef UNIT_TEST
@@ -74,6 +78,8 @@ Surface Surface::convertedToFloat() const
         auto pa = PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(ret.getCairoSurfaces()[0]);
         PixelAccess<CAIRO_FORMAT_ARGB32, 3>(_surfaces[0]).convertTypeInto(pa);
     }
+
+    ret._user_data = _user_data;
     return ret;
 }
 
@@ -93,6 +99,8 @@ Surface Surface::convertedToInt() const
         auto pa = PixelAccess<CAIRO_FORMAT_ARGB32, 3>(ret.getCairoSurfaces()[0]);
         PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(_surfaces[0]).convertTypeInto(pa);
     }
+
+    ret._user_data = _user_data;
     return ret;
 }
 
@@ -192,6 +200,7 @@ void Surface::convertToColorSpace(std::shared_ptr<Colors::Space::AnySpace> const
 std::shared_ptr<Surface> Surface::convertedToColorSpace(std::shared_ptr<Colors::Space::AnySpace> const &color_space) const
 {
     auto dest = similar(_dimensions, color_space);
+    dest->_user_data = _user_data;
     if (ready()) {
         if (color_space && color_space->getType() == Colors::Space::Type::Alpha) {
             dest->run_pixel_filter(PixelFilter::AlphaSpaceExtraction(), *this);

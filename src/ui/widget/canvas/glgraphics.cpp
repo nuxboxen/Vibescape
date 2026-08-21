@@ -602,9 +602,7 @@ std::shared_ptr<Renderer::Surface> GLGraphics::request_tile_surface(Geom::IntRec
 
     {
         auto g = std::lock_guard(ps_mutex);
-        auto argb32 = pixelstreamer->request(rect.dimensions() * scale_factor, nogl);
-        // Expensive conversion from INT32 to FLOAT128
-        surface = std::make_shared<Renderer::Surface>(argb32);
+        return pixelstreamer->request(rect.dimensions() * scale_factor, nogl);
     }
 
     return surface;
@@ -619,12 +617,12 @@ void GLGraphics::draw_tile(Fragment const &fragment, std::shared_ptr<Renderer::S
 
     glActiveTexture(GL_TEXTURE0);
     texture = texturecache->request(surface_size); // binds
-    pixelstreamer->finish(surface->exportToARGB32()); // uploads content
+    pixelstreamer->finish(surface); // uploads content
 
     if (outlines_enabled) {
         glActiveTexture(GL_TEXTURE1);
         outline_texture = texturecache->request(surface_size);
-        pixelstreamer->finish(outline_surface->exportToARGB32());
+        pixelstreamer->finish(outline_surface);
     }
 
     setup_tiles_pipeline();
@@ -642,7 +640,7 @@ void GLGraphics::draw_tile(Fragment const &fragment, std::shared_ptr<Renderer::S
 void GLGraphics::junk_tile_surface(std::shared_ptr<Renderer::Surface> surface)
 {
     auto g = std::lock_guard(ps_mutex);
-    pixelstreamer->finish(surface->exportToARGB32(), true);
+    pixelstreamer->finish(surface, true);
 }
 
 void GLGraphics::setup_widget_pipeline(Fragment const &view)
@@ -824,8 +822,7 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, std::sha
 
         // Lease out a PixelStreamer mapping to draw on.
         auto surface_size = rect.dimensions() * scale_factor;
-        // Expensive conversion from INT32 to FLOAT128
-        auto surface = std::make_shared<Renderer::Surface>(pixelstreamer->request(surface_size));
+        auto surface = pixelstreamer->request(surface_size);
 
         // Actually draw the content with Cairo.
         auto cr = std::make_shared<Renderer::Context>(*surface);
@@ -838,7 +835,7 @@ void GLGraphics::paint_widget(Fragment const &view, PaintArgs const &a, std::sha
         // Convert the surface to a texture.
         glActiveTexture(GL_TEXTURE0);
         auto texture = texturecache->request(surface_size);
-        pixelstreamer->finish(surface->exportToARGB32());
+        pixelstreamer->finish(surface);
 
         // Paint the texture onto the view.
         glUseProgram(texcopy.id);
