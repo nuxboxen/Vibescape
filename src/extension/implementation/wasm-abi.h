@@ -20,10 +20,13 @@
 #include <utility>
 #include <vector>
 #include <wasm.h>
+#include <2geom/path-sink.h>
+#include <2geom/pathvector.h>
 
 class SPDesktop;
 class SPDocument;
 class SPItem;
+class SPObject;
 
 namespace Inkscape {
 class Selection;
@@ -33,10 +36,35 @@ class Node;
 } // namespace XML
 namespace Extension {
 class Effect;
+class Extension;
 } // namespace Extension
 } // namespace Inkscape
 
 namespace Inkscape::Extension::Implementation {
+
+/**
+ * An open path builder, behind a handle.
+ *
+ * The sink has to stay ALIVE between calls, not be rebuilt around the vector each time.
+ * Geom::PathIteratorSink is a streaming interface carrying the subpath in progress and whether
+ * one is open at all; feeding it a finished PathVector leaves nothing open, so the next lineTo
+ * takes its implicit-moveto branch and starts again from wherever _start_p happens to be.
+ *
+ * Declaration order matters: `paths` is constructed before `sink`, which holds a reference to
+ * it, and the deque that stores these never moves an element.
+ */
+struct WasmPathBuilder
+{
+    Geom::PathVector paths;
+    Geom::PathBuilder sink{paths};
+
+    /** The paths built so far, closing off whatever subpath is open. flush() is idempotent. */
+    Geom::PathVector const &finished()
+    {
+        sink.flush();
+        return paths;
+    }
+};
 
 /**
  * What a handle refers to.
@@ -52,7 +80,8 @@ enum class WasmHandleKind
     Node,
     NodeList,
     NodeSnapshot,
-    StringList
+    StringList,
+    PathBuilder
 };
 
 /**
@@ -138,6 +167,18 @@ public:
     SPItem *itemFor(Inkscape::XML::Node *node) const;
 
     /**
+     * The object behind a node, whether or not it draws anything.
+     *
+     * itemFor() narrows to SPItem, which is right for the geometry queries and wrong for the
+     * ones that apply to anything in the tree: a <title>, a <defs>, a gradient stop all have a
+     * label and a description, and none of them is an item.
+     *
+     * @return nullptr when the node has no object at all, which a comment or a node not yet
+     *         parented does not.
+     */
+    SPObject *objectFor(Inkscape::XML::Node *node) const;
+
+    /**
      * @return the node a NodeList handle stands for, or nullptr if it is not one.
      *
      * A NodeList is its parent node: DOM wants a live collection, and re-reading the node on
@@ -167,6 +208,20 @@ public:
      */
     int32_t makeNodeSnapshot(std::vector<Inkscape::XML::Node *> nodes);
 
+    /**
+     * Open a path builder and hand back a handle to it.
+     *
+     * The builder is Inkscape's own: a Geom::PathVector filled through Geom::PathBuilder, which
+     * is 2geom's PathSink. A plugin drives the verbs SVG has and never spells a coordinate, so
+     * what it produces is written by sp_svg_write_path exactly as every other path in the
+     * document is. 36 of the 166 shipped Python extensions assign a `d` they formatted
+     * themselves, each one slightly differently.
+     *
+     * Lives as long as the invocation, like every other handle here.
+     */
+    int32_t makePathBuilder();
+    WasmPathBuilder *getPathBuilder(int32_t handle) const;
+
     /** @return the snapshot for @a handle, or nullptr if it is unknown or not one. */
     std::vector<Inkscape::XML::Node *> const *getNodeSnapshot(int32_t handle) const;
 
@@ -180,7 +235,7 @@ public:
      * absence rather than inventing a plausible answer -- there genuinely is no current
      * layer when nothing is being looked at.
      */
-    void setSession(SPDesktop *desktop, Inkscape::Selection *selection, Effect *effect);
+    void setSession(SPDesktop *desktop, Inkscape::Selection *selection, Extension *extension);
 
     /**
      * Point the invocation at the backend's cancellation flag.
@@ -192,7 +247,57 @@ public:
     bool isCancelled() const { return _cancelled && *_cancelled; }
     SPDesktop *desktop() const { return _desktop; }
     Inkscape::Selection *selection() const { return _selection; }
-    Effect *effect() const { return _effect; }
+    /**
+     * The extension being run, for its parameters and its id.
+     *
+     * An Extension rather than an Effect: everything reached through it -- get_param_*,
+     * set_param_any, get_id -- is declared there, and an <output> or <input> module is not an
+     * Effect but has parameters just the same.
+     */
+    Extension *extension() const { return _extension; }
+
+    /**
+     * Bytes the guest has produced for a file the host will write.
+     *
+     * The guest never touches the filesystem: an input or output backend emits through here and
+     * the host owns the path, which puts the sandbox boundary where it sits everywhere else in
+     * this interface. Capped, because a guest loop appending forever is otherwise a way to
+     * exhaust the host's memory from inside the sandbox.
+     */
+    static constexpr size_t max_output = 64u * 1024u * 1024u;
+    std::string const &output() const { return _output; }
+    bool appendOutput(char const *bytes, size_t length);
+
+    /**
+     * The bytes of the file an <input> module is opening, or null for anything else.
+     *
+     * Null rather than empty, because an empty file is a thing that can happen and a module
+     * asked to open one should be told that rather than told there is no file.
+     */
+    std::string const *input() const { return _input; }
+    void setInput(std::string const *input) { _input = input; }
+
+    /**
+     * Write a byte result into the guest's memory, as writeString() does for text.
+     *
+     * Separate because file contents are not text: they may hold embedded nulls and need not be
+     * valid UTF-8, so they cannot travel as a C string.
+     */
+    bool writeBytes(int32_t offset, int32_t capacity, char const *bytes, size_t length, int32_t &result) const;
+
+    /**
+     * How the undo entry this invocation produces should be named and coalesced.
+     *
+     * Collected here and read by the backend once the guest returns, because the entry is
+     * written by ExecutionEnv::commit() after this invocation and its handle table are gone.
+     *
+     * Empty means unset, and unset keeps the extension's own name -- which is what every
+     * extension written before this relied on, so it has to stay the default.
+     */
+    std::string const &undoLabel() const { return _undo_label; }
+    void setUndoLabel(std::string label) { _undo_label = std::move(label); }
+    std::string const &undoCoalesceKey() const { return _undo_coalesce_key; }
+    void setUndoCoalesceKey(std::string key) { _undo_coalesce_key = std::move(key); }
 
     /**
      * Whether the guest may be given access to [offset, offset + length) of its own memory.
@@ -212,18 +317,27 @@ public:
     /**
      * Write a string result into the guest's memory.
      *
-     * The return value distinguishes three outcomes that callers must be able to tell apart:
+     * @a result is always the length the answer NEEDS, and the answer is written only when
+     * the whole of it fits:
      *
-     *   >= 0             bytes written at @a offset
-     *   STRING_ABSENT    no such value (@a value was null)
-     *   < -1             would not fit; the length needed is (-result - 1), nothing written
+     *   STRING_ABSENT      no such value (@a value was null); nothing else ever answers -1
+     *   n <= @a capacity   the answer, n bytes, written at @a offset
+     *   n >  @a capacity   nothing written; the guest grows its buffer and asks again
      *
-     * Collapsing the last two into one code would leave a guest unable to distinguish an
-     * attribute that is absent from an attribute whose value was too long for the buffer it
-     * offered, and it would silently truncate. Instead the guest sizes its buffer, retries
-     * once, and always gets the whole value.
+     * One number with one meaning, rather than a sign-encoded pair. A guest that already has
+     * a retry helper for this shape -- javelina's java.io.HostIO.ensureRoom is one -- uses
+     * the same helper here rather than a second one for a second convention.
+     *
+     * Absence stays distinct from a short buffer because the two are different facts: an
+     * attribute that is missing and an attribute too long for the buffer offered are
+     * different answers, and a guest told "-1" for both would silently truncate.
+     *
+     * @return false if [@a offset, @a offset + @a capacity) does not lie wholly inside the
+     *         memory, which traps at the call site like every other bad span. The span the
+     *         guest offered is checked before the answer is looked at, so a call is refused
+     *         for what the guest passed and never for what the document happens to contain.
      */
-    int32_t writeString(int32_t offset, int32_t capacity, char const *value) const;
+    bool writeString(int32_t offset, int32_t capacity, char const *value, int32_t &result) const;
 
     /** Write @a count doubles at @a offset. @return false if the span is invalid. */
     bool writeDoubles(int32_t offset, double const *values, int count) const;
@@ -243,8 +357,12 @@ private:
     wasm_memory_t *_memory = nullptr;
     SPDesktop *_desktop = nullptr;
     Inkscape::Selection *_selection = nullptr;
-    Effect *_effect = nullptr;
+    Extension *_extension = nullptr;
     bool const *_cancelled = nullptr;
+    std::string _output;
+    std::string const *_input = nullptr;
+    std::string _undo_label;
+    std::string _undo_coalesce_key;
 
     /** Index 0 is reserved so that a zero handle is always null. */
     std::vector<Handle> _handles;
@@ -262,6 +380,9 @@ private:
 
     /** Backing store for hit-test results; a deque for the same reason as above. */
     std::deque<std::vector<Inkscape::XML::Node *>> _node_snapshots;
+
+    /** Backing store for path builders; a deque for the same reason again. */
+    std::deque<WasmPathBuilder> _path_builders;
 
     /** Nodes created during this invocation, released when it ends; @see own(). */
     std::vector<Inkscape::XML::Node *> _owned;

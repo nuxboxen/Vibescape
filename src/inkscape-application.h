@@ -120,6 +120,18 @@ public:
     void desktopCloseActive();
 
     /****** Actions *******/
+
+    /**
+     * Turn the `--actions` syntax into activatable actions with their parameters typed.
+     *
+     * Public because the extension system needs it: an extension invoking an action has to
+     * spell it somehow, and the choice is between this syntax -- which its author already knows
+     * and which is already documented -- or a second one alongside it. Reusing the parser also
+     * keeps the parameter coercion (bool, double, string, coordinate pairs) from drifting apart
+     * from the command line's, which duplicating it would guarantee in time.
+     */
+    void parse_actions(Glib::ustring const &input, action_vector_t &action_vector);
+
     InkActionExtraData&     get_action_extra_data()     { return _action_extra_data;  }
     InkActionEffectData&    get_action_effect_data()    { return _action_effect_data; }
     InkActionHintData&      get_action_hint_data()      { return _action_hint_data;   }
@@ -179,7 +191,6 @@ protected:
     void on_activate();
     void on_open(const Gio::Application::type_vec_files &files, const Glib::ustring &hint);
     void process_document(SPDocument* document, std::string output_path, bool new_window = false);
-    void parse_actions(const Glib::ustring& input, action_vector_t& action_vector);
 
     void redirect_output();
     void shell(bool active_window = false);

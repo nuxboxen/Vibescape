@@ -84,13 +84,18 @@ Inkscape::XML::Node *WasmInvocation::getNode(int32_t handle) const
 
 SPItem *WasmInvocation::itemFor(Inkscape::XML::Node *node) const
 {
+    return cast<SPItem>(objectFor(node));
+}
+
+SPObject *WasmInvocation::objectFor(Inkscape::XML::Node *node) const
+{
     if (!node || !_document) {
         return nullptr;
     }
     // The object tree is rebuilt from the repr by observers, which run later; a plugin that
     // creates a node and measures it in the same breath would otherwise read nothing.
     _document->ensureUpToDate();
-    return cast<SPItem>(_document->getObjectByRepr(node));
+    return _document->getObjectByRepr(node);
 }
 
 int32_t WasmInvocation::makeNodeSnapshot(std::vector<Inkscape::XML::Node *> nodes)
@@ -120,6 +125,17 @@ std::vector<std::string> const *WasmInvocation::getStringList(int32_t handle) co
     return static_cast<std::vector<std::string> const *>(lookup(handle, WasmHandleKind::StringList));
 }
 
+int32_t WasmInvocation::makePathBuilder()
+{
+    _path_builders.emplace_back();
+    return makeHandle(WasmHandleKind::PathBuilder, &_path_builders.back());
+}
+
+WasmPathBuilder *WasmInvocation::getPathBuilder(int32_t handle) const
+{
+    return static_cast<WasmPathBuilder *>(lookup(handle, WasmHandleKind::PathBuilder));
+}
+
 bool WasmInvocation::spanIsValid(int32_t offset, int32_t length) const
 {
     if (!_memory || offset < 0 || length < 0) {
@@ -130,11 +146,20 @@ bool WasmInvocation::spanIsValid(int32_t offset, int32_t length) const
     return static_cast<size_t>(offset) <= size && static_cast<size_t>(length) <= size - static_cast<size_t>(offset);
 }
 
-void WasmInvocation::setSession(SPDesktop *desktop, Inkscape::Selection *selection, Effect *effect)
+void WasmInvocation::setSession(SPDesktop *desktop, Inkscape::Selection *selection, Extension *extension)
 {
     _desktop = desktop;
     _selection = selection;
-    _effect = effect;
+    _extension = extension;
+}
+
+bool WasmInvocation::appendOutput(char const *bytes, size_t length)
+{
+    if (_output.size() + length > max_output) {
+        return false;
+    }
+    _output.append(bytes, length);
+    return true;
 }
 
 char *WasmInvocation::memoryBytes() const
@@ -151,19 +176,45 @@ bool WasmInvocation::readString(int32_t offset, int32_t length, std::string &out
     return true;
 }
 
-int32_t WasmInvocation::writeString(int32_t offset, int32_t capacity, char const *value) const
+bool WasmInvocation::writeString(int32_t offset, int32_t capacity, char const *value, int32_t &result) const
 {
+    // The offered span is checked first, before the answer is even looked at. Checking the
+    // written length instead would make the same call legal or not depending on what the
+    // document contains, and would let a guest name a capacity it does not own so long as
+    // the value that came back happened to be short.
+    if (!spanIsValid(offset, capacity)) {
+        return false;
+    }
+
     if (!value) {
-        return STRING_ABSENT;
+        result = STRING_ABSENT;
+        return true;
     }
 
     auto const length = static_cast<int32_t>(strlen(value));
-    if (length > capacity || !spanIsValid(offset, length)) {
-        return -length - 1; // "needs `length` bytes"; nothing written
+    if (length <= capacity) {
+        memcpy(wasm_memory_data(_memory) + offset, value, static_cast<size_t>(length));
     }
+    // Written when it fit, and otherwise the size to come back with: either way the answer
+    // is its own length. Nothing is written on the short-buffer path.
+    result = length;
+    return true;
+}
 
-    memcpy(wasm_memory_data(_memory) + offset, value, static_cast<size_t>(length));
-    return length;
+bool WasmInvocation::writeBytes(int32_t offset, int32_t capacity, char const *bytes, size_t length,
+                                int32_t &result) const
+{
+    // Same order as writeString: the offered span is checked before the answer is looked at, so
+    // whether a call is legal does not depend on how big the file turned out to be.
+    if (!spanIsValid(offset, capacity)) {
+        return false;
+    }
+    auto const needed = static_cast<int32_t>(length);
+    if (needed <= capacity && length > 0) {
+        memcpy(wasm_memory_data(_memory) + offset, bytes, length);
+    }
+    result = needed;
+    return true;
 }
 
 bool WasmInvocation::writeDoubles(int32_t offset, double const *values, int count) const

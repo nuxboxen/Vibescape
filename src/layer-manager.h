@@ -12,6 +12,7 @@
 #define SEEN_INKSCAPE_LAYER_MANAGER_H
 
 #include <memory>
+#include <vector>
 #include <glibmm/ustring.h>
 
 #include "document-subset.h"
@@ -86,6 +87,20 @@ enum LayerRelativePosition {
 SPObject *create_layer(SPObject *root, SPObject *layer, LayerRelativePosition position);
 SPObject *next_layer(SPObject *root, SPObject *layer);
 SPObject *previous_layer(SPObject *root, SPObject *layer);
+
+/**
+ * The layers a solo or lock-others operation acts on: every layer beside the given one, walking
+ * outwards to the root.
+ */
+std::vector<SPItem *> get_layers_to_toggle(SPObject *layer, SPObject *current_root);
+
+/**
+ * The name a new or renamed layer takes so as not to collide with an existing one, counting up
+ * from any trailing number in the requested label.
+ *
+ * Only the document is needed to answer this, so it is available without a desktop.
+ */
+Glib::ustring next_layer_name(SPDocument *document, SPObject *obj, char const *label);
 
 } // namespace Inkscape
 

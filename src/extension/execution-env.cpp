@@ -179,7 +179,20 @@ ExecutionEnv::undo () {
 
 void
 ExecutionEnv::commit () {
-    DocumentUndo::done(document, Inkscape::Util::Internal::ContextString(_effect->get_name()), "");
+    // The extension names the entry unless its implementation has something better to offer.
+    // An extension that does one thing is well described by its own name; one that does several
+    // -- which is what a plugin API makes possible -- leaves the user reading the plugin's name
+    // where they expected the operation's.
+    auto *imp = _effect->get_imp();
+    auto const label = imp->undoLabel();
+    auto const key = imp->undoCoalesceKey();
+    Glib::ustring const description = label.empty() ? Glib::ustring(_effect->get_name()) : label;
+    if (key.empty()) {
+        DocumentUndo::done(document, Inkscape::Util::Internal::ContextString(description.c_str()), "");
+    } else {
+        DocumentUndo::maybeDone(document, key.c_str(), Inkscape::Util::Internal::ContextString(description.c_str()),
+                                "");
+    }
     Effect::set_last_effect(_effect);
     _effect->get_imp()->commitDocument();
     killDocCache();
