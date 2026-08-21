@@ -16,7 +16,6 @@
   (import "org.inkscape.Document" "createElementNS"  (func $createElementNS (param i32 i32 i32 i32 i32) (result i32)))
   (import "org.inkscape.Document" "createTextNode"   (func $createTextNode (param i32 i32 i32) (result i32)))
   (import "org.inkscape.Document" "createComment"    (func $createComment (param i32 i32 i32) (result i32)))
-  (import "org.inkscape.Document" "getElementById"   (func $getElementById (param i32 i32 i32) (result i32)))
 
   (import "org.inkscape.Node" "appendChild"    (func $appendChild (param i32 i32) (result i32)))
   (import "org.inkscape.Node" "insertBefore"   (func $insertBefore (param i32 i32 i32) (result i32)))

@@ -38,6 +38,19 @@
   (import "org.inkscape.SVGTextContentElement" "getCharNumAtPosition"
     (func $getCharNumAtPosition (param i32 f64 f64) (result i32)))
 
+  (import "org.inkscape.SVGTextContentElement" "toPath"
+    (func $textToPath (param i32 i32 i32) (result i32)))
+  (import "org.inkscape.SVGTextContentElement" "textString"
+    (func $textString (param i32 i32 i32) (result i32)))
+  (import "org.inkscape.SVGTextContentElement" "styleAtPosition"
+    (func $styleAtPosition (param i32 i32 i32 i32) (result i32)))
+  (import "org.inkscape.SVGTextContentElement" "baselines"
+    (func $baselines (param i32 i32 i32) (result i32)))
+  (import "org.inkscape.SVGTextContentElement" "lineCount"
+    (func $lineCount (param i32) (result i32)))
+  (import "org.inkscape.SVGTextContentElement" "fontFamily"
+    (func $fontFamily (param i32 i32 i32 i32) (result i32)))
+
   (memory (export "memory") 1)
 
   (data (i32.const 0)  "label")
@@ -45,13 +58,49 @@
   (data (i32.const 16) "svg:g")
   (data (i32.const 24) "id")
   (data (i32.const 32) "ok-text")
+  (data (i32.const 40) "Hello")
+  (data (i32.const 48) "multiline")
+
+  ;; |a - b| < tol
+  (func $near (param $a f64) (param $b f64) (param $tol f64) (result i32)
+    (f64.lt (f64.abs (f64.sub (local.get $a) (local.get $b))) (local.get $tol)))
+
+  ;; Are the $lenA bytes at 1024 the same as the $lenB bytes at 2048?
+  (func $sameBytes (param $lenA i32) (param $lenB i32) (result i32)
+    (local $i i32)
+    (if (i32.ne (local.get $lenA) (local.get $lenB)) (then (return (i32.const 0))))
+    (block $done
+      (loop $next
+        (br_if $done (i32.ge_s (local.get $i) (local.get $lenA)))
+        (if (i32.ne (i32.load8_u (i32.add (i32.const 1024) (local.get $i)))
+                    (i32.load8_u (i32.add (i32.const 2048) (local.get $i))))
+          (then (return (i32.const 0))))
+        (local.set $i (i32.add (local.get $i) (i32.const 1)))
+        (br $next)))
+    (i32.const 1))
+
+  ;; Are the $len bytes at 1024 the literal at $at?
+  (func $bytesAre (param $at i32) (param $len i32) (result i32)
+    (local $i i32)
+    (block $done
+      (loop $next
+        (br_if $done (i32.ge_s (local.get $i) (local.get $len)))
+        (if (i32.ne (i32.load8_u (i32.add (i32.const 1024) (local.get $i)))
+                    (i32.load8_u (i32.add (local.get $at) (local.get $i))))
+          (then (return (i32.const 0))))
+        (local.set $i (i32.add (local.get $i) (i32.const 1)))
+        (br $next)))
+    (i32.const 1))
 
   (func (export "effect") (param $document i32) (result i32)
-    (local $root i32) (local $label i32) (local $box i32) (local $marker i32)
+    (local $root i32) (local $label i32) (local $box i32) (local $marker i32) (local $multi i32)
+    (local $lenA i32) (local $lenB i32)
     (local $whole f64) (local $part f64) (local $x0 f64) (local $x1 f64)
 
     (local.set $root (call $documentElement (local.get $document)))
     (local.set $label (call $getElementById (local.get $document) (i32.const 0) (i32.const 5)))
+    (local.set $multi (call $getElementById (local.get $document) (i32.const 48) (i32.const 9)))
+    (if (i32.eqz (local.get $multi)) (then (return (i32.const 53))))
     (local.set $box (call $getElementById (local.get $document) (i32.const 8) (i32.const 3)))
     (if (i32.eqz (local.get $label)) (then (return (i32.const 1))))
 
@@ -106,6 +155,67 @@
     ;; plugin can ask without first having to know what it is holding.
     (if (i32.ne (call $getNumberOfChars (local.get $box)) (i32.const 0))
       (then (return (i32.const 16))))
+
+    ;; ── text as outlines ──────────────────────────────────────────────────────
+    ;; The glyph outlines of the shaped run, as path data. hershey.py vendors a complete
+    ;; stroke-font engine because no such operation exists, and every text-to-path extension
+    ;; either does the same or shells out to a second Inkscape.
+    (if (i32.le_s (call $textToPath (local.get $label) (i32.const 1024) (i32.const 900))
+                  (i32.const 0))
+      (then (return (i32.const 40))))
+    ;; A rect has no glyphs, so it answers absent rather than an empty path.
+    (if (i32.ne (call $textToPath (local.get $box) (i32.const 1024) (i32.const 900))
+                (i32.const -1))
+      (then (return (i32.const 41))))
+
+    ;; ── the characters, as a string ───────────────────────────────────────────
+    (if (i32.ne (call $textString (local.get $label) (i32.const 1024) (i32.const 256))
+                (i32.const 5))
+      (then (return (i32.const 42))))
+    (if (i32.eqz (call $bytesAre (i32.const 40) (i32.const 5))) (then (return (i32.const 43))))
+    ;; Across two lines the text is joined, not truncated to the first.
+    (if (i32.ne (call $textString (local.get $multi) (i32.const 1024) (i32.const 256))
+                (i32.const 7))
+      (then (return (i32.const 44))))
+
+    ;; ── line structure ────────────────────────────────────────────────────────
+    (if (i32.ne (call $lineCount (local.get $label)) (i32.const 1)) (then (return (i32.const 45))))
+    (if (i32.ne (call $lineCount (local.get $multi)) (i32.const 2)) (then (return (i32.const 46))))
+    (if (i32.ne (call $lineCount (local.get $box)) (i32.const 0)) (then (return (i32.const 47))))
+
+    ;; One baseline per line, each a segment of four doubles.
+    (if (i32.ne (call $baselines (local.get $label) (i32.const 512) (i32.const 8))
+                (i32.const 1))
+      (then (return (i32.const 48))))
+    (if (i32.ne (call $baselines (local.get $multi) (i32.const 512) (i32.const 8))
+                (i32.const 2))
+      (then (return (i32.const 49))))
+    ;; The two baselines are at different heights, which is what makes them two lines.
+    (if (call $near (f64.load (i32.const 520)) (f64.load (i32.const 552)) (f64.const 0.001))
+      (then (return (i32.const 50))))
+
+    ;; ── resolved style and font ───────────────────────────────────────────────
+    ;; The style in force AT a character. The resolved style has no locally-set properties, so
+    ;; a host writing only what is set answers an empty string.
+    (if (i32.le_s (call $styleAtPosition (local.get $label) (i32.const 0)
+                                         (i32.const 1024) (i32.const 900)) (i32.const 0))
+      (then (return (i32.const 51))))
+
+    ;; The second line of `multiline` overrides fill, so the style at a character in it is not
+    ;; the style at a character in the first. A host ignoring the position would return the
+    ;; same bytes for both.
+    (local.set $lenA (call $styleAtPosition (local.get $multi) (i32.const 0)
+                                            (i32.const 1024) (i32.const 900)))
+    (local.set $lenB (call $styleAtPosition (local.get $multi) (i32.const 5)
+                                            (i32.const 2048) (i32.const 900)))
+    (if (i32.le_s (local.get $lenA) (i32.const 0)) (then (return (i32.const 54))))
+    (if (i32.le_s (local.get $lenB) (i32.const 0)) (then (return (i32.const 55))))
+    (if (call $sameBytes (local.get $lenA) (local.get $lenB)) (then (return (i32.const 56))))
+    ;; The family actually SHAPED with, which is the end of the font-family fallback list and
+    ;; not necessarily anything the document names.
+    (if (i32.le_s (call $fontFamily (local.get $label) (i32.const 0)
+                                    (i32.const 1024) (i32.const 256)) (i32.const 0))
+      (then (return (i32.const 52))))
 
     (local.set $marker (call $createElement (local.get $document) (i32.const 16) (i32.const 5)))
     (call $setAttribute (local.get $marker)

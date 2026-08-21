@@ -5,7 +5,7 @@
 ;;
 ;; It covers the four things the host must get right before any real plugin can run:
 ;;   - an import resolved by the (module, name) pair, not by name alone
-;;   - a memory the host has to find by zipping the module's and instance's exports
+;;   - a memory exported as "memory", which the host looks up by that name
 ;;   - a string handed to the host as (offset, length) into that memory
 ;;   - an entry point taking the document handle and returning a status
 ;;
@@ -29,8 +29,9 @@
   (import "org.inkscape.Document" "documentElement"
     (func $documentElement (param i32) (result i32)))
 
-  ;; The staging buffer. Exported, so a host that did not supply it as an import can
-  ;; still find it among the instance's exports.
+  ;; The staging buffer. The name is not decoration: the host looks it up by it, because
+  ;; WebAssembly 3.0 lets an instance export more than one memory and "the one that is a
+  ;; memory" stops identifying anything as soon as a plugin has two.
   (memory (export "memory") 1)
 
   (data (i32.const 0)  "svg:rect")     ;; [0,8)

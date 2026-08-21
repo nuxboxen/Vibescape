@@ -16,7 +16,6 @@
   (import "org.inkscape.Document" "createElement"    (func $createElement (param i32 i32 i32) (result i32)))
   (import "org.inkscape.Document" "createComment"    (func $createComment (param i32 i32 i32) (result i32)))
   (import "org.inkscape.Document" "getElementById"   (func $getElementById (param i32 i32 i32) (result i32)))
-  (import "org.inkscape.Document" "getComputedStyle" (func $getComputedStyle (param i32) (result i32)))
   (import "org.inkscape.Node"     "appendChild"      (func $appendChild (param i32 i32) (result i32)))
   (import "org.inkscape.Node"     "nodeName"         (func $nodeName (param i32 i32 i32) (result i32)))
   (import "org.inkscape.Node"     "localName"        (func $localName (param i32 i32 i32) (result i32)))
@@ -66,19 +65,30 @@
     (if (i32.eqz (local.get $box)) (then (return (i32.const 1))))
 
     ;; ── the string result, on operations other than getAttribute ──────────────
-    ;; "svg:rect" is 8 bytes. A zero-capacity buffer must report the size needed, not
-    ;; truncate and not claim absence.
-    (if (i32.ne (call $nodeName (local.get $box) (i32.const 1024) (i32.const 0)) (i32.const -9))
+    ;; "svg:rect" is 8 bytes, and the answer is its own length whether or not it fitted. So
+    ;; all three of these report 8, and what separates them is the BUFFER: a short call must
+    ;; leave it alone rather than truncate into it.
+    (i32.store8 (i32.const 1024) (i32.const 90))                          ;; 'Z' sentinel
+
+    ;; A zero-capacity buffer sizes the answer without receiving any of it. This is the probe
+    ;; a guest makes when it has no idea how much room to offer.
+    (if (i32.ne (call $nodeName (local.get $box) (i32.const 1024) (i32.const 0)) (i32.const 8))
       (then (return (i32.const 2))))
-    ;; One byte short is still short.
-    (if (i32.ne (call $nodeName (local.get $box) (i32.const 1024) (i32.const 7)) (i32.const -9))
+    ;; One byte short is still short: 8 again, and still nothing written.
+    (if (i32.ne (call $nodeName (local.get $box) (i32.const 1024) (i32.const 7)) (i32.const 8))
       (then (return (i32.const 3))))
-    ;; Exactly enough fits.
+    ;; Neither short call touched the buffer. Without this the three checks below would pass
+    ;; just as well against a host that truncated, since the length alone cannot tell.
+    (if (i32.ne (i32.load8_u (i32.const 1024)) (i32.const 90))
+      (then (return (i32.const 27))))
+    ;; Exactly enough fits, and now the bytes do arrive.
     (if (i32.ne (call $nodeName (local.get $box) (i32.const 1024) (i32.const 8)) (i32.const 8))
       (then (return (i32.const 4))))
+    (if (i32.ne (i32.load8_u (i32.const 1024)) (i32.const 115))           ;; 's' of "svg:rect"
+      (then (return (i32.const 28))))
 
-    ;; "rect" is 4 bytes.
-    (if (i32.ne (call $localName (local.get $box) (i32.const 1024) (i32.const 1)) (i32.const -5))
+    ;; "rect" is 4 bytes, so a capacity of 1 reports 4 rather than writing one byte of it.
+    (if (i32.ne (call $localName (local.get $box) (i32.const 1024) (i32.const 1)) (i32.const 4))
       (then (return (i32.const 5))))
 
     (local.set $marker (call $createElement (local.get $document) (i32.const 24) (i32.const 5)))

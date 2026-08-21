@@ -19,6 +19,7 @@
 -->
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
      width="400" height="400" viewBox="0 0 400 400">
 
   <!-- Scale as well as translate: with translation alone, a host that forgot to apply the
@@ -55,5 +56,99 @@
     <rect id="inherited" x="60" y="300" width="10" height="10"/>
   </g>
 
-  <sodipodi:namedview id="namedview"/>
+  <!-- Lookup and identity. Deliberately NOT inside <g id="group">, whose child count three
+       separate cases assert, and nowhere near (9000,9000), where a hit test asserts that
+       nothing is found. Adding to a shared fixture means checking what already reads it. -->
+  <defs>
+    <linearGradient id="grad">
+      <stop offset="0" style="stop-color:#000000"/>
+      <stop offset="1" style="stop-color:#ffffff"/>
+    </linearGradient>
+    <clipPath id="clip"><circle cx="5" cy="5" r="5"/></clipPath>
+    <mask id="msk"><circle cx="5" cy="5" r="5" style="fill:#ffffff"/></mask>
+    <marker id="arrow" refX="0" refY="0" markerWidth="4" markerHeight="4" orient="auto">
+      <path d="M 0,-2 L 4,0 L 0,2 Z"/>
+    </marker>
+    <!-- A live path effect, so pathEffects has a non-empty case to answer. The markup shape
+         is taken from testfiles/lpe_tests/Inkscape_0_92_64.svg rather than invented; "offset"
+         is a registered key (live_effects/effect.cpp) and is used here because it changes the
+         geometry unconditionally. Effects that only reshape smooth nodes (bspline, spiro) and
+         ones that need a linked path (bounding_box) were tried first and are all no-ops on
+         plain rectangular input, which left the before and after answers identical. -->
+    <inkscape:path-effect effect="offset" id="pe-offset" is_visible="true"
+                          offset="5" unit="px" linejoin_type="miter" miter_limit="4"/>
+  </defs>
+
+  <!-- Referenced resources, as PATHS rather than rects: cover-lookup asserts an exact rect
+       count, so anything added here has to stay out of that total. -->
+  <g id="referencing">
+    <path id="clipped"     d="M 200,350 h 10 v 10 h -10 z" clip-path="url(#clip)"/>
+    <path id="masked"      d="M 220,350 h 10 v 10 h -10 z" mask="url(#msk)"/>
+    <path id="marked-path" d="M 240,350 L 260,350" style="stroke:#000000" marker-end="url(#arrow)"/>
+    <!-- Two overlapping and two disjoint shapes, so a boolean operation has both a non-empty
+         and an empty answer to produce, and a collision test has both outcomes to find. -->
+    <path id="overlapA" d="M 0,400 h 40 v 40 h -40 z"/>
+    <path id="overlapB" d="M 20,420 h 40 v 40 h -40 z"/>
+    <path id="apartC"   d="M 200,400 h 10 v 10 h -10 z"/>
+    <!-- Two segments that cross exactly once, at (150,415). -->
+    <path id="crossX" d="M 140,415 L 160,415"/>
+    <path id="crossY" d="M 150,405 L 150,425"/>
+    <!-- The SAME geometry under the two fill rules: a square with a smaller square inside it,
+         wound the same way. Under even-odd the inner square is a hole; under nonzero it is
+         filled. Every boolean and offset operation takes a fill rule, so an implementation
+         that hardcodes one produces a plausible WRONG answer for one of these and no answer
+         differs enough to notice. That is exactly what happened, and these two exist so it
+         cannot happen silently again. -->
+    <path id="donutEven"    d="M 0,500 h 60 v 60 h -60 z M 20,520 h 20 v 20 h -20 z"
+          style="fill-rule:evenodd"/>
+    <!-- Crosses itself exactly once, which is what makes "a rectangle does not" mean
+         something. Self-intersection is a different question from one path meeting another,
+         and the one worth asking before a boolean operation. -->
+    <path id="bowtie" d="M 100,500 L 160,560 L 160,500 L 100,560 Z" style="fill:#888888"/>
+    <path id="donutNonzero" d="M 0,500 h 60 v 60 h -60 z M 20,520 h 20 v 20 h -20 z"
+          style="fill-rule:nonzero"/>
+    <!-- Two LPE items, because pathData and pathDataBeforeLPE differ for one kind and
+         are identical for the other. That is a property of Inkscape, not of this API:
+         curve_for_item returns the path BEFORE the effect when the item is an SPPath and the
+         path AFTER it for every other SPShape, while curve_for_item_before_LPE always returns
+         the input (path-util.cpp curve_for_item()).
+
+         Worth knowing when reading the saved file: Inkscape rewrites an LPE-bearing <rect> as
+         <path sodipodi:type="rect">. The repr name becomes svg:path, so getElementsByTagName
+         counts it as a path, while the OBJECT is still an SPRect and therefore takes the
+         non-SPPath branch above. Both facts are asserted, in cover-lookup and cover-path. -->
+    <rect id="effected" x="300" y="400" width="20" height="20"
+          inkscape:path-effect="#pe-offset"/>
+    <path id="effected-path" d="M 340,400 L 360,400 L 360,420 L 340,420 Z"
+          inkscape:original-d="M 340,400 L 360,400 L 360,420 L 340,420 Z"
+          inkscape:path-effect="#pe-offset"/>
+  </g>
+
+  <!-- Two lines, so line counting and baseline collection have more than one of each to find.
+       sodipodi:role="line" is what makes a tspan a LINE rather than a positioned run: Inkscape
+       does its own line layout for classic text and keys it off that attribute
+       (sp-text.cpp SPText line layout). Tspans with differing y and no role are one line with two runs. -->
+  <text id="multiline" x="300" y="300" style="font-size:10px"><tspan
+      sodipodi:role="line" x="300" y="300">One</tspan><tspan
+      sodipodi:role="line" x="300" y="312" style="fill:#00ff00">Two</tspan></text>
+
+  <g id="meta">
+    <rect id="tagged"        class="marked" x="100" y="350" width="10" height="10"/>
+    <rect id="hidden-rect"   x="120" y="350" width="10" height="10" style="display:none"/>
+    <rect id="locked-rect"   x="140" y="350" width="10" height="10" sodipodi:insensitive="true"/>
+    <rect id="gradient-user" x="160" y="350" width="10" height="10" style="fill:url(#grad)"/>
+    <!-- title and desc are CHILD ELEMENTS, not attributes, which is why reading them needs
+         host support at all. -->
+    <rect id="described"     x="180" y="350" width="10" height="10">
+      <title>A title</title>
+      <desc>A description</desc>
+    </rect>
+  </g>
+
+  <!-- The display unit is declared rather than left to Inkscape's default, so the test for
+       it asserts something this file states instead of something the build happens to do.
+       The `inkscape` prefix is bound on the root element, which is where Inkscape itself
+       writes it. Binding it on this element instead is valid XML that the repr layer does not
+       pick up, so the attribute would be carried and silently ignored. -->
+  <sodipodi:namedview id="namedview" inkscape:document-units="mm"/>
 </svg>

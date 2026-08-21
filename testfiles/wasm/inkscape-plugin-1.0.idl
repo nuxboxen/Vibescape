@@ -9,7 +9,6 @@
 //   LOWERING RULES     below -- how they cross the boundary, which is the actual ABI
 //   *.wat              the same rules exercised, by hand, with no toolchain involved
 //   run-tests.sh       runs them against a built Inkscape
-//   check-coverage.sh  cross-references this file against the host and the modules
 //
 // The .wat modules are the executable half of the specification. They were written against
 // this document rather than generated from it, which is the point: if they can be written by
@@ -28,7 +27,7 @@
 // SCOPE RULE.  Mutation is UNFILTERED: an authoring tool must be able to write markup for
 // semantics it does not itself execute (SMIL, scripting, foreignObject, RDF, foreign
 // namespaces). `XML::Node` is generic XML, and an element with no SPObject keeps its repr
-// node (sp-object.cpp:729), so this falls out for free. Queries are filtered to
+// node (sp-object.cpp SPObject::getLinked()), so this falls out for free. Queries are filtered to
 // SVG2/CSSOM INTERSECT what Inkscape actually implements.
 //
 // ============================================================================
@@ -56,21 +55,35 @@
 //     DOMPoint out                                       2 x f64 at outoff  (x, y)
 //     nullable / absent result                           i32 present flag (0 = absent)
 //
-//   SINGLE SCALAR RETURN, OUT-PARAMS OTHERWISE. Not a VM limitation (wasm_capi.c:936
-//   records that multi-value broke the old single-return shape) but a binding-language one:
-//   a Java method returns one value. Out-params keep C, Zig and Java byte-identical at the
-//   boundary, which is the property under test.
+//   SINGLE SCALAR RETURN, OUT-PARAMS OTHERWISE. A binding-language constraint, not an engine
+//   one: multi-value is core WebAssembly and every engine has it, but a Java method returns
+//   one value. Out-params keep C, Zig and Java byte-identical at the boundary, which is the
+//   property under test. The authority for this rule is that constraint and not any engine's
+//   source: a normative definition that reaches into one engine's internals has already
+//   conceded the engine-agnostic claim, whatever it goes on to say.
 //
-//   STRING RETURN PROTOCOL -- closes plan §2b.1 (host_io.h conflates "absent" with
-//   "did not fit"; both return -1, so a plugin cannot distinguish a missing attribute from
-//   a short buffer). Every DOMString-returning operation takes (outoff, outcap) and returns:
-//        >= 0  ... byte length written at outoff   (fits: length <= outcap)
-//        -1    ... absent / null                    (distinct from the below)
-//        < -1  ... did NOT fit; required length is (-result - 1). Nothing written.
+//   STRING RETURN PROTOCOL. Every DOMString-returning operation takes (outoff, outcap) and
+//   returns THE LENGTH ITS ANSWER NEEDS, writing only when the whole answer fits:
+//        -1            ... absent / null. Nothing else ever answers -1.
+//        n <= outcap   ... the answer, n bytes, written at outoff.
+//        n >  outcap   ... nothing written; the answer needs n bytes. Grow and ask again.
 //   A plugin sizes its buffer, retries once, and never truncates silently. `outcap` is
 //   mandatory: an out-offset without a capacity cannot be bounds-checked by the host.
 //
-//   BOUNDS CHECKING IS MANDATORY, NOT PER-EMBEDDER (plan §2b.3). Before any read or write
+//   One number with one meaning -- the answer's length -- rather than a sign-encoded pair.
+//   This is deliberately the same convention javelina's host floor uses for its own
+//   variable-length natives (docs/host-abi.md), so a guest needs ONE retry helper for both
+//   surfaces rather than one per convention; `java.io.HostIO.ensureRoom` is that helper, and
+//   nothing about it is Inkscape-specific. Collapsing "absent" into "did not fit" is the bug
+//   this shape exists to prevent, in either direction: a plugin that cannot tell a missing
+//   attribute from a short buffer silently truncates or invents an absence.
+//
+//   A span that does not lie inside the memory is NOT part of this protocol -- it is a trap,
+//   like every other bad span. The (outoff, outcap) the guest offers is checked before the
+//   answer is looked at, so whether a call is refused depends on what the plugin passed and
+//   never on what the document happens to contain.
+//
+//   BOUNDS CHECKING IS MANDATORY, NOT PER-EMBEDDER. Before any read or write
 //   the host MUST verify [off, off+len) lies inside wasm_memory_data_size, computed without
 //   integer overflow (`off >= 0 && len >= 0 && off <= n && len <= n - off`). Failure is a
 //   trap, never a silent clamp.
@@ -105,41 +118,70 @@
 //   catches; against this ABI the caller tests first, because it can.
 //
 //   ERRORS. Operations that DOM defines as throwing raise a trap carrying the DOMException
-//   name. Rationale: pulling tag+payload out of a guest throw needs exn_read, which has no
-//   standard C spelling -- so errors travel host->guest as traps, and guest->host as a
-//   status code plus message in staging memory. Stock wasm.h only (plan §2b).
+//   name. That direction is settled by the argument above -- against this ABI the caller can
+//   test first, and a wasm trap is not catchable by the guest anyway.
 //
-//   ENTRY POINT. The host calls one exported function; the `.inx` names it, because stock
-//   wasm.h has no lookup-export-by-name and javelina exports canonical Java names such as
-//   `org.inkscape.Plugin.effect(I)I`. Naming it in the .inx keeps the host engine-neutral
-//   and needs no compiler change:
-//        <wasm module="gnome.wasm" entry="org.inkscape.Plugin.effect(I)I"/>
+//   The other direction is an exception the plugin let escape, which §7.1.8 makes a distinct
+//   outcome from a trap: a trap is a fault in the module, an escaped throw is one the plugin
+//   never caught, and they are not the same fact about the plugin's code. The host tells them
+//   apart and reads the escaped exception's tag and thrown values with §7.1.12 `exn_read`.
+//   Values the host cannot read it does not pretend to: a thrown WasmGC aggregate is opaque
+//   to an embedder (§7.1) and is reported as a reference, not rendered.
+//
+//   `exn_read` IS a standard spelling -- it is a Core Spec §7.1 embedding operation, and
+//   javelina renders it as `wasm_exception_read` alongside `wasm_exception_tag` and
+//   `wasm_trap_exception`. What is stale is the community `wasm-c-api` HEADER, which renders
+//   the pre-3.0 appendix; an engine that lacks these is behind the spec, and catching up is a
+//   bounded, localized cost. The spec is the interface. (Earlier drafts of this file claimed
+//   exn_read had no standard C spelling and routed around it; that claim was simply wrong.)
+//
+//   The status-code-plus-message form the entry point returns is NOT that mechanism and is
+//   not a substitute for it. It is the ordinary way a plugin reports a failure it handled
+//   itself, and it is also what still works on an engine whose header has not caught up.
+//
+//   ENTRY POINT. The host calls one exported function, found by name with §7.1.7
+//   `instance_export`. The `.inx` names it because a guest language decorates the symbol
+//   however it likes -- javelina exports canonical Java names such as
+//   `org.inkscape.Plugin.effect(I)I` -- so there is no name the host could guess. Naming it
+//   in the .inx keeps the host engine-neutral and needs no compiler change:
+//
+//        <wasm>
+//            <module entry="org.inkscape.Plugin.effect(I)I" location="inx">gnome.wasm</module>
+//        </wasm>
+//
+//   The module is a nested element, not an attribute pair on <wasm>: its text content is the
+//   filename, resolved through the same `location` vocabulary <script> and <xslt> dependencies
+//   use, so a missing .wasm is reported by check() like any other missing file. The shape is
+//   pinned by inkex's RelaxNG schema, `inx.wasm`.
 //   Signature: (param i32 document) (result i32 status). status 0 = ok; nonzero = failure,
 //   and the host rolls back via ExecutionEnv::undo(). The plugin MUST NOT commit undo;
-//   ExecutionEnv::commit() owns DocumentUndo::done() (plan §6).
+//   ExecutionEnv::commit() owns DocumentUndo::done().
 //
-//   STAGING MEMORY. The host is on both sides of instantiation, so no lookup-by-name (which
-//   stock wasm.h lacks) is ever required: if the plugin IMPORTS a memory the host supplied
-//   that extern itself; if the plugin EXPORTS one the host finds it by zipping
-//   wasm_module_exports with wasm_instance_exports positionally. Exactly one must hold, or
-//   the load fails.
+//   STAGING MEMORY. The plugin MUST export a linear memory under the name `memory`; the host
+//   finds it by name with §7.1.7 `instance_export`, exactly as it finds the entry point.
+//
+//   The name is mandatory rather than incidental because kind no longer identifies it:
+//   WebAssembly 3.0 permits an instance more than one memory, so "the export that is a
+//   memory" picks arbitrarily among them the moment a plugin has two. Naming it also makes
+//   the load failure precise -- a plugin that exports no `memory` is rejected as such,
+//   instead of linking and then failing at the first string that crosses.
 //   Arena discipline: the guest owns all offsets and passes them explicitly. The host never
 //   picks an offset and never writes outside a caller-supplied (outoff, outcap) span. This
-//   is what makes interleaved calls safe -- the offset-0 convention in HostIO does not
-//   survive a document API (plan §2b.2).
+//   is what makes interleaved calls safe -- a fixed offset-0 convention does not survive an
+//   API where one call's result is another call's argument.
 //
 //   DOCUMENT SYNC. Item queries read the SPObject tree, which lags repr mutation. Every
 //   [Derived] operation implicitly calls SPDocument::ensureUpToDate() before reading, so a
-//   plugin may mutate and immediately measure. Resolves plan §6's open question in favour
-//   of implicit sync: an explicit flush call is a correctness footgun that every plugin
-//   author would have to know about.
+//   plugin may mutate and immediately measure. Sync is implicit rather than an explicit
+//   flush call because a flush is a correctness footgun: every plugin author would have to
+//   know about it, and forgetting it yields a stale answer rather than an error.
 
 
 // ============================================================================
 // PART 1 -- MUTATION.  DOM Living Standard, over Inkscape::XML::Node. UNFILTERED.
 // ============================================================================
 
-// DOM constants are published as-is. Inkscape's enum class NodeType (xml/node.h:39) has
+// DOM constants are published as-is. Inkscape's enum class NodeType (xml/node.h NodeType()) has
 // five members numbered from 0 starting at DOCUMENT_NODE; the host translates. Publishing
 // Inkscape's numbering instead would be an invented API wearing a DOM name.
 interface Node {
@@ -206,6 +248,33 @@ interface Document : Node {
   Node    createTextNode(DOMString data);          // DOM. <- createTextNode()
   Node    createComment(DOMString data);           // DOM. <- createComment()
   Element? getElementById(DOMString elementId);    // DOM. <- SPDocument::getObjectById()
+
+  // Lookup. A quarter of the shipped Python extensions walk the tree by hand looking for
+  // elements of a type, because a subprocess holding serialised SVG has nothing better;
+  // Inkscape has had indexed lookup and real CSS selector matching the whole time. The names
+  // are DOM's, because DOM already named these operations.
+  NodeList  getElementsByTagName(DOMString localName);
+                                                   // <- getObjectsByElement()   (document.h getObjectsByElement())
+                                                   //    the BARE local name: "svg:" is added
+                                                   //    internally, so "svg:rect" finds nothing.
+  NodeList  getElementsByClassName(DOMString names);
+                                                   // <- getObjectsByClass()     (document.h getObjectsByClass())
+  Element?  querySelector(DOMString selectors);    // <- getObjectsBySelector()  (document.h getObjectsBySelector())
+                                                   //    first match in document order, or null
+  NodeList  querySelectorAll(DOMString selectors); // <- ditto, all matches
+
+  // A document-wide unique id. Without it every plugin creating elements invents its own
+  // scheme and hopes: ids collide silently, and the loser is whichever element something else
+  // referenced -- a gradient, a clip path, a use.
+  DOMString generateId(DOMString prefix);       // <- generate_unique_id()    (document.h generate_unique_id())
+
+  // The document's registry of a kind of resource. The keys are Inkscape's own and the set is
+  // exactly what registers itself: "gradient", "pattern", "filter", "font", "image", "symbol",
+  // "mask", "grid", "guide", "layer", "page", "hatch", "script", "iccprofile". Notably NOT
+  // "marker" -- markers do not register, so asking answers empty rather than answering wrongly.
+  NodeList  resourceList(DOMString key);        // <- getResourceList()       (document.h getResourceList())
+
+  Element?  resolveHref(DOMString href);        // <- getObjectByHref()       (document.h getObjectByHref())
 };
 
 
@@ -229,13 +298,76 @@ dictionary SVGBoundingBoxOptions {                 // SVG2. Maps onto visualBoun
 interface SVGGraphicsElement : Element {           // SVG2.
   DOMRect?   getBBox(optional SVGBoundingBoxOptions options);
                     // <- SPItem::visualBounds(affine, wfilter, wclip, wmask) / geometricBounds()
-                    //    (sp-item.h:243,253). inkex can produce only a geometric box, and
+                    //    (sp-item.h geometricBounds()). inkex can produce only a geometric box, and
                     //    for text not even that -- see PART 4 note.
-  DOMMatrix? getCTM();                             // <- i2doc_affine()  (sp-item.h:395)
-  DOMMatrix? getScreenCTM();                       // <- i2dt_affine()   (sp-item.h:400)
+  DOMMatrix? getCTM();                             // <- i2doc_affine()  (sp-item.h i2doc_affine())
+  DOMMatrix? getScreenCTM();                       // <- i2dt_affine()   (sp-item.h i2dt_affine())
                                                    //    ABSENT in the headless effect()
-                                                   //    overload (implementation.h:150): no
+                                                   //    overload (implementation.h Implementation::effect(.., SPDocument*)): no
                                                    //    desktop exists. Not identity -- absent.
+
+  // getBBox is defined in the element's OWN user space, so two elements under different
+  // groups return boxes that cannot be compared. This is the same box with every ancestor
+  // transform folded in, which is what align, distribute and measure all actually want.
+  // Composing it guest-side means walking to the root multiplying getCTM results -- the
+  // arithmetic Inkscape already did, and an easy one to get wrong.
+  DOMRect?   documentBBox(optional SVGBoundingBoxOptions options);
+                                                   // <- SPItem::documentBounds(BBoxType)
+                                                   //    (sp-item.h documentGeometricBounds())
+
+  // Resolved state, not an attribute reading: hidden follows from the style cascade, locked
+  // from sodipodi:insensitive on this element OR any ancestor. A plugin skipping what the user
+  // has made uneditable needs an answer that accounts for ancestors, which no single attribute
+  // gives it.
+  boolean    isHidden();                        // <- SPItem::isHidden()     (sp-item.h isHidden())
+  boolean    isLocked();                        // <- SPItem::isLocked()     (sp-item.h isLocked())
+
+  // The bounding SHAPE rather than the axis-aligned box: a rotated rectangle's exact bounds
+  // are a parallelogram, and its getBBox is the larger box containing it. Packing or
+  // collision-testing rotated objects gets a usable answer from one and a wasteful one from
+  // the other.
+  DOMString? exactBounds();                     // <- documentExactBounds()  (sp-item.h documentExactBounds())
+
+  // Overlap tested against real shapes. Two rotated objects whose boxes overlap may not touch.
+  boolean    collidesWith(SVGGraphicsElement other);
+                                                   // <- SPItem::collidesWith() (sp-item.h collidesWith())
+
+  // This element's OWN transform. getCTM composes every ancestor's; this is the one written
+  // here, which is what a plugin adjusting an object's placement edits.
+  DOMMatrix? transform();                       // <- SPItem::transform      (sp-item.h transform())
+
+  // Writing a transform the way the EDITOR does, which is not setting the attribute.
+  // doWriteTransform normally calls set_transform, embedding the affine into the object's own
+  // geometry and leaving the attribute identity; it preserves the attribute instead when the
+  // object has a clip, a mask or a filter (sp-item.cpp SPItem::doWriteTransform()). It also compensates stroke
+  // width, gradients and patterns per the user's preferences.
+  //
+  // SVGElement.setTransform writes the raw attribute and does none of that. Both exist
+  // because both are wanted, and which is right depends on whether the plugin is editing
+  // markup or moving an object.
+  void       applyTransform(DOMMatrix matrix, boolean compensate);
+                                                   // <- doWriteTransform()     (sp-item.h doWriteTransform())
+
+  DOMMatrix? relativeTransform(Element ancestor);
+                                                   // <- getRelativeTransform() (sp-item.h getRelativeTransform())
+
+  // Where rotation happens from. The point is ALWAYS written -- it defaults to the bounding
+  // box centre -- and the result says whether the user MOVED it, which is the separate fact a
+  // plugin needs before overwriting it.
+  boolean    rotationCenter(out DOMPoint centre);
+                                                   // <- getCenter()/isCenterSet() (sp-item.h setCenter())
+  void       setRotationCenter(DOMPoint centre); // <- setCenter()            (sp-item.h setCenter())
+  void       unsetRotationCenter();             // <- unsetCenter()          (sp-item.h unsetCenter())
+
+  // Resolved through their references. Reading clip-path="url(#x)" and looking the id up by
+  // hand works until the reference is inherited, relative, or points into another document.
+  Element?   clipPath();                        // <- getClipObject()        (sp-item.h getClipObject())
+  Element?   maskObject();                      // <- getMaskObject()        (sp-item.h getMaskObject())
+
+  // The live path effects on this element, by name. A plugin editing `d` on an LPE item is
+  // editing the effect's INPUT; knowing an effect is present is what stops it silently
+  // fighting one.
+  DOMStringList pathEffects();                  // <- getPathEffects()  (sp-lpe-item.h get_satellites())
 };
 
 [Derived]
@@ -246,6 +378,124 @@ interface SVGGeometryElement : SVGGraphicsElement {   // SVG2. New in 2; replace
   boolean   isPointInFill(DOMPoint point);         // <- SPDocument::getItemAtPoint()
   boolean   isPointInStroke(DOMPoint point);       // <- needs stroke geometry: the same
                                                    //    argument as getBBox, applied to hit-testing
+
+  // ── resolved geometry ─────────────────────────────────────────────────────────────────
+  //
+  // Corpus rank 1: 58 of the 129 shipped effect scripts parse path data. What they parse is
+  // `d`, which getAttribute has always handed over -- so the gap was never the string. The gap
+  // is that `d` is NOT the shape:
+  //
+  //     a <rect>, <circle>, <star> or <spiral> has no `d` at all
+  //     an LPE item's `d` is its INPUT, not what the canvas shows
+  //     a stroke has an outline the fill path does not describe
+  //
+  // Each is a shape Inkscape computes and a plugin cannot. Answering in ordinary SVG path
+  // syntax is deliberate: a plugin that already has a path parser keeps using it.
+  DOMString? pathData();                        // <- curve_for_item()     (path-util.h curve_for_item())
+
+  // Geometry 2geom has that no Inkscape wrapper happens to use. Inkscape's path helpers are the
+  // right denominator for what INKSCAPE does and the wrong one for what the geometry library
+  // can do -- everything here rests on 2geom, so a capability it has and the application has
+  // never needed was invisible to this interface by construction.
+  //
+  // tangentAtLength pairs with getPointAtLength: that one says where along the path, this one
+  // says which way it is heading, as a unit vector. Both use the same arc-length
+  // reparametrisation, so they agree about what "distance along" means -- path time is not
+  // proportional to distance.
+  DOMPoint?  tangentAtLength(double distance);  // <- Curve::unitTangentAt (2geom curve.h unitTangentAt())
+
+  // How many times the path crosses ITSELF, which is a different question from where two paths
+  // meet and the one worth asking before a boolean operation or an offset.
+  long       selfIntersections();               // <- PathVector::intersectSelf (pathvector.h intersectSelf())
+                                                   //    absent when the element draws no path
+  DOMString? pathDataBeforeLPE();               // <- curve_for_item_before_LPE()
+                                                   //    (path-util.cpp curve_for_item_before_LPE())
+  //
+  // Both are offered because a plugin editing an LPE item must write back to the INPUT;
+  // writing the output would be discarded the next time the effect recomputed.
+  //
+  // They do NOT always differ, and the rule is Inkscape's rather than this interface's.
+  // curve_for_item returns the path BEFORE the effect when the item is an SPPath, and the
+  // path AFTER it for every other SPShape; curve_for_item_before_LPE always returns the input
+  // (path-util.cpp curve_for_item()). So:
+  //
+  //     a plain <path> with an effect     both answer the INPUT -- identical
+  //     a rect, star or spiral with one   they differ
+  //
+  // A plugin that needs the distinction and has a plain <path> is not being failed by the
+  // host; there is no other answer to give, because SPPath stores only the input and the
+  // effect output is recomputed. Both cases are pinned in cover-path.wat.
+  //
+  // Worth knowing when reading a saved file: Inkscape rewrites an LPE-bearing <rect> as
+  // <path sodipodi:type="rect">. The element NAME becomes svg:path -- so getElementsByTagName
+  // counts it as a path -- while the object remains an SPRect and therefore takes the
+  // non-SPPath branch above.
+  DOMString? outline(boolean excludeMarkers);   // <- item_to_outline()  (path-outline.h item_to_outline())
+                                                   //    the stroke as a filled shape, which
+                                                   //    depends on width, join, cap, miter and
+                                                   //    dashes together
+
+  // Unlike everything above this MUTATES: the element is replaced by path objects, and the
+  // handle answered is the replacement. The original handle is stale afterwards and using it
+  // traps -- the handle table doing its job rather than a hazard.
+  // `legacy` selects Inkscape's pre-1.0 conversion, which produces a single path where the
+  // current one produces a group of fill, stroke and markers. A plugin reproducing an older
+  // document's output needs the old shape, and the difference is not something it can undo
+  // afterwards, so it is asked for rather than assumed.
+  Element?  toPath(boolean legacy);             // <- item_to_paths()    (path-outline.h item_to_paths())
+
+  // Inkscape's own fitter, not a generic Ramer-Douglas-Peucker: it REFITS cubic segments
+  // rather than dropping nodes, so the result keeps curvature a point-dropping simplifier
+  // loses. The threshold is scaled by the item's size, as the menu item does, so the same
+  // number means the same thing on a large and a small object.
+  // `justCoalesce` merges nearly-coincident nodes without refitting the curve, which is the
+  // other mode the same function offers and a different operation to want. A parameter rather
+  // than a default, because neither answer is the obvious one.
+  long      simplify(double threshold, boolean justCoalesce);
+                                                   // <- path_simplify()  (path-simplify.h path_simplify())
+
+  // Booleans over two elements' resolved geometry, answering a `d` string and changing
+  // nothing. sp_pathvector_boolop needs no selection and no desktop, so this works headless,
+  // which the action-layer equivalents do not. Both sides are taken in DOCUMENT space: the
+  // elements may sit under different transforms, and combining their own user-space
+  // coordinates would union shapes that are nowhere near each other on the canvas.
+  //
+  // `op` is livarot's BooleanOp -- 0 union, 1 intersection, 2 difference, 3 symmetric
+  // difference, 4 cut, 5 slice. Inkscape's numbering, not a second one invented here. A code
+  // outside the enum is a trap, not a clamp. A disjoint intersection answers an EMPTY string,
+  // which is a result and not an absence.
+  DOMString? boolop(SVGGeometryElement other, long op);
+                                                   // <- sp_pathvector_boolop() (path-boolop.h sp_pathvector_boolop())
+
+  // Grow or shrink a filled shape, inset for a negative amount. Not scaling: an offset keeps
+  // every edge the same distance from the original, which is what a margin or a cut line needs
+  // and what scaling gets wrong on anything that is not a circle.
+  // `join` is Inkscape::LineJoinType -- 0 bevel, 1 round, 2 miter -- and changes the result
+  // visibly at every corner, so it is the caller's; an out-of-range code traps rather than
+  // quietly becoming miter. The tolerance stays the host's, being a quality knob on the fitter
+  // rather than a property of the shape.
+  DOMString? offset(double amount, long join, double miterLimit);
+                                                   // <- do_offset()   (geom-pathstroke.h do_offset())
+
+  // The closest point on the path, and how far it is. What "snap to that edge" and "place a
+  // label along here" both start from, and what a plugin approximates badly by sampling
+  // getPointAtLength in a loop.
+  boolean   nearestPoint(DOMPoint from, out DOMPoint found, out double distance);
+                                                   // <- PathVector::nearestTime()
+
+  // isPointInFill answers the fill-rule question; this answers the one underneath it, which a
+  // plugin implementing its own rule -- or deciding whether a subpath is a hole -- needs.
+  long      winding(DOMPoint point);            // <- PathVector::winding()
+
+  // Where two paths cross. Returns how many crossings there ARE and writes them only when they
+  // all fit, the same three-way rule the string results use and for the same reason: a plugin
+  // cannot know the count in advance.
+  long      intersect(SVGGeometryElement other, out sequence<DOMPoint> points);
+                                                   // <- PathVector::intersect()
+
+  // The markers actually DRAWN. Reading marker-start/mid/end gives three references and not
+  // the answer: which markers appear depends on how many nodes the path has.
+  NodeList  markers();                          // <- SPShape::get_markers() (sp-shape.h get_markers())
 };
 
 // The gap inkex documents in its own source as impossible. Text::Layout backs all of it
@@ -261,16 +511,130 @@ interface SVGTextContentElement : SVGGraphicsElement {    // SVG2.
   DOMRect   getExtentOfChar(unsigned long charnum);         // <- characterBoundingBox() :550
   float     getRotationOfChar(unsigned long charnum);       // <- characterBoundingBox() rotation out-param
   long      getCharNumAtPosition(DOMPoint point);           // <- getNearestCursorPositionTo() :467
+
+  // The glyph outlines of the shaped run, as path data. Producing these needs the font, its
+  // hinting and the shaping already applied to this text, none of which a plugin has --
+  // hershey.py ships a complete stroke-font engine for want of it, and other text-to-path
+  // extensions run a second Inkscape. Absent, not empty, when the element is not text.
+  DOMString? toPath();                          // <- Layout::convertToCurves()   :420
+
+  // The characters, with line breaks between lines. textContent gives the markup's text nodes,
+  // which for text split across tspans is neither in visual order nor broken where the lines
+  // are.
+  DOMString? textString();                      // <- sp_te_get_string_multiline()
+                                                   //    (text-editing.h sp_te_get_string_multiline())
+
+  // The style in force AT one character, serialised as CSS. Not the element's own style: a
+  // tspan overriding fill or font-size applies from its first character, so the answer changes
+  // along the run.
+  DOMString? styleAtPosition(unsigned long charnum);
+                                                   // <- sp_te_style_at_position()
+                                                   //    (text-editing.h sp_te_style_at_position())
+
+  // One baseline segment per line, four doubles each (x1, y1, x2, y2). Where the lines fell is
+  // a result of shaping and wrapping and cannot be derived from the markup, even when every
+  // tspan carries an explicit y. Returns how many segments there ARE and writes them only when
+  // they all fit -- the same rule the string results use.
+  long      baselines(out sequence<DOMPoint> segments);
+                                                   // <- Layout::getBaselines()      :541
+  long      lineCount();                        // <- ditto, counted
+
+  // The family a span was actually SHAPED with: the entry of the font-family list that
+  // resolved on this machine, which need not be anything the document names.
+  DOMString? fontFamily(unsigned long span);    // <- Layout::getFontFamily()     :394
 };
 
 [Derived]
 interface SVGSVGElement : SVGGraphicsElement {     // SVG2.
   NodeList getEnclosureList(DOMRect rect, SVGElement? referenceElement);
-                                                   // <- SPDocument::getItemsInBox()          (document.h:344)
+                                                   // <- SPDocument::getItemsInBox()          (document.h getItemsInBox())
   NodeList getIntersectionList(DOMRect rect, SVGElement? referenceElement);
-                                                   // <- SPDocument::getItemsPartiallyInBox() (document.h:345)
+                                                   // <- SPDocument::getItemsPartiallyInBox() (document.h getItemsPartiallyInBox())
   boolean  checkEnclosure(Element element, DOMRect rect);
   boolean  checkIntersection(Element element, DOMRect rect);
+
+  // Document metrics. Grid::effect() opens with preferredBounds() and getDocumentScale(), so
+  // an extension that cannot ask for these is not a peer of the builtins -- which is the
+  // claim this whole interface exists to make good. They hang off SVGSVGElement because that
+  // is where SVG puts width, height and viewBox; the handle is the root element.
+  readonly attribute DOMRect viewBox;              // <- SPDocument::getViewBox()   (document.h getViewBox())
+  DOMRect?  preferredBounds();                  // <- preferredBounds()          (document.h preferredBounds())
+  DOMRect?  pageBounds();                       // <- pageBounds()               (document.h pageBounds())
+  DOMPoint  documentScale();                    // <- getDocumentScale()         (document.h getDocumentScale())
+  DOMPoint  documentSize();                     // <- getWidth()/getHeight()     (document.h getWidth())
+                                                   //    in user units; the authored unit is
+                                                   //    reported by displayUnit below.
+  DOMString displayUnit();                      // <- getDisplayUnit()->abbr     (document.h getDisplayUnit())
+                                                   //    Corpus rank 4: a third of the shipped
+                                                   //    Python extensions convert units by hand.
+  Element?  defs();                             // <- SPDocument::getDefs()      (document.h getDefs())
+                                                   //    null when the document has none
+  Element?  namedView();                        // <- getReprNamedView()         (document.h getReprNamedView())
+};
+
+// SVG 2 wraps most attributes in SVGAnimatedLength and friends. The `animVal` half needs an
+// animation timeline Inkscape does not have, and `baseVal` carries no capability these do not
+// -- so this exposes the PARSING that layer implies, without the object model. PART 4 records
+// why the wrappers themselves are absent.
+//
+// Both numbers are reported for a length because neither derives from the other without the
+// unit: "10mm" is 10 to a plugin echoing the author's value back and 37.795 to one doing
+// geometry, and guessing which is wanted is how attribute parsing by hand goes wrong.
+interface SVGElement : Element {                   // SVG2.
+  long      getLength(DOMString name, out double value, out double computed);
+                                                   // <- parse_number_with_unit()   (svg.h parse_number_with_unit())
+                                                   //    returns the SVGLength::Unit code, or
+                                                   //    -1 when absent or not a length.
+  boolean   getNumber(DOMString name, out double value);
+                                                   // <- sp_svg_number_read_d()     (svg.h sp_svg_number_read_d())
+  DOMMatrix? getTransform(DOMString name);      // <- sp_svg_transform_read()    (svg.h sp_svg_transform_read())
+                                                   //    named, not fixed to `transform`:
+                                                   //    gradientTransform and patternTransform
+                                                   //    carry the same grammar.
+  void      setLength(DOMString name, double value, long unit);
+                                                   // <- sp_svg_length_write_with_units() (svg.h sp_svg_length_write_with_units())
+  void      setNumber(DOMString name, double value);
+                                                   // <- Node::setAttributeSvgDouble() (node.h setAttributeSvgDouble())
+  void      setTransform(DOMString name, DOMMatrix matrix);
+                                                   // <- sp_svg_transform_write()   (svg.h sp_svg_transform_write())
+                                                   //    picks the shortest correct spelling, so
+                                                   //    a pure translation is not a 6-number
+                                                   //    matrix.
+
+  // Identity. <title> and <desc> are CHILD ELEMENTS, so getAttribute cannot reach them and
+  // writing one means creating an element in the right place.
+  DOMString? title();                           // <- SPObject::title()      (sp-object.h title())
+  DOMString? desc();                            // <- SPObject::desc()       (sp-object.h desc())
+  // Both write VERBATIM, so a whitespace-only string is stored as written. Inkscape's default
+  // treats whitespace as a request to delete the element, which is right for a person typing
+  // in a dialog and wrong for a caller passing a computed string -- a plugin that builds a
+  // label from data would find blank results silently removing the element instead of setting
+  // it. Deleting is still available: pass an empty string.
+  void       setTitle(DOMString title);         // <- setTitle(v, verbatim)  (sp-object.h setTitle())
+  void       setDesc(DOMString desc);           // <- setDesc(v, verbatim)   (sp-object.h setDesc())
+
+  // Label is TWO questions and they are kept apart, for the same reason specified and computed
+  // style are. The attribute is absent until someone sets it; the displayed name never is,
+  // because it falls back to "#id" or "<tag>" -- Inkscape's presentation choice, held by no
+  // attribute, and not reconstructable by a plugin listing objects for a user.
+  DOMString? label();                           // <- SPObject::label()      (sp-object.h label())
+                                                   //    the inkscape:label attribute; absent
+                                                   //    when unset. Pairs with setLabel.
+  DOMString  defaultLabel();                    // <- defaultLabel()         (sp-object.h defaultLabel())
+                                                   //    never absent
+  void       setLabel(DOMString label);         // <- setLabel()             (sp-object.h setLabel())
+
+  // Who references this. Resolving href strings by hand means knowing every attribute AND
+  // style property that can carry one; Inkscape maintains the back link because it has to
+  // update these when the target changes.
+  //
+  // `direction` takes Inkscape's own LinkedObjectNature values: -1 dependent, 0 any,
+  // 1 dependency. The forward direction is THIN and that is stated rather than promised:
+  // SPObject::getLinked answers only from hrefList, and only SVGUseElement, SVGAElement and
+  // SVGTextElement override it to report what they point at. So direction 1 answers for a
+  // clone, a hyperlink and text-on-a-path, and answers nothing for an element that merely
+  // fills with a gradient. Reversing the question works for everything.
+  NodeList   linkedObjects(long direction);     // <- getLinked()        (sp-object.h getLinked())
 };
 
 // CSSOM. The cascade -- what inkex approximates with cascaded_style() in 4 files. SVG2 defers
@@ -279,13 +643,56 @@ interface SVGSVGElement : SVGGraphicsElement {     // SVG2.
 // deprecated and was never fully implemented anywhere. Values are strings.
 [Derived]
 partial interface Document {
-  CSSStyleDeclaration getComputedStyle(Element elt);        // <- SPObject::style (sp-object.h:270)
+  CSSStyleDeclaration getComputedStyle(Element elt);        // <- SPObject::style (sp-object.h style())
 };
 
-interface CSSStyleDeclaration {                    // CSSOM. Read-only in 1.0.
-  readonly attribute unsigned long length;
-  DOMString  item(unsigned long index);
-  DOMString  getPropertyValue(DOMString property);
+interface CSSStyleDeclaration {                    // CSSOM.
+  readonly attribute unsigned long length;         // <- SPStyle::properties()      (style.h properties())
+  DOMString  item(unsigned long index);            // <- ditto, by index
+  DOMString  getPropertyValue(DOMString property); // <- the COMPUTED value
+
+  // length/item/getPropertyValue are UNFILTERED: every property has a computed value, whether
+  // or not this element declared one. An element inheriting `fill` from a group has a computed
+  // fill, and a list omitting it would be the specified style under the computed style's name.
+  //
+  // The specified value is a different question and gets its own operation rather than being
+  // conflated with the above. A plugin deciding whether to overwrite something the author set
+  // needs it, and cannot get it from the computed value at all.
+  DOMString? specifiedValue(DOMString property);
+                                                   // <- sp_repr_css_property()     (repr.h sp_repr_css_property())
+                                                   //    absent when this element declares none
+
+  // Writing goes through the repr, so the object tree follows by observation and the result
+  // survives being saved. Merging, not replacing: setting one property must not discard the
+  // others, which is what writing the style attribute wholesale would do.
+  void setProperty(DOMString property, DOMString value);
+
+  // Numbers and colours without the plugin formatting CSS text. Attributes have setNumber;
+  // without these, anything setting a stroke width or a colour parameter carries its own float
+  // and hex formatters, which disagree with Inkscape's in the last digit and in how they spell
+  // alpha. setPropertyColor takes the RGBA word paramColor answers with, so a colour
+  // parameter reaches a style without being converted by hand on the way.
+  void setPropertyNumber(DOMString property, double value);
+  void setPropertyColor(DOMString property, long rgba);
+                                                   // <- sp_repr_css_set_property() + change()
+                                                   //    (repr.h sp_repr_css_set_property())
+  void removeProperty(DOMString property);         // <- sp_repr_css_unset_property() (repr.h sp_repr_css_unset_property())
+                                                   //    a sentinel, not an absence: the value
+                                                   //    "inkscape:unset" is what makes the
+                                                   //    property drop out when the attribute
+                                                   //    is rebuilt.
+  void changeRecursive(DOMString property, DOMString value);
+                                                   // <- sp_repr_css_change_recursive() (repr.h sp_repr_css_change_recursive())
+                                                   //    setting a property on a group does
+                                                   //    nothing visible when the children
+                                                   //    declare their own; this is what
+                                                   //    "make the whole selection red" needs.
+
+  // The gradient or pattern an element paints with, RESOLVED. getPropertyValue answers
+  // "url(#grad)", which is a string a plugin then has to parse and look up; this is the
+  // element. which: 0 fill, 1 stroke.
+  Element? paintServer(long which);             // <- SPStyle::getFillPaintServer()
+                                                   //    / getStrokePaintServer() (style.h getFillPaintServer())
 };
 
 
@@ -295,34 +702,261 @@ interface CSSStyleDeclaration {                    // CSSOM. Read-only in 1.0.
 // The document model is standardised; the editing-session model never has been, by anyone.
 // That is the boundary -- a statable principle, not a leftovers bin. It stays small because
 // most apparent session state is really document state: current layer is an attribute
-// (namedview/@inkscape:current-layer), pages are repr-backed (sp-page.cpp:605), path
+// (namedview/@inkscape:current-layer), pages are repr-backed (sp-page.cpp SPPage), path
 // booleans are guest-side compute, and undo is host-owned and never guest-visible.
 // Precedent for a session tier existing at all, and for its size: bpy.context is 22 members
 // for an entire mature application (rna_context.cc).
 // ============================================================================
 
 [Vendor]
-interface InkSelection {
+interface Selection {
   // Per-element, not a positional list -- Blender's model (BezTriple.select_control_point,
   // rna_curve.cc:949). Backed by the existing Selection object; only the INTERFACE is
   // per-element, so Inkscape's storage is unchanged.
-  boolean       inkIsSelected(Element element);    // <- Selection::includes()
-  DOMStringList inkSelectedIds();                  // <- SelectionState::selected_ids (selection.h:56)
+  boolean       isSelected(Element element);    // <- Selection::includes()
+  DOMStringList selectedIds();                  // <- SelectionState::selected_ids (selection.h SelectionState::selected_ids)
+
+  // The selection AS ELEMENTS, and the counterpart to selectionSet below -- which has always
+  // taken a NodeList while nothing gave one back. "For each selected object" opens nearly every
+  // extension ever written, so this is the shape the work actually takes. selectedIds
+  // answers the same selection as text, which is right for reporting and wrong for editing: it
+  // makes every such plugin round-trip through getElementById, and an element carrying no id
+  // cannot be reached that way at all.
+  NodeList      selectionNodes();
+
+  // Unit conversion, from Inkscape's own table (Quantity::convert). 27 of the 166 Python
+  // extensions call unittouu or viewport_to_unit, almost always as their first line of work: a
+  // parameter arrives as a number and a unit name and has to become user units before anything
+  // can be done with it.
+  //
+  // An unknown unit answers NaN, and deliberately not Inkscape's own -1: Unit::convert reports
+  // incompatible units that way, and -1 is indistinguishable both from a plausible coordinate
+  // and from correctly converting -1px to px. NaN cannot be mistaken for a measurement, and it
+  // survives arithmetic, so a plugin that forgets to check gets NaN geometry rather than
+  // geometry that is quietly wrong.
+  double        convertUnit(double value, DOMString from, DOMString to);
 
   // Path-node selection. An SVG path node is an index into `d`, not an element, so the
   // positional model is unavoidable here -- Blender's robustness does not transfer. Hence
   // the explicit validity rule rather than a silent hazard: these indices are INVALIDATED
   // by any mutation of `element`, and reading them afterwards is a trap. Unlike today's
   // --selected-nodes=path:subpath:index, which goes stale silently.
-  unsigned long inkSelectedNodeCount(Element element);
-  boolean       inkSelectedNode(Element element, unsigned long i,
+  unsigned long selectedNodeCount(Element element);
+  boolean       selectedNode(Element element, unsigned long i,
                                 out unsigned long subpath, out unsigned long node);
                                                    // <- SelectionState::selected_nodes
 
   // Mutable: builtins use selection as a working register (BlurEdge clears and re-adds).
   // ExecutionEnv restores user-visible selection afterwards, so this is parity, not power.
-  void          inkSelectionClear();
-  void          inkSelectionAdd(Element element);
+  void          selectionClear();
+  void          selectionAdd(Element element);
+  void          selectionRemove(Element element);   // <- Selection::remove()   (selection.h remove())
+
+  // Replacing the selection in one step, rather than clear-then-add in a loop: each add emits
+  // a selection-changed signal, so assembling a selection of any size otherwise makes the
+  // editor rebuild its state once per item.
+  void          selectionSet(NodeList nodes);       // <- ObjectSet::setReprList() (object-set.h setReprList())
+
+  // The selection's bounds as a whole, which is NOT the union of getBBox results: those are
+  // each in their own element's user space and unioning them is only correct when nothing in
+  // the selection is transformed. Grid::effect() asks for exactly this.
+  // type 0 = visual, 1 = geometric, 2 = the user's preference.
+  DOMRect?      selectionBounds(long type);         // <- ObjectSet bounds  (object-set.h bounds())
+
+  // Object to path. BlurEdge calls it, and so does anything needing a <rect> or a <star> to
+  // have real path data before it can work on the geometry -- the most common opening move in
+  // the shipped extension corpus.
+  void          toCurves();                         // <- ObjectSet::toCurves() (object-set.h toCurves())
+
+  // Grouping. group answers the group it made, which is otherwise unfindable: it is created
+  // with a generated id, and the selection afterwards is the group's contents rather than the
+  // group.
+  //
+  // GROUPING REBUILDS WHAT IT GROUPS. Each member is duplicated into the new group and the
+  // original unparented (selection-chemistry.cpp ObjectSet::group()), so an Element handle held across the
+  // call names a node that is no longer in the document -- a live handle onto a detached node,
+  // which is worse than a stale one the host would refuse. Re-find subjects by id afterwards.
+  //
+  // ungroupAll repeats ungrouping until the SELECTION SIZE stops changing
+  // (selection-chemistry.cpp ObjectSet::ungroup_all()). A chain of groups each holding exactly one group
+  // therefore ungroups a single level and stops, since the size is 1 before and after.
+  Element?      group();
+  void          ungroup();
+  void          ungroupAll();
+  void          popFromGroup();                     // take the selection out, leave the group
+
+  // Z-order. Six operations rather than one with a direction code, because Inkscape has six and
+  // they are not two axes of one idea: raise and lower step over the next OVERLAPPING object,
+  // while stackUp and stackDown step exactly one position whatever is or is not underneath. A
+  // plugin arranging a diagram wants the first; one rebuilding a known order wants the second.
+  void          raise();
+  void          raiseToTop();
+  void          lower();
+  void          lowerToBottom();
+  void          stackUp();
+  void          stackDown();
+  void          toLayer(Element layer);
+
+  // The copy becomes the selection, which is how the builtins chain further work onto it.
+  void          duplicate(boolean duplicateLayer, boolean includeHidden);
+
+  void          clone();
+  void          cloneOriginal();                    // select what the selected clone points at
+
+  // recursive is the difference between unlinking what is selected and unlinking what is inside
+  // what is selected: a group holding clones is untouched by the first and emptied of them by
+  // the second. False means nothing was a clone, which is information rather than failure.
+  boolean       unlink(boolean recursive);
+
+  // No margin argument, deliberately: ObjectSet::fitCanvas takes a with_margins flag and passes
+  // it to SPDocument::fitToRect, whose definition leaves that parameter unnamed and never reads
+  // it (document.cpp SPDocument::fitToRect()), so publishing it would publish a control that does nothing.
+  // PageManager's separate fitToRect does honour margins, via fitPageToSelection.
+  boolean       fitCanvas();
+
+  // Booleans over the selection. One operation taking an op code rather than six named ones,
+  // because these six differ by exactly the code that is already a parameter elsewhere here --
+  // boolop takes the same livarot numbering over two elements' geometry, and two spellings
+  // of one idea would be two vocabularies to learn. The z-order six above are separate names
+  // for the opposite reason: they differ in behaviour, not in an argument.
+  //
+  // op: 0 union, 1 intersection, 2 difference, 3 symmetric difference, 4 cut, 5 slice.
+  void          selectionBoolop(long op);
+
+  // legacy is the pre-1.0 conversion, which refuses groups and text outright rather than
+  // recursing into them (path-outline.cpp item_to_paths()). Exposed because the two produce
+  // different documents and a plugin reproducing older output needs the older shape.
+  boolean       strokesToPaths(boolean legacy);
+
+  // No threshold argument: Inkscape reads /options/simplifythreshold, and overriding the user's
+  // setting for them is a different decision from exposing the operation.
+  boolean       simplifyPaths();
+
+  // Transforms over the selection AS A WHOLE, which is not the same as transforming each
+  // member: a scale about the selection's box moves the members relative to one another.
+  // Angles are degrees, matching ObjectSet::rotateRelative and the transform= syntax rather
+  // than the radians the underlying 2geom call takes.
+  void          selectionMove(double dx, double dy);
+  void          selectionRotate(double cx, double cy, double degrees);
+  void          selectionScale(double cx, double cy, double sx, double sy);
+  void          selectionSkew(double cx, double cy, double dx, double dy);
+
+  // compensate keeps a clone in step with its original; off, the geometry transforms and what
+  // hangs off it is left alone.
+  //
+  // ObjectSet::applyAffine's set_i2d is deliberately not here and is always true. False is an
+  // internal hook for seltrans dragging live -- the item has already been moved by other means
+  // and the call only syncs the repr from item->transform, DISCARDING the affine passed
+  // (selection-chemistry.cpp ObjectSet::applyAffine()). A plugin cannot have pre-moved the
+  // item, so the flag could only silently throw its matrix away.
+  void          selectionApplyAffine(double a, double b, double c, double d, double e, double f,
+                                        boolean compensate);
+  void          removeTransform();
+
+  // Clips and masks. One Inkscape call takes a flag choosing between them, and this keeps that
+  // shape rather than splitting into two names: the arguments and the behaviour are shared, and
+  // the flag only picks which element the topmost selected object becomes. Everything under
+  // that object is what gets clipped or masked.
+  void          setMask(boolean clip, boolean applyToLayer, boolean removeOriginal);
+  void          unsetMask(boolean clip, boolean deleteHelperGroup, boolean removeOriginal);
+
+  // A different result from setMask rather than a convenience over it: the selection is
+  // wrapped in a pair of groups, an inner one holding the contents and an outer one carrying
+  // the clip-path, with the clip a <use> pointing back at the inner group.
+  void          setClipGroup();
+
+  // Turning the selection into something reusable. `apply` puts the new definition to use on
+  // what it was made from; without it the definition is created and nothing refers to it, which
+  // is what a plugin building a library of parts wants.
+  void          toMarker(boolean apply);
+  void          toPattern(boolean apply);           // Inkscape calls this "Object to Pattern"
+  void          untile();
+  void          toSymbol();
+
+  // Renders the selection and puts the result back as an <image>. The renderer is what makes
+  // this the one selection operation belonging with the file backends rather than the geometry
+  // ones -- but unlike the raster export hook it runs headless, reaching for a desktop only to
+  // flash "Rendering bitmap..." and set a cursor.
+  void          bitmapCopy();
+
+  // REGISTERED AND REFUSES. Calling this traps; it does not turn the symbol back into a group.
+  //
+  // SPSymbol::unSymbol() segfaults with no desktop: it takes the SP_ACTIVE_DESKTOP branch at
+  // sp-symbol.cpp SPSymbol::unSymbol() -- the one carrying Inkscape's own "TODO: Better handle if no
+  // desktop" -- appends the replacement group into <defs> beside the symbol, gives that group
+  // the symbol's id while the symbol still holds it, then deleteObject()s the symbol and dies
+  // inside SPObject::deleteObject. Even without the crash the result would be wrong: a <g> in
+  // <defs> renders nothing.
+  //
+  // Declared here, and registered by the host as an operation that refuses, rather than left
+  // out. A missing import and a blocked one are different facts, and only one is useful to whoever
+  // who hits it: "unresolved import" reads as "not written yet" and invites another attempt at
+  // the call that crashes. The capability returns when sp-symbol.cpp handles the no-desktop
+  // case, and refuse-blocked.wat fails on that day so it is not forgotten.
+  void          unSymbol();
+};
+
+// Pages. Document state, not view state, so all of it works headless -- which matters because
+// the extensions that lay out multi-page documents are the ones that run from the command line.
+//
+// These name the document they act on, where selectionBounds() and currentLayer above do
+// not. The rule is that what a session has exactly one of is implicit and what a document can
+// have several of is named: there is one selection to ask about, but the page operations have
+// to say WHICH page, so the document-scoped ones say which document for the same reason.
+//
+// ONE PAGE IS SPELLED AS NO PAGES. A document with a single page has no <inkscape:page>
+// elements at all -- the viewport is the page. So pageCount() answers 0 for the ordinary
+// single-page document, adding a page to one yields TWO (Inkscape first makes a page out of
+// the existing viewBox, then adds yours), and deleting one of two leaves NONE, the surviving
+// bare page being folded back into the viewport. This is Inkscape's model rather than a choice
+// made here, and it is stated because plugin arithmetic that assumes n+1 and n-1 is wrong at
+// both ends.
+[Vendor]
+interface Pages {
+  unsigned long pageCount(Document document);       // <- PageManager::getPageCount()
+  NodeList      pages(Document document);           // <- PageManager::getPages()
+  Element?      selectedPage(Document document);    // <- PageManager::getSelected()
+
+  // Print order, and -1 for an element that is not a page. Needed because a plugin holding a
+  // filtered list of pages cannot read the order off its own list positions.
+  long          pageIndex(Element page);            // <- SPPage::getPageIndex() (sp-page.h getPageIndex())
+
+  Element?      newPage(Document document, double x, double y, double width, double height);
+  void          resizePage(Element page, double width, double height);
+  boolean       selectPage(Element page);           // <- PageManager::selectPage()
+
+  // `contents` also removes what the page holds, which is the difference between deleting a
+  // page and deleting a page of work. Which items those are is decided by bounding box, so the
+  // document is brought up to date first: a plugin that draws and then deletes must not have
+  // the decision made against stale geometry.
+  void          deletePage(Element page, boolean contents);
+
+  // space 0 = the page's own coordinates, 1 = document coordinates. They differ by the document
+  // scale, so they coincide in a document whose width matches its viewBox and diverge as soon
+  // as it does not -- which is why a plugin laying content across pages has to say which it
+  // means.
+  DOMRect?      pageRect(Element page, long space); // <- SPPage::getRect/getDocumentRect
+
+  // which 0 = the margin box (inside the page), 1 = the bleed box (outside it), both in
+  // document coordinates. A rectangle rather than four side values because that is what a
+  // plugin placing content needs: the usable area, not the arithmetic to reach it. The raw
+  // per-side numbers stay readable as inkscape:margin and inkscape:bleed for anything that
+  // wants them. Both boxes answer the page itself when unset.
+  DOMRect?      pageMargin(Element page, long which);
+                                                       // <- SPPage::getDocumentMargin/Bleed
+
+  // What a page holds is geometric, not ancestral -- pages are not parents of anything. Flags:
+  //   1  wholly inside the page rather than merely touching it
+  //        (getExclusiveItems is containment, getOverlappingItems is intersection)
+  //   2  measure against the bleed box instead of the page
+  //   4  count items that are not displayed
+  // Groups answer as whole objects; this does not descend into them, so a group half on the
+  // page is one straddling item and not a list of its children.
+  NodeList      pageItems(Element page, long flags);
+
+  // Fits the SELECTED page to the current selection. `addMargins` leaves room for the page's
+  // margins, so it produces a larger page than fitting without them.
+  void          fitPageToSelection(Document document, boolean addMargins);
 };
 
 // .inx parameters. These have never been an API in Inkscape's extension system -- they are
@@ -330,14 +964,40 @@ interface InkSelection {
 // invocation input matches precedent AND is the only design that works in the headless
 // effect(SPDocument*) overload, where no desktop exists.
 [Vendor]
-interface InkParams {
-  DOMString? inkParamString(DOMString name);       // <- Effect::get_param_string()
-  double     inkParamFloat(DOMString name);        // <- Effect::get_param_float()
-  long       inkParamInt(DOMString name);          // <- Effect::get_param_int()
-  boolean    inkParamBool(DOMString name);         // <- Effect::get_param_bool()
+interface Params {
+  DOMString? paramString(DOMString name);       // <- Effect::get_param_string()
+  double     paramFloat(DOMString name);        // <- Effect::get_param_float()
+  long       paramInt(DOMString name);          // <- Effect::get_param_int()
+  boolean    paramBool(DOMString name);         // <- Effect::get_param_bool()
+
+  // The remaining types the .inx schema declares. All four have been writable in an .inx far
+  // longer than anything could read them back, so an author could put a colour picker in their
+  // own dialog with no way to find out what the user chose. Two of them had no C++ getter
+  // either -- the typed accessors each cast to one parameter class and throw otherwise, and
+  // there is no get_param_path() -- so Extension::get_param_any() was added to reach them,
+  // mirroring the set_param_any() that was already there.
+  long       paramColor(DOMString name);        // <- get_param_color().toRGBA()
+                                                   //    RGBA in one word. A name the .inx never
+                                                   //    declared answers 0 -- transparent black
+                                                   //    -- which is the same choice the numeric
+                                                   //    getters make and is stated here because
+                                                   //    a colour word has no room for a
+                                                   //    separate absent.
+  DOMString? paramOptionGroup(DOMString name);  // <- the option's VALUE, not its label
+  DOMString? paramPath(DOMString name);         // <- absolute; a relative path resolves
+                                                   //    against the extension's base directory
+  DOMString? paramNotebook(DOMString name);     // <- the selected page's name
+
+  // Parameters are the only storage a plugin gets that outlives the invocation: the value is
+  // written back to the preferences under the extension's own id.
+  // Answers whether it wrote. A name the .inx never declared gives 0, matching every getter
+  // above, which reports absence rather than trapping. This trapped until the inconsistency
+  // was noticed: two contracts for the same mistake on one object, so a plugin could probe an
+  // optional parameter safely and then die writing it.
+  boolean    setParam(DOMString name, DOMString value);   // <- Extension::set_param_any()
 };
 
-// Cooperative cancellation. A plugin doing long work is expected to call inkIsCancelled() in
+// Cooperative cancellation. A plugin doing long work is expected to call isCancelled() in
 // its outer loop and return early when it answers true.
 //
 // This is the standard arrangement for an in-process plugin API and has been since Photoshop's
@@ -353,18 +1013,192 @@ interface InkParams {
 // rather than of this interface -- a C plugin looping forever behind dlopen is no more
 // killable -- and it is stated here rather than discovered.
 [Vendor]
-interface InkCancellation {
-  boolean inkIsCancelled();
+interface Cancellation {
+  boolean isCancelled();
 };
 
+// Building path data.
+//
+// The commonest write a shipped extension performs: 36 of the 166 Python extensions assign
+// `node.path = ...`, and every one of them formats the `d` itself, slightly differently from
+// Inkscape and from each other.
+//
+// A builder handle holds a Geom::PathVector, the verbs go through Geom::PathBuilder -- 2geom's
+// own PathSink, carrying exactly the verbs SVG has -- and the result is written by
+// sp_svg_write_path. So a plugin's paths come out spelled the way every other path in the
+// document is, and an arc stays an arc rather than becoming somebody's cubic approximation.
+//
+// Handles last as long as the invocation, like every other handle in this interface.
 [Vendor]
-interface InkContext {
-  // Convenience for getElementById(namedview/@inkscape:current-layer); Grid::effect needs
-  // it and open-coding the lookup in every plugin is worse. Absent in headless.
-  readonly attribute Element? inkCurrentLayer;     // <- LayerManager::currentLayer()
+interface PathBuilder {
+  PathBuilder pathBegin();
+
+  void        pathMoveTo(double x, double y);       // starts a new subpath
+  void        pathLineTo(double x, double y);
+  void        pathCurveTo(double x1, double y1, double x2, double y2, double x, double y);
+  void        pathQuadTo(double cx, double cy, double x, double y);
+  void        pathArcTo(double rx, double ry, double angle,
+                           boolean largeArc, boolean sweep, double x, double y);
+  void        pathClose();
+
+  // Seed from an element's RESOLVED geometry -- what makes read-modify-write possible. A rect,
+  // a star or a shape under a path effect can be fed in, added to and written back out without
+  // the guest handling a coordinate, and what goes in is Inkscape's idea of that shape rather
+  // than a reimplementation of it. False for something with no geometry.
+  boolean     pathFeed(Element element);
+
+  // The other direction: path data arriving as TEXT, from a parameter or from a file an <input>
+  // module is reading. 2geom's parse_svg_path writes into a PathSink, which is what this holds,
+  // so text and elements cost the same to feed in. False leaves the builder untouched, rather
+  // than appending however much of a bad path parsed before it gave up.
+  boolean     pathParse(DOMString d);
+
+  // The convex hull of an element's geometry, as a closed path. The hull of the path's
+  // VERTICES: a curve can bulge past its own control points, so this is not the hull of every
+  // point the curve visits.
+  boolean     pathHull(Element element);
+
+  boolean     pathApply(Element element);           // write it as the element's `d`
+  DOMString   pathString();                         // or take it as text; empty, never absent
 };
 
-// NOTE -- no `readonly attribute InkSelection selection` here, and no InkParams equivalent.
+// File backends: a module under <input> or <output> rather than <effect>. 8 of the 160 shipped
+// .inx files are one and 17 are the other, so a plugin system that cannot be either covers half
+// the extensions Inkscape ships.
+//
+// The guest never touches the filesystem. An <output> module is handed the document, walks it
+// with the same API an effect uses, and emits bytes; an <input> module is handed the file's
+// bytes and a BLANK document and builds into it with the same API. The host owns the path in
+// both directions, which puts the sandbox boundary where it sits everywhere else here.
+//
+// There is deliberately no SVG text in between: an importer that had to serialise its result
+// for the host to re-parse would do the work twice and throw away everything the object tree
+// knows on the way. An importer does have to set the document's size, since a blank one has
+// none and only the importer knows it.
+[Vendor]
+interface FileBackend {
+  // The bytes of the file being opened, through the same length-first protocol every string
+  // result uses. Absent for anything that is not an open() -- an effect has a document, not a
+  // file. Bytes rather than a string: file contents may hold embedded nulls and need not be
+  // valid UTF-8.
+  ArrayBuffer? inputBytes();
+
+  // The bytes to write. Appends, so a module can emit in as many pieces as suits it, and
+  // answers false once the total would pass the host's cap -- the one way a guest loop could
+  // otherwise exhaust host memory from inside the sandbox. Ignored by an <effect>, which
+  // produces a document rather than a file.
+  boolean      writeOutput(ArrayBuffer bytes);
+};
+
+// What a plugin asks of the application rather than of the document.
+[Vendor]
+interface Host {
+  // Status messages. `type` is Inkscape's MessageType (message.h MessageType): 0 normal, 1 immediate,
+  // 2 warning, 3 error, 4 information. A flash expires on its own; the distinction is whether
+  // the user needs to act.
+  //
+  // A message is something shown to a person, so with no desktop there is nobody to show it to:
+  // the text goes to the log and the answer is 0, meaning "no message is on screen". That is
+  // also what a plugin needs to know before trying to cancel one. Cancelling an id that was
+  // never issued is harmless, which headless is the only kind of id there is.
+  long    message(long type, DOMString text);       // <- MessageStack::push()
+  long    flashMessage(long type, DOMString text);  // <- MessageStack::flash()
+  void    cancelMessage(long id);
+
+  // Preferences, SCOPED to the extension's own id. The scoping is the sandbox boundary, not a
+  // convenience: Inkscape's preference tree is one namespace holding every plugin's state, the
+  // application's settings and file paths, so a plugin addressing it freely could read and
+  // rewrite another's, and Inkscape's own. A key is a leaf name under this extension's branch;
+  // one containing "/" or ".." is REFUSED rather than sanitised, because sanitising invites a
+  // plugin to keep guessing at a spelling that gets through.
+  //
+  // Refusal is reported, not trapped -- asking for a key you may not have is wrong, but not so
+  // wrong that the host should end the invocation over it. Absent is distinct from empty.
+  DOMString? getPref(DOMString key);
+  boolean    setPref(DOMString key, DOMString value);
+
+  // The undo entry this invocation leaves behind. ExecutionEnv::commit() names it after the
+  // extension, which is right for one that does a single thing and wrong for a plugin that does
+  // several -- the user is shown the plugin's name where they expect the operation's.
+  //
+  // A coalesce key merges the entry with the preceding one carrying the same key
+  // (DocumentUndo::maybeDone), which is what keeps a live-preview drag to one history entry
+  // rather than one per redraw. Both are unset by default, and unset keeps the extension name.
+  //
+  // This needed Implementation::undoLabel()/undoCoalesceKey() added to Inkscape and
+  // ExecutionEnv::commit changed to consult them.
+  DOMString? undoLabel();
+  void       setUndoLabel(DOMString label);
+  DOMString? undoCoalesceKey();
+  void       setUndoCoalesceKey(DOMString key);
+
+  // Actions. The spelling is Inkscape's own --actions syntax, `name:value`, rather than a second
+  // one invented here: a plugin author already knows it, it is documented, and reusing
+  // InkscapeApplication::parse_actions keeps the parameter coercion (bool, double, string,
+  // coordinate pairs) from drifting apart from the command line's. Dispatch goes through
+  // activate_any_actions, so the search order across the application, window and document
+  // action groups is the one the command line uses.
+  //
+  // False when no action of that name exists anywhere, which is the answer a plugin testing for
+  // a capability wants. THE CALL is part of this interface's version; WHICH actions exist is
+  // not -- Inkscape adds, renames and removes them between releases. listActions is what
+  // makes that survivable: a plugin can ask rather than assume.
+  boolean       invokeAction(DOMString spec);
+  DOMStringList listActions();
+};
+
+// Layers. A layer is a <g> carrying inkscape:groupmode="layer" and nothing more, so all of this
+// is document state and works headless -- including the CURRENT layer, which looks like view
+// state but is not: Inkscape writes it to namedview/@inkscape:current-layer and restores the
+// desktop from it on open. A plugin and the editor therefore read the same thing.
+[Vendor]
+interface Layers {
+  // Never absent. Resolved as Inkscape resolves it when opening a document: the layer the
+  // namedview names, else the topmost layer, else the root. A document with no layers still
+  // draws everything somewhere, and that somewhere is the root.
+  readonly attribute Element  currentLayer;     // <- LayerManager::currentLayer(), and
+                                                   //    sp_namedview_update_layers_from_document
+                                                   //    (sp-namedview.cpp sp_namedview_update_layers_from_document()) headless
+
+  // Records the choice on the namedview whether or not a desktop exists, since that is where it
+  // is kept; with a desktop the view moves as well, so the two agree. False if the element
+  // cannot be a layer or has no id to record.
+  boolean       setCurrentLayer(Element layer);
+
+  NodeList      layers(Document document);      // <- LayerManager::getAllLayers()
+
+  // The document's answer, from SPGroup::isLayer(). Deliberately not LayerManager::isLayer(),
+  // which asks per view: a view can enter a group and treat it as a layer, and that is a fact
+  // about the view rather than about the document.
+  boolean       isLayer(Element element);
+
+  // The root answers for anything not inside a layer, which is not the same as answering
+  // nothing. Objects in <defs> are the real absence: they are on no layer and not on the root.
+  Element?      layerForObject(Element element);
+
+  // position is Inkscape's own LayerRelativePosition -- 0 above, 1 child, 2 below -- rather
+  // than a second numbering invented to sit on top of it. The name is taken literally; making
+  // it unique is renameLayer's job, so a plugin that wants two layers deliberately alike can
+  // have them.
+  Element?      createLayer(Element reference, DOMString name, long position);
+                                                   // <- Inkscape::create_layer()
+
+  // uniquify counts up from any trailing number to a name no other layer holds, which is what
+  // Inkscape's own Add Layer does. This needed next_layer_name() to be split out of
+  // LayerManager::getNextLayerName(), which only ever needed the document.
+  void          renameLayer(Element layer, DOMString name, boolean uniquify);
+
+  // Hiding and locking write `display` and `sodipodi:insensitive` onto the objects, so these
+  // are document edits and not view settings. The solo pair is asymmetric -- the named layer
+  // stays, its siblings go -- and both are toggles unless forced: called on layers already
+  // hidden or locked, they reverse instead.
+  void          hideAllLayers(Document document, boolean hide);
+  void          lockAllLayers(Document document, boolean lock);
+  void          layerSolo(Element layer, boolean forceHide);
+  void          lockOtherLayers(Element layer, boolean forceLock);
+};
+
+// NOTE -- no `readonly attribute Selection selection` here, and no Params equivalent.
 // Web IDL would naturally group those behind container attributes, but the lowering rules
 // flatten every interface to its own wasm import module, and one module cannot be reached
 // "through" another: there is no object to hold, only (module, name) pairs. Declaring the

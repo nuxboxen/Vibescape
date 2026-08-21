@@ -22,7 +22,7 @@
 ;; Build:  water trap-matrix.wat -o trap-matrix.wasm
 
 (module
-  (import "org.inkscape.Inkscape" "inkParamInt" (func $case (param i32 i32) (result i32)))
+  (import "org.inkscape.Params" "paramInt" (func $case (param i32 i32) (result i32)))
 
   (import "org.inkscape.Document" "documentElement"  (func $documentElement (param i32) (result i32)))
   (import "org.inkscape.Document" "createElement"    (func $createElement (param i32 i32 i32) (result i32)))
@@ -81,16 +81,14 @@
 
   (import "org.inkscape.SVGSVGElement" "checkEnclosure"    (func $checkEnclosure (param i32 i32) (result i32)))
   (import "org.inkscape.SVGSVGElement" "checkIntersection" (func $checkIntersection (param i32 i32) (result i32)))
-  (import "org.inkscape.SVGSVGElement" "getEnclosureList"  (func $getEnclosureList (param i32) (result i32)))
-  (import "org.inkscape.SVGSVGElement" "getIntersectionList" (func $getIntersectionList (param i32) (result i32)))
 
   (import "org.inkscape.CSSStyleDeclaration" "getPropertyValue"
     (func $getPropertyValue (param i32 i32 i32 i32 i32) (result i32)))
 
-  (import "org.inkscape.Inkscape" "inkIsSelected"        (func $inkIsSelected (param i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkSelectedNodeCount" (func $inkSelectedNodeCount (param i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkSelectedNode"      (func $inkSelectedNode (param i32 i32 i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkSelectionAdd"      (func $inkSelectionAdd (param i32)))
+  (import "org.inkscape.Selection" "isSelected"        (func $isSelected (param i32) (result i32)))
+  (import "org.inkscape.Selection" "selectedNodeCount" (func $selectedNodeCount (param i32) (result i32)))
+  (import "org.inkscape.Selection" "selectedNode"      (func $selectedNode (param i32 i32 i32) (result i32)))
+  (import "org.inkscape.Selection" "selectionAdd"      (func $selectionAdd (param i32)))
 
   (memory (export "memory") 1)
 
@@ -213,11 +211,11 @@
       (then (drop (call $getPropertyValue (local.get $h) (i32.const 16) (i32.const 2) (i32.const 512) (i32.const 64)))))
 
     ;; Session tier
-    (if (i32.eq (local.get $op) (i32.const 52)) (then (drop (call $inkIsSelected (local.get $h)))))
-    (if (i32.eq (local.get $op) (i32.const 53)) (then (drop (call $inkSelectedNodeCount (local.get $h)))))
+    (if (i32.eq (local.get $op) (i32.const 52)) (then (drop (call $isSelected (local.get $h)))))
+    (if (i32.eq (local.get $op) (i32.const 53)) (then (drop (call $selectedNodeCount (local.get $h)))))
     (if (i32.eq (local.get $op) (i32.const 54))
-      (then (drop (call $inkSelectedNode (local.get $h) (i32.const 0) (i32.const 512)))))
-    (if (i32.eq (local.get $op) (i32.const 55)) (then (call $inkSelectionAdd (local.get $h))))
+      (then (drop (call $selectedNode (local.get $h) (i32.const 0) (i32.const 512)))))
+    (if (i32.eq (local.get $op) (i32.const 55)) (then (call $selectionAdd (local.get $h))))
 
     ;; Reaching here means the call was accepted. That is the failure being looked for, so
     ;; report it rather than succeeding quietly.

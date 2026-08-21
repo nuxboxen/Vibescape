@@ -23,7 +23,6 @@
   (import "org.inkscape.Node"     "insertBefore"    (func $insertBefore (param i32 i32 i32) (result i32)))
   (import "org.inkscape.Node"     "removeChild"     (func $removeChild (param i32 i32) (result i32)))
   (import "org.inkscape.Node"     "parentNode"      (func $parentNode (param i32) (result i32)))
-  (import "org.inkscape.Node"     "firstChild"      (func $firstChild (param i32) (result i32)))
   (import "org.inkscape.Node"     "nextSibling"     (func $nextSibling (param i32) (result i32)))
   (import "org.inkscape.Node"     "childNodes"      (func $childNodes (param i32) (result i32)))
   (import "org.inkscape.Node"     "nodeName"        (func $nodeName (param i32 i32 i32) (result i32)))

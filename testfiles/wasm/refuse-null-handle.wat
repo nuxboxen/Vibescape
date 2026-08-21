@@ -8,7 +8,6 @@
 
 (module
   (import "org.inkscape.Document" "createElement" (func $createElement (param i32 i32 i32) (result i32)))
-  (import "org.inkscape.Node"     "appendChild"   (func $appendChild (param i32 i32) (result i32)))
   (import "org.inkscape.Node"     "nodeType"      (func $nodeType (param i32) (result i32)))
   (memory (export "memory") 1)
   (data (i32.const 0) "svg:g")

@@ -33,18 +33,19 @@
   (import "org.inkscape.NodeList" "length" (func $nodesLength (param i32) (result i32)))
   (import "org.inkscape.NodeList" "item"   (func $nodesItem (param i32 i32) (result i32)))
 
-  (import "org.inkscape.Inkscape" "inkParamString"       (func $inkParamString (param i32 i32 i32 i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkParamFloat"        (func $inkParamFloat (param i32 i32) (result f64)))
-  (import "org.inkscape.Inkscape" "inkParamInt"          (func $inkParamInt (param i32 i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkParamBool"         (func $inkParamBool (param i32 i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkCurrentLayer"      (func $inkCurrentLayer (result i32)))
-  (import "org.inkscape.Inkscape" "inkIsSelected"        (func $inkIsSelected (param i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkSelectedIds"       (func $inkSelectedIds (result i32)))
-  (import "org.inkscape.Inkscape" "inkSelectedNodeCount" (func $inkSelectedNodeCount (param i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkSelectedNode"      (func $inkSelectedNode (param i32 i32 i32) (result i32)))
-  (import "org.inkscape.Inkscape" "inkIsCancelled"       (func $inkIsCancelled (result i32)))
-  (import "org.inkscape.Inkscape" "inkSelectionClear"    (func $inkSelectionClear))
-  (import "org.inkscape.Inkscape" "inkSelectionAdd"      (func $inkSelectionAdd (param i32)))
+  (import "org.inkscape.Params" "paramString"       (func $paramString (param i32 i32 i32 i32) (result i32)))
+  (import "org.inkscape.Params" "paramFloat"        (func $paramFloat (param i32 i32) (result f64)))
+  (import "org.inkscape.Params" "paramInt"          (func $paramInt (param i32 i32) (result i32)))
+  (import "org.inkscape.Params" "paramBool"         (func $paramBool (param i32 i32) (result i32)))
+  (import "org.inkscape.Layers" "currentLayer"      (func $currentLayer (result i32)))
+  (import "org.inkscape.Selection" "isSelected"        (func $isSelected (param i32) (result i32)))
+  (import "org.inkscape.Selection" "selectedIds"       (func $selectedIds (result i32)))
+  (import "org.inkscape.Selection" "selectionNodes"    (func $selectionNodes (result i32)))
+  (import "org.inkscape.Selection" "selectedNodeCount" (func $selectedNodeCount (param i32) (result i32)))
+  (import "org.inkscape.Selection" "selectedNode"      (func $selectedNode (param i32 i32 i32) (result i32)))
+  (import "org.inkscape.Cancellation" "isCancelled"       (func $isCancelled (result i32)))
+  (import "org.inkscape.Selection" "selectionClear"    (func $selectionClear))
+  (import "org.inkscape.Selection" "selectionAdd"      (func $selectionAdd (param i32)))
 
   (memory (export "memory") 1)
 
@@ -54,6 +55,31 @@
   (data (i32.const 24) "ok-query")
   (data (i32.const 40) "fill")
   (data (i32.const 48) "nosuchparam")
+  (data (i32.const 64) "inherited")
+
+  ;; Does the computed-style list carry an entry for `fill`? Entries are "name:value", so a
+  ;; match is the five bytes "fill:" at the head of one of them.
+  (func $hasFill (param $list i32) (result i32)
+    (local $i i32) (local $n i32) (local $len i32)
+    (local.set $n (call $listLength (local.get $list)))
+    (block $done
+      (loop $next
+        (br_if $done (i32.ge_s (local.get $i) (local.get $n)))
+        (local.set $len
+          (call $listItem (local.get $list) (local.get $i) (i32.const 3072) (i32.const 512)))
+        (if (i32.ge_s (local.get $len) (i32.const 5))
+          (then
+            (if (i32.and
+                  (i32.and (i32.eq (i32.load8_u (i32.const 3072)) (i32.const 102))    ;; 'f'
+                           (i32.eq (i32.load8_u (i32.const 3073)) (i32.const 105)))   ;; 'i'
+                  (i32.and
+                    (i32.and (i32.eq (i32.load8_u (i32.const 3074)) (i32.const 108))  ;; 'l'
+                             (i32.eq (i32.load8_u (i32.const 3075)) (i32.const 108))) ;; 'l'
+                    (i32.eq (i32.load8_u (i32.const 3076)) (i32.const 58))))          ;; ':'
+              (then (return (i32.const 1))))))
+        (local.set $i (i32.add (local.get $i) (i32.const 1)))
+        (br $next)))
+    (i32.const 0))
 
   (func (export "effect") (param $document i32) (result i32)
     (local $root i32) (local $box i32) (local $style i32) (local $list i32) (local $marker i32)
@@ -74,6 +100,21 @@
     (if (i32.le_s (call $getPropertyValue (local.get $box) (i32.const 40) (i32.const 4)
                                           (i32.const 512) (i32.const 256)) (i32.const 0))
       (then (return (i32.const 4))))
+    ;; ...and it appears in the enumerated list, which is the easy half.
+    (if (i32.eqz (call $hasFill (local.get $style))) (then (return (i32.const 22))))
+
+    ;; The half that matters. `inherited` declares no fill at all -- it takes one from the
+    ;; group above it -- and a COMPUTED style has a value for it regardless. A host that
+    ;; enumerates only the properties this element happens to declare is answering the
+    ;; specified style under the computed style's name, which is the exact failure that sends
+    ;; a plugin back to walking ancestors by hand.
+    ;;
+    ;; getPropertyValue already answers this correctly (cover-spaces asserts it), so the two
+    ;; operations on one object have to agree about what "the properties" are.
+    (if (i32.eqz (call $hasFill
+                    (call $getComputedStyle
+                      (call $getElementById (local.get $document) (i32.const 64) (i32.const 9)))))
+      (then (return (i32.const 23))))
 
     ;; ── hit testing ───────────────────────────────────────────────────────────
     ;; A rectangle covering the whole page encloses the fixture's shapes.
@@ -105,34 +146,53 @@
 
     ;; ── session tier ──────────────────────────────────────────────────────────
     ;; A parameter this .inx does not declare reports absence, distinctly from empty.
-    (if (i32.ne (call $inkParamString (i32.const 48) (i32.const 11) (i32.const 512) (i32.const 64))
+    (if (i32.ne (call $paramString (i32.const 48) (i32.const 11) (i32.const 512) (i32.const 64))
                 (i32.const -1))
       (then (return (i32.const 12))))
-    (if (f64.ne (call $inkParamFloat (i32.const 48) (i32.const 11)) (f64.const 0))
+    (if (f64.ne (call $paramFloat (i32.const 48) (i32.const 11)) (f64.const 0))
       (then (return (i32.const 13))))
-    (if (i32.ne (call $inkParamInt (i32.const 48) (i32.const 11)) (i32.const 0))
+    (if (i32.ne (call $paramInt (i32.const 48) (i32.const 11)) (i32.const 0))
       (then (return (i32.const 14))))
-    (if (i32.ne (call $inkParamBool (i32.const 48) (i32.const 11)) (i32.const 0))
+    (if (i32.ne (call $paramBool (i32.const 48) (i32.const 11)) (i32.const 0))
       (then (return (i32.const 15))))
 
-    ;; Headless: no desktop, so no current layer and nothing selected. Absence, not a guess.
-    (if (i32.ne (call $inkCurrentLayer) (i32.const 0)) (then (return (i32.const 16))))
-    (if (i32.ne (call $inkIsSelected (local.get $box)) (i32.const 0)) (then (return (i32.const 17))))
-    (if (i32.ne (call $listLength (call $inkSelectedIds)) (i32.const 0))
+    ;; The current layer is NOT absent headless: Inkscape writes the choice to
+    ;; namedview/@inkscape:current-layer and reads it back on open, so the document carries it
+    ;; whether or not anyone is looking. This fixture declares no layers and records no choice,
+    ;; and the answer for that is the root. cover-layers covers the other two branches.
+    (if (i32.ne (call $currentLayer) (local.get $root)) (then (return (i32.const 16))))
+
+    ;; Nothing is selected, though, which is a genuine absence rather than a fallback.
+    (if (i32.ne (call $isSelected (local.get $box)) (i32.const 0)) (then (return (i32.const 17))))
+    (if (i32.ne (call $listLength (call $selectedIds)) (i32.const 0))
       (then (return (i32.const 18))))
-    (if (i32.ne (call $inkSelectedNodeCount (local.get $box)) (i32.const 0))
+    (if (i32.ne (call $selectedNodeCount (local.get $box)) (i32.const 0))
       (then (return (i32.const 19))))
-    (if (i32.ne (call $inkSelectedNode (local.get $box) (i32.const 0) (i32.const 512)) (i32.const 0))
+    (if (i32.ne (call $selectedNode (local.get $box) (i32.const 0) (i32.const 512)) (i32.const 0))
       (then (return (i32.const 20))))
 
     ;; Nobody has cancelled anything, so this must answer false -- and must not hang, which
     ;; it could if the event pumping inside it went looking for a main loop that is not
     ;; running. The true answer needs a Cancel button and a person to press it.
-    (if (i32.ne (call $inkIsCancelled) (i32.const 0)) (then (return (i32.const 21))))
+    (if (i32.ne (call $isCancelled) (i32.const 0)) (then (return (i32.const 21))))
 
     ;; The mutating selection operations are reachable and harmless with no selection.
-    (call $inkSelectionClear)
-    (call $inkSelectionAdd (local.get $box))
+    (call $selectionClear)
+    (call $selectionAdd (local.get $box))
+
+    ;; ── the selection as elements ─────────────────────────────────────────────
+    ;; "For each selected object" is the opening line of nearly every extension ever written,
+    ;; so the selection has to be reachable AS ELEMENTS. Ids are not a substitute: they make
+    ;; every such plugin round-trip through getElementById, and an element that has not got one
+    ;; cannot be reached at all.
+    (if (i32.ne (call $nodesLength (call $selectionNodes)) (i32.const 1))
+      (then (return (i32.const 22))))
+    (if (i32.ne (call $nodesItem (call $selectionNodes) (i32.const 0)) (local.get $box))
+      (then (return (i32.const 23))))
+    (call $selectionClear)
+    (if (i32.ne (call $nodesLength (call $selectionNodes)) (i32.const 0))
+      (then (return (i32.const 24))))
+    (call $selectionAdd (local.get $box))
 
     (local.set $marker (call $createElement (local.get $document) (i32.const 8) (i32.const 5)))
     (call $setAttribute (local.get $marker)
