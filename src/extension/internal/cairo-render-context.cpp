@@ -1401,7 +1401,7 @@ void CairoRenderContext::_setStrokeStyle(SPStyle const *style, Geom::OptRect con
     if (style->stroke.isContext()) {
         // Do nothing. These are valid values but if not inside a <use> or <marker> element do nothing.
     } else if (style->stroke.isColor() || (style->stroke.isPaintserver() && !style->getStrokePaintServer()->isValid())) {
-        auto color = *style->fill.getColor().withOpacity(alpha).converted(Colors::Space::Type::RGB);
+        auto color = *style->stroke.getColor().withOpacity(alpha).converted(Colors::Space::Type::RGB);
         cairo_set_source_rgba(_cr, color[0], color[1], color[2], color.getOpacity());
     } else {
         g_assert( style->stroke.isPaintserver()
