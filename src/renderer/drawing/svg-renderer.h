@@ -53,10 +53,21 @@ public:
     void set_area(Geom::Rect const &area) {
         _area = area.roundOutwards();
     }
+
     /**
      * The resolution of the final output.
      */
-    void set_dpi(double dpi) { _dpi = dpi; }
+    void set_dpi(double dpi) { _xdpi = dpi; _ydpi = dpi; }
+
+    /**
+     * The resolution of the final output, in x direction.
+     */
+    void set_xdpi(double xdpi) { _xdpi = xdpi; }
+
+    /**
+     * The resolution of the final output, in y direction.
+     */
+    void set_ydpi(double ydpi) { _ydpi = ydpi; }
 
     /**
      * The device scale to render to.
@@ -68,6 +79,14 @@ public:
      */
     void set_item_limit(std::vector<SPItem const *> items) { _items = std::move(items); }
     void set_opaque(bool opaque) { _is_opaque = opaque; }
+
+    /**
+     * Render everything onto a solid color.
+     */
+    void set_background(Colors::Color color)
+    {
+        _background_color = std::move(color);
+    }
 
     /**
      * Render everything on a checkboard pattern with these colors.
@@ -113,17 +132,20 @@ public:
     std::optional<Geom::IntPoint> get_dimensions(SPDocument *document) const;
     Geom::IntPoint get_dimensions(Geom::Rect const &area) const;
 private:
-    double get_scale() const;
+    double get_xscale() const;
+    double get_yscale() const;
     Geom::OptRect get_area(Geom::OptRect const &def) const;
 
     bool _is_opaque = false;
     bool _code_build = false;
 
-    double _dpi = 96.0;
+    double _xdpi = 96.0;
+    double _ydpi = 96.0;
     int _device_scale = 1;
     Geom::OptRect _area;
     std::vector<SPItem const *> _items;
 
+    std::optional<Colors::Color> _background_color;
     std::optional<Colors::Color> _checkerboard_color;
     std::optional<Colors::Color> _checkerboard_color2;
     std::shared_ptr<Colors::Space::AnySpace> _color_space;

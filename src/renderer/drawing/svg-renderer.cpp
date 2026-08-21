@@ -24,9 +24,13 @@
 
 namespace Inkscape::Renderer {
 
-double SvgRenderer::get_scale() const
+double SvgRenderer::get_xscale() const
 {
-    return Inkscape::Util::Quantity::convert(_dpi, "px", "in");
+    return Inkscape::Util::Quantity::convert(_xdpi, "px", "in");
+}
+double SvgRenderer::get_yscale() const
+{
+    return Inkscape::Util::Quantity::convert(_ydpi, "px", "in");
 }
 Geom::OptRect SvgRenderer::get_area(Geom::OptRect const &default_bounds) const
 {
@@ -39,10 +43,9 @@ std::optional<Geom::IntPoint> SvgRenderer::get_dimensions(SPDocument *document) 
 }
 Geom::IntPoint SvgRenderer::get_dimensions(Geom::Rect const &area) const
 {
-    double scale_factor = get_scale();
     return Geom::IntPoint(
-        std::ceil(scale_factor * area.width()),
-        std::ceil(scale_factor * area.height()));
+        std::ceil(get_xscale() * area.width()),
+        std::ceil(get_yscale() * area.height()));
 }
 
 std::shared_ptr<Surface> SvgRenderer::render(SPObject const *object) const
@@ -93,9 +96,8 @@ std::shared_ptr<Surface> SvgRenderer::render(SPDocument *document) const
 void SvgRenderer::render(Surface &surface, SPDocument *document) const
 {
     auto area = get_area(document->preferredBounds());
-    double scale_factor = get_scale();
     Geom::Point origin = area->min();
-    Geom::Affine affine = Geom::Translate(-origin) * Geom::Scale(scale_factor, scale_factor);
+    Geom::Affine affine = Geom::Translate(-origin) * Geom::Scale(get_xscale(), get_yscale());
 
     // Document
     document->ensureUpToDate();
@@ -136,6 +138,10 @@ void SvgRenderer::render(Surface &surface, SPDocument *document) const
 
     // Rendering
     Context dc(surface);
+
+    if (_background_color) {
+        dc.paint(*_background_color);
+    }
 
     if (_checkerboard_color) {
         auto color1 = *_checkerboard_color->converted(dc.getColorSpace());
