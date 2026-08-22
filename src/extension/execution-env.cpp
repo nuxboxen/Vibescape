@@ -44,7 +44,8 @@ ExecutionEnv::ExecutionEnv (Effect * effect, SPDesktop *desktop, Implementation:
     _desktop(desktop),
     _docCache(docCache),
     _effect(effect),
-    _show_working(show_working)
+    _show_working(show_working),
+    _show_errors(show_errors)
 {
     if (_desktop) {
         document = desktop->doc();

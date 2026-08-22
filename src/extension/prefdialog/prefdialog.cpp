@@ -103,6 +103,11 @@ PrefDialog::PrefDialog (Glib::ustring name, Gtk::Widget * controls, Effect * eff
     if (_effect != nullptr && _effect->no_live_preview) {
         set_modal(false);
     }
+
+    // Attach to the document window. The dialog is constructed modal, and a modal window with
+    // no transient parent is left for the compositor to place: GTK warns about it, and under
+    // Wayland it can come up behind the window it is blocking, with no way to raise it.
+    sp_transientize(*this);
 }
 
 PrefDialog::~PrefDialog ( )

@@ -5367,13 +5367,19 @@ void WasmBackend::effect(Inkscape::Extension::Effect *module, ExecutionEnv *exec
  *
  * Silent on the command line, where a dialog cannot be shown and the warning already went to
  * stderr, which is where a script driving Inkscape will look for it.
+ *
+ * Silent under a live preview too, which asks for it through ExecutionEnv::show_errors(). The
+ * preview re-runs the effect on every parameter change, and gui_warning() runs the dialog to
+ * response -- so reporting there raises a modal on each pass, from inside the main loop the
+ * preview is driven by, and the parameter dialog cannot be reached to correct the parameter
+ * that is failing. The rollback still happens; only the dialog is withheld.
  */
 void WasmBackend::_reportFailure(ExecutionEnv *executionEnv, SPDesktop *desktop, Glib::ustring const &message)
 {
     if (executionEnv) {
         executionEnv->undo();
     }
-    if (desktop) {
+    if (desktop && (!executionEnv || executionEnv->show_errors())) {
         Inkscape::UI::gui_warning(message.raw());
     }
 }
