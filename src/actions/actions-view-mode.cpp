@@ -250,6 +250,13 @@ view_set_gui(InkscapeWindow* win)
     bool scrollbars_state  = prefs->getBool(pref_root + "scrollbars/state", true);
     bool rulers_state      = prefs->getBool(pref_root + "rulers/state", true);
 
+    // If interface_mode is unset, use the screen aspect ratio.
+    Gdk::Rectangle monitor_geometry = Inkscape::UI::get_monitor_geometry_primary();
+    double const width  = monitor_geometry.get_width();
+    double const height = monitor_geometry.get_height();
+    bool const widescreen = (height > 0 && width/height > 1.65);
+    bool interface_mode = prefs->getBool(pref_root + "interface_mode", widescreen);
+
     canvas_set_state(win, "canvas-commands-bar",      commands_state);
     canvas_set_state(win, "canvas-snap-controls-bar", snaptoolbox_state);
     canvas_set_state(win, "canvas-tool-control-bar",  toppanel_state);
@@ -258,6 +265,7 @@ view_set_gui(InkscapeWindow* win)
     canvas_set_state(win, "canvas-scroll-bars",       scrollbars_state);
     canvas_set_state(win, "canvas-palette",           palette_state);
     canvas_set_state(win, "canvas-statusbar",         statusbar_state);
+    canvas_set_state(win, "canvas-interface-mode",    interface_mode);
     // clang-format on
 }
 
