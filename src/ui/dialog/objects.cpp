@@ -1484,20 +1484,14 @@ bool ObjectsPanel::on_tree_key_pressed(Gtk::EventControllerKey const &controller
             _activateAction("win.layer-delete", "delete-selection");
             // NOTE: We could select a sibling object here to make deleting many objects easier.
             return true;
-        case GDK_KEY_Page_Up:
-        case GDK_KEY_KP_Page_Up:
-            if (shift) {
-                _activateAction("win.layer-top", "selection-top");
-                return true;
-            }
-            break;
-        case GDK_KEY_Page_Down:
-        case GDK_KEY_KP_Page_Down:
-            if (shift) {
-                _activateAction("win.layer-bottom", "selection-bottom");
-                return true;
-            }
-            break;
+        case GDK_KEY_Home:
+        case GDK_KEY_KP_Home:
+            _activateAction("win.layer-top", "selection-top");
+            return true;
+        case GDK_KEY_End:
+        case GDK_KEY_KP_End:
+            _activateAction("win.layer-bottom", "selection-bottom");
+            return true;
         case GDK_KEY_Up:
         case GDK_KEY_KP_Up:
             if (ctrl) {
