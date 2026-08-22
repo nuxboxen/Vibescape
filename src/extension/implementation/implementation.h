@@ -102,6 +102,26 @@ public:
     virtual bool cancelProcessing () { return true; }
     virtual void commitDocument () {}
 
+    /**
+     * How the undo entry for this invocation should be labelled.
+     *
+     * ExecutionEnv::commit() names the entry after the extension, which is right for one that
+     * does a single thing and wrong for one that does several: the user is shown the plugin's
+     * name where they expect the operation's. An implementation that lets its extension say
+     * returns the label here; empty keeps the extension name, which is what every existing
+     * implementation does.
+     */
+    virtual Glib::ustring undoLabel() const { return {}; }
+
+    /**
+     * The key this invocation's undo entry coalesces on, or empty not to coalesce.
+     *
+     * A non-empty key merges the entry with the preceding one carrying the same key
+     * (DocumentUndo::maybeDone), which is what keeps a live-preview drag to one history entry
+     * instead of one per redraw.
+     */
+    virtual Glib::ustring undoCoalesceKey() const { return {}; }
+
     // Indicate if the implementation has it's own GUI replacing prefs
     virtual bool custom_gui() const { return false; }
 

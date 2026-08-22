@@ -120,6 +120,22 @@ void LayerManager::reset()
  */
 Glib::ustring LayerManager::getNextLayerName( SPObject* obj, gchar const *label)
 {
+    return Inkscape::next_layer_name(_document, obj, label);
+}
+
+/*
+ * Split out of getNextLayerName() above so it can be reached without a desktop: choosing a name
+ * that no other layer holds only ever needed the document's layer resources.
+ *
+ * ONE BEHAVIOUR CHANGE comes with the move, and it is deliberate. The member version collected
+ * existing names only `if (currentRoot())`, and currentRoot() is a cast of the layer
+ * hierarchy's top, so it is null whenever that hierarchy is empty or its top is not a group.
+ * In that state the member version collects nothing, finds no collision, and hands back the
+ * caller's label unchanged -- a duplicate name from the function whose whole purpose is to
+ * avoid one. Here the guard is absent and the names are always collected.
+ */
+Glib::ustring next_layer_name(SPDocument *document, SPObject *obj, gchar const *label)
+{
     Glib::ustring incoming( label ? label : "Layer 1" );
     Glib::ustring result(incoming);
     Glib::ustring base(incoming);
@@ -145,12 +161,10 @@ Glib::ustring LayerManager::getNextLayerName( SPObject* obj, gchar const *label)
     }
 
     std::set<Glib::ustring> currentNames;
-    std::vector<SPObject *> layers = _document->getResourceList("layer");
-    if (currentRoot()) {
-        for (auto layer : layers) { 
-            if (layer != obj)
-                currentNames.insert(layer->label() ? Glib::ustring(layer->label()) : Glib::ustring());
-        }
+    std::vector<SPObject *> layers = document->getResourceList("layer");
+    for (auto layer : layers) {
+        if (layer != obj)
+            currentNames.insert(layer->label() ? Glib::ustring(layer->label()) : Glib::ustring());
     }
 
     // Not sure if we need to cap it, but we'll just be paranoid for the moment

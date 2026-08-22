@@ -408,6 +408,38 @@ if(WITH_GNU_READLINE)
   endif()
 endif()
 
+# The WebAssembly engine is javelina: a header plus a library, with no pkg-config module to
+# query. Point WASM_ROOT at a prefix holding include/ and lib/, or name the library outright
+# with WASM_LIBRARY. Only javelina is looked for, and not finding it disables the backend.
+#
+# The host compiles against the embedding interface of the WebAssembly specification (Core
+# Spec §7.1), which wasm.h is a rendering of. The community wasm-c-api header renders the
+# PRE-3.0 appendix and has not been updated, so it omits operations §7.1 defines and this
+# backend calls -- instance_export (§7.1.7) and exn_read (§7.1.12) among them. Accepting any
+# library called "wasm" would therefore find an engine that configures cleanly and then fails
+# at link time on symbols it was never going to export, which is a worse answer than not
+# finding one at all.
+#
+# The library must be position-independent, because it becomes part of libinkscape_base.so and
+# ld will not put non-PIC members in a shared object. Only standard prefix layout is searched:
+# guessing at an engine's private build directories picks whichever variant happens to sort
+# first, which is how a non-PIC archive gets found and the link fails far from the cause.
+if(WITH_WASM)
+  find_path(WASM_INCLUDE_DIR wasm.h HINTS ${WASM_ROOT} PATH_SUFFIXES include)
+  find_library(WASM_LIBRARY NAMES javelina HINTS ${WASM_ROOT} PATH_SUFFIXES lib)
+  if(WASM_INCLUDE_DIR AND WASM_LIBRARY)
+    message(STATUS "Found WebAssembly engine: ${WASM_LIBRARY}")
+    include_directories(SYSTEM ${WASM_INCLUDE_DIR})
+    list(APPEND INKSCAPE_LIBS ${WASM_LIBRARY})
+    add_definitions(-DWITH_WASM)
+  else()
+    message(STATUS "Did not find javelina; WebAssembly extensions disabled. "
+                   "Set WASM_ROOT to a prefix with include/ and lib/, or WASM_LIBRARY to the "
+                   "library itself (it must be built position-independent).")
+    set(WITH_WASM OFF)
+  endif()
+endif()
+
 if(WITH_IMAGE_MAGICK)
     # we want "<" but pkg_check_modules only offers "<=" for some reason; let's hope nobody actually has 7.0.0
     pkg_check_modules(MAGICK IMPORTED_TARGET ImageMagick++<=7)

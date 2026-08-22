@@ -86,10 +86,11 @@ class Widget;
 
 enum ModuleImpType
 {
-    MODULE_EXTENSION,   // implementation/script.h python extensions
-    MODULE_XSLT,        // implementation/xslt.h xml transform extensions
-    MODULE_PLUGIN,      // plugins/*/*.h C++ extensions
-    MODULE_UNKNOWN_IMP  // No implementation, so nothing created.
+    MODULE_EXTENSION,  // implementation/script.h python extensions
+    MODULE_XSLT,       // implementation/xslt.h xml transform extensions
+    MODULE_PLUGIN,     // plugins/*/*.h C++ extensions
+    MODULE_WASM,       // implementation/wasm-backend.h WebAssembly extensions
+    MODULE_UNKNOWN_IMP // No implementation, so nothing created.
 };
 
 enum ModuleFuncType
@@ -266,6 +267,16 @@ public:
 
     bool get_param_optiongroup_contains (char const *name, char const   *value) const;
     bool get_param_optiongroup_is(char const *name, std::string_view value, bool alt = false) const;
+
+    /**
+     * The value of any parameter, whatever its type, as the string the .inx would carry.
+     *
+     * The counterpart of set_param_any(), which has always been here. The typed getters above
+     * each dynamic_cast to one parameter class and throw otherwise, so `path` and `notebook`
+     * -- both declared by the .inx schema -- had no accessor at all: get_param_string() throws
+     * param_not_string_param() for them, and there is no get_param_path().
+     */
+    std::string get_param_any(char const *name) const;
 
     bool        set_param_bool          (char const *name, bool    value);
     int         set_param_int           (char const *name, int     value);

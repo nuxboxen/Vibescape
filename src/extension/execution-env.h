@@ -59,6 +59,9 @@ private:
 
     /** \brief  Show the working dialog when the effect is executing. */
     bool _show_working;
+
+    /** \brief  Show a dialog when the effect reports an error. */
+    bool _show_errors;
 public:
 
     /** \brief  Create a new context for execution of an effect
@@ -92,6 +95,14 @@ public:
 
     /** \brief Return reference to working dialog (if any) */
     Gtk::Dialog *get_working_dialog () { return _visibleDialog; };
+
+    /** \brief Whether a failing effect should be reported to the user in a dialog.
+
+        False while a live preview is running. The preview re-runs the effect on every
+        parameter change, so an implementation that reports failures in a modal dialog
+        would raise one on each pass, from inside the main loop the preview is driven
+        by. Implementations that only write to stderr can ignore this. */
+    bool show_errors () const { return _show_errors; }
 
     // Public according to Core Guideline C.131
     SPDocument *document = nullptr;

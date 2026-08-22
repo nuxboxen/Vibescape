@@ -27,6 +27,9 @@
 #include "effect.h"
 #include "extension.h"
 #include "implementation/script.h"
+#ifdef WITH_WASM
+#include "implementation/wasm-backend.h"
+#endif
 #include "implementation/xslt.h"
 #include "inkscape.h"
 #include "input.h"
@@ -312,6 +315,10 @@ build_from_reprdoc(Inkscape::XML::Document *doc, std::unique_ptr<Implementation:
             module_implementation_type = MODULE_XSLT;
         } else if (!strcmp(element_name, INKSCAPE_EXTENSION_NS "plugin")) {
             module_implementation_type = MODULE_PLUGIN;
+#ifdef WITH_WASM
+        } else if (!strcmp(element_name, INKSCAPE_EXTENSION_NS "wasm")) {
+            module_implementation_type = MODULE_WASM;
+#endif
         }
 
         //Inkscape::XML::Node *old_repr = child_repr;
@@ -341,6 +348,12 @@ build_from_reprdoc(Inkscape::XML::Document *doc, std::unique_ptr<Implementation:
                 imp = ImplementationHolder::make_nonowning(loader.load_implementation(doc));
                 break;
             }
+#ifdef WITH_WASM
+            case MODULE_WASM: {
+                imp = ImplementationHolder::make_owning<Implementation::WasmBackend>();
+                break;
+            }
+#endif
         }
     }
 

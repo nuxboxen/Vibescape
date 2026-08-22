@@ -139,9 +139,10 @@ Extension::Extension(Inkscape::XML::Node *in_repr, ImplementationHolder implemen
                     break;
                 }
             }
-        } else if (!strcmp(chname, "xslt")) { // TODO: should these be parsed in their respective Implementation?
+        } else if (!strcmp(chname, "xslt") || !strcmp(chname, "wasm")) {
+            // TODO: should these be parsed in their respective Implementation?
             for (auto child = child_repr->firstChild(); child != nullptr; child = child->next()) {
-                if (child->type() == Inkscape::XML::NodeType::ELEMENT_NODE) { // skip non-element nodes (see LP #1372200)
+                if (child->type() == Inkscape::XML::NodeType::ELEMENT_NODE) { // skip non-element nodes (LP #1372200)
                     _deps.push_back(std::make_unique<Dependency>(child, this, Dependency::TYPE_FILE));
                     break;
                 }
@@ -909,6 +910,11 @@ Extension::set_param_color(char const *name, Inkscape::Colors::Color const &colo
     \param    name   The name of the parameter to set
     \param    value  The value to set the parameter to
  */
+std::string Extension::get_param_any(char const *name) const
+{
+    return get_param(name)->value_to_string();
+}
+
 void Extension::set_param_any(char const *name, std::string const &value)
 {
     get_param(name)->set(value);
