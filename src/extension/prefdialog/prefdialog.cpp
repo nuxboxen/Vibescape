@@ -15,12 +15,14 @@
 #include <gtkmm/checkbutton.h>
 #include <gtkmm/separator.h>
 
+#include "desktop.h"
 #include "document.h"
 #include "document-undo.h"
 #include "extension/effect.h"
 #include "extension/execution-env.h"
 #include "extension/implementation/implementation.h"
 #include "inkscape.h" // Used to get SP_ACTIVE_DESKTOP
+#include "inkscape-window.h"
 #include "parameter.h"
 #include "ui/dialog-events.h"
 #include "ui/pack.h"
@@ -103,11 +105,6 @@ PrefDialog::PrefDialog (Glib::ustring name, Gtk::Widget * controls, Effect * eff
     if (_effect != nullptr && _effect->no_live_preview) {
         set_modal(false);
     }
-
-    // Attach to the document window. The dialog is constructed modal, and a modal window with
-    // no transient parent is left for the compositor to place: GTK warns about it, and under
-    // Wayland it can come up behind the window it is blocking, with no way to raise it.
-    sp_transientize(*this);
 }
 
 PrefDialog::~PrefDialog ( )
@@ -135,11 +132,22 @@ PrefDialog::preview_toggle () {
         if (_exEnv == nullptr) {
             set_modal(true);
 
+            // Keep the dialog above the document window while the preview runs: running the
+            // effect gives the canvas the focus, and a dialog with no transient parent drops
+            // behind it. ExecutionEnv does this around a working dialog, which a preview
+            // never shows. Attached after set_modal() so the surface has already settled.
+            if (auto *desktop = SP_ACTIVE_DESKTOP) {
+                if (auto *window = desktop->getInkscapeWindow()) {
+                    set_transient_for(*window);
+                }
+            }
+
             _exEnv = std::make_unique<ExecutionEnv>(_effect, SP_ACTIVE_DESKTOP, nullptr, false, false);
             _exEnv->run();
         }
     } else {
         set_modal(false);
+        unset_transient_for();
 
         if (_exEnv != nullptr) {
             _exEnv->cancel();
