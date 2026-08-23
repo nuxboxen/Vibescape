@@ -220,6 +220,9 @@ ContextMenu::ContextMenu(SPDesktop *desktop, SPObject *object, std::vector<SPIte
             AppendItemFromAction(gmenu_section, "app.duplicate", _("Duplic_ate"), "edit-duplicate");
             AppendItemFromAction(gmenu_section, "app.clone", _("_Clone"), "edit-clone");
             AppendItemFromAction(gmenu_section, "app.delete-selection", _("_Delete"), "edit-delete");
+            if (auto text = cast<SPText>(item); text && text->has_shape_inside()) {
+                AppendItemFromAction(gmenu_section, "app.text-unflow-and-keep-shape", _("_Unflow and keep shape"), "select_text_unflow_and_keep_shape");
+            }
             gmenu->append_section(gmenu_section);
 
             // Dialogs

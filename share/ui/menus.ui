@@ -1161,6 +1161,11 @@
           <attribute name="icon">text-unflow</attribute>
         </item>
         <item>
+          <attribute name="label" translatable="yes">_Unflow and Keep Shape</attribute>
+          <attribute name="action">app.text-unflow-and-keep-shape</attribute>
+          <attribute name="icon">text-unflow-and-keep-shape</attribute>
+        </item>
+        <item>
           <attribute name="label" translatable="yes">_Convert to Text</attribute>
           <attribute name="action">app.text-convert-to-regular</attribute>
           <attribute name="icon">text-convert-to-regular</attribute>

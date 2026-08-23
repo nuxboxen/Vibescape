@@ -14,6 +14,9 @@
 #include <giomm.h>
 #include <glibmm/i18n.h>
 
+#include "object/sp-text.h"
+#include "selection.h"
+#include "actions/actions-svg-processing.h"
 #include "actions-text.h"
 #include "actions/actions-extra-data.h"
 #include "inkscape-application.h"
@@ -50,6 +53,17 @@ select_text_unflow()
 }
 
 void
+select_text_unflow_and_keep_shape(InkscapeApplication* app)
+{
+    auto selection = app->get_active_selection();
+    auto text = cast<SPText>(selection->singleItem());
+    if (!text)
+        return;
+    insert_text_fallback(text->getRepr(),selection->document());
+    text->hide_shape_inside();
+}
+
+void
 text_convert_to_regular()
 {
     flowtext_to_text();
@@ -77,6 +91,7 @@ std::vector<std::vector<Glib::ustring>> raw_data_text =
     {"app.text-flow-into-frame",      N_("Flow into Frame"),        SECTION, N_("Put text into a frame (path or shape), creating a flowed text linked to the frame object")},
     {"app.text-flow-subtract-frame",  N_("Set Subtraction Frames"), SECTION, N_("Flow text around a frame (path or shape), only available for SVG 2.0 Flow text.")},
     {"app.text-unflow",               N_("Unflow"),                 SECTION, N_("Remove text from frame (creates a single-line text object)")},
+    {"app.text-unflow-and-keep-shape",N_("Unflow and Keep Shape"),  SECTION, N_("Remove text from shape")},
     {"app.text-convert-to-regular",   N_("Convert to Text"),        SECTION, N_("Convert flowed text to regular text object (preserves appearance)")},
     {"app.text-convert-to-glyphs",    N_("Convert to Glyphs"),      SECTION, N_("Convert text into individual glyphs")},
     {"app.text-unkern",               N_("Remove Manual Kerns"),    SECTION, N_("Remove all manual kerns and glyph rotations from a text object")}
@@ -94,6 +109,7 @@ add_actions_text(InkscapeApplication* app)
     gapp->add_action( "text-flow-into-frame",        sigc::ptr_fun(text_flow_into_frame));
     gapp->add_action( "text-flow-subtract-frame",    sigc::ptr_fun(text_flow_subtract_frame));
     gapp->add_action( "text-unflow",                 sigc::ptr_fun(select_text_unflow));
+    gapp->add_action( "text-unflow-and-keep-shape",  sigc::bind(sigc::ptr_fun(&select_text_unflow_and_keep_shape), app));
     gapp->add_action( "text-convert-to-regular",     sigc::ptr_fun(text_convert_to_regular));
     gapp->add_action( "text-convert-to-glyphs",      sigc::ptr_fun(text_convert_to_glyphs));
     gapp->add_action( "text-unkern",                 sigc::ptr_fun(text_unkern));
