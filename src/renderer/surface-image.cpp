@@ -41,6 +41,18 @@ static GlyMemoryFormat get_memory_format(Cairo::RefPtr<Cairo::ImageSurface> cair
     }
 }
 
+Glib::RefPtr<Glib::Bytes> get_icc_profile_bytes(std::shared_ptr<Colors::Space::AnySpace> const &space)
+{
+    if (space->getType() == Colors::Space::Type::RGB) {
+        return {}; // Do nothing for sRGB, as that's the default for outputs
+    }
+    if (auto ps = std::dynamic_pointer_cast<Colors::Space::ProfileSpace<true>>(space)) {
+        auto v = ps->getProfile()->dumpData();
+        return Glib::wrap(g_bytes_new(v.data(), v.size()));
+    }
+    throw Image::ImageError("Can not encode an indirect color-space into an output file.");
+}
+
 /**
  * Process the given GlyLoader into a bundle of useful raster information
  * making sure the memory format of the output is floating point.
@@ -56,6 +68,7 @@ static GlyImage *get_image_from_loader(GlyLoader *loader)
     gly_loader_set_color_convert_icc_srgb(loader, false);
     return gly_loader_load(loader, nullptr);
 }
+
 /**
  * Load any image from a file as referenced by a Gio::File.
  *
@@ -258,8 +271,6 @@ Glib::RefPtr<Glib::Bytes> Image::encode_as_bytes(std::optional<std::string> mime
     if (mime == "image/svg+xml") {
         throw Image::ImageError("Can't export a purely raster image as an svg");
     } else if (_surfaces.empty()) {
-//        if (_mime_type == mime_type && _image) {
-//            Future optimisation: Just ask for the image bytes we already have
         throw Image::ImageError("There is no image ready for image-encoding.");
     } else if (_surfaces.size() > 1) {
         throw Image::ImageError("Can not save more than 3 channels of raster data yet.");
@@ -269,9 +280,32 @@ Glib::RefPtr<Glib::Bytes> Image::encode_as_bytes(std::optional<std::string> mime
         auto memory = _surfaces[0]->get_data();
         GBytes *unencoded = g_bytes_new(memory, memory_strd * height());
 
-        if (!gly_creator_add_frame_with_stride(creator,
-            width(), height(), memory_strd,
-            memory_fmt, unencoded, &error)) {
+        if (auto frame = gly_creator_add_frame_with_stride(creator,
+                    width(), height(), memory_strd, memory_fmt, unencoded, &error)) {
+
+            if (auto bytes = get_icc_profile_bytes(getColorSpace())) {
+                gly_new_frame_set_color_icc_profile(frame, bytes->gobj());
+            }
+            if (_interlacing) {
+                // TODO: Glycin doesn't supoprt this yet.
+            }
+            if (_pixel_density) {
+                auto gly_density = gly_pixel_density_new(
+                    _pixel_density->x(), GLY_PHYSICAL_DIMENSION_UNIT_INCH,
+                    _pixel_density->y(), GLY_PHYSICAL_DIMENSION_UNIT_INCH);
+                gly_new_frame_set_pixel_density(frame, gly_density);
+                g_object_unref(gly_density);
+            }
+            for (auto const &[key, value] : _metadata) {
+                gly_creator_add_metadata_key_value(creator, key.c_str(), value.c_str());
+            }
+            if (_encoding_quality) {
+                gly_creator_set_encoding_quality(creator, *_encoding_quality);
+            }
+            if (_encoding_compression) {
+                gly_creator_set_encoding_compression(creator, *_encoding_compression);
+            }
+        } else {
             throw Image::ImageError("Failed to create image: " + std::string(error->message));
         }
 

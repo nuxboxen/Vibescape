@@ -82,6 +82,13 @@ public:
         }
         return _color_space;
     }
+
+    void setEncodingQuality(int val) { _encoding_quality = val; }
+    void setEncodingCompression(int val) { _encoding_compression = val; }
+    void setPixelDensity(Geom::Point density) { _pixel_density = density; }
+    void setMetadata(std::string key, std::string val) { _metadata[key] = val; }
+    void setInterlacing(bool interlacing) { _interlacing = interlacing; }
+
 private:
     SvgFactory const _svg_factory;
     std::unique_ptr<SPDocument> _doc;      // Used in getCairoSurface to render the svg
@@ -91,6 +98,12 @@ private:
     std::string _mime_type;                // Remember opening mime type for saving
 
     mutable GlyFrame *_frame = nullptr;    // Shared memory with Cairo::Surface
+
+    std::optional<int> _encoding_quality;
+    std::optional<int> _encoding_compression;
+    std::optional<bool> _interlacing;
+    std::optional<Geom::Point> _pixel_density;
+    std::map<std::string, std::string> _metadata;
 };
 
 } // namespace Inkscape::Renderer
