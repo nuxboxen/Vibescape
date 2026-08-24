@@ -724,7 +724,7 @@ FontList::FontList(Glib::ustring preferences_path)
         auto factory = Gtk::SignalListItemFactory::create();
         factory->signal_setup().connect([](auto &item) { on_set_up_griditem(item); });
         factory->signal_bind().connect(
-            [this](auto &item) { on_bind_griditem(_sample_font_size, _show_font_names, _sample_text, item); });
+            [this](auto &item) { on_bind_griditem(_sample_font_size, _show_font_names, _grid_sample_text, item); });
         _font_grid.set_factory(factory);
     }
 
@@ -869,6 +869,15 @@ FontList::FontList(Glib::ustring preferences_path)
     _list_sample_entry.signal_changed().connect([=, this] {
         _sample_text = _list_sample_entry.get_text();
         prefs->setString(_prefs + "/sample-text", _sample_text);
+        rebuild_ui();
+    });
+
+    // sample text for grid
+    _grid_sample_text = prefs->getString(_prefs + "/grid-text", "Aa");
+    _grid_sample_entry.set_text(_grid_sample_text);
+    _grid_sample_entry.signal_changed().connect([=, this] {
+        _grid_sample_text = _grid_sample_entry.get_text();
+        prefs->setString(_prefs + "/grid-text", _grid_sample_text);
         rebuild_ui();
     });
 
@@ -1125,11 +1134,9 @@ void FontList::switch_view_mode(bool show_list)
     // update sort icon: grid view does not support grouping by family
     set_sort_icon();
     // update widgets in an option popup
-    get_widget<Gtk::MenuButton>(_builder, "sample-menu-btn").set_sensitive(show_list);
+    get_widget<Gtk::MenuButton>(_builder, "sample-menu-btn").set_visible(show_list);
     _list_sample_entry.set_visible(show_list);
-    _preview_size_scale.set_visible(true);
-    _preview_size_spin.set_visible(true);
-    _list_sample_entry.set_visible(true);
+    _grid_sample_entry.set_visible(!show_list);
     Preferences::get()->setBool(_prefs + "/list-view-mode", show_list);
     // try to reselect the same font in a new view
     select_font(fontspec);
