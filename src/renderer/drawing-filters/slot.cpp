@@ -127,10 +127,7 @@ void Slot::set(int slot, std::shared_ptr<Surface> surface)
         _slots[slot] = std::move(surface);
     }
 
-    // Setting internal slots doesn't change the last_out
-    if (slot > SLOT_NOT_SET) {
-        _last_out = slot;
-    }
+    _last_out = slot;
 }
 
 std::shared_ptr<Surface> Slot::get_result(int slot) const
