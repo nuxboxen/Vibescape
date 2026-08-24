@@ -2130,18 +2130,21 @@ void ObjectsPanel::selectRange(Gtk::TreeModel::Path start, Gtk::TreeModel::Path 
     _prev_range.clear();
 
     // Select everything between the initial selection and currently selected item.
+    std::vector<SPObject*> _temp_range;
     _store->foreach ([&](Gtk::TreeModel::Path const &p, Gtk::TreeModel::const_iterator const &it) {
         if ((gtk_tree_path_compare(start.gobj(), p.gobj()) <= 0) &&
             (gtk_tree_path_compare(end.gobj(), p.gobj()) >= 0)) {
             auto obj = getItem(*it);
             if (obj) {
                 _prev_range.emplace_back(obj);
-                selection->add(obj, false);
+                _temp_range.push_back(obj);
             }
         }
         return false;
     });
-
+    if (_temp_range.size() > 0) {
+        selection->add(_temp_range.begin(), _temp_range.end());
+    }
     _start_new_range = false;
 }
 
