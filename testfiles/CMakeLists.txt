@@ -239,7 +239,7 @@ add_unit_tests(TEST_SOURCES
 
 include("${CMAKE_SOURCE_DIR}/src/renderer/drawing-filters/CMakeUnit.txt")
 get_drawing_filters_unit_lib()
-add_unit_tests(TEST_SOURCES "renderer/drawing-filter-*-test.cpp"
+add_unit_tests(TEST_SOURCES "renderer/drawing-filter-test.cpp" "renderer/drawing-filter-*-test.cpp"
                     EXTRA_LIBS renderer_unit_lib drawing_filters_unit_lib colors_unit_lib)
 
 include("${CMAKE_SOURCE_DIR}/src/renderer/drawing/CMakeUnit.txt")

@@ -44,7 +44,7 @@ Primitive::Primitive()
     _subregion_height.unset(SVGLength::PERCENT, 1, 0);
 
     // Default interpolation linearRGB.
-    setInterpolationSpace({});
+    _color_space = Colors::Manager::get().find(Colors::Space::Type::linearRGB);
 }
 
 Primitive::~Primitive() = default;
@@ -174,9 +174,7 @@ Geom::Rect Primitive::filter_primitive_area(Units const &units) const
 
 void Primitive::setInterpolationSpace(std::shared_ptr<Colors::Space::AnySpace> const &space)
 {
-    // Automatic becomes "sRGB INTEGER" in the surface drawing API, we don't want this
-    // So we assign linearRGB directly which will also put the surface into float mode.
-    _color_space = space ? space : Colors::Manager::get().find(Colors::Space::Type::linearRGB);
+    _color_space = space;
 }
 
 } // namespace Inkscape::Renderer::DrawingFilter

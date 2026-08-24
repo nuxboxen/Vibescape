@@ -116,6 +116,8 @@ public:
      */
     void setInterpolationSpace(std::shared_ptr<Colors::Space::AnySpace> const &space);
 
+    std::shared_ptr<Colors::Space::AnySpace> getInterpolationSpace() const { return _color_space; }
+
     // Useful for debugging
     virtual Glib::ustring name() const { return "No name"; }
 

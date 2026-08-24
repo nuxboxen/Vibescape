@@ -46,6 +46,25 @@ TEST(DrawingFilterTest, NoPrimitive)
                         "          ");
 }
 
+TEST(DrawingFilterTest, PrimitiveColorSpace)
+{
+    std::shared_ptr<Colors::Space::AnySpace> empty;
+    auto linear = Colors::Manager::get().find(Colors::Space::Type::linearRGB);
+    auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+
+    // Default is linear
+    Renderer::DrawingFilter::Primitive primitive;
+    ASSERT_EQ(primitive.getInterpolationSpace(), linear);
+
+    // Can change it
+    primitive.setInterpolationSpace(srgb);
+    ASSERT_EQ(primitive.getInterpolationSpace(), srgb);
+
+    // Can clear it (set to INTRGB)
+    primitive.setInterpolationSpace(empty);
+    ASSERT_EQ(primitive.getInterpolationSpace(), empty);
+}
+
 /*
   Local Variables:
   mode:c++

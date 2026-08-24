@@ -129,14 +129,15 @@ TEST(DrawingFilterSlotTest, setSetLast)
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, surface1);
     EXPECT_EQ(slot.get(), surface1);
     slot.set(DrawingFilter::SLOT_BACKGROUND_IMAGE, surface2);
-    EXPECT_EQ(slot.get(), surface1);
+    EXPECT_EQ(slot.get(), surface2);
     EXPECT_EQ(slot.get(DrawingFilter::SLOT_BACKGROUND_IMAGE), surface2);
+    EXPECT_EQ(slot.get(DrawingFilter::SLOT_SOURCE_IMAGE), surface1);
+    slot.set(2, surface1);
+    EXPECT_EQ(slot.get(), surface1);
+    EXPECT_EQ(slot.get(2), surface1);
     slot.set(2, surface2);
     EXPECT_EQ(slot.get(), surface2);
     EXPECT_EQ(slot.get(2), surface2);
-
-    slot.set(2, surface1);
-    EXPECT_EQ(slot.get(2), surface1);
 }
 
 TEST(DrawingFilterSlotTest, setAlphaSlot)
@@ -167,8 +168,7 @@ TEST(DrawingFilterSlotTest, setAlphaSlot)
                     "-O---O-"
                     " -   - ");
 
-    // set_alpha doesn't change the last_out from src
-    ASSERT_EQ(slot.get(), src);
+    ASSERT_EQ(slot.get(DrawingFilter::SLOT_SOURCE_IMAGE), src);
 }
 
 TEST(DrawingFilterSlotTest, slotOptions)
