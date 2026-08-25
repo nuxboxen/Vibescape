@@ -335,7 +335,6 @@ void KnotHolder::remove(KnotHolderEntity *e)
             break;
         }
     }
-    entity.clear(); // is this necessary?
 }
 
 void KnotHolder::add_pattern_knotholder()
