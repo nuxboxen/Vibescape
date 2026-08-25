@@ -31,6 +31,7 @@
 #include <gtkmm/paned.h>
 #include <gtkmm/popovermenu.h>
 
+#include "actions/actions-view-mode.h"
 #include "conn-avoid-ref.h"
 #include "document.h"
 #include "enums.h"
@@ -43,7 +44,6 @@
 #include "ui/dialog/dialog-container.h"
 #include "ui/dialog/dialog-multipaned.h"
 #include "ui/dialog/swatches.h"
-#include "ui/monitor.h" // Monitor aspect ratio
 #include "ui/popup-menu.h"
 #include "ui/themes.h"
 #include "ui/toolbar/command-toolbar.h"
@@ -629,11 +629,8 @@ void SPDesktopWidget::layoutWidgets()
 
     // Move command toolbar as required.
 
-    // If interface_mode unset, use screen aspect ratio. Needs to be synced with "canvas-interface-mode" action.
-    Gdk::Rectangle monitor_geometry = Inkscape::UI::get_monitor_geometry_primary();
-    double const width  = monitor_geometry.get_width();
-    double const height = monitor_geometry.get_height();
-    bool widescreen = (height > 0 && width/height > 1.65);
+    // If interface_mode is unset, use the same screen-aspect-ratio default as the action.
+    bool widescreen = get_widescreen_default();
     widescreen = prefs->getBool(pref_root + "interface_mode", widescreen);
 
     // Unlink command toolbar.
