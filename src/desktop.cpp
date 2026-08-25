@@ -1133,6 +1133,7 @@ void SPDesktop::focusMode(bool mode)
     _focusMode = mode;
 
     layoutWidget();
+    view_set_gui(getInkscapeWindow());
 }
 
 Geom::IntPoint SPDesktop::getWindowSize() const
