@@ -7,7 +7,6 @@ using namespace Inkscape::Renderer;
 TEST(DrawingDropShadowTest, DropShadow)
 {
     auto dm = std::make_unique<DrawingFilter::Flood>();
-    dm->set_output(1);
     dm->set_color(Colors::Color(0xff000088));
 
     // This is much slower in linearRGB which is the default
@@ -25,6 +24,29 @@ TEST(DrawingDropShadowTest, DropShadow)
                         "2222222222"
                         "2222222222"
                         "2222222222");
+}
+
+// Same as above, but with an int surface
+TEST(DrawingDropShadowTest, DropShadowWithIntColorSpace)
+{
+    auto dm = std::make_unique<DrawingFilter::Flood>();
+    dm->set_color(Colors::Color(0xff000088));
+
+    auto image = std::make_shared<Renderer::Surface>(get_transformed_input()->convertedToInt());
+
+    EXPECT_PRIMITIVE_IS(std::move(dm),
+                        "2222222222"
+                        "2222222222"
+                        "2222222222"
+                        "2222222222"
+                        "2222222222"
+                        "2222222222"
+                        "2222222222"
+                        "2222222222"
+                        "2222222222"
+                        "2222222222",
+                        {},
+                        image);
 }
 
 /*

@@ -27,7 +27,7 @@ void DiffuseLighting::render(Slot &slot) const
 
     // Only alpha channel of input is used, no need to check input color_interpolation_filter value.
     auto input = slot.get_copy(_input, _color_space);
-    auto output = slot.get(_input)->similar({}, _color_space);
+    auto output = slot.get(_input)->similar({}, input->getColorSpace());
 
     int device_scale = slot.get_drawing_options().device_scale;
     Geom::Rect slot_area = *slot.get_item_options().get_slot_box();
@@ -41,7 +41,8 @@ void DiffuseLighting::render(Slot &slot) const
     double x0 = p.x(), y0 = p.y();
     double scale = surfaceScale * trans.descrim() * device_scale;
 
-    auto color = lighting_color.value_or(default_color).converted(_color_space)->getValues();
+    auto cs = output->getColorSpace() ? output->getColorSpace() : rgb;
+    auto color = lighting_color.value_or(default_color).converted(cs)->getValues();
 
     switch (light_type) {
     case DISTANT_LIGHT:

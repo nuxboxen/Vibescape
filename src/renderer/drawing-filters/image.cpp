@@ -22,6 +22,10 @@ void Image::render(Slot &slot) const
         return;
     }
 
+    // Do not do color conversions of any kind if the parent is in INT format
+    auto parent_cs = slot.get(SLOT_SOURCE_IMAGE)->getColorSpace();
+    auto cs = parent_cs ? _color_space : parent_cs;
+
     // Viewport is filter primitive area (in user coordinates).
     // Note: viewport calculation in non-trivial. Do not rely
     // on get_matrix_primitiveunits2pb().
@@ -51,7 +55,7 @@ void Image::render(Slot &slot) const
     int device_scale = slot.get_drawing_options().device_scale;
 
     Geom::Rect sa = *slot.get_item_options().get_slot_box();
-    auto out = std::make_shared<Surface>(sa.dimensions().round(), device_scale, _color_space);
+    auto out = std::make_shared<Surface>(sa.dimensions().round(), device_scale, cs);
 
     Context dc(*out);
     Geom::Affine user2pb = slot.get_item_options().get_matrix_user2pb();

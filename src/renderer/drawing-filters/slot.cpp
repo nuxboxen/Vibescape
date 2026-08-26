@@ -51,8 +51,15 @@ std::shared_ptr<Surface> Slot::get(int slot) const
 std::shared_ptr<Surface> Slot::get(int slot, std::shared_ptr<Colors::Space::AnySpace> const &space) const
 {
     auto surface = get(slot);
+    if (!surface) {
+        return {};
+    }
 
-    if (!surface || space == surface->getColorSpace()) {
+    // If a surface is in INT format, we refuse to convert it and instead just return as is.
+    // Color Space support for filters is disabled for INT surfaces except for ALPHA.
+    bool is_alpha_cs = space && space->getType() == Colors::Space::Type::Alpha;
+    bool cs_disabled = !surface->getColorSpace() && !is_alpha_cs;
+    if (cs_disabled || space == surface->getColorSpace()) {
         return surface;
     }
 
@@ -79,9 +86,13 @@ std::shared_ptr<Surface> Slot::get_copy(int slot, std::shared_ptr<Colors::Space:
     if (!surface) {
         return {};
     }
-    if (surface->getColorSpace() != space) {
-        // This process does a copy anyway
-        return get(slot, space);
+    if (!surface->getColorSpace() || surface->getColorSpace() != space) {
+        // Converting makes a copy for us (if we actually convert), so check if we do
+        auto copy = get(slot, space);
+        if (copy != surface) {
+            return copy;
+        }
+        // else fall back to get_copy below
     }
     return get_copy(slot);
 }

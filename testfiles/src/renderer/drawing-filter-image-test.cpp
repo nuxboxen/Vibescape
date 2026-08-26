@@ -8,7 +8,6 @@ using namespace Inkscape::Renderer;
 TEST(DrawingImageTest, InlineRenderer)
 {
     auto im = std::make_unique<DrawingFilter::Image>();
-    im->set_output(1);
     im->set_item_box(Geom::Rect::from_xywh(0,0,600,600));
     im->set_render_function([](Context dc, DrawingOptions const &rc, Geom::IntRect const &area) {
         auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
@@ -36,6 +35,39 @@ TEST(DrawingImageTest, InlineRenderer)
                         " .2222225 "
                         "  .222224 "
                         "   .2224  ");
+}
+
+// Same as above, but with an int surface
+TEST(DrawingImageTest, InlineRendererWithIntColorSpace)
+{
+    auto im = std::make_unique<DrawingFilter::Image>();
+    im->set_item_box(Geom::Rect::from_xywh(0,0,600,600));
+    im->set_render_function([](Context dc, DrawingOptions const &rc, Geom::IntRect const &area) {
+        auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+        EXPECT_EQ(area, Geom::Rect::from_xywh(0,0,600,600));
+        dc.rectangle(Geom::Rect::from_xywh(400, -100, 500, 500));
+        dc.setSource(Colors::Color(rgb, {1.0, 0.0, 0.0, 1.0}));
+        dc.fillPreserve();
+        dc.setSource(Colors::Color(rgb, {0.0, 1.0, 0.0, 1.0}));
+        dc.setLineWidth(30.0);
+        dc.stroke();
+    });
+
+    auto image = std::make_shared<Renderer::Surface>(get_transformed_input()->convertedToInt());
+
+    EXPECT_PRIMITIVE_IS(std::move(im),
+                        "          "
+                        "          "
+                        "   4      "
+                        "  422     "
+                        " 42222    "
+                        "4222222   "
+                        ".2222222  "
+                        " .2222225 "
+                        "  .222224 "
+                        "   .2224  ",
+                        {},
+                        image);
 }
 
 /*

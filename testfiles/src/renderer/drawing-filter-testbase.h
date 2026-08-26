@@ -77,9 +77,9 @@ DrawingFilter::Filter get_transformed_filter()
 }
 
 template <PixelPatch::Method method = PixelPatch::Method::COLORS>
-void EXPECT_PRIMITIVE_IS(std::unique_ptr<Renderer::DrawingFilter::Primitive> primitive, std::string result, Geom::OptRect clip = {})
+void EXPECT_PRIMITIVE_IS(std::unique_ptr<Renderer::DrawingFilter::Primitive> primitive, std::string result, Geom::OptRect clip = {}, std::shared_ptr<Renderer::Surface> image = {})
 {
-    auto image = get_transformed_input();
+    image = image ? image : get_transformed_input();
     auto filter = get_transformed_filter();
 
     if (primitive) {

@@ -43,6 +43,7 @@ TEST(DrawingFilterSlotTest, getInColorSpace)
 
 TEST(DrawingFilterSlotTest, getCopyInt)
 {
+    auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
     auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
 
     auto slot = DrawingFilter::Slot();
@@ -66,13 +67,22 @@ TEST(DrawingFilterSlotTest, getCopyInt)
     ASSERT_EQ(copy->format(), 0);
     EXPECT_IMAGE_IS<PixelPatch::Method::ALPHA>(*copy, result);
 
-    /* lcms2 doesn't support float to int conversions, produces an upstream error
-
+    // confirm that it refuses to convert from RGBINT to float
     auto rgbfloat = slot.get_copy(DrawingFilter::SLOT_SOURCE_IMAGE, rgb);
     ASSERT_NE(rgbint, rgbfloat);
-    ASSERT_EQ(rgbfloat->getColorSpace(), rgb);
-    ASSERT_EQ(rgbfloat->format(), 7);
+    ASSERT_FALSE(rgbfloat->getColorSpace());
+    ASSERT_EQ(rgbfloat->format(), CAIRO_FORMAT_ARGB32);
     EXPECT_IMAGE_IS<PixelPatch::Method::ALPHA>(*rgbfloat, result);
+
+    // confirm that it will allow an alpha-only copy though
+    auto alphafloat = slot.get_copy(DrawingFilter::SLOT_SOURCE_IMAGE, alpha);
+    ASSERT_NE(rgbint, alphafloat);
+    ASSERT_NE(rgbfloat, alphafloat);
+    ASSERT_EQ(alphafloat->getColorSpace(), alpha);
+    ASSERT_EQ(alphafloat->format(), CAIRO_FORMAT_A8);
+    EXPECT_IMAGE_IS<PixelPatch::Method::ALPHA>(*alphafloat, result);
+
+    /* lcms2 doesn't support float to int conversions, produces an upstream error
 
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, rgbfloat);
     auto copy2 = slot.get_copy(DrawingFilter::SLOT_SOURCE_IMAGE, {});
