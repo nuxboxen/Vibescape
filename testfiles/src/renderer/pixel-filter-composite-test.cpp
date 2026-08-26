@@ -7,7 +7,7 @@ using namespace Inkscape::Renderer::PixelFilter;
 
 TEST(PixelFilterCompositeTest, CompositeArithmetic)
 {
-    EXPECT_TRUE(FilterColors<3>(CompositeArithmetic(0.5, 0.5, 0.5, 0.5), {1.0, 1.0, 0.5, 1.0},
+    EXPECT_TRUE(FilterColors<3>(CompositeArithmetic(0.5, 0.5, 0.2, 0.5), {0.7, 1.0, 0.5, 1.0},
                                 {1.0, 0.0, 0.0, 1.0},     // input1
                                 {{0.0, 1.0, 0.0, 1.0}})); // input2
     EXPECT_TRUE(FilterColors<3>(CompositeArithmetic(0.2, 0.2, 0.2, 0.8), {0.8, 1.0, 1.0, 1.0}, {0.0, 0.0, 1.0, 1.0},

@@ -22,19 +22,19 @@ namespace Inkscape::Renderer::DrawingFilter {
 
 void Composite::render(Slot &slot) const
 {
-    auto input1 = slot.get_copy(_input, _color_space);
-    auto input2 = slot.get(_input2, _color_space);
+    auto src = slot.get(_input, _color_space);
+    auto dest = slot.get_copy(_input2, _color_space);
 
-    if (!input1 || !input2) {
+    if (!src || !dest) {
         std::cout << "Missing input in Composite::Render\n\n";
         return;
     }
 
     if (op == CompositeOperator::ARITHMETIC) {
-        input1->run_pixel_filter<PixelAccessEdgeMode::WRAP>(PixelFilter::CompositeArithmetic(k1, k2, k3, k4), *input2);
+        dest->run_pixel_filter<PixelAccessEdgeMode::WRAP>(PixelFilter::CompositeArithmetic(k1, k2, k3, k4), *src);
     } else {
-        auto ct = Context(*input1);
-        ct.setSource(*input2);
+        auto ct = Context(*dest);
+        ct.setSource(*src);
         switch(op) {
         case CompositeOperator::IN:
             ct.set_operator(Cairo::Context::Operator::IN);
@@ -59,7 +59,7 @@ void Composite::render(Slot &slot) const
         }
         ct.paint();
     }
-    slot.set(_output, input1);
+    slot.set(_output, dest);
 }
 
 bool Composite::can_handle_affine(Geom::Affine const &) const

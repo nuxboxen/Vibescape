@@ -7,8 +7,8 @@ using namespace Inkscape::Renderer;
 TEST(DrawingCompositeTest, CompositeIN)
 {
     auto cp = std::make_unique<DrawingFilter::Composite>();
-    cp->set_output(1);
-    cp->set_input(1, DrawingFilter::SLOT_BACKGROUND_IMAGE);
+    cp->set_output(0);
+    cp->set_input(0, DrawingFilter::SLOT_BACKGROUND_IMAGE);
     cp->set_operator(CompositeOperator::IN);
 
     // This is much slower in linearRGB which is the default
@@ -31,8 +31,8 @@ TEST(DrawingCompositeTest, CompositeIN)
 TEST(DrawingCompositeTest, CompositeArithmetic)
 {
     auto cp = std::make_unique<DrawingFilter::Composite>();
-    cp->set_output(1);
-    cp->set_input(1, DrawingFilter::SLOT_BACKGROUND_IMAGE);
+    cp->set_output(0);
+    cp->set_input(0, DrawingFilter::SLOT_BACKGROUND_IMAGE);
     cp->set_operator(CompositeOperator::ARITHMETIC);
     cp->set_arithmetic(4.0, 1.0, 1.0, 0.2);
 
