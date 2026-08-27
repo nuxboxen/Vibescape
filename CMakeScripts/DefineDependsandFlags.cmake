@@ -348,10 +348,12 @@ else()
         URL https://gitlab.gnome.org/GNOME/glycin/-/archive/2.2.beta/glycin-2.2.beta.tar.bz2
         URL_HASH SHA256=ab96e49e1437309258aac1073b0fa93f35041b54a9d885699edb401effe00083
         CONFIGURE_COMMAND meson setup --libdir lib . ../glycin --prefix=${CMAKE_CURRENT_BINARY_DIR}/deps
-        BUILD_COMMAND meson install
+        BUILD_COMMAND meson compile
         INSTALL_COMMAND meson install
+        STEP_TARGETS install
     )
     add_library(glycin_LIB INTERFACE)
+    add_dependencies(glycin_LIB glycin-install)
     target_include_directories(glycin_LIB INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/deps/include/glycin-2)
     target_link_directories(glycin_LIB INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/deps/lib)
     target_link_libraries(glycin_LIB INTERFACE -lglycin-2)

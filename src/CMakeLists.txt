@@ -342,7 +342,6 @@ target_link_libraries(inkscape_base
         ${INKSCAPE_LIBS}
         2Geom::2geom
 )
-add_dependencies(inkscape_base Inkscape::Glycin)
 
 # Link inkscape and inkview against inkscape_base
 target_link_libraries(inkscape inkscape_base)
