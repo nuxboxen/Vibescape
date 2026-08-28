@@ -229,6 +229,11 @@ public:
     Geom::Point knot_get() const override;
     void knot_ungrabbed(Geom::Point const &p, Geom::Point const &origin, guint state) override {};
     void knot_set(Geom::Point const &p, Geom::Point const &origin, unsigned int state) override;
+    void knot_grabbed(Geom::Point const & grab_position, unsigned state) override;
+
+private:
+    void set_internal(Geom::Point const &opposite_of_the_opposite_point);
+    Geom::Point initial_opposite_XY;
 };
 
 /* handle for position */
@@ -453,7 +458,6 @@ void RectKnotHolderEntityWH::set_internal(Geom::Point const &opposite_point)
     rect->y = geomRect.top();
     rect->width = geomRect.width();
     rect->height = geomRect.height();
-
 }
 
 void
@@ -482,11 +486,21 @@ RectKnotHolderEntityXY::knot_get() const
 }
 
 void
-RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin, unsigned int state)
+RectKnotHolderEntityXY::knot_grabbed(Geom::Point const & grab_position, unsigned state)
 {
     auto rect = cast<SPRect>(item);
     g_assert(rect != nullptr);
 
+    initial_opposite_XY = Geom::Point(
+        rect->x.computed + rect->width.computed,
+        rect->y.computed + rect->height.computed);
+}
+
+void
+RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin, unsigned int state)
+{
+    auto rect = cast<SPRect>(item);
+    g_assert(rect != nullptr);
     // opposite corner (unmoved)
     gdouble opposite_x = (rect->x.computed + rect->width.computed);
     gdouble opposite_y = (rect->y.computed + rect->height.computed);
@@ -553,13 +567,7 @@ RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin
     } else {
         // move freely
         s = snap_knot_position(p, state);
-        minx = s[Geom::X] - origin[Geom::X];
-        miny = s[Geom::Y] - origin[Geom::Y];
-
-        rect->x = MIN(s[Geom::X], opposite_x);
-        rect->y = MIN(s[Geom::Y], opposite_y);
-        rect->width = MAX(w_orig - minx, 0);
-        rect->height = MAX(h_orig - miny, 0);
+        set_internal(s);
     }
 
     sp_rect_clamp_radii(rect);
@@ -567,6 +575,19 @@ RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin
     update_knot();
 
     rect->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
+}
+
+void
+RectKnotHolderEntityXY::set_internal(Geom::Point const &opposite_of_the_opposite_point)
+{
+    auto rect = cast<SPRect>(item);
+    g_assert(rect != nullptr);
+
+    auto geomRect = Geom::Rect(initial_opposite_XY, opposite_of_the_opposite_point);
+    rect->x = geomRect.left();
+    rect->y = geomRect.top();
+    rect->width = geomRect.width();
+    rect->height = geomRect.height();
 }
 
 Geom::Point
