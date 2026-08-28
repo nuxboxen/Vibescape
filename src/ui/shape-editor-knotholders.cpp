@@ -213,9 +213,13 @@ public:
     Geom::Point knot_get() const override;
     void knot_ungrabbed(Geom::Point const &p, Geom::Point const &origin, guint state) override {};
     void knot_set(Geom::Point const &p, Geom::Point const &origin, unsigned int state) override;
+    void knot_grabbed(Geom::Point const & grab_position, unsigned state) override;
 
 protected:
     void set_internal(Geom::Point const &p, Geom::Point const &origin, unsigned int state);
+
+private:
+    Geom::Point initialXY;
 };
 
 /* handle for x/y adjustment */
@@ -427,13 +431,25 @@ RectKnotHolderEntityWH::set_internal(Geom::Point const &p, Geom::Point const &or
     } else {
         // move freely
         s = snap_knot_position(p, state);
-        rect->width = MAX(s[Geom::X] - rect->x.computed, 0);
-        rect->height = MAX(s[Geom::Y] - rect->y.computed, 0);
+        auto geomRect = Geom::Rect(initialXY, s);
+        rect->x = geomRect.left();
+        rect->y = geomRect.top();
+        rect->width = geomRect.width();
+        rect->height = geomRect.height();
     }
 
     sp_rect_clamp_radii(rect);
 
     rect->requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
+}
+
+void
+RectKnotHolderEntityWH::knot_grabbed(Geom::Point const & grab_position, unsigned state)
+{
+    auto rect = cast<SPRect>(item);
+    g_assert(rect != nullptr);
+
+    initialXY = Geom::Point(rect->x.computed, rect->y.computed);
 }
 
 void
