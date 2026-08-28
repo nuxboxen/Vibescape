@@ -501,21 +501,21 @@ RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin
 {
     auto rect = cast<SPRect>(item);
     g_assert(rect != nullptr);
-    // opposite corner (unmoved)
-    gdouble opposite_x = (rect->x.computed + rect->width.computed);
-    gdouble opposite_y = (rect->y.computed + rect->height.computed);
 
     // original width/height when drag started
-    gdouble w_orig = opposite_x - origin[Geom::X];
-    gdouble h_orig = opposite_y - origin[Geom::Y];
+    gdouble w_orig = initial_opposite_XY.x() - origin[Geom::X];
+    gdouble h_orig = initial_opposite_XY.y() - origin[Geom::Y];
 
     Geom::Point s = p;
-    Geom::Point p_handle(rect->x.computed, rect->y.computed);
+    Geom::Point p_handle(
+       rect->x.computed + (rect->x.computed < initial_opposite_XY.x() ? 0 : rect->width.computed),
+       rect->y.computed + (rect->y.computed < initial_opposite_XY.y() ? 0 : rect->height.computed));
 
     // mouse displacement since drag started
     gdouble minx = p[Geom::X] - origin[Geom::X];
     gdouble miny = p[Geom::Y] - origin[Geom::Y];
 
+    gdouble opposite_of_opposite_X, opposite_of_opposite_Y;
     if (state & GDK_CONTROL_MASK) {
         //original ratio
         gdouble ratio = (w_orig / h_orig);
@@ -528,19 +528,16 @@ RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin
                 minx = s[Geom::X] - origin[Geom::X];
                 // Dead assignment: Value stored to 'miny' is never read
                 //miny = s[Geom::Y] - origin[Geom::Y];
-                rect->y = MIN(origin[Geom::Y] + minx / ratio, opposite_y);
-                rect->height = MAX(h_orig - minx / ratio, 0);
+                opposite_of_opposite_Y = origin[Geom::Y] + minx / ratio;
             } else {
                 // closer to the horizontal, change only width, height is h_orig
                 s = snap_knot_position_constrained(p, Inkscape::Snapper::SnapConstraint(p_handle, Geom::Point(-1, 0)), state);
                 minx = s[Geom::X] - origin[Geom::X];
                 // Dead assignment: Value stored to 'miny' is never read
                 //miny = s[Geom::Y] - origin[Geom::Y];
-                rect->y = MIN(origin[Geom::Y], opposite_y);
-                rect->height = MAX(h_orig, 0);
+                opposite_of_opposite_Y = origin[Geom::Y];
             }
-            rect->x = MIN(s[Geom::X], opposite_x);
-            rect->width = MAX(w_orig - minx, 0);
+            opposite_of_opposite_X = s[Geom::X];
         } else {
             // snap to vertical or diagonal
             if (miny != 0 && fabs(minx/miny) > 0.5 *ratio && (SGN(minx) == SGN(miny))) {
@@ -549,21 +546,19 @@ RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin
                 // Dead assignment: Value stored to 'minx' is never read
                 //minx = s[Geom::X] - origin[Geom::X];
                 miny = s[Geom::Y] - origin[Geom::Y];
-                rect->x = MIN(origin[Geom::X] + miny * ratio, opposite_x);
-                rect->width = MAX(w_orig - miny * ratio, 0);
+                opposite_of_opposite_X = origin[Geom::X] + miny * ratio;
             } else {
                 // closer to the vertical, change only height, width is w_orig
                 s = snap_knot_position_constrained(p, Inkscape::Snapper::SnapConstraint(p_handle, Geom::Point(0, -1)), state);
                 // Dead assignment: Value stored to 'minx' is never read
                 //minx = s[Geom::X] - origin[Geom::X];
                 miny = s[Geom::Y] - origin[Geom::Y];
-                rect->x = MIN(origin[Geom::X], opposite_x);
-                rect->width = MAX(w_orig, 0);
-            }
-            rect->y = MIN(s[Geom::Y], opposite_y);
-            rect->height = MAX(h_orig - miny, 0);
-        }
+                opposite_of_opposite_X = origin[Geom::X];
 
+            }
+            opposite_of_opposite_Y = s[Geom::Y];
+        }
+        set_internal(Geom::Point(opposite_of_opposite_X, opposite_of_opposite_Y));
     } else {
         // move freely
         s = snap_knot_position(p, state);
