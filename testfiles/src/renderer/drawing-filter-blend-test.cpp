@@ -7,6 +7,7 @@ using namespace Inkscape::Renderer;
 TEST(DrawingBlendTest, TransformedImage)
 {
     auto blend = std::make_unique<DrawingFilter::Blend>();
+    blend->set_input(0, DrawingFilter::SLOT_SOURCE_IMAGE);
     blend->set_input(1, DrawingFilter::SLOT_BACKGROUND_IMAGE);
     blend->set_output(1);
     blend->set_mode(SP_CSS_BLEND_MULTIPLY);
