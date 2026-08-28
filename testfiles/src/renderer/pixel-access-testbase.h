@@ -14,63 +14,52 @@
 
 using namespace Inkscape::Renderer;
 
-template <int channel_count = 3, PixelAccessEdgeMode edge_mode = PixelAccessEdgeMode::NO_CHECK, cairo_format_t format = channel_count == 0 ? CAIRO_FORMAT_A8 : CAIRO_FORMAT_RGBA128F>
-struct TestCairoSurface
+template <MemoryFormat format = MEMORY_FORMAT_RGBA128F, PixelAccessEdgeMode edge_mode = PixelAccessEdgeMode::NO_CHECK>
+struct TestSurface
 {
-    constexpr static int channel_total = channel_count + 1;
+    using Access = PixelAccess<format, edge_mode>;
 
-    using Access = PixelAccess<format, channel_count, edge_mode>;
-
-    TestCairoSurface(int w, int h)
+    TestSurface(int w, int h)
     {
-        if constexpr (channel_count <= 3) {
-            _cobj = {cairo_image_surface_create(format, w, h)};
+        if constexpr (format < MEMORY_FORMAT_NOTCAIRO) {
+            _cobj = {cairo_image_surface_create((cairo_format_t)(format), w, h)};
             _s = {Cairo::RefPtr<Cairo::ImageSurface>(new Cairo::ImageSurface(_cobj[0], true))};
-            _d = std::make_shared<PixelAccess<format, channel_count, edge_mode>>(_s[0]);
-        } else if constexpr (channel_count == 4) {
-            _cobj = {cairo_image_surface_create(format, w, h), cairo_image_surface_create(format, w, h)};
+            _d = std::make_shared<PixelAccess<format, edge_mode>>(_s[0]);
+        } else if constexpr (format == MEMORY_FORMAT_CMYA_KA256F) {
+            _cobj = {
+                cairo_image_surface_create(CAIRO_FORMAT_RGBA128F, w, h),
+                cairo_image_surface_create(CAIRO_FORMAT_RGBA128F, w, h)
+            };
             _s = {Cairo::RefPtr<Cairo::ImageSurface>(new Cairo::ImageSurface(_cobj[0], true)),
                   Cairo::RefPtr<Cairo::ImageSurface>(new Cairo::ImageSurface(_cobj[1], true))};
-            _d = std::make_shared<PixelAccess<format, channel_count, edge_mode>>(_s[0], _s[1]);
+            _d = std::make_shared<PixelAccess<format, edge_mode>>(_s[0], _s[1]);
+        } else {
+            _d = std::make_shared<PixelAccess<format, edge_mode>>(w, h);
         }
     }
 
-    void rect(int x, int y, int w, int h, std::array<double, channel_count + 1> const &c)
+    void rect(int x, int y, int w, int h, std::array<double, Access::channel_total> const &c)
     {
         for (unsigned i = 0; i < _s.size(); i++) {
             unsigned off = i * 3;
             auto cr = Cairo::Context::create(_s[i]);
             cr->rectangle(x, y, w, h);
-            cr->set_source_rgba(c[off + 0], c.size() > off + 1 && off + 1 < channel_count ? c[off + 1] : 0.0,
-                                c.size() > off + 2 && off + 2 < channel_count ? c[off + 2] : 0.0, c.back());
+            cr->set_source_rgba(c[off + 0], c.size() > off + 1 && off + 1 < Access::channel_count ? c[off + 1] : 0.0,
+                                c.size() > off + 2 && off + 2 < Access::channel_count ? c[off + 2] : 0.0, c.back());
             cr->fill();
+        }
+        if (_s.empty()) {
+            for (auto x0 = x; x0 < x + w; x0++) {
+                for (auto y0 = y; y0 < y + h; y0++) {
+                    _d->colorTo(x0, y0, c);
+                }
+            }
         }
     }
 
     std::vector<cairo_surface_t *> _cobj; // Memory holder
     std::vector<Cairo::RefPtr<Cairo::ImageSurface>> _s;
     std::shared_ptr<Access> _d;
-};
-
-template <int channel_count>
-struct TestCustomSurface
-{
-    TestCustomSurface(int w, int h)
-    {
-        auto custom_memory = std::vector<float>((channel_count + 1) * w * h);
-        _d = std::make_shared<PixelAccess<CAIRO_FORMAT_RGBA128F, channel_count, PixelAccessEdgeMode::NO_CHECK, channel_count>>(std::move(custom_memory), w, h);
-    }
-
-    void rect(int const x, int const y, int const w, int const h, std::array<double, channel_count + 1> const &c)
-    {
-        for (auto x0 = x; x0 < x + w; x0++) {
-            for (auto y0 = y; y0 < y + h; y0++) {
-                _d->colorTo(x0, y0, c);
-            }
-        }
-    }
-
-    std::shared_ptr<PixelAccess<CAIRO_FORMAT_RGBA128F, channel_count, PixelAccessEdgeMode::NO_CHECK, channel_count>> _d;
 };
 
 /**
@@ -134,17 +123,17 @@ template <typename Access>
     switch (cairo_image_surface_get_format(s->cobj())) {
         case CAIRO_FORMAT_A8:
             {
-                auto pa1 = PixelAccess<CAIRO_FORMAT_A8, 0>(s);
+                auto pa1 = PixelAccess<MEMORY_FORMAT_A8>(s);
                 return ImageIs(pa1, test, method, unmult, use_float);
             }
         case CAIRO_FORMAT_ARGB32:
             {
-                auto pa2 = PixelAccess<CAIRO_FORMAT_ARGB32, 3>(s);
+                auto pa2 = PixelAccess<MEMORY_FORMAT_ARGB32>(s);
                 return ImageIs(pa2, test, method, unmult, use_float);
             }
         case CAIRO_FORMAT_RGBA128F:
             {
-                auto pa3 = PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(s);
+                auto pa3 = PixelAccess<MEMORY_FORMAT_RGBA128F>(s);
                 return ImageIs(pa3, test, method, unmult, use_float);
             }
         default:
@@ -156,10 +145,10 @@ template <class Filter>
 ::testing::AssertionResult FilterIs(Filter &&f, std::string const &test, PixelPatch::Method method = PixelPatch::Method::COLORS,
                                     bool debug = false)
 {
-    auto src = TestCairoSurface<4, PixelAccessEdgeMode::ZERO>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F, PixelAccessEdgeMode::ZERO>(21, 21);
     src.rect(3, 3, 15, 15, {0.5, 0.0, 0.0, 1.0, 1.0});
 
-    auto dst = TestCairoSurface<4>(21, 21);
+    auto dst = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     f.filter(*dst._d, *src._d);
     if (debug) {
         src._s[0]->write_to_png("/tmp/filter_debug_before_0.png");
@@ -170,13 +159,13 @@ template <class Filter>
     return ImageIs(*dst._d, test, method, true);
 }
 
-template <int channel_count, class Filter>
-::testing::AssertionResult FilterColors(Filter &&f, std::array<double, channel_count + 1> const &test,
-                                        std::array<double, channel_count + 1> const &i1,
-                                        std::optional<std::array<double, channel_count + 1>> const &i2 = {})
+template <class Filter>
+::testing::AssertionResult FilterColors(Filter &&f, std::array<double, 4> const &test,
+                                        std::array<double, 4> const &i1,
+                                        std::optional<std::array<double, 4>> const &i2 = {})
 {
-    auto src1 = TestCairoSurface<channel_count>(6, 6);
-    auto src2 = TestCairoSurface<channel_count>(6, 6);
+    auto src1 = TestSurface(6, 6);
+    auto src2 = TestSurface(6, 6);
     if (i2) {
         src1.rect(0, 0, 6, 6, i1);
         src2.rect(0, 0, 6, 6, *i2);

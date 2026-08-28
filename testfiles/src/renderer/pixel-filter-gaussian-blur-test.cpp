@@ -7,7 +7,7 @@ using namespace Inkscape::Renderer::PixelFilter;
 
 TEST(PixelGaussianBlurTest, GaussianBlurFIR)
 {
-    auto src = TestCairoSurface<3, PixelAccessEdgeMode::ZERO, CAIRO_FORMAT_ARGB32>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::ZERO>(21, 21);
     src.rect(3, 3, 15, 15, {0.5, 0.75, 1.0, 1.0});
 
     GaussianBlur({2, 2}).filter(*src._d);
@@ -25,7 +25,7 @@ TEST(PixelGaussianBlurTest, GaussianBlurFIR)
 
 TEST(PixelGaussianBlurTest, GaussianBlurFIRSmol)
 {
-    auto src = TestCairoSurface<3, PixelAccessEdgeMode::ZERO, CAIRO_FORMAT_ARGB32>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::ZERO>(21, 21);
     src.rect(3, 3, 15, 15, {0.5, 0.75, 1.0, 1.0});
 
     GaussianBlur({4, 0.1}).filter(*src._d);
@@ -43,7 +43,7 @@ TEST(PixelGaussianBlurTest, GaussianBlurFIRSmol)
 
 TEST(PixelGaussianBlurTest, GaussianBlurIIR)
 {
-    auto src = TestCairoSurface<3, PixelAccessEdgeMode::ZERO, CAIRO_FORMAT_ARGB32>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::ZERO>(21, 21);
     src.rect(3, 3, 15, 15, {0.5, 0.75, 1.0, 1.0});
 
     GaussianBlur({4, 4}).filter(*src._d);
@@ -62,7 +62,7 @@ TEST(PixelGaussianBlurTest, GaussianBlurIIR)
 
 TEST(PixelGaussianBlurTest, GaussianBlurCMYK)
 {
-    auto src = TestCairoSurface<4, PixelAccessEdgeMode::ZERO>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F, PixelAccessEdgeMode::ZERO>(21, 21);
     src.rect(3, 3, 15, 15, {0.5, 0.3, 0.0, 0.2, 1.0});
 
     GaussianBlur({4, 4}).filter(*src._d);
@@ -81,7 +81,7 @@ TEST(PixelGaussianBlurTest, GaussianBlurCMYK)
 
 TEST(PixelGaussianBlurTest, SpeedTest_FIR_Int)
 {
-    auto src = TestCairoSurface<3, PixelAccessEdgeMode::ZERO, CAIRO_FORMAT_ARGB32>(600, 600);
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::ZERO>(600, 600);
     src.rect(150, 100, 100, 400, {0.5, 0.75, 1.0, 1.0});
     GaussianBlur({0.0, 1}).filter(*src._d);
     EXPECT_TRUE(ImageIs(*src._d,
@@ -102,7 +102,7 @@ TEST(PixelGaussianBlurTest, SpeedTest_FIR_Int)
 
 TEST(PixelGaussianBlurTest, SpeedTest_FIR_Float)
 {
-    auto src = TestCairoSurface<3>(600, 600);
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(600, 600);
     src.rect(150, 100, 100, 400, {0.5, 0.75, 1.0, 1.0});
     GaussianBlur({0.0, 1}).filter(*src._d);
     EXPECT_TRUE(ImageIs(*src._d,
@@ -123,7 +123,7 @@ TEST(PixelGaussianBlurTest, SpeedTest_FIR_Float)
 
 TEST(PixelGaussianBlurTest, SpeedTest_IIR_Int)
 {
-    auto src = TestCairoSurface<3, PixelAccessEdgeMode::ZERO, CAIRO_FORMAT_ARGB32>(600, 600);
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::ZERO>(600, 600);
     src.rect(150, 100, 100, 400, {0.5, 0.75, 1.0, 1.0});
     GaussianBlur({0.0, 26.2}).filter(*src._d);
     EXPECT_TRUE(ImageIs(*src._d,
@@ -144,7 +144,7 @@ TEST(PixelGaussianBlurTest, SpeedTest_IIR_Int)
 
 TEST(PixelGaussianBlurTest, SpeedTest_IIR_Float)
 {
-    auto src = TestCairoSurface<3>(600, 600);
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(600, 600);
     src.rect(150, 100, 100, 400, {0.5, 0.75, 1.0, 1.0});
     GaussianBlur({0.0, 26.2}).filter(*src._d);
     EXPECT_TRUE(ImageIs(*src._d,

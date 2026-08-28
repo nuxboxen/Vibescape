@@ -7,7 +7,7 @@ using namespace Inkscape::Renderer::PixelFilter;
 
 TEST(PixelFilterTurbulenceTest, CmykTurbulence)
 {
-    auto surface = TestCairoSurface<4>(21, 21);
+    auto surface = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     auto spiky = Turbulence(0,              // random generator seed
                             {0, 0, 20, 20}, // tile size
                             {0.6, 0.6},     // base frequency

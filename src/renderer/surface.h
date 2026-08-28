@@ -171,10 +171,10 @@ public:
     Cairo::RefPtr<Cairo::ImageSurface> exportToARGB32() const;
 
 // TODO: Recode using constexpr inline functions if possible
-#define A8(s, e)  PixelAccess<CAIRO_FORMAT_A8,       0, e>(s._surfaces[0])
-#define RGB(s, e) PixelAccess<CAIRO_FORMAT_ARGB32,   3, e>(s._surfaces[0])
-#define C3(s, e)  PixelAccess<CAIRO_FORMAT_RGBA128F, 3, e>(s._surfaces[0])
-#define C4(s, e)  PixelAccess<CAIRO_FORMAT_RGBA128F, 4, e>(s._surfaces[0], s._surfaces[1])
+#define A8(s, e)  PixelAccess<MEMORY_FORMAT_A8,          e>(s._surfaces[0])
+#define RGB(s, e) PixelAccess<MEMORY_FORMAT_ARGB32,      e>(s._surfaces[0])
+#define C3(s, e)  PixelAccess<MEMORY_FORMAT_RGBA128F,    e>(s._surfaces[0])
+#define C4(s, e)  PixelAccess<MEMORY_FORMAT_CMYA_KA256F, e>(s._surfaces[0], s._surfaces[1])
 
 #define INNER(...)\
         auto d_comp = components();\

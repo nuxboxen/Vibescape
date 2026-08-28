@@ -7,11 +7,11 @@ using namespace Inkscape::Renderer::PixelFilter;
 
 TEST(PixelFilterDisplacementTest, DisplacementMap)
 {
-    auto texture = TestCairoSurface<4, PixelAccessEdgeMode::ZERO>(21, 21);
+    auto texture = TestSurface<MEMORY_FORMAT_CMYA_KA256F, PixelAccessEdgeMode::ZERO>(21, 21);
     texture.rect(3, 3, 15, 15, {0.5, 0.0, 0.0, 1.0, 1.0});
 
     // This map splits off the top, bottom, left and right rows and moves them out
-    auto map = TestCairoSurface<3>(21, 21);
+    auto map = TestSurface<MEMORY_FORMAT_RGBA128F>(21, 21);
     for (auto x = 0; x < 21; x++) {
         for (auto y = 0; y < 21; y++) {
             auto x1 = x / 3;
@@ -24,7 +24,7 @@ TEST(PixelFilterDisplacementTest, DisplacementMap)
     }
 
     auto f = DisplacementMap(0, 1, 255 * 6, 255 * 6);
-    auto dst = TestCairoSurface<4>(21, 21);
+    auto dst = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     f.filter(*dst._d, *texture._d, *map._d);
 
     ASSERT_TRUE(ImageIs(*dst._d,

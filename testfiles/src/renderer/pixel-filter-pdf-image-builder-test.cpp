@@ -9,7 +9,7 @@ using namespace Inkscape::Renderer::PixelFilter;
 
 TEST(PixelPdfBuildImageTest, DataFormatInt)
 {
-    TestCairoSurface<4> surface{3, 3};
+    TestSurface<MEMORY_FORMAT_CMYA_KA256F> surface{3, 3};
     surface.rect(1, 1, 1, 1, {0.0, 1.0, 0.5, 0.1, 0.5});
     
     EXPECT_TRUE(VectorIsNear(surface._d->colorAt((unsigned)0, 0, true), {0, 0,   0,   0, 0.0}, 0.001));

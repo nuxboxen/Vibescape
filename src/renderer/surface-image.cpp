@@ -263,12 +263,12 @@ std::vector<Cairo::RefPtr<Cairo::ImageSurface>> const &Image::getCairoSurfaces()
     return Surface::getCairoSurfaces();
 }
 
-Glib::RefPtr<Glib::Bytes> Image::encode_as_bytes(std::optional<std::string> mime_type)
+Glib::RefPtr<Glib::Bytes> Image::encode_as_bytes(std::optional<std::string> mime_type, ImageOutputFormat format)
 {
     GError *error;
     auto mime = mime_type ? *mime_type : _mime_type;
 
-    if (mime == "image/svg+xml") {
+    if (mime == "image/svg+xml" || mime.empty()) {
         throw Image::ImageError("Can't export a purely raster image as an svg");
     } else if (_surfaces.empty()) {
         throw Image::ImageError("There is no image ready for image-encoding.");
@@ -323,11 +323,11 @@ Glib::RefPtr<Glib::Bytes> Image::encode_as_bytes(std::optional<std::string> mime
     }
 }
 
-std::string const Image::encode_as_base64(std::optional<std::string> mime_type)
+std::string const Image::encode_as_base64(std::optional<std::string> mime_type, ImageOutputFormat format)
 {
     auto mime = mime_type ? *mime_type : _mime_type;
 
-    if (auto bytes = encode_as_bytes(mime_type)) {
+    if (auto bytes = encode_as_bytes(mime_type, format)) {
         gsize length;
         auto byte_ptr = bytes->get_data(length);
         auto encoded = g_base64_encode((const unsigned char*)byte_ptr, length);

@@ -33,8 +33,8 @@ Surface::Surface(Cairo::RefPtr<Cairo::ImageSurface> const &argb32_source, bool c
 {
     if (convert) {
         _color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
-        auto pa = PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(getCairoSurfaces()[0]);
-        PixelAccess<CAIRO_FORMAT_ARGB32, 3>(argb32_source).convertTypeInto(pa);
+        auto pa = PixelAccess<MEMORY_FORMAT_RGBA128F>(getCairoSurfaces()[0]);
+        PixelAccess<MEMORY_FORMAT_ARGB32>(argb32_source).createContiguousCopy(pa);
     } else {
         _surfaces.emplace_back(argb32_source);
     }
@@ -53,12 +53,12 @@ Surface::Surface(std::string const &filename)
     if (format != CAIRO_FORMAT_RGBA128F) {
         auto surface = _surfaces.back();
         _surfaces.pop_back();
-        auto pixels = PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(getCairoSurfaces()[0]);
+        auto pixels = PixelAccess<MEMORY_FORMAT_RGBA128F>(getCairoSurfaces()[0]);
 
         if (format == CAIRO_FORMAT_ARGB32) { // 32bit PNG
-            PixelAccess<CAIRO_FORMAT_ARGB32, 3>(surface).convertTypeInto(pixels);
+            PixelAccess<MEMORY_FORMAT_ARGB32>(surface).createContiguousCopy(pixels);
         } else if (format ==  CAIRO_FORMAT_RGB24) { // 24bit PNG
-            PixelAccess<CAIRO_FORMAT_RGB24, 3>(surface).convertTypeInto(pixels);
+            PixelAccess<MEMORY_FORMAT_RGB24>(surface).createContiguousCopy(pixels);
         } else {
             throw SurfaceError(std::string("Wrong format returned from opening PNG file: '") + get_cairo_format_name(format) + "'");
         }
@@ -68,16 +68,19 @@ Surface::Surface(std::string const &filename)
 
 Surface Surface::convertedToFloat() const
 {
+    // Always initalise the data because we don't want to return an empty Surface when it used to be an ImageSurface
+    auto surfaces = getCairoSurfaces();
     if (_color_space) return *this; // already float
 
     // An int surface is ALWAYS in sRGB to the target color space is sRGB
     static auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
     auto ret = Surface(_dimensions, _device_scale, rgb);
 
-    if (!_surfaces.empty()) {
-        auto pa = PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(ret.getCairoSurfaces()[0]);
-        PixelAccess<CAIRO_FORMAT_ARGB32, 3>(_surfaces[0]).convertTypeInto(pa);
+    if (surfaces.empty()) {
+        throw SurfaceError("No image data to convert to format.");
     }
+    auto pa = PixelAccess<MEMORY_FORMAT_RGBA128F>(ret.getCairoSurfaces()[0]);
+    PixelAccess<MEMORY_FORMAT_ARGB32>(surfaces[0]).createContiguousCopy(pa);
 
     ret._user_data = _user_data;
     return ret;
@@ -85,6 +88,8 @@ Surface Surface::convertedToFloat() const
 
 Surface Surface::convertedToInt() const
 {
+    // Always initalise the data because we don't want to return an empty Surface when it used to be an ImageSurface
+    auto surfaces = getCairoSurfaces();
     if (!_color_space) return *this; // already int, makes a copy
 
     static auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
@@ -95,10 +100,11 @@ Surface Surface::convertedToInt() const
 
     auto ret = Surface(_dimensions, _device_scale);
 
-    if (!_surfaces.empty()) {
-        auto pa = PixelAccess<CAIRO_FORMAT_ARGB32, 3>(ret.getCairoSurfaces()[0]);
-        PixelAccess<CAIRO_FORMAT_RGBA128F, 3>(_surfaces[0]).convertTypeInto(pa);
+    if (surfaces.empty()) {
+        throw SurfaceError("No image data to convert to format.");
     }
+    auto pa = PixelAccess<MEMORY_FORMAT_ARGB32>(ret.getCairoSurfaces()[0]);
+    PixelAccess<MEMORY_FORMAT_RGBA128F>(surfaces[0]).createContiguousCopy(pa);
 
     ret._user_data = _user_data;
     return ret;

@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /**
  * @file
- * Access the memory of a surface of pixels in a predictable way.
+ * Access the memory of a surface of pixels in a predictable way these can be either
+ * cairo surface memory formats (CAIRO_FORMAT_*) when supplied with Cairo::Surface
+ * objects. Or maybe simple arrays for conversion and export by a supplying std::vector<T>.
  *//*
  * Authors:
  *   Martin Owens
  *
- * Copyright (C) 2025 Authors
+ * Copyright (C) 2025-2026 Authors
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
@@ -32,7 +34,7 @@
  *  Channel - Is one of those color space double values where alpha is always the last
  *            item. For example in CMYKA, C is channel 0, M is 1 and A is 4
  *  Surface - Is a collection of Cairo pixels in a 2d grid with a specific stride.
- *  Pixel - A collection of one OR four Primaries packed into this
+ *  Pixel - A collection of Primaries packed into this
  *          surface grid. These may be floats or integers of various scales.
  *  Primary - One of the values packed into a pixel. These get turned into channels
  *            through unpacking of specific memory locations.
@@ -69,62 +71,135 @@ enum class PixelAccessEdgeMode
     ZERO,   // Return zero for getter, and ignore OOB setter
 };
 
+enum MemoryFormat
+{
+    MEMORY_FORMAT_INVALID  = CAIRO_FORMAT_INVALID,
+    MEMORY_FORMAT_A8       = CAIRO_FORMAT_A8,
+    MEMORY_FORMAT_RGB24    = CAIRO_FORMAT_RGB24,
+    MEMORY_FORMAT_ARGB32   = CAIRO_FORMAT_ARGB32,
+    MEMORY_FORMAT_RGBA128F = CAIRO_FORMAT_RGBA128F,
+    MEMORY_FORMAT_RGB96F   = CAIRO_FORMAT_RGB96F,
+
+    MEMORY_FORMAT_NOTCAIRO = 1000, // Split between cairo and non-cairo memory
+
+    MEMORY_FORMAT_G8,
+    MEMORY_FORMAT_GA16,
+    MEMORY_FORMAT_G16,
+    MEMORY_FORMAT_GA32,
+    MEMORY_FORMAT_RGBA64,
+    MEMORY_FORMAT_RGBA128,
+    MEMORY_FORMAT_CMYA_KA256F, // CMYK split into two RGBA128F
+    MEMORY_FORMAT_CMYKA160F,
+};
+
 /**
  * Get the cairo format as a printable name. Used in tests, errors and debugging.
  */
-inline std::string get_cairo_format_name(cairo_format_t format)
+inline std::string get_memory_format_name(MemoryFormat format)
 {
-    static const std::map<cairo_format_t, std::string> map = {
-        {CAIRO_FORMAT_INVALID, "INVALID"},
-        {CAIRO_FORMAT_A8, "A8"},
-        {CAIRO_FORMAT_RGB24, "RGB24"},
-        {CAIRO_FORMAT_ARGB32, "ARGB32"},
-        {CAIRO_FORMAT_RGBA128F, "RGBA128F"},
+    static const std::map<MemoryFormat, std::string> map = {
+        {MEMORY_FORMAT_INVALID,  "INVALID"},
+        {MEMORY_FORMAT_A8,       "A8"},
+        {MEMORY_FORMAT_RGB24,    "RGB24"},
+        {MEMORY_FORMAT_ARGB32,   "ARGB32"},
+        {MEMORY_FORMAT_RGBA128F, "RGBA128F"},
+        {MEMORY_FORMAT_RGB96F,   "RGB96F"},
+
+        {MEMORY_FORMAT_G8,       "*G8"},
+        {MEMORY_FORMAT_GA16,     "*GA16"},
+        {MEMORY_FORMAT_G16,      "*G16"},
+        {MEMORY_FORMAT_GA32,     "*GA32"},
+        {MEMORY_FORMAT_RGBA64,   "*RGBA64"},
+        {MEMORY_FORMAT_RGBA128,  "*RGBA128"},
+        {MEMORY_FORMAT_CMYA_KA256F, "*CMYA_KA256F"},
+        {MEMORY_FORMAT_CMYKA160F,   "*CMYKA160F"},
     };
     return map.at(format);
 }
+inline std::string get_cairo_format_name(cairo_format_t format)
+{
+    return get_memory_format_name((MemoryFormat)format);
+}
+
 
 /**
  * Scale numbers between two number types by scaling them
  *
- * From T0 to T1 use: value * get_scale<...>();
- * From T1 to T0 use: value / get_scale<...>();
+ * From T0 to T1 use: value * get_format_scale<...>();
+ * From T1 to T0 use: value / get_format_scale<...>();
  */
 template <typename T0, typename T1>
-constexpr static inline double get_scale()
+constexpr static inline double get_format_scale()
 {
     using namespace std;
     return is_integral_v<T1>
         ? (is_integral_v<T0>
-          ? numeric_limits<T1>::max() / numeric_limits<T0>::max() // T0=char|int  T1=int|char
-          : numeric_limits<T1>::max())                            // T0=float     T1=int|char
+          ? (double)numeric_limits<T1>::max() / numeric_limits<T0>::max() // T0=char|int  T1=int|char
+          : (double)numeric_limits<T1>::max())                            // T0=float     T1=int|char
         : (is_integral_v<T0>
-          ? (T1)1.0 / numeric_limits<T0>::max()                   // T0=char|int  T1=float
-          : (T1)1.0);                                             // T0=float     T1=float
+          ? (double)1.0 / numeric_limits<T0>::max()                       // T0=char|int  T1=float
+          : (double)1.0);                                                 // T0=float     T1=float
+}
+
+/**
+ * Convert *back* from an inkscape memory format to a cairo memory format for checking and converting.
+ */
+constexpr static inline cairo_format_t memory_to_cairo_format(MemoryFormat format)
+{
+    if (format < MEMORY_FORMAT_NOTCAIRO) {
+        return (cairo_format_t)format;
+    }
+    if (format == MEMORY_FORMAT_CMYA_KA256F) {
+        return CAIRO_FORMAT_RGBA128F; // Map
+    }
+    return CAIRO_FORMAT_INVALID;
 }
 
 /**
  * Image surface memory access for different types which can span multiple surfaces.
  *
  * @template_arg format           - The cairo type for this pixel access.
- * @template_arg channel_count    - The total number of channels in this format across all surfaces.
  * @template_arg edge_mode        - Set the edge checking and how out of range x,y coordinates treated
- * @template_arg primary_override - Optionally override primary count for accessing contiguous surfaces.
  */
-template <cairo_format_t format, int channel_count, PixelAccessEdgeMode edge_mode = PixelAccessEdgeMode::NO_CHECK, int primary_override = 0>
+template <MemoryFormat _format, PixelAccessEdgeMode edge_mode = PixelAccessEdgeMode::NO_CHECK>
 class PixelAccess
 {
 public:
-    // Is the format an integer based format
-    constexpr static bool is_integer = format != CAIRO_FORMAT_RGBA128F && format != CAIRO_FORMAT_RGB96F;
-    constexpr static bool has_alpha = format != CAIRO_FORMAT_RGB24 && format != CAIRO_FORMAT_RGB96F;
+    constexpr static MemoryFormat format = _format;
+
+    constexpr static bool is_integer =
+        format != MEMORY_FORMAT_RGBA128F &&
+        format != MEMORY_FORMAT_RGB96F &&
+        format != MEMORY_FORMAT_CMYKA160F &&
+        format != MEMORY_FORMAT_CMYA_KA256F;
+
+    constexpr static bool has_alpha = 
+        format != MEMORY_FORMAT_RGB24 &&
+        format != MEMORY_FORMAT_RGB96F &&
+        format != MEMORY_FORMAT_G8 &&
+        format != MEMORY_FORMAT_G16;
+
+    constexpr static bool little_endian = G_BYTE_ORDER == G_LITTLE_ENDIAN && (
+        format == MEMORY_FORMAT_RGB24 ||
+        format == MEMORY_FORMAT_ARGB32);
 
     // How many primaries are there in this format
-    constexpr static int primary_count = primary_override ? primary_override : (format == CAIRO_FORMAT_A8 ? 0 : 3);
-    constexpr static int primary_total = primary_count + 1; // Plus Alpha
+    constexpr static int primary_count =
+        format == MEMORY_FORMAT_CMYKA160F ? 4 : (
+        format == MEMORY_FORMAT_A8 ? 0 : (
+        format == MEMORY_FORMAT_G8 ||
+        format == MEMORY_FORMAT_GA16 ||
+        format == MEMORY_FORMAT_G16 ||
+        format == MEMORY_FORMAT_GA32 ? 1 : 3));
+    constexpr static int primary_total = primary_count + has_alpha; // Plus Alpha
 
     // The internal type used by each channel in the format
-    using PrimaryType = std::conditional_t<is_integer, unsigned char, float>;
+    using PrimaryType = std::conditional_t<!is_integer,                       float,
+                          std::conditional_t<format == MEMORY_FORMAT_RGBA128, uint32_t,
+                          std::conditional_t<format == MEMORY_FORMAT_RGBA64 ||
+                                             format == MEMORY_FORMAT_G16 ||
+                                             format == MEMORY_FORMAT_GA32,    uint16_t,
+                                                                              uint8_t>>>;
 
     // Provides the size of the primary in memory as number of bytes
     constexpr static int primary_size = sizeof(PrimaryType);
@@ -133,27 +208,30 @@ public:
     constexpr static bool checks_edge = edge_mode != PixelAccessEdgeMode::NO_CHECK;
 
     // Scale of each primary to convert to a double used in Channels
-    constexpr static double primary_scale = is_integer ? 255.0 : 1.0;
+    constexpr static double primary_scale = get_format_scale<double, PrimaryType>();
+    constexpr static double primary_unscale = get_format_scale<PrimaryType, double>();
 
     // Position of the alpha primary in this format
-    constexpr static int primary_alpha = is_integer || !has_alpha ? 0 : primary_count;
+    constexpr static int primary_alpha = (little_endian || !has_alpha) ? 0 : primary_count;
+    constexpr static int primary_alpha_pos = little_endian ? primary_count - primary_alpha : primary_alpha;
+
+    // Actual number of channels from both surfaces (if split onto two surfaces)
+    constexpr static int channel_count = format == MEMORY_FORMAT_CMYA_KA256F ? 4 : primary_count;
+    constexpr static int channel_total = channel_count + has_alpha;
+    using Color = std::array<double, channel_total>;
 
     // Does this PixelAccess need two surfaces?
     constexpr static bool has_more_channels = channel_count > primary_count;
 
-    // Actual number of channels when including alpha
-    constexpr static int channel_total = channel_count + 1;
-    using Color = std::array<double, channel_total>;
-
     /**
-     * Create a pixel access object for the given cairo surface.
+     * Create a pixel access object for the given cairo surface(s).
      *
      * @arg cairo_surface - The Cairo Surface to gain memory access to.
      * @arg next_surface  - Optionally add another surface to handle color interpolation
-     *                      in spaces like CMYKA with more than 3 primaries.
+     *                      in MEMORY_FORMAT_CMYA_KA256F.
      */
     explicit PixelAccess(Cairo::RefPtr<Cairo::ImageSurface> cairo_surface,
-                           Cairo::RefPtr<Cairo::ImageSurface> next_surface = {})
+                         Cairo::RefPtr<Cairo::ImageSurface> next_surface = {})
         requires(channel_count <= primary_count * (has_more_channels + 1))
         : _width(cairo_surface->get_width())
         , _height(cairo_surface->get_height())
@@ -163,7 +241,7 @@ public:
         , _cairo_surface(cairo_surface)
         , _next_surface(next_surface)
     {
-        if (cairo_image_surface_get_format(cairo_surface->cobj()) != format) {
+        if (cairo_image_surface_get_format(cairo_surface->cobj()) != memory_to_cairo_format(format)) {
             throw PixelAccessError("format of the cairo surface doesn't match the PixelAccess type.");
         }
         _cairo_surface->flush(); // This pairs with mark_dirty in ~PixelAccess
@@ -171,7 +249,7 @@ public:
         if constexpr (has_more_channels) {
             if (_width != _next_surface->get_width() || _height != _next_surface->get_height() ||
                 _stride != _next_surface->get_stride() / primary_size ||
-                cairo_image_surface_get_format(_next_surface->cobj()) != format) {
+                cairo_image_surface_get_format(_next_surface->cobj()) != memory_to_cairo_format(format)) {
                 throw PixelAccessError("Pixel Access Next Surface must be the same formats.");
             }
             _next_memory = reinterpret_cast<PrimaryType *>(_next_surface->get_data());
@@ -202,6 +280,14 @@ public:
         , _stride(width * primary_total)
         , _size(_height * _stride)
         , _memory(_local_memory.data())
+    {}
+
+    /**
+     * Create a pixel access and the memory for the given type.
+     */
+    PixelAccess(int width, int height)
+        : PixelAccess(
+            std::vector<PrimaryType>(width * height * channel_total, 0.0), width, height)
     {}
 
     /**
@@ -248,7 +334,7 @@ public:
     template <typename T0 = double>
     inline std::array<T0, channel_total> colorAt(double x, double y, bool unmultiply_alpha = false) const
     {
-        constexpr static double scale = get_scale<double, T0>();
+        constexpr static double scale = get_format_scale<double, T0>();
 
         int fx = floor(x), fy = floor(y);
         int cx = ceil(x), cy = ceil(y);
@@ -366,81 +452,101 @@ public:
      */
     auto const &local_memory() const { return _local_memory; }
 
-    /**
-     * Create a block of contiguous memory suitable for this pixel surface.
-     *
-     * @returns A vector or the requested memory types
-     */
-    template <int channels = channel_total, typename T0 = PrimaryType>
-    static auto contiguousMemoryEmpty(int width, int height)
-    {
-        return std::vector<T0>(width * height * channels, 0.0);
-    }
-
     /*
-     * Same as contiguouMemory but wraps the output in a correctly configured PixelAccess object.
+     * Construct a NON-CAIRO memory buffer of the given format.
+     *
+     * @template_arg format - The new memory format to use for the contigous buffer. The default
+     *                        is the format of this pixel access as a contigious format.
      *
      * @returns A pixel access object which unlike regular objects, owns it's
      *          memory and will unallocate the temporary surface on destruction.
      */
-    template <int channels = channel_count>
+    template <MemoryFormat new_format = format>
     auto createContiguousEmpty() const
     {
-        return createContiguousEmpty<channels>(_width, _height);
+        return createContiguousEmpty<new_format>(_width, _height);
     }
-    template <int channels = channel_count>
-    static auto createContiguousEmpty(int width, int height)
+    template <MemoryFormat new_format = format>
+    static PixelAccess<new_format == MEMORY_FORMAT_CMYA_KA256F ? MEMORY_FORMAT_CMYKA160F : new_format, edge_mode> createContiguousEmpty(int width, int height)
     {
-        return PixelAccess<format, channels, edge_mode, channels>(contiguousMemoryEmpty<channels + 1>(width, height), width, height);
+        if constexpr (new_format == MEMORY_FORMAT_CMYA_KA256F) {
+            return PixelAccess<MEMORY_FORMAT_CMYKA160F, edge_mode>(width, height);
+        } else {
+            return PixelAccess<new_format, edge_mode>(width, height);
+        }
     }
-
-    template <typename T0 = PrimaryType, bool RemoveAlpha = false>
+    /**
+     * Creates a non-cairo memory buffer and copies the data from this pixel access into it.
+     *
+     * @template_arg UnpremultiplyAlpha - Remove alpha premultiplication from the source.
+     * @template_arg new_format - The new format of the memory buffer. If this is narrower
+     *                            than the source in either bit size or number of channels
+     *                            the data will be reduced without careful consideration.
+     */
+    template <bool UnpremultiplyAlpha = false, MemoryFormat new_format = format>
     auto createContiguousCopy() const
     {
-        auto dst = createContiguousEmpty();
-        auto total_size = _width * _height * (channel_total - RemoveAlpha);
+        auto dst = createContiguousEmpty<new_format>(_width, _height);
+        createContiguousCopy<UnpremultiplyAlpha>(dst);
+        return dst;
+    }
+    template <bool UnpremultiplyAlpha = false, typename AccessDst>
+    auto createContiguousCopy(AccessDst &dst) const
+        requires (!AccessDst::has_more_channels)
+    {
+        if constexpr (!std::is_same<typename AccessDst::PrimaryType, PrimaryType>::value || UnpremultiplyAlpha || channel_total != AccessDst::channel_total) {
+            // SLOWEST ARM, converting memory TYPEs
+            forEachLine(dst, [](PrimaryType const *src1, PrimaryType const *src2, PrimaryType const *end, AccessDst::PrimaryType *dst1, AccessDst::PrimaryType *) {
+                constexpr static double scale = get_format_scale<PrimaryType, typename AccessDst::PrimaryType>();
+                //constexpr static int remaining_primaries = AccessDst::channel_count - primary_count;
+                constexpr static bool reend = little_endian != AccessDst::little_endian;
 
-        if constexpr (!std::is_same<T0, PrimaryType>::value) {
-            // TODO: add conversion from float to int and int to float here using very slow _get_channel<T0>
-        } else if constexpr (has_more_channels || RemoveAlpha) {
+                // Ignoring dst2 because contigous means dest is always one surface only.
+                for (; src1 < end; src1+=primary_total, src2+=primary_total, dst1+=AccessDst::primary_total) {
+                    double alpha = (has_alpha ? *(src1 + primary_alpha_pos) * primary_unscale : 1.0);
+                    double mult = (UnpremultiplyAlpha ? (alpha > 0.0 ? 1.0 / alpha : 0.0) : 1.0);
+
+                    auto src = src1;
+                    for (int c = 0, s = (reend ? primary_count - 1 : 0); c < AccessDst::channel_count; c++) {
+                        *(dst1 + c) = *(src + s) * mult * scale;
+
+                        if constexpr (reend) {
+                            if (s > 0) {
+                                s--;
+                            } else if (has_more_channels && src == src1) {
+                                s = primary_count - 1;
+                                src = src2;
+                            }
+                        } else {
+                            if (s < primary_count - 1) {
+                                s++;
+                            } else if (has_more_channels && src == src1) {
+                                s = 0;
+                                src = src2;
+                            }
+                        }
+                    }
+                    if constexpr (AccessDst::has_alpha) {
+                        *(dst1 + AccessDst::primary_alpha_pos) = alpha * AccessDst::primary_scale;
+                    }   
+                }   
+            }); 
+        } else if constexpr (has_more_channels) {
             // SLOW ARM 6000x6000 -> 515ms
-            forEachLine(dst, [](PrimaryType const *src1, PrimaryType const *src2, PrimaryType const *end, PrimaryType *dst1, PrimaryType *dst2) {
+            forEachLine(dst, [](PrimaryType const *src1, PrimaryType const *src2, PrimaryType const *end, AccessDst::PrimaryType *dst1, AccessDst::PrimaryType *dst2) {
                 for (;src1 < end; src1+=primary_total, src2+=primary_total, dst1+=channel_total, dst2+=channel_total) {
                     std::memcpy(dst1, src1, primary_count * sizeof(PrimaryType)); // CMY
                     dst2[0] = src2[0]; // K
-                    if constexpr (!RemoveAlpha) {
-                        dst1[channel_count] = src1[primary_count]; // A
-                    }
+                    dst1[channel_count] = src1[primary_count]; // A
                 }
             });
         } else {
             // FAST ARM 6000x6000 -> 393ms
             // It's already contiguous, so just make a copy
+            auto total_size = _width * _height * channel_total;
             std::memcpy(dst.memory(), _memory, total_size * sizeof(PrimaryType));
         }
         return dst;
-    }
-
-    /**
-     * Transform an INT based image into a FLOAT based image for rendering.
-     */
-    template <typename AccessOther>
-    void convertTypeInto(AccessOther &dst) const
-        requires (!has_more_channels && !AccessOther::has_more_channels)
-    {
-        forEachLine(dst, [this](PrimaryType const *src, PrimaryType const *end, AccessOther::PrimaryType *dst) {
-            constexpr static double scale = get_scale<PrimaryType, typename AccessOther::PrimaryType>();
-
-            for (int i = 0; src < end; src+=primary_total, dst+=AccessOther::primary_total, i++) {
-                // We only use INT32 for ARGB32 images and only convert them to RGBA128F
-                *(dst + 0) = *(src + 2) * scale;
-                *(dst + 1) = *(src + 1) * scale;
-                *(dst + 2) = *(src + 0) * scale;
-                if constexpr (AccessOther::has_alpha) {
-                    *(dst + 3) = has_alpha ? *(src + 3) * scale : 1.0;
-                }
-            }
-        });
     }
 
     /**
@@ -498,11 +604,11 @@ public:
                                                             PrimaryType const *,
                                                             typename OtherAccess::PrimaryType *,
                                                             typename OtherAccess::PrimaryType *)> &&function) const
-        requires(OtherAccess::channel_total == channel_total)
     {
         auto const pool = get_global_dispatch_pool();
         bool const limit = width() * height() > POOL_THRESHOLD;
 
+        // The offset is always three for other memory where it exists
         pool->dispatch_threshold(height(), limit, [this, &other, function](int y, int) {
             function(
                 get_line(y),
@@ -531,10 +637,10 @@ public:
      */
     void write_to_png(std::string const &filename) const
     {
-        if constexpr (has_more_channels) {
+        if (_cairo_surface && _next_surface) {
             _cairo_surface->write_to_png(filename + "-0.png");
             _next_surface->write_to_png(filename + "-1.png");
-        } else if (!primary_override) {
+        } else if (_cairo_surface) {
             _cairo_surface->write_to_png(filename + ".png");
         } else {
             std::cerr << "Can't debug contiguous surface. '" << filename << "' skipped\n";
@@ -561,9 +667,12 @@ private:
         if (_edge_check(pos)) {
             return;
         }
-        // Set alpha in the surface
-        _memory[pos + _primary_pos(primary_alpha)] = alpha * primary_scale;
-        auto mult = unmultiply_alpha ? alpha : 1.0;
+        if constexpr (has_alpha) {
+            // Set alpha in the surface
+            _memory[pos + primary_alpha_pos] = alpha * primary_scale;
+        }
+        auto mult = has_alpha && unmultiply_alpha ? alpha : 1.0;
+
 
         // Set the primaries in the surface
         for (int p = 0; p < primary_total && offset < values.size(); p++) {
@@ -575,10 +684,12 @@ private:
 
         // If we have more channels, keep setting them
         if constexpr (has_more_channels) {
-            // Alpha is always set in every surface
-            _next_memory[pos + _primary_pos(primary_alpha)] = alpha * primary_scale;
+            if constexpr (has_alpha) {
+                // Alpha is always set in every surface
+                _next_memory[pos + primary_alpha_pos] = alpha * primary_scale;
+            }
 
-            for (int p = 0; p < primary_total && offset < values.size(); p++) {
+            for (int p = 0; p < primary_total && offset < values.size() - has_alpha; p++) {
                 if (p != primary_alpha) {
                     _next_memory[pos + _primary_pos(p)] = values[offset] * mult * primary_scale;
                     offset++;
@@ -599,7 +710,7 @@ private:
     inline T0 _get_channel(int pos, int channel, double alpha_mult) const
     {
         // Allow this function to output integer types of various sizes as well as floating point types
-        constexpr static double scale = get_scale<PrimaryType, T0>();
+        constexpr static double scale = get_format_scale<PrimaryType, T0>();
         if (_edge_check(pos)) {
             return 0.0;
         }
@@ -617,7 +728,7 @@ private:
     template <typename T0 = double>
     inline void _set_channel(int pos, int channel, T0 value) const
     {
-        constexpr static double scale = get_scale<T0, PrimaryType>();
+        constexpr static double scale = get_format_scale<T0, PrimaryType>();
         if constexpr (has_more_channels) {
             if (channel >= primary_count && channel != channel_count) {
                 _next_memory[pos + _channel_to_primary(channel)] = value * scale;
@@ -634,10 +745,10 @@ private:
     {
         if constexpr (has_more_channels) {
             if (channel >= primary_count && channel != channel_count) {
-                return _primary_pos(channel - primary_count + is_integer);
+                return _primary_pos(channel - primary_count + little_endian);
             }
         }
-        return _primary_pos(channel < channel_count ? channel + is_integer : primary_alpha);
+        return _primary_pos(channel < channel_count ? channel + little_endian : primary_alpha);
     }
 
     /**
@@ -650,7 +761,7 @@ private:
                 return 0.0;
             }
         }
-        return _memory[pos + _primary_pos(primary_alpha)] / primary_scale;
+        return _memory[pos + primary_alpha_pos] * primary_unscale;
     }
 
     /**
@@ -663,7 +774,7 @@ private:
                 return;
             }
         }
-        _memory[pos + _primary_pos(primary_alpha)] = alpha * primary_scale;
+        _memory[pos + primary_alpha_pos] = alpha * primary_scale;
     }
 
     /**
@@ -715,11 +826,7 @@ private:
      */
     static inline int _primary_pos(int p)
     {
-        if constexpr (G_BYTE_ORDER == G_LITTLE_ENDIAN) {
-            return is_integer ? primary_count - p : p;
-        } else {
-            return p;
-        }
+        return little_endian ? primary_count - p : p;
     }
 
     /**
@@ -778,8 +885,8 @@ public:
     struct LineAccess
     {
         // Inputs
-        using PixelAccessType = std::conditional_t<is_const, const PixelAccess<format, channel_count, edge_mode, primary_override>,
-                                                                   PixelAccess<format, channel_count, edge_mode, primary_override>>;
+        using PixelAccessType = std::conditional_t<is_const, const PixelAccess<format, edge_mode>,
+                                                                   PixelAccess<format, edge_mode>>;
         using DataAccessType = std::conditional_t<is_const, const T0, T0>;
         PixelAccessType *_access;
 

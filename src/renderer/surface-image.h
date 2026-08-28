@@ -25,6 +25,12 @@ using ImageType = std::variant<std::monostate, GlyLoad, std::unique_ptr<SPDocume
 class SvgRenderer; // Svg loading
 using SvgFactory = std::shared_ptr<SvgRenderer>;
 
+enum class ImageOutputFormat
+{
+    AUTO,
+    // TODO image memory formats
+};
+
 class Image : public Surface
 {
 public:
@@ -61,10 +67,15 @@ public:
 
     /**
      * Output a raster surface as a set of encoded bytes in the format of the mime_type
-     * specified. IF no mime type is specified then the original mime type is used.
+     * specified.
+     *
+     * @arg mime_type - optional mime type to save the file as. Default is to use the mime_type of the
+     *                  loaded file or error out if none was ever provided.
+     * @arg format - optional conversion of the data into a specific bitdepth. Default is an automatic
+     *               detection based on the format of the original data.
      */
-    Glib::RefPtr<Glib::Bytes> encode_as_bytes(std::optional<std::string> mime_type);
-    std::string const encode_as_base64(std::optional<std::string> mime_type);
+    Glib::RefPtr<Glib::Bytes> encode_as_bytes(std::optional<std::string> mime_type = {}, ImageOutputFormat format = ImageOutputFormat::AUTO);
+    std::string const encode_as_base64(std::optional<std::string> mime_type = {}, ImageOutputFormat format = ImageOutputFormat::AUTO);
 
     /**
      * Internal function for getting the final raster images. Do not use this unless

@@ -95,7 +95,7 @@ struct ColorSpaceTransform
                 switch(_from->getProfile()->getSize()) {
                     case 3:
                         {
-                            auto out = dst.template createContiguousEmpty<3>();
+                            auto out = dst.template createContiguousEmpty<MEMORY_FORMAT_RGBA128F>();
                             transform_space_profile<true>(src, out);
                             stage2(out, dst, false);
                         }
@@ -133,21 +133,22 @@ struct ColorSpaceTransform
             switch(_to->getProfile()->getSize()) {
                 case 1:
                     {
-                        auto out = dst.template createContiguousEmpty<1>();
+                        // TODO: Upgrade this to floating point
+                        auto out = dst.template createContiguousEmpty<MEMORY_FORMAT_A8>();
                         transform_lcms_or_premultiply(src, out, is_alpha_premultiplied);
                         stage3(out, dst);
                         return;
                     }
                 case 3:
                     {
-                        auto out = dst.template createContiguousEmpty<3>();
+                        auto out = dst.template createContiguousEmpty<MEMORY_FORMAT_RGBA128F>();
                         transform_lcms_or_premultiply(src, out, is_alpha_premultiplied);
                         stage3(out, dst);
                         return;
                     }
                 case 4:
                     {
-                        auto out = dst.template createContiguousEmpty<4>();
+                        auto out = dst.template createContiguousEmpty<MEMORY_FORMAT_CMYKA160F>();
                         transform_lcms_or_premultiply(src, out, is_alpha_premultiplied);
                         stage3(out, dst);
                         return;

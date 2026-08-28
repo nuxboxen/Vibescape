@@ -8,7 +8,7 @@ using namespace Inkscape::Renderer::PixelFilter;
 TEST(PixelColorMatrixTest, ColorMatrix)
 {
     // Identity Matrix
-    EXPECT_TRUE(FilterColors<3>(ColorMatrix({
+    EXPECT_TRUE(FilterColors(ColorMatrix({
                                     // clang-format off
         1, 0, 0, 0, 0,
         0, 1, 0, 0, 0,
@@ -18,9 +18,9 @@ TEST(PixelColorMatrixTest, ColorMatrix)
                                 }, 0.0),
                                 {1.0, 0.0, 1.0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
     // Default matrix is Identity
-    EXPECT_TRUE(FilterColors<3>(ColorMatrix({}, 0.0), {1.0, 0.0, 1.0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
+    EXPECT_TRUE(FilterColors(ColorMatrix({}, 0.0), {1.0, 0.0, 1.0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
     // Morphius Matrix
-    EXPECT_TRUE(FilterColors<3>(ColorMatrix({
+    EXPECT_TRUE(FilterColors(ColorMatrix({
                                     // clang-format off
         0, 0, 0, 0, 0,
         1, 1, 1, 1, 0,
@@ -34,19 +34,19 @@ TEST(PixelColorMatrixTest, ColorMatrix)
 TEST(PixelColorMatrixTest, ColorMatrixSaturate)
 {
     // Testing in sRGB color space (browsers use linearRGB by default)
-    EXPECT_TRUE(FilterColors<3>(ColorMatrixSaturate(0.2), {0.428, 0.228, 0.428, 0.5}, {1.0, 0.0, 1.0, 0.5}));
-    EXPECT_TRUE(FilterColors<3>(ColorMatrixSaturate(0.4), {0.571, 0.171, 0.571, 0.5}, {1.0, 0.0, 1.0, 0.5}));
+    EXPECT_TRUE(FilterColors(ColorMatrixSaturate(0.2), {0.428, 0.228, 0.428, 0.5}, {1.0, 0.0, 1.0, 0.5}));
+    EXPECT_TRUE(FilterColors(ColorMatrixSaturate(0.4), {0.571, 0.171, 0.571, 0.5}, {1.0, 0.0, 1.0, 0.5}));
 }
 
 TEST(PixelColorMatrixTest, ColorMatrixHueRotate)
 {
-    EXPECT_TRUE(FilterColors<3>(ColorMatrixHueRotate(180.0), {0, 0.57, 0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
-    EXPECT_TRUE(FilterColors<3>(ColorMatrixHueRotate(90.0), {1, 0.145, 0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
+    EXPECT_TRUE(FilterColors(ColorMatrixHueRotate(180.0), {0, 0.57, 0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
+    EXPECT_TRUE(FilterColors(ColorMatrixHueRotate(90.0), {1, 0.145, 0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
 }
 
 TEST(PixelColorMatrixTest, ColorMatrixLuminance)
 {
-    EXPECT_TRUE(FilterColors<3>(ColorMatrixLuminance(), {0, 0, 0, 0.785}, {1.0, 0.0, 1.0, 0.5}));
+    EXPECT_TRUE(FilterColors(ColorMatrixLuminance(), {0, 0, 0, 0.785}, {1.0, 0.0, 1.0, 0.5}));
 }
 
 /*

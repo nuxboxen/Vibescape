@@ -14,7 +14,7 @@ class PixelAverageColorTest : public ::testing::Test
 public:
     void SetUp() override
     {
-        src = std::make_unique<TestCairoSurface<4>>(4, 4);
+        src = std::make_unique<TestSurface<MEMORY_FORMAT_CMYA_KA256F>>(4, 4);
         src->rect(1, 1, 2, 2, {0.7, 0.0, 0.0, 0.0, 0.7}); // Cyan square middle
         src->rect(0, 1, 1, 2, {0.0, 0.7, 0.0, 0.0, 0.7}); // Magenta stripe left
         src->rect(3, 1, 1, 2, {0.0, 0.0, 0.7, 0.0, 0.7}); // Yellow stripe right
@@ -22,7 +22,7 @@ public:
         src->rect(0, 3, 4, 1, {0.0, 0.0, 0.0, 1.0, 1.0}); // Black bar bottom
     }
 
-    std::unique_ptr<TestCairoSurface<4>> src;
+    std::unique_ptr<TestSurface<MEMORY_FORMAT_CMYA_KA256F>> src;
 };
 
 TEST_F(PixelAverageColorTest, AllPixelsAverageColor)
@@ -34,7 +34,7 @@ TEST_F(PixelAverageColorTest, AllPixelsAverageColor)
 
 TEST_F(PixelAverageColorTest, PixelsInsideMask)
 {
-    auto mask = TestCairoSurface<0, PixelAccessEdgeMode::NO_CHECK, CAIRO_FORMAT_A8>(4, 4);
+    auto mask = TestSurface<MEMORY_FORMAT_A8, PixelAccessEdgeMode::NO_CHECK>(4, 4);
 
     // One semi transparent square, should be no black
     mask.rect(0, 1, 4, 2, {0.5});
@@ -47,7 +47,7 @@ TEST_F(PixelAverageColorTest, PixelsInsideMask)
 
 TEST_F(PixelAverageColorTest, PixelsOutsideMask)
 {
-    auto mask = TestCairoSurface<0, PixelAccessEdgeMode::NO_CHECK, CAIRO_FORMAT_A8>(4, 4);
+    auto mask = TestSurface<MEMORY_FORMAT_A8, PixelAccessEdgeMode::NO_CHECK>(4, 4);
 
     mask.rect(1, 1, 2, 2, {1.0}); // Remove Cyan
     mask.rect(0, 1, 4, 2, {0.8}); // Reduce Magenta and Yellow

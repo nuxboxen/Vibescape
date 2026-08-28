@@ -10,8 +10,8 @@ using namespace Inkscape::Renderer::PixelFilter;
 
 TEST(PixelColorSpaceStepTest, spaceToProfileFast)
 {
-    TestCairoSurface<3> sb1{2000, 2000}; // Speed testing
-    TestCairoSurface<3> sb2{2000, 2000};
+    TestSurface<MEMORY_FORMAT_RGBA128F> sb1{2000, 2000}; // Speed testing
+    TestSurface<MEMORY_FORMAT_RGBA128F> sb2{2000, 2000};
 
     sb1.rect(5, 5, 20, 20, {0.415, 0.514, 0.565, 0.8});
     ColorSpaceTransform(hsl, rgb).transform_space_profile<true>(*sb1._d, *sb2._d);
@@ -21,8 +21,8 @@ TEST(PixelColorSpaceStepTest, spaceToProfileFast)
 
 TEST(PixelColorSpaceStepTest, spaceToProfileSlow)
 {
-    TestCairoSurface<4> sb3{1000, 1000}; // Speed testing
-    TestCairoSurface<3> sb4{1000, 1000};
+    TestSurface<MEMORY_FORMAT_CMYA_KA256F> sb3{1000, 1000}; // Speed testing
+    TestSurface<MEMORY_FORMAT_RGBA128F> sb4{1000, 1000};
 
     sb3.rect(5, 5, 20, 20, {1.0, 0.0, 0.0, 0.1, 0.8});
     ColorSpaceTransform(cmyk_cpp, rgb).transform_space_profile<true>(*sb3._d, *sb4._d);
@@ -33,7 +33,7 @@ TEST(PixelColorSpaceStepTest, spaceToProfileSlow)
 TEST(PixelColorSpaceStepTest, profileToProfile)
 {
     for (auto is_alpha_premultiplied = 0; is_alpha_premultiplied < 2; is_alpha_premultiplied++) {
-        TestCairoSurface<4> cmyk_surface{600, 600}; // Speed testing
+        TestSurface<MEMORY_FORMAT_CMYA_KA256F> cmyk_surface{600, 600}; // Speed testing
 
         auto div = is_alpha_premultiplied ? 1.0 : 0.5;
         cmyk_surface.rect(5, 5, 20, 20, {0.5 / div, 0.0, 0.0, 0.5 / div, 0.5});
@@ -48,8 +48,8 @@ TEST(PixelColorSpaceStepTest, profileToProfile)
 
 TEST(PixelColorSpaceStepTest, profileToSpaceFast)
 {
-    TestCairoSurface<3> sb1{2000, 2000}; // Speed testing
-    TestCairoSurface<3> sb2{2000, 2000};
+    TestSurface<MEMORY_FORMAT_RGBA128F> sb1{2000, 2000}; // Speed testing
+    TestSurface<MEMORY_FORMAT_RGBA128F> sb2{2000, 2000};
 
     // The input to this function is NOT alpha premultiplied, but cairo will
     // premultiply them on painting the rect so we preunpremultiply to test
@@ -60,8 +60,8 @@ TEST(PixelColorSpaceStepTest, profileToSpaceFast)
 
 TEST(PixelColorSpaceStepTest, profileToSpaceSlow)
 {
-    TestCairoSurface<4> sb3{1000, 1000}; // Speed testing
-    TestCairoSurface<3> sb2{1000, 1000};
+    TestSurface<MEMORY_FORMAT_CMYA_KA256F> sb3{1000, 1000}; // Speed testing
+    TestSurface<MEMORY_FORMAT_RGBA128F> sb2{1000, 1000};
 
     sb2.rect(5, 5, 20, 20, {0.0, 0.5 / 0.8, 0.5 / 0.8, 0.8});
     ColorSpaceTransform(rgb, cmyk_cpp).transform_space_profile<false>(*sb2._d, *sb3._d);
@@ -97,29 +97,29 @@ public:
     {
         auto a = data.in;
         if (a.size() == 4) {
-            return t1<4>(data, {a[0], a[1], a[2], a[3]}, data.epsilon);
+            return t1<MEMORY_FORMAT_RGBA128F>(data, {a[0], a[1], a[2], a[3]}, data.epsilon);
         } else if (a.size() == 5) {
-            return t1<5>(data, {a[0], a[1], a[2], a[3], a[4]}, data.epsilon);
+            return t1<MEMORY_FORMAT_CMYA_KA256F>(data, {a[0], a[1], a[2], a[3], a[4]}, data.epsilon);
         }
         return ::testing::AssertionFailure() << "Unknown input color size (" << a.size() << ")";
     }
-    template <int SrcSize>
-    ::testing::AssertionResult t1(tr &data, std::array<double, SrcSize> in, double epsilon)
+    template <MemoryFormat src_format>
+    ::testing::AssertionResult t1(tr &data, typename PixelAccess<src_format>::Color in, double epsilon)
     {
         auto color = Inkscape::Colors::Color(data.from, data.in);
         auto b = color.converted(data.to)->getValues();
         if (b.size() == 4) {
-            return t2<SrcSize, 4>(data, in, {b[0], b[1], b[2], b[3]}, epsilon);
+            return t2<src_format, MEMORY_FORMAT_RGBA128F>(data, in, {b[0], b[1], b[2], b[3]}, epsilon);
         } else if (b.size() == 5) {
-            return t2<SrcSize, 5>(data, in, {b[0], b[1], b[2], b[3], b[4]}, epsilon);
+            return t2<src_format, MEMORY_FORMAT_CMYA_KA256F>(data, in, {b[0], b[1], b[2], b[3], b[4]}, epsilon);
         }
         return ::testing::AssertionFailure() << "Unknown output color size (" << b.size() << ")";
     }
-    template <int SrcSize, int DstSize>
-    ::testing::AssertionResult t2(tr &data, std::array<double, SrcSize> in, std::array<double, DstSize> out, double epsilon)
+    template <MemoryFormat src_format, MemoryFormat dst_format>
+    ::testing::AssertionResult t2(tr &data, typename PixelAccess<src_format>::Color in, typename PixelAccess<dst_format>::Color out, double epsilon)
     {
-        TestCairoSurface<SrcSize-1> s1{1, 1};
-        TestCairoSurface<DstSize-1> s2{1, 1};
+        TestSurface<src_format> s1{1, 1};
+        TestSurface<dst_format> s2{1, 1};
         s1.rect(0, 0, 52, 52, in);
         ColorSpaceTransform(data.from, data.to).filter(*s2._d, *s1._d);
         return ColorIs(*s2._d, 0, 0, out, true, epsilon);
@@ -176,8 +176,8 @@ INSTANTIATE_TEST_SUITE_P(PixelColorSpaceTest, testConversions, testing::Values(
 
 TEST(PixelColorSpaceTest, LuminosityToAlpha)
 {
-    TestCairoSurface<0> a1{21, 21};
-    TestCairoSurface<3> c1{21, 21};
+    TestSurface<MEMORY_FORMAT_A8> a1{21, 21};
+    TestSurface<MEMORY_FORMAT_RGBA128F> c1{21, 21};
 
     c1.rect(0,  3,  21, 3,  {0.0, 0.9, 0.0, 0.5});
     c1.rect(15, 0,  3,  21, {0.5, 0.5, 0.5, 0.5});
@@ -200,8 +200,8 @@ TEST(PixelColorSpaceTest, LuminosityToAlpha)
 
 TEST(PixelColorSpaceTest, RGBAToAlpha)
 {
-    TestCairoSurface<3> s1{60,60};
-    TestCairoSurface<0> a1{60,60};
+    TestSurface<MEMORY_FORMAT_RGBA128F> s1{60,60};
+    TestSurface<MEMORY_FORMAT_A8> a1{60,60};
 
     s1.rect(6, 6, 20, 20, {1.0, 0.0, 0.75, 0.5});
     AlphaSpaceExtraction().filter(*a1._d, *s1._d);
@@ -210,8 +210,8 @@ TEST(PixelColorSpaceTest, RGBAToAlpha)
 
 TEST(PixelColorSpaceTest, CMYKAToAlpha)
 {
-    TestCairoSurface<4> s3{60,60};
-    TestCairoSurface<0> a1{60,60};
+    TestSurface<MEMORY_FORMAT_CMYA_KA256F> s3{60,60};
+    TestSurface<MEMORY_FORMAT_A8> a1{60,60};
 
     s3.rect(6, 6, 20, 20, {1.0, 0.0, 0.4, 0.75, 0.5});
     AlphaSpaceExtraction().filter(*a1._d, *s3._d);
@@ -220,8 +220,8 @@ TEST(PixelColorSpaceTest, CMYKAToAlpha)
 
 TEST(PixelColorSpaceTest, AlphaToLuminosity)
 {
-    TestCairoSurface<0> a1{21, 21};
-    TestCairoSurface<3> c1{21, 21};
+    TestSurface<MEMORY_FORMAT_A8> a1{21, 21};
+    TestSurface<MEMORY_FORMAT_RGBA128F> c1{21, 21};
 
     c1.rect(0,  3,  21, 3,  {0.0, 0.9, 0.0, 0.5});
     c1.rect(15, 0,  3,  21, {0.5, 0.5, 0.5, 0.5});

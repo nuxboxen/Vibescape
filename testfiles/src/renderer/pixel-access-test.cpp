@@ -139,7 +139,7 @@ TEST(PixelAccessTest, AlphaIs)
 
 TEST(PixelAccessTest, ColorInIntegerFormat)
 {
-    auto src = TestCairoSurface<4>(4, 4);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(4, 4);
     src.rect(1, 1, 2, 2, {1.0, 0.0, 0.2, 0.5, 0.5});
 
     EXPECT_TRUE(ColorIs<int>(*src._d, 1, 1, {1.0, 0.0, 0.2, 0.5, 0.5}, true));
@@ -156,7 +156,7 @@ TEST(PixelAccessTest, ColorInIntegerFormat)
 
 TEST(PixelAccessTest, BilinearInterpolation)
 {
-    auto src = TestCairoSurface<3>(4, 4);
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(4, 4);
     src.rect(1, 1, 2, 2, {1.0, 0.0, 1.0, 1.0});
 
     EXPECT_NEAR(src._d->alphaAt(0.5, 0.5), 0.25, 0.001);
@@ -177,7 +177,7 @@ TEST(PixelAccessTest, BilinearInterpolation)
 
 TEST(PixelAccessTest, CopyObject)
 {
-    auto src = TestCairoSurface<3>(4, 4);
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(4, 4);
     src.rect(1, 1, 2, 2, {1.0, 0.0, 1.0, 1.0});
     auto &access = *src._d;
     EXPECT_TRUE(ColorIs(access, 1, 1, {1.0, 0.0, 1.0, 1.0}));
@@ -192,7 +192,7 @@ TEST(PixelAccessTest, CopyObject)
 
 TEST(PixelAccessTest, UnmultiplyColor)
 {
-    auto src = TestCairoSurface<3>(4, 4);
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(4, 4);
     src.rect(1, 1, 2, 2, {1.0, 0.0, 1.0, 0.5});
 
     ASSERT_TRUE(ColorIs(*src._d, 1, 1, {0.5, 0.0, 0.5, 0.5}, false));
@@ -201,7 +201,7 @@ TEST(PixelAccessTest, UnmultiplyColor)
     ASSERT_TRUE(ColorIs(*src._d, 1, 1, {1.0, 0.0, 1.0, 0.5}, true));
     ASSERT_TRUE(ColorWillBe(*src._d, 3, 3, {0.5, 0.5, 0.5, 0.5}, true));
 
-    auto src2 = TestCairoSurface<4>(4, 4);
+    auto src2 = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(4, 4);
     src2.rect(1, 1, 2, 2, {1.0, 0.0, 1.0, 0.4, 0.5});
 
     ASSERT_TRUE(ColorIs(*src2._d, 1, 1, {0.5, 0.0, 0.5, 0.2, 0.5}, false));
@@ -212,9 +212,9 @@ TEST(PixelAccessTest, UnmultiplyColor)
 }
 
 template <PixelAccessEdgeMode edge_mode>
-PixelAccess<CAIRO_FORMAT_RGBA128F, 4, edge_mode> getEdgeModeSurface(int width, int height)
+PixelAccess<MEMORY_FORMAT_CMYA_KA256F, edge_mode> getEdgeModeSurface(int width, int height)
 {
-    auto src = TestCairoSurface<4, edge_mode>(width, height);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F, edge_mode>(width, height);
 
     // Draw a box of 4 channels, one edge per channel, overlaps at the corners
     for (int x = 0; x < (int)width; x++) {
@@ -292,15 +292,13 @@ TEST(PixelAccessTest, EdgeModeNone)
     }
 }
 
-template <cairo_format_t F>
+template <MemoryFormat F>
 void TestColorTo()
 {
-    auto cobj = cairo_image_surface_create(F, 21, 21);
-    auto s = Cairo::RefPtr<Cairo::ImageSurface>(new Cairo::ImageSurface(cobj, true));
-    auto d = PixelAccess<F, 3>(s);
+    auto d = PixelAccess<F>(21, 21);
 
-    for (unsigned x = 0; x < 21; x++) {
-        for (unsigned y = 0; y < 21; y++) {
+    for (int x = 0; x < 21; x++) {
+        for (int y = 0; y < 21; y++) {
             // Build a red X in the image surface
             if (x == y || 20 - x == y) {
                 d.colorTo(x, y, {1.0, 0.0, 0.0, 1.0}, true);
@@ -317,7 +315,7 @@ void TestColorTo()
     // Premultiplied test ignores semi-transparent:
     // blue - because it's value of 1.0 is READ as 0.5 premultiplied
     // green - because it's value of 0.7 is WRITTEN as 0.49 premultiplied
-    ASSERT_TRUE(ImageIs(s,
+    ASSERT_TRUE(ImageIs(d,
                              "1  .  1"
                              " 1   1 "
                              "  1 1  "
@@ -325,10 +323,11 @@ void TestColorTo()
                              "  1 1  "
                              " 1   1 "
                              "1  .  1",
-                             PixelPatch::Method::COLORS, false));
+                             PixelPatch::Method::COLORS, false))
+        << get_memory_format_name(F);
 
     // Unpremultiplied includes semi-transparent blue and green.
-    ASSERT_TRUE(ImageIs(s,
+    ASSERT_TRUE(ImageIs(d,
                              "A@@@@@A"
                              "@1 4 1@"
                              "@ 141 @"
@@ -336,7 +335,8 @@ void TestColorTo()
                              "@ 141 @"
                              "@1 4 1@"
                              "A@@@@@A",
-                             PixelPatch::Method::COLORS, true));
+                             PixelPatch::Method::COLORS, true))
+        << get_memory_format_name(F);
 }
 
 TEST(PixelAccessTest, colorTo)
@@ -344,7 +344,7 @@ TEST(PixelAccessTest, colorTo)
     {
         auto cobj = cairo_image_surface_create(CAIRO_FORMAT_A8, 21, 21);
         auto s = Cairo::RefPtr<Cairo::ImageSurface>(new Cairo::ImageSurface(cobj, true));
-        auto d = PixelAccess<CAIRO_FORMAT_A8, 0>(s);
+        auto d = PixelAccess<MEMORY_FORMAT_A8>(s);
 
         for (unsigned x = 0; x < 21; x++) {
             for (unsigned y = 0; y < 21; y++) {
@@ -366,14 +366,41 @@ TEST(PixelAccessTest, colorTo)
                                  PixelPatch::Method::ALPHA));
     }
 
-    TestColorTo<CAIRO_FORMAT_RGBA128F>();
-    TestColorTo<CAIRO_FORMAT_ARGB32>();
+    TestColorTo<MEMORY_FORMAT_RGBA128F>();
+    TestColorTo<MEMORY_FORMAT_ARGB32>();
+    TestColorTo<MEMORY_FORMAT_RGBA64>();
+    TestColorTo<MEMORY_FORMAT_RGBA128>();
+}
+
+TEST(PixelAccessTest, colorEndian)
+{
+    auto int32 = PixelAccess<MEMORY_FORMAT_ARGB32>(1, 1);
+    auto mem32 = int32.memory();
+    int32.colorTo(0, 0, {0.2, 0.3, 0.4, 1.0});
+
+    // LITTLE ENDIAN
+    if constexpr (G_BYTE_ORDER == G_LITTLE_ENDIAN) {
+        EXPECT_EQ(mem32[0], 102); // BLUE
+        EXPECT_EQ(mem32[1], 76);  // GREEN
+        EXPECT_EQ(mem32[2], 51);  // RED
+        EXPECT_EQ(mem32[3], 255); // ALPHA
+    }
+    EXPECT_TRUE(VectorIsNear(int32.colorAt(0, 0), {0.2, 0.3, 0.4, 1.0}, 0.005));
+
+    auto int64 = PixelAccess<MEMORY_FORMAT_RGBA64>(1, 1);
+    auto mem64 = int64.memory();
+    int64.colorTo(0, 0, {0.2, 0.3, 0.4, 1.0});
+
+    EXPECT_EQ(mem64[0], 13107); // RED
+    EXPECT_EQ(mem64[1], 19660); // GREEN
+    EXPECT_EQ(mem64[2], 26214); // BLUE
+    EXPECT_EQ(mem64[3], 65535); // ALPHA
+    EXPECT_TRUE(VectorIsNear(int64.colorAt(0, 0), {0.2, 0.3, 0.4, 1.0}, 0.005));
 }
 
 TEST(PixelAccessTest, multiSpanChannels)
 {
-    // We only test RGBA128F, since this is what is going to be used
-    auto src = TestCairoSurface<4>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     {
         auto c1 = cairo_create(src._cobj[0]);
         auto c2 = cairo_create(src._cobj[1]);
@@ -436,7 +463,7 @@ for (auto x = 0; x < 21; x++) {
 
 TEST(PixelAccessTest, Filter)
 {
-    auto src1 = TestCairoSurface<4>(21, 21);
+    auto src1 = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     src1.rect(3, 3, 15, 15, {1.0, 0.0, 1.0, 0.0, 0.5});
 
     ASSERT_TRUE(ImageIs(*src1._d, "       "
@@ -447,7 +474,7 @@ TEST(PixelAccessTest, Filter)
                                        " RRRRR "
                                        "       "));
 
-    auto src2 = TestCairoSurface<4>(21, 21);
+    auto src2 = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     src2.rect(12, 12, 9, 9, {1.0, 0.5, 1.0, 0.5, 1.0});
 
     ASSERT_TRUE(ImageIs(*src2._d, "       "
@@ -471,7 +498,7 @@ TEST(PixelAccessTest, Filter)
 
 TEST(PixelAccessTest, nonCairoMemoryAccess)
 {
-    auto src = TestCustomSurface<4>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_CMYKA160F>(21, 21);
     src.rect(6, 6, 9, 9, {1.0, 0.0, 1.0, 0.5, 1.0});
 
     EXPECT_TRUE(ImageIs(*src._d,
@@ -485,27 +512,115 @@ TEST(PixelAccessTest, nonCairoMemoryAccess)
                              PixelPatch::Method::ALPHA));
 }
 
-TEST(PixelAccessTest, createContiguous)
+TEST(PixelAccessTest, createContiguousEmpty)
 {
-    auto src = TestCairoSurface<4>(21, 21);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     src._d->colorTo(11, 11, {1.0, 0.5, 0.7, 0.1, 0.5});
 
-    auto empty4 = src._d->createContiguousEmpty();
-    auto val1 = empty4.colorAt(11, 11);
-    EXPECT_TRUE(VectorIsNear(val1, {0.0, 0.0, 0.0, 0.0, 0.0}, 0.005));
+    auto empty_cmyk = src._d->createContiguousEmpty();
+    EXPECT_EQ(empty_cmyk.local_memory().size(), 21 * 21 * 5);
+    EXPECT_TRUE(VectorIsNear(empty_cmyk.colorAt(11, 11), {0.0, 0.0, 0.0, 0.0, 0.0}, 0.005));
 
-    auto empty2 = src._d->template createContiguousEmpty<2>();
-    auto val2 = empty2.colorAt(11, 11);
-    EXPECT_TRUE(VectorIsNear(val2, {0.0, 0.0, 0.0}, 0.005));
+    auto empty_gray = src._d->template createContiguousEmpty<MEMORY_FORMAT_GA16>();
+    EXPECT_EQ(empty_gray.local_memory().size(), 21 * 21 * 2);
+    EXPECT_TRUE(VectorIsNear(empty_gray.colorAt(11, 11), {0.0, 0.0}, 0.005));
 
-    auto copy = src._d->createContiguousCopy();
-    auto val4 = copy.colorAt(11, 11);
-    EXPECT_TRUE(VectorIsNear(val4, {1.0, 0.5, 0.7, 0.1, 0.5}, 0.005));
+    //auto empty4 = src._d->createContiguousEmpty();
+}
+
+TEST(PixelAccessTest, createContiguousCMYK)
+{
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
+    src._d->colorTo(11, 11, {1.0, 0.5, 0.7, 0.1, 0.5});
+    EXPECT_TRUE(src._d->has_more_channels);
+
+    auto copy1 = src._d->createContiguousCopy<false>();
+    EXPECT_FALSE(copy1.has_more_channels);
+    EXPECT_TRUE(VectorIsNear(copy1.colorAt(11, 11), src._d->colorAt(11, 11, false), 0.005));
+
+    auto copy2 = src._d->createContiguousCopy<true>();
+    EXPECT_FALSE(copy2.has_more_channels);
+    EXPECT_TRUE(VectorIsNear(copy2.colorAt(11, 11), src._d->colorAt(11, 11, true), 0.005));
+
+    auto copy3 = copy2.createContiguousCopy();
+    EXPECT_TRUE(VectorIsNear(copy3.colorAt(11, 11), copy2.colorAt(11, 11), 0.005));
+}
+
+TEST(PixelAccessTest, createContiguousAlphaUnPremultiply)
+{
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(21, 21);
+    src._d->colorTo(11, 11, {0.1, 0.2, 0.3, 0.5});
+
+    auto copy = src._d->createContiguousCopy<true>();
+    EXPECT_TRUE(VectorIsNear(copy.colorAt(11, 11), src._d->colorAt(11, 11, true), 0.005));
+
+}
+
+TEST(PixelAccessTest, createContiguousWithType)
+{
+    int w = 3, h = 3;
+    int x = 1, y = 1;
+    int pixloc = 4; // ((y * w) + x)
+
+    auto src_float = TestSurface<MEMORY_FORMAT_RGBA128F, PixelAccessEdgeMode::NO_CHECK>(w, h);
+    src_float._d->colorTo(x, y, {0.1, 0.2, 0.3, 0.5});
+    EXPECT_NEAR(src_float._d->memory<0>()[pixloc * 4], 0.1, 0.05);
+
+    auto copy_uint8 = src_float._d->createContiguousCopy<true, MEMORY_FORMAT_ARGB32>();
+    EXPECT_TRUE(VectorIsNear(copy_uint8.colorAt(x, y), src_float._d->colorAt(x, y, true), 0.005));
+    if constexpr (G_BYTE_ORDER == G_LITTLE_ENDIAN) {
+        // NOTE: ARGB32 is endien dependent
+        EXPECT_TRUE(MemoryArrayIsNear(copy_uint8.memory() + (pixloc * 4), {153, 102,  51, 127}, 0.05));
+    }
+
+    auto copy_uint16 = src_float._d->createContiguousCopy<true, MEMORY_FORMAT_RGBA64>();
+    EXPECT_TRUE(VectorIsNear(copy_uint16.colorAt(x, y), src_float._d->colorAt(x, y, true), 0.005));
+    EXPECT_TRUE(MemoryArrayIsNear(copy_uint16.memory() + (pixloc * 4), {13107, 26214, 39321, 32767}, 0.05));
+
+    auto copy_uint32 = src_float._d->createContiguousCopy<true, MEMORY_FORMAT_RGBA128>();
+    EXPECT_TRUE(VectorIsNear(copy_uint32.colorAt(x, y), src_float._d->colorAt(x, y, true), 0.005));
+    EXPECT_TRUE(MemoryArrayIsNear(copy_uint32.memory() + (pixloc * 4), {858993471, 1717986943, 2576980479, 2147483647}, 0.05));
+}
+
+TEST(PixelAccessTest, createContiguousWithGray)
+{
+    int w = 3, h = 3;
+    int x = 1, y = 1;
+    int pixloc = 4; // ((y * w) + x)
+
+    auto src_float = TestSurface<MEMORY_FORMAT_RGBA128F, PixelAccessEdgeMode::NO_CHECK>(w, h);
+    src_float._d->colorTo(x, y, {0.1, 0.2, 0.3, 0.5});
+
+    auto copy_gray_alpha16 = src_float._d->createContiguousCopy<true, MEMORY_FORMAT_GA16>();
+    // Scan a channel before and after to make sure there's no overlap writes
+    EXPECT_TRUE(MemoryArrayIsNear(copy_gray_alpha16.memory() + pixloc * 2 - 1, {0, 51, 127, 0}, 0.05));
+}
+
+TEST(PixelAccessTest, createContiguousWithNoAlpha)
+{
+    int w = 3, h = 3;
+    int x = 1, y = 1;
+    int pixloc = 4; // ((y * w) + x)
+
+    auto src_float = TestSurface<MEMORY_FORMAT_RGBA128F, PixelAccessEdgeMode::NO_CHECK>(w, h);
+    src_float._d->colorTo(x, y, {0.1, 0.2, 0.3, 0.5});
+
+    auto no_alpha = src_float._d->createContiguousCopy<false, MEMORY_FORMAT_RGB96F>();
+    EXPECT_TRUE(MemoryArrayIsNear(no_alpha.memory() + pixloc * 3, {0.1, 0.2, 0.3}, 0.05));
+
+    if constexpr (G_BYTE_ORDER == G_LITTLE_ENDIAN) {
+        // NOTE: RGB24 is endien dependent
+        auto copy_rgb = src_float._d->createContiguousCopy<true, MEMORY_FORMAT_RGB24>();
+        EXPECT_TRUE(MemoryArrayIsNear(copy_rgb.memory() + pixloc * 3, {153, 102, 51}, 0.05));
+    }
+
+    auto copy_gray8 = src_float._d->createContiguousCopy<true, MEMORY_FORMAT_G8>();
+    EXPECT_TRUE(MemoryArrayIsNear(copy_gray8.memory() + pixloc - 1, {0, 51, 0}, 0.05));
 }
 
 TEST(PixelAccessTest, createContiguousCopySpeed)
 {
-    TestCairoSurface<4> sb3{1000, 1000}; // Speed testing
+    TestSurface<MEMORY_FORMAT_CMYA_KA256F> sb3{1000, 1000}; // Speed testing
     sb3._d->colorTo(11, 11, {1.0, 0.5, 0.7, 0.1, 0.5});
     auto copy = sb3._d->createContiguousCopy();
     auto val = copy.colorAt(11, 11);
@@ -514,29 +629,11 @@ TEST(PixelAccessTest, createContiguousCopySpeed)
 
 TEST(PixelAccessTest, createRegularCopySpeed)
 {
-    TestCairoSurface<3> sb3{1000, 1000}; // Speed testing
+    TestSurface<MEMORY_FORMAT_RGBA128F> sb3{1000, 1000}; // Speed testing
     sb3._d->colorTo(11, 11, {1.0, 0.5, 0.7, 0.5});
     auto copy = sb3._d->createContiguousCopy();
     auto val = copy.colorAt(11, 11);
     EXPECT_TRUE(VectorIsNear(val, {1.0, 0.5, 0.7, 0.5}, 0.005));
-}
-
-TEST(PixelAccessTest, convertTypeInto)
-{
-    auto i = TestCairoSurface<3, PixelAccessEdgeMode::NO_CHECK, CAIRO_FORMAT_ARGB32>(7, 7);
-    auto f = TestCairoSurface<3, PixelAccessEdgeMode::NO_CHECK, CAIRO_FORMAT_RGBA128F>(7, 7);
-    {
-        i._d->colorTo(2, 2, {0.1, 0.2, 0.3, 0.9});
-        i._d->convertTypeInto(*f._d);
-        auto val = f._d->colorAt(2, 2);
-        EXPECT_TRUE(VectorIsNear(val, {0.1, 0.2, 0.3, 0.9}, 0.005));
-    }
-    {
-        f._d->colorTo(3, 3, {0.1, 0.2, 0.3, 0.9});
-        f._d->convertTypeInto(*i._d);
-        auto val = f._d->colorAt(3, 3);
-        EXPECT_TRUE(VectorIsNear(val, {0.1, 0.2, 0.3, 0.9}, 0.005));
-    }
 }
 
 template <int write = 3, int read = 1, bool is_column = false, typename T0 = float, typename Access>
@@ -565,7 +662,7 @@ void testPixelAccess(Access &access, std::string result)
 
 TEST(PixelAccessLineTest, FloatSingleSurfaceHorz)
 {
-    auto src = TestCustomSurface<3>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 1.0});
     testPixelAccess(*src._d,
                     "... . ."
@@ -579,7 +676,7 @@ TEST(PixelAccessLineTest, FloatSingleSurfaceHorz)
 
 TEST(PixelAccessLineTest, FloatSingleSurfaceVert)
 {
-    auto src = TestCustomSurface<3>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_RGBA128F>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 1.0});
     testPixelAccess<3, 1, true>(*src._d,
                     ". . . ."
@@ -593,7 +690,7 @@ TEST(PixelAccessLineTest, FloatSingleSurfaceVert)
 
 TEST(PixelAccessLineTest, IntSingleSurfaceHorz)
 {
-    auto src = TestCairoSurface<3, PixelAccessEdgeMode::NO_CHECK, CAIRO_FORMAT_ARGB32>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::NO_CHECK>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 1.0});
     testPixelAccess(*src._d,
                     "... . ."
@@ -615,7 +712,7 @@ TEST(PixelAccessLineTest, IntSingleSurfaceHorz)
 
 TEST(PixelAccessLineTest, IntSingleSurfaceVert)
 {
-    auto src = TestCairoSurface<3, PixelAccessEdgeMode::NO_CHECK, CAIRO_FORMAT_ARGB32>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::NO_CHECK>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 1.0});
     testPixelAccess<3, 1, true>(*src._d,
                     ". . . ."
@@ -629,7 +726,7 @@ TEST(PixelAccessLineTest, IntSingleSurfaceVert)
 
 TEST(PixelAccessLineTest, A8SingleSurfaceHorz)
 {
-    auto src = TestCairoSurface<0>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_A8>(7, 7);
     src.rect(2, 2, 3, 3, {1.0});
     testPixelAccess<0, 0>(*src._d,
                           "... . ."
@@ -643,7 +740,7 @@ TEST(PixelAccessLineTest, A8SingleSurfaceHorz)
 
 TEST(PixelAccessLineTest, A8SingleSurfaceVert)
 {
-    auto src = TestCairoSurface<0>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_A8>(7, 7);
     src.rect(2, 2, 3, 3, {1.0});
     testPixelAccess<0, 0, true>(*src._d,
                           ". . . ."
@@ -656,7 +753,7 @@ TEST(PixelAccessLineTest, A8SingleSurfaceVert)
 }
 TEST(PixelAccessLineTest, FloatDoubleSurfaceHorz)
 {
-    auto src = TestCairoSurface<4>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 1.0, 1.0});
     testPixelAccess<4, 1>(*src._d,
                           "... . ."
@@ -678,7 +775,7 @@ TEST(PixelAccessLineTest, FloatDoubleSurfaceHorz)
 
 TEST(PixelAccessLineTest, FloatDoubleSurfaceIntRead)
 {
-    auto src = TestCairoSurface<4>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 0.2, 1.0});
 
     auto const &s = *src._d;
@@ -717,7 +814,7 @@ TEST(PixelAccessLineTest, FloatDoubleSurfaceIntRead)
 
 TEST(PixelAccessLineTest, FloatDoubleSurfaceVert)
 {
-    auto src = TestCairoSurface<4>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 1.0, 1.0});
     testPixelAccess<4, 1, true>(*src._d,
                           ". . . ."
@@ -739,7 +836,7 @@ TEST(PixelAccessLineTest, FloatDoubleSurfaceVert)
 
 TEST(PixelAccessTest, forEachPixel)
 {
-    auto src = TestCairoSurface<4>(7, 7);
+    auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7);
     src.rect(2, 2, 3, 3, {0.0, 1.0, 0.0, 1.0, 1.0});
     src._d->forEachPixel([&src](int x, int y) {
         if (x == y || 6 - x == y) {
@@ -818,28 +915,29 @@ void testForEachUncontiguousLine(AccessSrc &src, AccessDst &dst)
 
 TEST(PixelAccessTest, forEachLineUncontiguous)
 {
-    testForEachUncontiguousLine(*TestCairoSurface<3>(7, 7)._d, *TestCairoSurface<3>(7, 7)._d);
-    testForEachUncontiguousLine(*TestCairoSurface<4>(7, 7)._d, *TestCairoSurface<4>(7, 7)._d);
+    testForEachUncontiguousLine(*TestSurface<MEMORY_FORMAT_RGBA128F>(7, 7)._d, *TestSurface<MEMORY_FORMAT_RGBA128F>(7, 7)._d);
+    testForEachUncontiguousLine(*TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7)._d, *TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7)._d);
     {
-        auto dst = PixelAccess<CAIRO_FORMAT_RGBA128F, 4>::createContiguousEmpty(7, 7);
-        testForEachUncontiguousLine(*TestCairoSurface<4>(7, 7)._d, dst);
+        auto dst = PixelAccess<MEMORY_FORMAT_CMYA_KA256F>::createContiguousEmpty(7, 7);
+        testForEachUncontiguousLine(*TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7)._d, dst);
     }
     {
-        auto src = PixelAccess<CAIRO_FORMAT_RGBA128F, 4>::createContiguousEmpty(7, 7);
-        testForEachUncontiguousLine(src, *TestCairoSurface<4>(7, 7)._d);
+        auto src = PixelAccess<MEMORY_FORMAT_CMYA_KA256F>::createContiguousEmpty(7, 7);
+        testForEachUncontiguousLine(src, *TestSurface<MEMORY_FORMAT_CMYA_KA256F>(7, 7)._d);
     }
     {
-        auto dst = PixelAccess<CAIRO_FORMAT_RGBA128F, 4>::createContiguousEmpty(7, 7);
-        auto src = PixelAccess<CAIRO_FORMAT_RGBA128F, 4>::createContiguousEmpty(7, 7);
+        auto dst = PixelAccess<MEMORY_FORMAT_CMYA_KA256F>::createContiguousEmpty(7, 7);
+        auto src = PixelAccess<MEMORY_FORMAT_CMYA_KA256F>::createContiguousEmpty(7, 7);
         testForEachUncontiguousLine(src, dst);
     }
 }
 
-template <int SrcSize, int DstSize>
-void testForEachContiguousLine(std::array<double, SrcSize+1> src_color, std::array<double, DstSize+1> dst_color)
+template <MemoryFormat src_format, MemoryFormat dst_format>
+void testForEachContiguousLine(typename PixelAccess<src_format>::Color src_color,
+                               typename PixelAccess<dst_format>::Color dst_color)
 {
-    auto src = PixelAccess<CAIRO_FORMAT_RGBA128F, SrcSize>::createContiguousEmpty(7, 7);
-    auto dst = PixelAccess<CAIRO_FORMAT_RGBA128F, DstSize>::createContiguousEmpty(7, 7);
+    auto src = PixelAccess<src_format>(7, 7);
+    auto dst = PixelAccess<dst_format>(7, 7);
 
     // Draw something manually
     for (int x = 0; x < 7; x++)
@@ -848,12 +946,12 @@ void testForEachContiguousLine(std::array<double, SrcSize+1> src_color, std::arr
                 src.colorTo(x, y, src_color);
 
     src.forEachLine(dst, [&src_color, &dst_color](float const *src, float const *end, float *dst) {
-        for (auto x = 0;src < end; x++, src+=SrcSize+1, dst+=DstSize+1) {
+        for (auto x = 0;src < end; x++, src+=src_color.size(), dst+=dst_color.size()) {
             bool same = true;
-            for (int c = 0; c < SrcSize + 1; c++) {
+            for (unsigned c = 0; c < src_color.size(); c++) {
                 same = same && (src[c] == src_color[c]);
             }
-            for (int c = 0; (x == 3 || same) && c < DstSize + 1; c++) {
+            for (unsigned c = 0; (x == 3 || same) && c < dst_color.size(); c++) {
                 dst[c] = dst_color[c];
             }
         }
@@ -871,10 +969,10 @@ void testForEachContiguousLine(std::array<double, SrcSize+1> src_color, std::arr
 
 TEST(PixelAccessTest, forEachLineContiguous)
 {
-    testForEachContiguousLine<3, 3>({1.0, 0.0, 1.0,      1.0}, {1.0, 0.0, 1.0,      1.0});
-    testForEachContiguousLine<3, 4>({1.0, 0.0, 1.0,      1.0}, {1.0, 0.0, 1.0, 0.5, 1.0});
-    testForEachContiguousLine<4, 3>({1.0, 0.0, 1.0, 0.5, 1.0}, {1.0, 0.0, 1.0,      1.0});
-    testForEachContiguousLine<4, 4>({1.0, 0.0, 1.0, 0.5, 1.0}, {1.0, 0.0, 1.0, 0.5, 1.0});
+    testForEachContiguousLine<MEMORY_FORMAT_RGBA128F,  MEMORY_FORMAT_RGBA128F> ({1.0, 0.0, 1.0,      1.0}, {1.0, 0.0, 1.0,      1.0});
+    testForEachContiguousLine<MEMORY_FORMAT_RGBA128F,  MEMORY_FORMAT_CMYKA160F>({1.0, 0.0, 1.0,      1.0}, {1.0, 0.0, 1.0, 0.5, 1.0});
+    testForEachContiguousLine<MEMORY_FORMAT_CMYKA160F, MEMORY_FORMAT_RGBA128F> ({1.0, 0.0, 1.0, 0.5, 1.0}, {1.0, 0.0, 1.0,      1.0});
+    testForEachContiguousLine<MEMORY_FORMAT_CMYKA160F, MEMORY_FORMAT_CMYKA160F>({1.0, 0.0, 1.0, 0.5, 1.0}, {1.0, 0.0, 1.0, 0.5, 1.0});
 }
 
 /*
