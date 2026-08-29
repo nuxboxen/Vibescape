@@ -502,23 +502,23 @@ RectKnotHolderEntityXY::knot_set(Geom::Point const &p, Geom::Point const &origin
     auto rect = cast<SPRect>(item);
     g_assert(rect != nullptr);
 
-    // original width/height when drag started
-    gdouble w_orig = initial_opposite_XY.x() - origin[Geom::X];
-    gdouble h_orig = initial_opposite_XY.y() - origin[Geom::Y];
-
     Geom::Point s = p;
-    Geom::Point p_handle(
-       rect->x.computed + (rect->x.computed < initial_opposite_XY.x() ? 0 : rect->width.computed),
-       rect->y.computed + (rect->y.computed < initial_opposite_XY.y() ? 0 : rect->height.computed));
-
-    // mouse displacement since drag started
-    gdouble minx = p[Geom::X] - origin[Geom::X];
-    gdouble miny = p[Geom::Y] - origin[Geom::Y];
-
     gdouble opposite_of_opposite_X, opposite_of_opposite_Y;
     if (state & GDK_CONTROL_MASK) {
+        // original width/height when drag started
+        gdouble w_orig = initial_opposite_XY.x() - origin[Geom::X];
+        gdouble h_orig = initial_opposite_XY.y() - origin[Geom::Y];
+
         //original ratio
         gdouble ratio = (w_orig / h_orig);
+
+        // mouse displacement since drag started
+        gdouble minx = p[Geom::X] - origin[Geom::X];
+        gdouble miny = p[Geom::Y] - origin[Geom::Y];
+
+        Geom::Point p_handle(
+           rect->x.computed + (rect->x.computed < initial_opposite_XY.x() ? 0 : rect->width.computed),
+           rect->y.computed + (rect->y.computed < initial_opposite_XY.y() ? 0 : rect->height.computed));
 
         if (fabs(minx) > fabs(miny)) {
             // snap to horizontal or diagonal
