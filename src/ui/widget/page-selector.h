@@ -14,6 +14,8 @@
 #define SEEN_INKSCAPE_WIDGETS_PAGE_SELECTOR
 
 #include <giomm/liststore.h>
+#include <glibmm/property.h>
+#include <glibmm/ustring.h>
 #include <gtkmm/box.h>
 #include <gtkmm/combobox.h>
 #include <gtkmm/dropdown.h>
@@ -21,9 +23,10 @@
 #include <gtkmm/liststore.h>
 #include <gtkmm/listview.h>
 
+#include "object/sp-page.h"
+
 class SPDesktop;
 class SPDocument;
-class SPPage;
 
 namespace Inkscape::UI::Widget {
 
@@ -51,14 +54,33 @@ private:
             return Glib::make_refptr_for_instance<PageItem>(new PageItem(page));
         }
         SPPage* getPage() const { return _page; }
+        Glib::Property<Glib::ustring>& property_label() { return _property_label; }
+
     protected:
         PageItem(SPPage* page)
             : Glib::ObjectBase(typeid(PageItem))
             , _page(page)
-        {}
+            , _property_label(*this, "label", page ? page->getLabel() : " ")
+        {
+            if (_page) {
+                _modified_connection = _page->connectModified(
+                    [this](SPObject*, unsigned flags) {
+                        if (flags & SP_OBJECT_MODIFIED_FLAG) {
+                            _property_label = _page->getLabel();
+                        }
+                    });
+            }
+        }
+
+        ~PageItem() override
+        {
+            _modified_connection.disconnect();
+        }
 
     private:
         SPPage* _page = nullptr;
+        Glib::Property<Glib::ustring> _property_label; // Only used to trigger signal on change.
+        sigc::connection _modified_connection;
     };
 
     SPDesktop *_desktop = nullptr;
@@ -88,8 +110,10 @@ private:
     void nextPage();
     void prevPage();
 
-    void setupPageItemCB(const Glib::RefPtr<Gtk::ListItem>& list_item);
-    void bindPageItemCB( const Glib::RefPtr<Gtk::ListItem>& list_item);
+    void setupPageItemCB(  const Glib::RefPtr<Gtk::ListItem>& list_item);
+    void renderPageItem(   const Glib::RefPtr<Gtk::ListItem>& list_item);
+    void bindPageItemCB(   const Glib::RefPtr<Gtk::ListItem>& list_item);
+    void unbindPageItemCB( const Glib::RefPtr<Gtk::ListItem>& list_item);
     void onDropDownChangedCB();
 };
 

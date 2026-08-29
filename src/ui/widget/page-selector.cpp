@@ -14,9 +14,9 @@
 
 #include <glibmm/i18n.h>
 #include <glibmm/markup.h>
-#include <gtkmm/signallistitemfactory.h>
 #include <gtkmm/label.h>
 #include <gtkmm/listview.h>
+#include <gtkmm/signallistitemfactory.h>
 #include <gtkmm/singleselection.h>
 
 #include "desktop.h"
@@ -53,8 +53,9 @@ PageSelector::PageSelector()
     _selector.set_cell_data_func(_label_renderer, sigc::mem_fun(*this, &PageSelector::renderPageLabel));
 
     auto factory = Gtk::SignalListItemFactory::create();
-    factory->signal_setup().connect(sigc::mem_fun(*this, &PageSelector::setupPageItemCB));
-    factory->signal_bind().connect( sigc::mem_fun(*this, &PageSelector::bindPageItemCB));
+    factory->signal_setup().connect(  sigc::mem_fun(*this, &PageSelector::setupPageItemCB));
+    factory->signal_bind().connect(   sigc::mem_fun(*this, &PageSelector::bindPageItemCB));
+    factory->signal_unbind().connect( sigc::mem_fun(*this, &PageSelector::unbindPageItemCB));
     _dropdown.set_factory(factory);
 
     _pageitem_liststore = Gio::ListStore<PageItem>::create();
@@ -231,7 +232,8 @@ void PageSelector::setupPageItemCB(const Glib::RefPtr<Gtk::ListItem>& list_item)
     list_item->set_child(*label);
 }
 
-void PageSelector::bindPageItemCB(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+
+void PageSelector::renderPageItem(const Glib::RefPtr<Gtk::ListItem>& list_item) {
     auto item = list_item->get_item();
     if (auto pageitem = std::dynamic_pointer_cast<PageItem>(item)) {
         auto page = pageitem->getPage();
@@ -252,6 +254,30 @@ void PageSelector::bindPageItemCB(const Glib::RefPtr<Gtk::ListItem>& list_item) 
             label->set_markup(markup);
         }
     }
+}
+
+void PageSelector::bindPageItemCB(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+    auto item = list_item->get_item();
+    if (auto pageitem = std::dynamic_pointer_cast<PageItem>(item)) {
+        renderPageItem(list_item);
+
+        // Re-render whenever item's label property changes.
+        auto connection = pageitem->property_label().get_proxy().signal_changed().connect(
+            [this, list_item]() {
+                renderPageItem(list_item);
+            });
+
+        list_item->set_data("label-connection", new sigc::connection(connection),
+                            [](gpointer p) { delete static_cast<sigc::connection*>(p);
+                            });
+    }
+}
+
+void PageSelector::unbindPageItemCB(const Glib::RefPtr<Gtk::ListItem>& list_item) {
+    if (auto connection = static_cast<sigc::connection*>(list_item->get_data("label-connection"))) {
+        connection->disconnect();
+    }
+    list_item->set_data("label-connection", nullptr);
 }
 
 void PageSelector::onDropDownChangedCB() {

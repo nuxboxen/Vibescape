@@ -373,8 +373,7 @@ Geom::Affine PageManager::getSelectedPageAffine() const
 
 /**
  * Called when the pages vector is updated, either page
- * deleted or page created (but not if the page is modified,
- * (except for page label, inorder to update dropdown).
+ * deleted or page created (but not if the page is modified)
  */
 void PageManager::pagesChanged(SPPage *new_page)
 {
@@ -384,8 +383,8 @@ void PageManager::pagesChanged(SPPage *new_page)
 
     _pages_changed_signal.emit(new_page);
 
-    for (auto &page : _pages) {
-        if (page == new_page) {
+    if (!_selected_page) {
+        for (auto &page : _pages) {
             selectPage(page);
             break;
         }

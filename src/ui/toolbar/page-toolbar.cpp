@@ -248,10 +248,6 @@ void PageToolbar::labelEdited()
     if (auto page = _document->getPageManager().getSelected()) {
         page->setLabel(text.empty() ? nullptr : text.c_str());
         DocumentUndo::maybeDone(_document, "page-relabel", RC_("Undo", "Relabel Page"), INKSCAPE_ICON("tool-pages"));
-        _document->getPageManager().pagesChanged(page);  // Update dropdown.
-        if (_desktop) {
-            _document->getPageManager().zoomToSelectedPage(_desktop);
-        }
     }
 }
 
