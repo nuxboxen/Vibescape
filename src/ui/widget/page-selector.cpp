@@ -15,12 +15,9 @@
 #include <glibmm/i18n.h>
 #include <glibmm/markup.h>
 #include <gtkmm/label.h>
-#include <gtkmm/listview.h>
 #include <gtkmm/signallistitemfactory.h>
-#include <gtkmm/singleselection.h>
 
 #include "desktop.h"
-#include "object/sp-page.h"
 #include "ui/icon-names.h"
 #include "ui/pack.h"
 
@@ -41,16 +38,8 @@ PageSelector::PageSelector()
     _next_button.set_tooltip_text(_("Move to next page"));
     _next_button.signal_clicked().connect(sigc::mem_fun(*this, &PageSelector::nextPage));
 
-    _selector.set_tooltip_text(_("Current page"));
     _dropdown.set_tooltip_text(_("Current page"));
     _dropdown.set_size_request(100, -1);
-
-    _page_model = Gtk::ListStore::create(_model_columns);
-    _selector.set_model(_page_model);
-    _label_renderer.property_max_width_chars() = 15;
-    _label_renderer.property_ellipsize() = Pango::EllipsizeMode::END;
-    _selector.pack_start(_label_renderer);
-    _selector.set_cell_data_func(_label_renderer, sigc::mem_fun(*this, &PageSelector::renderPageLabel));
 
     auto factory = Gtk::SignalListItemFactory::create();
     factory->signal_setup().connect(  sigc::mem_fun(*this, &PageSelector::setupPageItemCB));
@@ -63,14 +52,7 @@ PageSelector::PageSelector()
 
     _dropdown.property_selected().signal_changed().connect(sigc::mem_fun(*this, &PageSelector::onDropDownChangedCB));
 
-    auto list = Gtk::make_managed<Gtk::ListView>(Gtk::SingleSelection::create(_pageitem_liststore), factory);
-    list->set_single_click_activate(true);
-
-    _selector_changed_connection =
-        _selector.signal_changed().connect(sigc::mem_fun(*this, &PageSelector::setSelectedPage));
-
     UI::pack_start(*this, _prev_button, UI::PackOptions::expand_padding);
-    UI::pack_start(*this, _selector, UI::PackOptions::expand_widget);
     UI::pack_start(*this, _dropdown, UI::PackOptions::expand_widget);
     UI::pack_start(*this, _next_button, UI::PackOptions::expand_padding);
 }
@@ -121,12 +103,6 @@ void PageSelector::pagesChanged(SPPage *new_page)
     auto &page_manager = _document->getPageManager();
 
     // Destroy all existing pages in the model.
-    while (!_page_model->children().empty()) {
-        Gtk::ListStore::iterator row(_page_model->children().begin());
-        // Put cleanup here if any
-        _page_model->erase(row);
-    }
-
     _pageitem_liststore->splice(0, _pageitem_liststore->get_n_items(), {});
 
     // Hide myself when there's no pages (single page document)
@@ -135,8 +111,6 @@ void PageSelector::pagesChanged(SPPage *new_page)
     // Add in pages, do not use getResourcelist("page") because the items
     // are not guaranteed to be in node order, they are in first-seen order.
     for (auto &page : page_manager.getPages()) {
-        Gtk::ListStore::iterator row(_page_model->append());
-        row->set_value(_model_columns.object, page);
         _pageitem_liststore->append(PageItem::create(page));
     }
     selectonChanged(page_manager.getSelected());
@@ -149,17 +123,6 @@ void PageSelector::selectonChanged(SPPage *page)
     _selector_changed_connection.block();
     _next_button.set_sensitive(_document->getPageManager().hasNextPage());
     _prev_button.set_sensitive(_document->getPageManager().hasPrevPage());
-
-    auto active = _selector.get_active();
-
-    if (!active || active->get_value(_model_columns.object) != page) {
-        for (auto row : _page_model->children()) {
-            if (page == row.get_value(_model_columns.object)) {
-                _selector.set_active(row.get_iter());
-                break;
-            }
-        }
-    }
 
     auto item = _dropdown.get_selected_item();
     if (auto pageitem = std::dynamic_pointer_cast<PageItem>(item)) {
@@ -174,40 +137,6 @@ void PageSelector::selectonChanged(SPPage *page)
     }
 
     _selector_changed_connection.unblock();
-}
-
-/**
- * Render the page icon into a suitable label.
- */
-void PageSelector::renderPageLabel(Gtk::TreeModel::const_iterator const &row)
-{
-    SPPage *page = (*row)[_model_columns.object];
-
-    if (page && page->getRepr()) {
-        int page_num = page->getPagePosition();
-
-        Glib::ustring format;
-        if (auto label = page->label()) {
-            auto escaped_text = Glib::Markup::escape_text(label);
-            format = Glib::ustring::compose("<span size=\"smaller\"><tt>%1.</tt>%2</span>", page_num, escaped_text);
-        } else {
-            format = Glib::ustring::compose("<span size=\"smaller\"><i>%1</i></span>", page->getDefaultLabel().c_str());
-        }
-
-        _label_renderer.property_markup() = format;
-    } else {
-        _label_renderer.property_markup() = "⚠️";
-    }
-
-    _label_renderer.property_ypad() = 1;
-}
-
-void PageSelector::setSelectedPage()
-{
-    SPPage *page = _selector.get_active()->get_value(_model_columns.object);
-    if (page && _document->getPageManager().selectPage(page)) {
-        _document->getPageManager().zoomToSelectedPage(_desktop);
-    }
 }
 
 void PageSelector::nextPage()

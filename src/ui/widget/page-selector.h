@@ -17,11 +17,9 @@
 #include <glibmm/property.h>
 #include <glibmm/ustring.h>
 #include <gtkmm/box.h>
-#include <gtkmm/combobox.h>
+#include <gtkmm/button.h>
 #include <gtkmm/dropdown.h>
 #include <gtkmm/listitem.h>
-#include <gtkmm/liststore.h>
-#include <gtkmm/listview.h>
 
 #include "object/sp-page.h"
 
@@ -39,14 +37,6 @@ public:
     void setDesktop(SPDesktop *desktop);
 
 private:
-    class PageModelColumns : public Gtk::TreeModel::ColumnRecord
-    {
-    public:
-        Gtk::TreeModelColumn<SPPage *> object;
-
-        PageModelColumns() { add(object); }
-    };
-
     class PageItem : public Glib::Object {
     public:
         static Glib::RefPtr<PageItem> create(SPPage* page)
@@ -86,14 +76,10 @@ private:
     SPDesktop *_desktop = nullptr;
     SPDocument *_document = nullptr;
 
-    Gtk::ComboBox _selector;
     Gtk::DropDown _dropdown;
     Gtk::Button _prev_button;
     Gtk::Button _next_button;
 
-    PageModelColumns _model_columns;
-    Gtk::CellRendererText _label_renderer;
-    Glib::RefPtr<Gtk::ListStore> _page_model;
     Glib::RefPtr<Gio::ListStore<PageItem>> _pageitem_liststore;
 
     sigc::connection _selector_changed_connection;
@@ -105,8 +91,6 @@ private:
     void pagesChanged(SPPage *new_page);
     void selectonChanged(SPPage *page);
 
-    void renderPageLabel(Gtk::TreeModel::const_iterator const &row);
-    void setSelectedPage();
     void nextPage();
     void prevPage();
 
