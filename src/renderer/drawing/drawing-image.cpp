@@ -156,7 +156,11 @@ void DrawingImage::_renderImage(Context dc) const
     dc.translate(Geom::Translate(_origin));
     dc.scale(_scale);
 
-    dc.setSource(*_image, 0, 0, _style.image_rendering, _extend);
+    auto image = _image->convertedToCompatible(dc.getSurfaceFormat());
+    if (dc.getSurfaceColorSpace()) {
+        image.convertToColorSpace(dc.getSurfaceColorSpace());
+    }
+    dc.setSource(image, 0, 0, _style.image_rendering, _extend);
     dc.paint();
 }
 

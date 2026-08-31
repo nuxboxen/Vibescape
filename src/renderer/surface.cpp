@@ -110,7 +110,7 @@ Surface Surface::convertedToInt() const
     return ret;
 }
 
-Surface Surface::convertToCompatible(cairo_format_t target_format)
+Surface Surface::convertedToCompatible(cairo_format_t target_format) const
 {
     if (target_format == CAIRO_FORMAT_ARGB32 && format() == CAIRO_FORMAT_RGBA128F) {
         std::cerr << "Warning: Slowly converting surface to Integer.\n";

@@ -55,7 +55,7 @@ public:
      */
     Surface convertedToFloat() const;
     Surface convertedToInt() const;
-    Surface convertToCompatible(cairo_format_t format);
+    Surface convertedToCompatible(cairo_format_t format) const;
 
     /**
      * Tell me how many cairo surfaces this color space will need and what
