@@ -48,6 +48,10 @@ protected:
 
     std::shared_ptr<Surface const> _image;
 
+    // Cache of _image for a target space/memory format
+    mutable std::unique_ptr<Surface> _cached_converted_image;
+    mutable std::shared_ptr<Colors::Space::AnySpace> _cached_converted_space;
+
     // TODO: the following three should probably be merged into a new Geom::Viewbox object
     Geom::Rect _clipbox; ///< for preserveAspectRatio
     Geom::Point _origin;

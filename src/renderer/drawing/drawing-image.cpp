@@ -29,6 +29,7 @@ void DrawingImage::setImage(std::shared_ptr<Surface const> image)
 {
     defer([this, image = std::move(image)] () mutable {
         _image = std::move(image);
+        _cached_converted_image.reset();
         _markForUpdate(STATE_ALL, false);
     });
 }
@@ -156,11 +157,14 @@ void DrawingImage::_renderImage(Context dc) const
     dc.translate(Geom::Translate(_origin));
     dc.scale(_scale);
 
-    auto image = _image->convertedToCompatible(dc.getSurfaceFormat());
-    if (dc.getSurfaceColorSpace()) {
-        image.convertToColorSpace(dc.getSurfaceColorSpace());
+    if (!_cached_converted_image || _cached_converted_space != dc.getSurfaceColorSpace()) {
+        _cached_converted_space = dc.getSurfaceColorSpace();
+        _cached_converted_image = std::make_unique<Surface>(_image->convertedToCompatible(dc.getSurfaceFormat()));
+        if (dc.getSurfaceColorSpace()) {
+            _cached_converted_image->convertToColorSpace(dc.getSurfaceColorSpace());
+        }
     }
-    dc.setSource(image, 0, 0, _style.image_rendering, _extend);
+    dc.setSource(*_cached_converted_image, 0, 0, _style.image_rendering, _extend);
     dc.paint();
 }
 
