@@ -14,7 +14,7 @@ TEST(DrawingFilterSlotTest, Construction)
 TEST(DrawingFilterSlotTest, setGetSlot)
 {
     auto slot = DrawingFilter::Slot();
-    auto surface = std::make_shared<Surface>(Geom::IntPoint(4, 4));
+    auto surface = std::make_shared<Surface>(Geom::IntPoint(4, 4), 1, rgb);
     EXPECT_EQ(slot.get_slot_count(), 0);
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, surface);
     EXPECT_EQ(slot.get_slot_count(), 1);
@@ -46,7 +46,7 @@ TEST(DrawingFilterSlotTest, getCopyInt)
     auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
     auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
 
-    auto slot = DrawingFilter::Slot();
+    auto slot = DrawingFilter::Slot({}, {}, true);
     auto rgbint = std::make_shared<TestSurface>(Geom::IntPoint(21, 21), 1);
     rgbint->rect(3,  3,  15, 15,  {0.0, 0.9, 0.0, 0.5});
 
@@ -78,8 +78,8 @@ TEST(DrawingFilterSlotTest, getCopyInt)
     auto alphafloat = slot.get_copy(DrawingFilter::SLOT_SOURCE_IMAGE, alpha);
     ASSERT_NE(rgbint, alphafloat);
     ASSERT_NE(rgbfloat, alphafloat);
-    ASSERT_EQ(alphafloat->getColorSpace(), alpha);
     ASSERT_EQ(alphafloat->format(), CAIRO_FORMAT_A8);
+    ASSERT_EQ(alphafloat->getColorSpace(), alpha);
     EXPECT_IMAGE_IS<PixelPatch::Method::ALPHA>(*alphafloat, result);
 
     /* lcms2 doesn't support float to int conversions, produces an upstream error
@@ -133,8 +133,8 @@ TEST(DrawingFilterSlotTest, getCopyFloat)
 TEST(DrawingFilterSlotTest, setSetLast)
 {
     auto slot = DrawingFilter::Slot();
-    auto surface1 = std::make_shared<Surface>(Geom::IntPoint(4, 4));
-    auto surface2 = std::make_shared<Surface>(Geom::IntPoint(4, 4));
+    auto surface1 = std::make_shared<Surface>(Geom::IntPoint(4, 4), 1, rgb);
+    auto surface2 = std::make_shared<Surface>(Geom::IntPoint(4, 4), 1, rgb);
 
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, surface1);
     EXPECT_EQ(slot.get(), surface1);
@@ -185,7 +185,7 @@ TEST(DrawingFilterSlotTest, slotOptions)
 {
     auto dopt = DrawingOptions(2.0);
     auto iopt = DrawingFilter::Units(SP_FILTER_UNITS_OBJECTBOUNDINGBOX, SP_FILTER_UNITS_USERSPACEONUSE);
-    auto slot = DrawingFilter::Slot(dopt, iopt);
+    auto slot = DrawingFilter::Slot(dopt, iopt, true);
     ASSERT_EQ(slot.get_drawing_options().device_scale, 2.0);
     ASSERT_EQ(slot.get_item_options().get_filter_units(), SP_FILTER_UNITS_OBJECTBOUNDINGBOX);
 }

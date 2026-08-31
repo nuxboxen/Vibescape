@@ -44,10 +44,9 @@ std::shared_ptr<Surface> Slot::get(int slot, std::shared_ptr<Colors::Space::AnyS
     if (!surface) {
         return {};
     }
-
     // If a surface is in INT format, we refuse to convert it and instead just return as is.
     // Color Space support for filters is disabled for INT surfaces except for ALPHA.
-    if (_int_based || space == surface->getColorSpace()) {
+    if ((_int_based && (!space || space->getType() != Colors::Space::Type::Alpha)) || space == surface->getColorSpace()) {
         return surface;
     }
     if (space) {

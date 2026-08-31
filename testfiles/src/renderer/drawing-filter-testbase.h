@@ -44,7 +44,7 @@ DrawingFilter::Slot get_transformed_slot()
     iopt.set_resolution(352.388, 243.814);
     iopt.set_automatic_resolution(false);
     iopt.set_paraller(false);
-    return DrawingFilter::Slot(dopt, iopt);
+    return DrawingFilter::Slot(dopt, iopt, false);
 }
 
 std::shared_ptr<TestSurface> get_transformed_input()
