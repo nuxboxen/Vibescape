@@ -61,7 +61,7 @@ std::shared_ptr<Surface> SvgRenderer::render(SPObject const *object) const
     // more interesting as they would like to form a new document too but this is very wasteful
     // and instead we only really need to paint the pattern directly onto the widget's target surface.
     if (auto item = cast<SPItem>(object)) {
-        if (auto area = item->visualBounds()) {
+        if (auto area = item->documentVisualBounds()) {
             SvgRenderer factory = *this;
             if (!_area) {
                 // If not set, document box is used
