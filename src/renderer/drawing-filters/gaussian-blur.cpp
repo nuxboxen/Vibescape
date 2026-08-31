@@ -96,7 +96,7 @@ void GaussianBlur::render(Slot &slot) const
 
 std::shared_ptr<Surface> GaussianBlur::_render(Slot &slot, int input) const
 {
-    auto src = slot.get(input);
+    auto out = slot.get_copy(input, _color_space);
 
     // Handle bounding box case.
     auto &item_opt = slot.get_item_options();
@@ -115,44 +115,36 @@ std::shared_ptr<Surface> GaussianBlur::_render(Slot &slot, int input) const
 
     Geom::Point deviation(dx * trans.expansionX() * device_scale,
                           dy * trans.expansionY() * device_scale);
-    Geom::IntPoint size = src->dimensions();
+    Geom::IntPoint size = out->dimensions();
     Geom::Point old = size;
 
     downsampleForQuality(slot.get_drawing_options().blurquality, size, deviation);
 
-    std::shared_ptr<Surface> dest;
+    std::shared_ptr<Surface> dest = out;
+
+    // Scaling allow for a lower quality but much faster blur
     auto tr = Geom::Scale(size[Geom::X] / old[Geom::X], size[Geom::Y] / old[Geom::Y]);
     if (tr != Geom::identity()) {
-        // Don't copy as we need to resize for this blurquality
-        src = slot.get(input, _color_space);
-        dest = src->similar(size);
+        dest = out->similar(size);
         auto context = Context(*dest);
         context.transform(tr);
-        context.setSource(*src);
+        context.setSource(*out);
         context.set_operator(Cairo::Context::Operator::SOURCE);
         context.paint();
-    } else {
-        // No resizing, just get the source in the color space as a copy
-        dest = slot.get_copy(input, _color_space);
-    }
-    if (!dest) {
-        std::cerr << "No source slot found in gaussian blur.\n";
-        return {};
     }
 
     dest->run_pixel_filter<PixelAccessEdgeMode::ZERO>(PixelFilter::GaussianBlur(deviation));
 
-    if (tr == Geom::identity()) {
-        return dest;
+    if (tr != Geom::identity()) {
+        // Scale the slightly blured image back
+        auto context = Context(*out);
+        context.transform(tr.inverse());
+        context.setSource(*dest);
+        context.set_operator(Cairo::Context::Operator::SOURCE);
+        context.paint();
     }
 
-    // Resize it back if we need to
-    auto context = Context(*src);
-    context.transform(tr.inverse());
-    context.setSource(*dest);
-    context.set_operator(Cairo::Context::Operator::SOURCE);
-    context.paint();
-    return src;
+    return out;
 }
 
 void GaussianBlur::area_enlarge(Geom::IntRect &area, Geom::Affine const &trans) const
