@@ -25,16 +25,6 @@
 
 namespace Inkscape::Renderer::DrawingFilter {
 
-Slot::Slot(DrawingOptions const &draw_opt, Units const &item_opt)
-    : _last_out(SLOT_SOURCE_IMAGE)
-    , _draw_opt(draw_opt)
-    , _item_opt(item_opt)
-{}
-
-Slot::Slot()
-    : _last_out(SLOT_SOURCE_IMAGE)
-{}
-
 std::shared_ptr<Surface> Slot::get(int slot) const
 {
     if (slot == SLOT_NOT_SET) {
@@ -57,14 +47,16 @@ std::shared_ptr<Surface> Slot::get(int slot, std::shared_ptr<Colors::Space::AnyS
 
     // If a surface is in INT format, we refuse to convert it and instead just return as is.
     // Color Space support for filters is disabled for INT surfaces except for ALPHA.
-    bool is_alpha_cs = space && space->getType() == Colors::Space::Type::Alpha;
-    bool cs_disabled = !surface->getColorSpace() && !is_alpha_cs;
-    if (cs_disabled || space == surface->getColorSpace()) {
+    if (_int_based || space == surface->getColorSpace()) {
         return surface;
     }
+    if (space) {
+        // Return a version of the surface in the new color space
+        return surface->convertedToColorSpace(space);
+    }
 
-    // Return a version of the surface in the new color space instead
-    return surface->convertedToColorSpace(space);
+    std::cerr << "Warning: filter had no color space set despite linearRGB being the default.\n";
+    return get(slot, Colors::Manager::get().find(Colors::Space::Type::linearRGB));
 }
 
 std::shared_ptr<Surface> Slot::get_copy(int slot) const
@@ -112,6 +104,16 @@ void Slot::set(int slot, std::shared_ptr<Surface> surface)
 {
     if (slot == SLOT_NOT_SET)
         slot = SLOT_UNNAMED;
+
+    std::ostringstream msg;
+    if (_int_based && surface->format() == CAIRO_FORMAT_RGBA128F) {
+        msg << "Refusing to add floating point surface as filter slot to integer drawing: slot(" << slot << ")";
+        throw Surface::SurfaceError(msg.str());
+    }
+    if (!_int_based && surface->format() == CAIRO_FORMAT_ARGB32) {
+        msg << "Refusing to add integer surface as filter slot to floating point drawing: slot(" << slot << ")";
+        throw Surface::SurfaceError(msg.str());
+    }
 
     // This crufty bit of code *untransforms* the rendered source or background
     // so the filter can be applied to the original orientation before being

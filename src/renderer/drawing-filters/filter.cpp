@@ -22,6 +22,7 @@
 #include "slot.h"
 #include "renderer/drawing/drawing-options.h"
 #include "renderer/context.h"
+#include "renderer/surface.h"
 
 namespace Inkscape::Renderer::DrawingFilter {
 
@@ -113,7 +114,7 @@ int Filter::render(Geom::Rect const &carea, Geom::Affine const &trans, Geom::Opt
         }
     }
 
-    auto slot = Slot(draw_opt, item_opt);
+    auto slot = Slot(draw_opt, item_opt, !image->getColorSpace());
 
     // We could check if source is needed, but it's used too pervasively for dimensions
     slot.set(SLOT_SOURCE_IMAGE, image);

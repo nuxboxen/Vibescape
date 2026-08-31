@@ -17,6 +17,7 @@ using namespace Inkscape::Colors;
 static std::string cmyk_filename = INKSCAPE_TESTS_DIR "/data/colors/default_cmyk.icc";
 
 const std::shared_ptr<Space::AnySpace> alpha = Manager::get().find(Space::Type::Alpha);
+const std::shared_ptr<Space::AnySpace> gray = Manager::get().find(Space::Type::Gray);
 const std::shared_ptr<Space::AnySpace> rgb = Manager::get().find(Space::Type::RGB);
 const std::shared_ptr<Space::AnySpace> lrgb = Manager::get().find(Space::Type::linearRGB);
 const std::shared_ptr<Space::AnySpace> hsl = Manager::get().find(Space::Type::HSL);

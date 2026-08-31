@@ -229,6 +229,10 @@ void Surface::sanityCheckSurface(std::shared_ptr<Colors::Space::AnySpace> const 
         getCairoSurfaces();
     }
 
+    if ((space && space->getType() == Colors::Space::Type::Alpha) || format() == CAIRO_FORMAT_A8) {
+        return;
+    }
+
     assert(sanityCheckColorSpace(space, _color_space));
 
     auto [fmt, count] = getSurfaceFormat(space);

@@ -34,8 +34,16 @@ class Slot final
 {
 public:
     /** Creates a new Slot object. */
-    Slot(DrawingOptions const &draw_opt, Units const &item_opt);
-    Slot();
+    Slot(DrawingOptions const &draw_opt, Units const &item_opt, bool int_based)
+        : _last_out(SLOT_SOURCE_IMAGE)
+        , _draw_opt(draw_opt)
+        , _item_opt(item_opt)
+        , _int_based(int_based)
+    {}
+    Slot()
+        : _last_out(SLOT_SOURCE_IMAGE)
+        , _int_based(false)
+    {}
 
     /** Destroys the Slot object and all its contents */
     ~Slot() = default;
@@ -110,6 +118,7 @@ private:
     int _last_out;
     DrawingOptions _draw_opt;
     Units _item_opt;
+    bool _int_based;
 };
 
 } // namespace Filters

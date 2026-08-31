@@ -21,7 +21,6 @@ namespace Inkscape::Renderer::DrawingFilter {
 
 void DiffuseLighting::render(Slot &slot) const
 {
-    static auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
     static auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
     static auto default_color = Colors::Color(rgb, {0, 0, 0, 1});
 
