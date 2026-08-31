@@ -347,7 +347,8 @@ else()
     ExternalProject_Add(glycin
         URL https://gitlab.gnome.org/GNOME/glycin/-/archive/2.2.beta/glycin-2.2.beta.tar.bz2
         URL_HASH SHA256=ab96e49e1437309258aac1073b0fa93f35041b54a9d885699edb401effe00083
-        CONFIGURE_COMMAND meson setup --libdir lib . ../glycin --prefix=${CMAKE_CURRENT_BINARY_DIR}/deps
+        # Specify loaders list, to exclude glycin-jxl until Ubuntu ships the required libjxl-dev 0.11.2 version
+        CONFIGURE_COMMAND meson setup --libdir lib . ../glycin --prefix=${CMAKE_CURRENT_BINARY_DIR}/deps -Dloaders=glycin-heif,glycin-image-rs,glycin-svg
         BUILD_COMMAND meson compile
         INSTALL_COMMAND meson install
         STEP_TARGETS install
