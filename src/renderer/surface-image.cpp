@@ -152,8 +152,9 @@ static ImageType load_from_base64(std::string_view const &uri)
 static Geom::IntPoint get_image_size(ImageType &image, SvgFactory const &svg_factory)
 {
     if (std::holds_alternative<GlyLoad>(image)) {
-        auto gi = std::get<GlyLoad>(image).second;
-        return Geom::IntPoint(gly_image_get_width(gi), gly_image_get_height(gi));
+        if (auto gi = std::get<GlyLoad>(image).second) {
+            return Geom::IntPoint(gly_image_get_width(gi), gly_image_get_height(gi));
+        }
     } else if (std::holds_alternative<std::unique_ptr<SPDocument>>(image)) {
         if (auto pt = svg_factory->get_dimensions(std::get<std::unique_ptr<SPDocument>>(image).get())) {
             return *pt;
