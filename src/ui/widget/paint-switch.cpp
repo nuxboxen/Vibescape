@@ -29,6 +29,7 @@
 #include "object/sp-pattern.h"
 #include "object/sp-radial-gradient.h"
 #include "object/sp-stop.h"
+#include "desktop.h"
 #include "document.h"
 #include "mesh-editor.h"
 #include "paint-inherited.h"
@@ -155,9 +156,32 @@ public:
     PaintSwitchImpl(bool support_no_paint, bool support_fill_rule, bool compact_mode);
 
     void set_desktop(SPDesktop* desktop) override {
+        if (_desktop) {
+            _connection_gradient_signal_stop_selected.disconnect();
+            _connection_desktop_gradient_stop_selected.disconnect();
+	}
+
         _desktop = desktop;
+
         _swatch.set_desktop(desktop);
+	_connection_desktop_gradient_stop_selected =
+            _desktop->connect_gradient_stop_selected([this] (auto stop) {
+                if (_update.pending()) {
+                    return;
+                }
+                auto scoped(_update.block());
+                _gradient.selectStop(stop);
+            });
+	_connection_gradient_signal_stop_selected =
+            _gradient.signal_stop_selected().connect([this, desktop](SPStop *stop) {
+                if (_update.pending()) {
+                    return;
+                }
+                auto scoped(_update.block());
+                desktop->emit_gradient_stop_selected(stop);
+            });
     }
+
     void set_document(SPDocument* document) override {
         _document = document;
         _mesh.set_document(document);
@@ -282,6 +306,10 @@ public:
     sigc::signal<void (SPHatch*, std::optional<Color>, const Glib::ustring&, const Geom::Affine&, const Geom::Point&, double, double, double)> _signal_hatch_changed;
     sigc::signal<void (FillRule)> _signal_fill_rule_changed;
     sigc::signal<void (PaintDerivedMode)> _signal_inherit_mode_changed;
+
+    sigc::connection _connection_gradient_signal_stop_selected;
+    sigc::connection _connection_desktop_gradient_stop_selected;
+
     std::map<PaintMode, Gtk::Widget*> _pages;
     std::map<PaintMode, Gtk::ToggleButton*> _mode_buttons;
     std::map<ColorPickerPanel::PlateType, Gtk::ToggleButton*> _plate_buttons;
@@ -645,3 +673,14 @@ std::unique_ptr<PaintSwitch> PaintSwitch::create(bool support_no_paint, bool sup
 }
 
 } // namespace
+
+/*
+  Local Variables:
+  mode:c++
+  c-file-style:"stroustrup"
+  c-file-offsets:((innamespace . 0)(inline-open . 0)(case-label . +))
+  indent-tabs-mode:nil
+  fill-column:99
+  End:
+*/
+// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4 :
