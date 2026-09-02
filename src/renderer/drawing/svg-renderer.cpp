@@ -97,7 +97,9 @@ void SvgRenderer::render(Surface &surface, SPDocument *document) const
 {
     auto area = get_area(document->preferredBounds());
     Geom::Point origin = area->min();
-    Geom::Affine affine = Geom::Translate(-origin) * Geom::Scale(get_xscale(), get_yscale());
+    Geom::Affine affine = Geom::Translate(-origin) * Geom::Scale(
+        _viewbox_xscale ? _viewbox_xscale : get_xscale(),
+        _viewbox_yscale ? _viewbox_yscale : get_yscale());
 
     // Document
     document->ensureUpToDate();

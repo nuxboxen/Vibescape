@@ -60,19 +60,24 @@ public:
     void set_dpi(double dpi) { _xdpi = dpi; _ydpi = dpi; }
 
     /**
-     * The resolution of the final output, in x direction.
+     * The resolution of the final output.
      */
-    void set_xdpi(double xdpi) { _xdpi = xdpi; }
-
-    /**
-     * The resolution of the final output, in y direction.
-     */
-    void set_ydpi(double ydpi) { _ydpi = ydpi; }
+    void set_dpi(double xdpi, double ydpi) { _xdpi = xdpi; _ydpi = ydpi; }
 
     /**
      * The device scale to render to.
      */
     void set_device_scale(int scale) { _device_scale = scale; }
+
+    /**
+     * The viewbox scale to render to.
+     */
+    void set_viewbox_scale(double scale) { _viewbox_xscale = scale; _viewbox_yscale = scale; }
+
+    /**
+     * The viewbox scale to render to.
+     */
+    void set_viewbox_scale(double xscale, double yscale) { _viewbox_xscale = xscale; _viewbox_yscale = yscale; }
 
     /**
      * Set a list of items to restrict to.
@@ -141,6 +146,8 @@ private:
 
     double _xdpi = 96.0;
     double _ydpi = 96.0;
+    double _viewbox_xscale = 0;
+    double _viewbox_yscale = 0;
     int _device_scale = 1;
     Geom::OptRect _area;
     std::vector<SPItem const *> _items;

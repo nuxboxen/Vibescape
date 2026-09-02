@@ -549,8 +549,8 @@ ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
 
     Inkscape::Renderer::SvgRenderer renderer;
     renderer.set_area(area);
-    renderer.set_xdpi(xdpi);
-    renderer.set_ydpi(ydpi);
+    renderer.set_dpi(xdpi, ydpi);
+    renderer.set_viewbox_scale(width / area.width(), height / area.height());
     renderer.set_item_limit(items_only);
     renderer.set_background(bgcolor);
     renderer.set_antialiasing(static_cast<Inkscape::Renderer::Antialiasing>(antialiasing));
