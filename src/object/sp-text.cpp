@@ -1241,6 +1241,11 @@ SPText *create_text_at_position(SPGroup *parent, SPCSSAttr *css, Geom::Point doc
     /* Create <tspan> */
     Inkscape::XML::Node *span_repr = xml_doc->createElement("svg:tspan");
     span_repr->setAttribute("sodipodi:role", "line"); // otherwise, why bother creating the tspan?
+    // CSS property "vector-effect" doesn't inherit, so add it to <tspan> if part of default style.
+    if (sp_repr_css_property(css, Glib::ustring("-inkscape-stroke"), Glib::ustring()) == "hairline" &&
+        sp_repr_css_property(css, Glib::ustring("vector-effect"), Glib::ustring()) == "non-scaling-stroke") {
+        span_repr->setAttribute("style", "vector-effect:non-scaling-stroke;-inkscape-stroke:hairline");
+    }
     text_repr->addChild(span_repr, nullptr);
     Inkscape::GC::release(span_repr);
 
