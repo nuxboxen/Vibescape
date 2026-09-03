@@ -156,30 +156,32 @@ public:
     PaintSwitchImpl(bool support_no_paint, bool support_fill_rule, bool compact_mode);
 
     void set_desktop(SPDesktop* desktop) override {
-        if (_desktop) {
-            _connection_gradient_signal_stop_selected.disconnect();
-            _connection_desktop_gradient_stop_selected.disconnect();
-	}
 
         _desktop = desktop;
 
         _swatch.set_desktop(desktop);
-	_connection_desktop_gradient_stop_selected =
-            _desktop->connect_gradient_stop_selected([this] (auto stop) {
-                if (_update.pending()) {
-                    return;
-                }
-                auto scoped(_update.block());
-                _gradient.selectStop(stop);
-            });
-	_connection_gradient_signal_stop_selected =
-            _gradient.signal_stop_selected().connect([this, desktop](SPStop *stop) {
-                if (_update.pending()) {
-                    return;
-                }
-                auto scoped(_update.block());
-                desktop->emit_gradient_stop_selected(stop);
-            });
+
+        if (desktop) {
+            _connection_desktop_gradient_stop_selected =
+                _desktop->connect_gradient_stop_selected([this] (auto stop) {
+                    if (_update.pending()) {
+                        return;
+                    }
+                    auto scoped(_update.block());
+                    _gradient.selectStop(stop);
+                });
+            _connection_gradient_signal_stop_selected =
+                _gradient.signal_stop_selected().connect([this, desktop](SPStop *stop) {
+                    if (_update.pending()) {
+                        return;
+                    }
+                    auto scoped(_update.block());
+                    desktop->emit_gradient_stop_selected(stop);
+                });
+        } else {
+            _connection_gradient_signal_stop_selected.disconnect();
+            _connection_desktop_gradient_stop_selected.disconnect();
+        }
     }
 
     void set_document(SPDocument* document) override {
@@ -406,7 +408,7 @@ PaintSwitchImpl::PaintSwitchImpl(bool support_no_paint, bool support_fill_rule, 
         if (_use_compact_mode) {
             auto menu_item = Gtk::make_managed<UI::Widget::PopoverMenuItem>(label, false, icon);
             menu_item->set_tooltip_text(tooltip);
-            
+
             menu_item->signal_activate().connect([this, type, icon] {
                 if (!_update.pending()) {
                     set_plate_type(type);
