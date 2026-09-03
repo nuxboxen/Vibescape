@@ -190,9 +190,10 @@ Image::Image(ImageType image, SvgFactory const &svg_factory, Glib::RefPtr<Glib::
     if (std::holds_alternative<GlyLoad>(image)) {
         auto pair = std::get<GlyLoad>(image);
         _loader = pair.first;
-        _image = pair.second;
-        if (auto mime = gly_image_get_mime_type(_image)) {
-            _mime_type = mime;
+        if ((_image = pair.second)) {
+            if (auto mime = gly_image_get_mime_type(_image)) {
+                _mime_type = mime;
+            }
         }
     } else if (std::holds_alternative<std::unique_ptr<SPDocument>>(image)) {
         _doc = std::move(std::get<std::unique_ptr<SPDocument>>(image));
