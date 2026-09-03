@@ -16,8 +16,9 @@
 
 #include "renderer/code-builder.h"
 #include "renderer/context.h"
+#ifndef UNIT_TEST
 #include "renderer/drawing/svg-renderer.h"
-#include "renderer/surface.h"
+#endif
 
 #include "drawing-style.h"
 #include "drawing-text.h"
@@ -52,6 +53,7 @@ std::shared_ptr<Surface> DrawingGlyphs::render_glyph_with_cache(std::string_view
         return res;
     }
 
+#ifndef UNIT_TEST
     auto factory = SvgRenderer();
     factory.set_final_color_space(cs);
 
@@ -68,6 +70,7 @@ std::shared_ptr<Surface> DrawingGlyphs::render_glyph_with_cache(std::string_view
     }
 
     _svg_glyph_cache.add(key, std::make_unique<Surface>(std::move(*surface)));
+#endif
 
     return _svg_glyph_cache.lookup(key);
 }
