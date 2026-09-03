@@ -80,13 +80,18 @@ std::shared_ptr<Surface> SvgRenderer::render(SPObject const *object) const
     return {};
 }
 
+std::shared_ptr<Surface> SvgRenderer::render(std::string_view const &svg) const
+{
+    return render(SPDocument::createNewDocFromMem(svg).get());
+}
+
 std::shared_ptr<Surface> SvgRenderer::render(SPDocument *document) const
 {
     auto area = get_area(document->preferredBounds());
     if (!area) {
         return {};
     }
-    auto color_space = _color_space ? _color_space : document->getColorSpace();
+    auto color_space = _color_space ? *_color_space : document->getColorSpace();
     auto dimensions = get_dimensions(*area);
     auto surface = std::make_shared<Surface>(Geom::IntPoint(dimensions.x(), dimensions.y()), _device_scale, color_space);
     render(*surface, document);

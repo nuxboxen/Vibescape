@@ -16,6 +16,7 @@
 
 #include "renderer/code-builder.h"
 #include "renderer/context.h"
+#include "renderer/drawing/svg-renderer.h"
 #include "renderer/surface.h"
 
 #include "drawing-style.h"
@@ -39,32 +40,34 @@ struct SvgGlyphHash
     }
 };
 
-std::shared_ptr<Surface> DrawingGlyphs::_get_svg_glyph(std::shared_ptr<FontInstance> const &font, unsigned int glyph_id) const
+
+std::shared_ptr<Surface> DrawingGlyphs::render_glyph_with_cache(std::string_view const &svg, unsigned int font_hash, unsigned int glyph_id, std::shared_ptr<Colors::Space::AnySpace> const &cs)
 {
     // Inline so it can have more than 32 entries, we want to cache 1024 glyphs instead
-    static Util::cached_map<std::pair<unsigned int, unsigned int>, Inkscape::Renderer::Surface, SvgGlyphHash> _svg_glyph_cache(1024);
+    static Util::cached_map<std::pair<unsigned int, unsigned int>, Surface, SvgGlyphHash> _svg_glyph_cache(1024);
 
-    std::pair<unsigned int, unsigned int> key(font->get_hash(), glyph_id);
+    std::pair<unsigned int, unsigned int> key(font_hash, glyph_id);
 
     if (auto res = _svg_glyph_cache.lookup(key)) {
         return res;
     }
 
-    /* TODO
-    auto svg = font->SvgDocument(glyph_id);
+    auto factory = SvgRenderer();
+    factory.set_final_color_space(cs);
+
+    std::shared_ptr<Surface> surface;
     if (!svg.empty()) {
-        pixbuf = Pixbuf::create_from_buffer(svg.raw());
-        if (!pixbuf) {
+        surface = factory.render(svg);
+        if (!surface) {
             std::cerr << "Bad svg data for glyph " << glyph_id << "\n";
         }
     }
-    if (!pixbuf) {
+    if (!surface) {
         // Either no glyph for Unicode point or glyph had bad SVG data.
-        pixbuf = new Pixbuf(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1));
+        surface = std::make_shared<Surface>(Geom::IntPoint(1, 1), 1, cs);
     }
 
-    _svg_glyph_cache.add(key, std::unique_ptr<Pixbuf>(pixbuf));
-    */
+    _svg_glyph_cache.add(key, std::make_unique<Surface>(std::move(*surface)));
 
     return _svg_glyph_cache.lookup(key);
 }
@@ -82,9 +85,8 @@ void DrawingGlyphs::setGlyph(std::shared_ptr<FontInstance> font, unsigned int gl
 
         design_units = 1.0;
         pathvec = nullptr;
-        pixbuf = nullptr;
 
-        // Load pathvectors and pixbufs in advance, as must be done on main thread.
+        // Load pathvectors and svg docs in advance, as must be done on main thread.
         if (font) {
             design_units = font->GetDesignUnits();
             pathvec      = font->PathVector(_glyph);
@@ -92,7 +94,9 @@ void DrawingGlyphs::setGlyph(std::shared_ptr<FontInstance> font, unsigned int gl
             bbox_pick    = font->BBoxPick( _glyph);
             bbox_draw    = font->BBoxDraw( _glyph);
             if (font->FontHasSVG()) {
-                //pixbuf = _get_svg_glyph(font, _glyph).get();
+                // This document can not be rendered until we know what the target rendering memory format is
+                font_hash = font->get_hash();
+                svg_doc   = font->SvgDocument(_glyph);
             }
             font_descr   = pango_font_description_to_string(font->get_descr());
             // std::cout << "DrawingGlyphs::setGlyph: " << std::setw(6) << glyph
@@ -613,15 +617,18 @@ unsigned DrawingText::_renderItem(Context &dc, DrawingOptions &rc, Geom::IntRect
                 // cairo_path_destroy(path_copy);
                 // End debug boxes.
 
-                if (g->pixbuf) {
-                    {
-                        // pixbuf is in font design units, scale to embox.
+                if (g->svg_doc) {
+                    // surface is in font design units, scale to embox.
+                    auto cs = dc.getSurfaceColorSpace();
+                    auto surface = g->render_glyph_with_cache(*g->svg_doc, g->font_hash, g->_glyph, cs);
+
+                    if (surface) {
                         double scale = g->design_units;
                         if (scale <= 0) scale = 1000;
-                        Context::Save save(dc);
+                        Context::Save save2(save);
                         dc.translate(Geom::Translate(g->bbox_draw.corner(3)));
                         dc.scale(Geom::Scale(1.0 / scale, -1.0 / scale));
-                        dc.setSource(*g->pixbuf, 0, 0);
+                        dc.setSource(*surface, 0, 0);
                         dc.paint(1);
                     }
                 } else {

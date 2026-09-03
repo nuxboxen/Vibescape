@@ -31,6 +31,7 @@ public:
     void setGlyph(std::shared_ptr<FontInstance> font, unsigned int glyph, Geom::Affine const &trans);
     Geom::IntRect getPickBox() const { return bbox_pick_scaled; };
 
+    static std::shared_ptr<Surface> render_glyph_with_cache(std::string_view const &svg, unsigned int font_hash, unsigned int glyph_id, std::shared_ptr<Colors::Space::AnySpace> const &cs);
 protected:
     ~DrawingGlyphs() override
     {
@@ -42,9 +43,7 @@ protected:
     unsigned _updateItem(Geom::IntRect const &area, UpdateContext const &ctx, unsigned flags, unsigned reset) override;
     DrawingItem *_pickItem(Geom::Point const &p, double delta, Geom::OptIntRect const &area_world, unsigned flags) override;
 
-    std::shared_ptr<Surface> _get_svg_glyph(std::shared_ptr<FontInstance> const &font, unsigned int glyph_id) const;
-
-    std::shared_ptr<void const> _font_data; // keeps alive pathvec, pathvec_ref, and pixbuf
+    std::shared_ptr<void const> _font_data; // keeps alive pathvec, pathvec_ref, and glyph document
     unsigned int   _glyph;
     float          _width;          // These three are used to set up bounding box
     float          _asc;            //
@@ -53,7 +52,8 @@ protected:
 
     double design_units;
     Geom::PathVector const *pathvec = nullptr; // pathvector of glyph.
-    std::shared_ptr<Surface> pixbuf = nullptr; // pixbuf, if SVG font
+    std::optional<std::string> svg_doc;        // Glyph doc, if SVG font
+    unsigned int            font_hash = 0;     // Unique key for this font for caching keys
     Geom::Rect              bbox_exact;        // Exact bounding box of glyph.
     Geom::Rect              bbox_pick;         // Pick bounding box of glyph.
     Geom::Rect              bbox_draw;         // Draw bounding box of glyph (adds space for text decorations)

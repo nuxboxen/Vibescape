@@ -37,6 +37,11 @@ public:
     std::shared_ptr<Surface> render(SPDocument *doc) const;
 
     /**
+     * Convience function for generating a throw away SPDocument to render
+     */
+    std::shared_ptr<Surface> render(std::string_view const &svg) const;
+
+    /**
      * Render the given document to an existing surface object. Used by SurfaceImage.
      */
     void render(Surface &surface, SPDocument *document) const;
@@ -155,7 +160,7 @@ private:
     std::optional<Colors::Color> _background_color;
     std::optional<Colors::Color> _checkerboard_color;
     std::optional<Colors::Color> _checkerboard_color2;
-    std::shared_ptr<Colors::Space::AnySpace> _color_space;
+    std::optional<std::shared_ptr<Colors::Space::AnySpace>> _color_space;
     std::optional<Antialiasing> _antialiasing_override;
 };
 
