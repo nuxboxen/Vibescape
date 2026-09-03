@@ -16,6 +16,7 @@
 #include "units.h"
 
 #include "colors/manager.h"
+#include "colors/spaces/base.h"
 
 namespace Inkscape::Renderer::DrawingFilter {
 
@@ -41,7 +42,14 @@ void DiffuseLighting::render(Slot &slot) const
     double scale = surfaceScale * trans.descrim() * device_scale;
 
     auto cs = output->getColorSpace() ? output->getColorSpace() : rgb;
-    auto color = lighting_color.value_or(default_color).converted(cs)->getValues();
+
+    std::vector<double> color;
+    auto lc = lighting_color.value_or(default_color);
+    if (cs->getType() == Colors::Space::Type::Alpha) {
+         color = { lc.getOpacity() };
+    } else {
+        color = lighting_color.value_or(default_color).converted(cs)->getValues();
+    }
 
     switch (light_type) {
     case DISTANT_LIGHT:

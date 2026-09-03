@@ -13,10 +13,7 @@ TEST(DrawingLightTest, LightDiffuse)
     dl->light.point.y = 40;
     dl->light.point.z = 33;
 
-    // This is much slower in linearRGB which is the default
-    auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
     dl->setInterpolationSpace(rgb);
-
     dl->lighting_color = Colors::Color(rgb, {1.0, 1.0, 1.0, 1.0});
     dl->diffuseConstant = 1.0;
     dl->surfaceScale = 1.0;
