@@ -296,7 +296,7 @@ void TextTool::_setupText()
 
         double scale = cast<SPItem>(text_item->parent)->i2doc_affine().inverse().descrim();
         SPText::_adjustFontsizeRecursive(text_item, scale);
-        text_item->adjust_stroke_width_recursive(scale);
+        text_item->adjust_stroke(scale); // NOT recursive, if there is a <tspan>, let it inherit (it's empty at the moment).
     }
 
     DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Create text"), INKSCAPE_ICON("draw-text"));
