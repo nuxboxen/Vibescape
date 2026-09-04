@@ -46,9 +46,9 @@ void DiffuseLighting::render(Slot &slot) const
     std::vector<double> color;
     auto lc = lighting_color.value_or(default_color);
     if (cs->getType() == Colors::Space::Type::Alpha) {
-         color = { lc.getOpacity() };
+        color = { lc.getOpacity() };
     } else {
-        color = lighting_color.value_or(default_color).converted(cs)->getValues();
+        color = lc.converted(cs)->getValues();
     }
 
     switch (light_type) {

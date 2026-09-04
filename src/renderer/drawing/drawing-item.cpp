@@ -677,6 +677,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     if (forcecache) {
         iarea = _cacheRect();
         if (!iarea) {
+            // TODO: investigate if this logic is correct - it seems to yield different results than _cacheRect returns
             iarea = carea;
             _filter->area_enlarge(*iarea, ctm());
             iarea.intersectWith(_drawbox);

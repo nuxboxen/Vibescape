@@ -93,7 +93,7 @@ std::shared_ptr<Surface> SvgRenderer::render(SPDocument *document) const
     }
     auto color_space = _color_space ? *_color_space : document->getColorSpace();
     auto dimensions = get_dimensions(*area);
-    auto surface = std::make_shared<Surface>(Geom::IntPoint(dimensions.x(), dimensions.y()), _device_scale, color_space);
+    auto surface = std::make_shared<Surface>(dimensions, _device_scale, color_space);
     render(*surface, document);
     return surface;
 }
@@ -101,6 +101,7 @@ std::shared_ptr<Surface> SvgRenderer::render(SPDocument *document) const
 void SvgRenderer::render(Surface &surface, SPDocument *document) const
 {
     auto area = get_area(document->preferredBounds());
+    auto dimensions = get_dimensions(*area);
     Geom::Point origin = area->min();
     Geom::Affine affine = Geom::Translate(-origin) * Geom::Scale(
         _viewbox_xscale ? _viewbox_xscale : get_xscale(),
@@ -120,6 +121,7 @@ void SvgRenderer::render(Surface &surface, SPDocument *document) const
     auto invoke_hide_guard = scope_exit([&] { document->getRoot()->invoke_hide(dkey); });
     drawing.root()->setTransform(affine);
     drawing.setExact(); // Maximum quality for blurs.
+    drawing.setCacheLimit({{0, 0}, dimensions}); // enable caching for filtered objects to prevent seams at stripe boundaries #878
 
     if (_antialiasing_override) {
         drawing.setAntialiasingOverride(*_antialiasing_override);

@@ -375,7 +375,7 @@ private:
                 }
 
                 // store the result in bufx
-                *dst_disp = sum;
+                *dst_disp = Access::is_integer ? round_cast<typename Access::PrimaryType>(sum) : sum;
 
                 // optimization: if there was no variation within this point's neighborhood,
                 // skip ahead while we keep seeing the same last_in byte:
