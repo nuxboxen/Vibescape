@@ -285,6 +285,8 @@ void SelectedStyle::on_fill_remove() {
 void SelectedStyle::on_stroke_remove() {
     SPCSSAttr *css = sp_repr_css_attr_new ();
     sp_repr_css_set_property (css, "stroke", "none");
+    sp_repr_css_unset_property (css, "vector-effect");
+    sp_repr_css_unset_property (css, "-inkscape-stroke");
     sp_desktop_set_style (_desktop, css, true, true);
     sp_repr_css_attr_unref (css);
     DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Remove stroke"), INKSCAPE_ICON("dialog-fill-and-stroke"));
@@ -309,6 +311,8 @@ void SelectedStyle::on_stroke_unset() {
     sp_repr_css_unset_property (css, "stroke-linecap");
     sp_repr_css_unset_property (css, "stroke-dashoffset");
     sp_repr_css_unset_property (css, "stroke-dasharray");
+    sp_repr_css_unset_property (css, "vector-effect");
+    sp_repr_css_unset_property (css, "-inkscape-stroke");
     sp_desktop_set_style (_desktop, css, true, true);
     sp_repr_css_attr_unref (css);
     DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Unset stroke"), INKSCAPE_ICON("dialog-fill-and-stroke"));
@@ -461,7 +465,7 @@ void SelectedStyle::_on_paste_callback(Glib::RefPtr<Gio::AsyncResult>& result, G
     try {
         text = refClipboard->read_text_finish(result);
     } catch (Glib::Error const &err) {
-        std::cout << "Pasting text failed: " << err.what() << std::endl;
+        std::cerr << "Pasting text failed: " << err.what() << std::endl;
         return;
     }
     if (auto color = Inkscape::Colors::Color::parse(text)) {
@@ -677,6 +681,8 @@ void SelectedStyle::make_popup_units()
         _popup_sw->append(*make_menu_item(Inkscape::ustring::format_classic(_sw_presets[i]),
             sigc::bind(sigc::mem_fun(*this, &SelectedStyle::on_popup_preset), i)));
     }
+    _popup_sw->append(*make_menu_item("Hairline",
+        sigc::bind(sigc::mem_fun(*this, &SelectedStyle::on_popup_preset), _sw_presets.size())));
 
     _popup_sw->append_separator();
 
@@ -691,15 +697,31 @@ void SelectedStyle::on_popup_units(Inkscape::Util::Unit const *unit) {
 
 void SelectedStyle::on_popup_preset(int i) {
     SPCSSAttr *css = sp_repr_css_attr_new ();
-    gdouble w;
-    if (_sw_unit) {
-        w = Inkscape::Util::Quantity::convert(_sw_presets[i], _sw_unit, "px");
+
+    // Note: "vector-effect as define in SVG2 allows only one value in the list.
+    // It was intended to allow multiple values, if the spec changes, this code
+    // will need to be updated (probably best to add sp_repr_css_add_list_value()
+    // and sp_repr_css_remove_list_value() functions).
+    if (i == _sw_presets.size()) {
+        // Hairline
+        sp_repr_css_set_property (css, "stroke-width", "1");
+        sp_repr_css_set_property (css, "vector-effect", "non-scaling-stroke");
+        sp_repr_css_set_property (css, "-inkscape-stroke", "hairline");
     } else {
-        w = _sw_presets[i];
+        // Not hairline
+        gdouble w;
+        if (_sw_unit) {
+            w = Inkscape::Util::Quantity::convert(_sw_presets[i], _sw_unit, "px");
+        } else {
+            w = _sw_presets[i];
+        }
+        Inkscape::CSSOStringStream os;
+        os << w;
+        sp_repr_css_set_property (css, "stroke-width", os.str().c_str());
+        sp_repr_css_unset_property (css, "vector-effect");
+        sp_repr_css_unset_property (css, "-inkscape-stroke");
     }
-    Inkscape::CSSOStringStream os;
-    os << w;
-    sp_repr_css_set_property (css, "stroke-width", os.str().c_str());
+
     // FIXME: update dash patterns!
     sp_desktop_set_style (_desktop, css, true);
     sp_repr_css_attr_unref (css);
