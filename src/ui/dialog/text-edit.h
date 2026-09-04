@@ -199,7 +199,6 @@ private:
     sigc::scoped_connection _insert_text;
 
     // Other
-    double selected_fontsize = 12;
     bool blocked = false;
 
     // Track undo and redo keyboard shortcuts

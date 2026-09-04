@@ -280,8 +280,8 @@ void TextEdit::onReadSelection ( bool dostyle, bool /*docontent*/ )
         Inkscape::Preferences *prefs = Inkscape::Preferences::get();
         int unit = prefs->getInt("/options/font/unitType", SP_CSS_UNIT_PT);
         double size = sp_style_css_size_px_to_units(query.font_size.computed, unit);
-        selected_fontsize = size;
         font_list->set_current_size(size);
+
         // Update font features (variant) widget
         //int result_features =
         sp_desktop_query_style (desktop, &query, QUERY_STYLE_PROPERTY_FONTVARIANTS);
@@ -475,21 +475,18 @@ void TextEdit::apply_changes(guint flags, bool continuous) {
     unsigned items = 0;
     auto item_list = desktop->getSelection()->items();
     SPCSSAttr *css = fillTextStyle(flags);
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    sp_desktop_set_style(desktop, css, true);
+
     for(auto i : item_list){
         // apply style to the reprs of all text objects in the selection
         if (is<SPText>(i) || (is<SPFlowtext>(i)) ) {
             ++items;
         }
     }
-    if (items == 1) {
-        double factor = font_list->get_fontsize() / selected_fontsize;
-        prefs->setDouble("/options/font/scaleLineHeightFromFontSIze", factor);
-    }
-    sp_desktop_set_style(desktop, css, true);
 
     if (items == 0) {
         // no text objects; apply style to prefs for new objects
+        Inkscape::Preferences *prefs = Inkscape::Preferences::get();
         prefs->mergeStyle("/tools/text/style", css);
         setasdefault_button.set_sensitive ( false );
 
@@ -498,12 +495,6 @@ void TextEdit::apply_changes(guint flags, bool continuous) {
         SPItem *item = desktop->getSelection()->singleItem();
         if (is<SPText>(item) || is<SPFlowtext>(item)) {
             updateObjectText (item);
-            SPStyle *item_style = item->style;
-            if (is<SPText>(item) && item_style->inline_size.value == 0) {
-                css = sp_css_attr_from_style(item_style, SP_STYLE_FLAG_IFSET);
-                sp_repr_css_unset_property(css, "inline-size");
-                item->changeCSS(css, "style");
-            }
         }
     }
 
