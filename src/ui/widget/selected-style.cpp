@@ -715,9 +715,7 @@ void SelectedStyle::on_popup_preset(int i) {
         } else {
             w = _sw_presets[i];
         }
-        Inkscape::CSSOStringStream os;
-        os << w;
-        sp_repr_css_set_property (css, "stroke-width", os.str().c_str());
+        sp_repr_css_set_property_double (css, "stroke-width", w);
         sp_repr_css_unset_property (css, "vector-effect");
         sp_repr_css_unset_property (css, "-inkscape-stroke");
     }
@@ -992,9 +990,7 @@ void SelectedStyle::on_opacity_changed(double value)
     }
     _opacity_blocked = true;
     SPCSSAttr *css = sp_repr_css_attr_new ();
-    Inkscape::CSSOStringStream os;
-    os << std::clamp(value / 100, 0.0, 1.0);
-    sp_repr_css_set_property (css, "opacity", os.str().c_str());
+    sp_repr_css_set_property_double (css, "opacity", std::clamp(value / 100, 0.0, 1.0));
     sp_desktop_set_style (_desktop, css);
     sp_repr_css_attr_unref (css);
     DocumentUndo::maybeDone(_desktop->getDocument(), "fillstroke:opacity", RC_("Undo", "Change opacity"), INKSCAPE_ICON("dialog-fill-and-stroke"));
@@ -1161,9 +1157,7 @@ RotateableStrokeWidth::value_adjust(double current, double by, guint /*modifier*
         sp_repr_css_set_property (css, "stroke", "none");
     } else {
         newval = Inkscape::Util::Quantity::convert(newval, parent->_sw_unit, "px");
-        Inkscape::CSSOStringStream os;
-        os << newval;
-        sp_repr_css_set_property (css, "stroke-width", os.str().c_str());
+        sp_repr_css_set_property_double (css, "stroke-width", newval);
     }
 
     sp_desktop_set_style (parent->getDesktop(), css);
