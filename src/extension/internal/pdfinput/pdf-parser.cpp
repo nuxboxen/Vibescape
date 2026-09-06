@@ -313,11 +313,11 @@ PdfParser::PdfParser(std::shared_ptr<PDFDoc> pdf_doc, Inkscape::Extension::Inter
         // meta->getCString()
     }
 
-    builder->setMetadata("title", getString(pdf_doc->getDocInfoStringEntry("Title")));
-    builder->setMetadata("description", getString(pdf_doc->getDocInfoStringEntry("Subject")));
-    builder->setMetadata("creator", getString(pdf_doc->getDocInfoStringEntry("Author")));
-    builder->setMetadata("subject", getString(pdf_doc->getDocInfoStringEntry("Keywords")));
-    builder->setMetadata("date", getString(pdf_doc->getDocInfoStringEntry("CreationDate")));
+    builder->setMetadata("title", getString(pdf_doc->getDocInfoStringEntry("Title").value_or("")));
+    builder->setMetadata("description", getString(pdf_doc->getDocInfoStringEntry("Subject").value_or("")));
+    builder->setMetadata("creator", getString(pdf_doc->getDocInfoStringEntry("Author").value_or("")));
+    builder->setMetadata("subject", getString(pdf_doc->getDocInfoStringEntry("Keywords").value_or("")));
+    builder->setMetadata("date", getString(pdf_doc->getDocInfoStringEntry("CreationDate").value_or("")));
 
     formDepth = 0;
 
