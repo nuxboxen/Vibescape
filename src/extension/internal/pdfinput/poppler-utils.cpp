@@ -648,6 +648,11 @@ std::string getDictString(Dict *dict, const char *key)
     return getString(obj.getString());
 }
 
+std::string getString(const std::optional<std::string> &value)
+{
+    return value ? getString(*value) : "";
+}
+
 std::string getString(const std::unique_ptr<GooString> &value)
 {
     return getString(value.get());
