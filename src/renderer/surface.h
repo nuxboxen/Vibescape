@@ -270,7 +270,7 @@ public:
 
 protected:
     mutable std::vector<Cairo::RefPtr<Cairo::ImageSurface>> _surfaces;
-    const Geom::IntPoint _dimensions;
+    Geom::IntPoint _dimensions;
     const double _device_scale;
     mutable std::shared_ptr<Colors::Space::AnySpace> _color_space;
 

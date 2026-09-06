@@ -194,11 +194,9 @@ void Drawing::setCacheLimit(Geom::OptIntRect const &rect)
 {
     defer([=, this] {
         _cache_limit = rect;
-        /*
         for (auto item : _cached_items) {
             item->_markForUpdate(STATE_CACHE, false);
         }
-        */
     });
 }
 
@@ -283,7 +281,6 @@ void Drawing::unsnapshot()
 void Drawing::_pickItemsForCaching()
 {
     // Build sorted list of items that should be cached.
-    /*
     std::vector<DrawingItem*> to_cache;
     size_t used = 0;
     for (auto &rec : _candidate_items) {
@@ -307,19 +304,16 @@ void Drawing::_pickItemsForCaching()
     for (auto item : to_cache) {
         item->_setCached(true);
     }
-    */
 }
 
 void Drawing::_clearCache()
 {
     // Note: setCached() modifies _cached_items, so the temporary container is necessary.
-    /*
     std::vector<DrawingItem*> to_uncache;
     std::copy(_cached_items.begin(), _cached_items.end(), std::back_inserter(to_uncache));
     for (auto item : to_uncache) {
         item->_setCached(false, true);
     }
-    */
 }
 
 /*

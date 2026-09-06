@@ -708,7 +708,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     if (_cache && !(flags & RENDER_BYPASS_CACHE)) {
         lock = std::unique_lock(_cache->mutables);
 
-        if (_cache->surface) {
+        if (_cache->surface && _cache->surface->getColorSpace() == target_space) {
             if (_cache->surface->getDeviceScale() != device_scale) {
                 _cache->surface->markDirty();
             }
@@ -727,7 +727,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
             Geom::OptIntRect cl = _cacheRect();
             if (!cl)
                 cl = carea;
-            // TODO _cache->surface = std::make_shared<SurfaceCache>(*cl, device_scale, target_space);
+            _cache->surface = std::make_shared<SurfaceCache>(*cl, device_scale, target_space);
         }
 
         if (!forcecache) {

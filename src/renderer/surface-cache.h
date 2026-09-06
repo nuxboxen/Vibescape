@@ -26,16 +26,25 @@ namespace Inkscape::Renderer {
 class SurfaceCache : public Surface
 {
 public:
+    SurfaceCache(Geom::IntRect const &area, int device_scale, std::shared_ptr<Colors::Space::AnySpace> const &space)
+        : Surface(area.dimensions(), device_scale, space)
+        , _origin(area.min())
+        , _pending_area(area)
+        , _clean_region(cairo_region_create())
+    {}
+
     void markDirty(Geom::IntRect const &area = Geom::IntRect::infinite());
     void markClean(Geom::IntRect const &area = Geom::IntRect::infinite());
     void scheduleTransform(Geom::IntRect const &new_area, Geom::Affine const &trans);
     void prepare();
     void paintFromCache(Context &dc, Geom::OptIntRect &area, bool is_filter);
 
+    auto cacheArea() const { return Geom::IntRect::from_xywh(_origin, dimensions()); }
 private:
-    Cairo::Region _clean_region;
+    Geom::IntPoint _origin;
     Geom::IntRect _pending_area;
     Geom::Affine _pending_transform;
+    Cairo::Region _clean_region;
 };
 
 } // namespace Inkscape::Renderer
