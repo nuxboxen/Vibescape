@@ -58,6 +58,7 @@
 #include "live_effects/effect.h"
 #include "live_effects/lpeobject.h"
 #include "live_effects/lpeobject-reference.h"
+#include "object/filters/gaussian-blur.h"
 #include "object/sp-anchor.h"
 #include "object/sp-ellipse.h"
 #include "object/sp-gradient.h"
@@ -353,8 +354,9 @@ details::AttributesPanel::AttributesPanel()
     , _obj_description(get_widget<Gtk::TextView>(_builder, "obj-description"))
     , _filter_primitive(get_widget<Gtk::Entry>(_builder, "filter-primitive"))
     , _clear_filters(get_widget<Gtk::Button>(_builder, "clear-filters"))
+    , _clear_blur(get_widget<Gtk::Button>(_builder, "clear-blur"))
     , _add_blur(get_widget<Gtk::Button>(_builder, "add-blur"))
-    , _edit_filter(get_widget<Gtk::Button>(_builder, "edit-filter"))
+    , _add_filter(get_widget<Gtk::Button>(_builder, "add-filter"))
     , _blur(get_widget<Widget::InkSpinButton>(_builder, "filter-blur"))
     , _lpe_menu(get_widget<Gtk::ListBox>(_builder, "lpe-menu"))
     , _lpe_search(get_widget<Gtk::SearchEntry2>(_builder, "lpe-search"))
@@ -692,6 +694,22 @@ void details::AttributesPanel::add_filters(bool separate) {
             update_filters(_current_object);
         }
     });
+    _clear_blur.signal_clicked().connect([this] {
+      if (!can_update()) return;
+
+      auto scoped(_update.block());
+      if (remove_filter_gaussian_blur(_current_object)) {
+        DocumentUndo::done(_current_object->document, RC_("Undo", "Remove blur filter"), "dialog-fill-and-stroke", TAG);
+        update_filters(_current_object);
+      }
+    });
+    _add_filter.signal_clicked().connect([this] {
+     if (!_desktop) return;
+
+     if (auto container = _desktop->getContainer()) {
+        container->new_dialog("FilterEffects");
+     }
+   });
     _blur.signal_value_changed().connect([this](auto value) {
         if (!can_update()) return;
 
@@ -700,13 +718,7 @@ void details::AttributesPanel::add_filters(bool separate) {
             DocumentUndo::maybeDone(_current_object->document, "change-blur-radius", RC_("Undo", "Change blur filter"), "dialog-fill-and-stroke", TAG);
         }
     });
-    _edit_filter.signal_clicked().connect([this] {
-        if (!_desktop) return;
-        // open filter editor
-        if (auto container = _desktop->getContainer()) {
-            container->new_dialog("FilterEffects");
-        }
-    });
+
 }
 
 void details::AttributesPanel::set_document(SPDocument* document) {
@@ -812,41 +824,74 @@ void details::AttributesPanel::update_filters(SPObject* object) {
     // Stop UI from changing filters
     auto scoped(_update.block());
 
-    auto filters = get_filter_primitive_count(object);
+    auto item = cast<SPItem>(object);
+    auto filter = item && item->style ? item->style->getFilter() : nullptr;
+
     bool gaussian_blur = false;
-    if (filters == 1) {
-        double blur = 0;
-        auto primitive = get_first_filter_component(object);
-        auto id = FPConverter.get_id_from_key(primitive->getRepr()->name());
-        _filter_primitive.set_text(_(FPConverter.get_label(id).c_str()));
-        if (id == Filters::NR_FILTER_GAUSSIANBLUR) {
-            auto item = cast<SPItem>(object);
-            if (auto radius = object_query_blur_filter(item)) {
-                if (auto bbox = item->desktopGeometricBounds()) {
-                    double perimeter = bbox->dimensions()[Geom::X] + bbox->dimensions()[Geom::Y];
-                    blur = std::sqrt(*radius * Widget::BLUR_MULTIPLIER / perimeter);
-                }
+    bool other_filter = false;
+    size_t other_filter_count = 0;
+
+    if (filter) {
+        for (auto &primitive : filter->children) {
+            if (cast<SPGaussianBlur>(&primitive)) {
+                gaussian_blur = true;
+            } else {
+                other_filter = true;
+                ++other_filter_count;
             }
-            gaussian_blur = true;
         }
+    }
+
+    // Update blur value
+    if (gaussian_blur) {
+        double blur = 0;
+
+        if (auto radius = object_query_blur_filter(item)) {
+            if (auto bbox = item->desktopGeometricBounds()) {
+                double perimeter = bbox->dimensions()[Geom::X] + bbox->dimensions()[Geom::Y];
+                blur = std::sqrt(*radius * Widget::BLUR_MULTIPLIER / perimeter);
+            }
+        }
+
         _blur.set_value(blur);
-        _blur.set_sensitive(gaussian_blur);
-    }
-    else if (filters > 1) {
-        _filter_primitive.set_text(_("Compound filter"));
+    } else {
         _blur.set_value(0);
-        _blur.set_sensitive(false);
     }
-    else {
+
+    // Update general filter name
+    if (other_filter) {
+        if (other_filter_count == 1) {
+            for (auto &primitive : filter->children) {
+                if (cast<SPGaussianBlur>(&primitive)) {
+                    continue;
+                }
+
+                auto id = FPConverter.get_id_from_key(primitive.getRepr()->name());
+                _filter_primitive.set_text(_(FPConverter.get_label(id).c_str()));
+                break;
+            }
+        } else {
+            _filter_primitive.set_text(_("Complex filter"));
+        }
+    } else {
         _filter_primitive.set_text({});
-        _blur.set_value(0);
-        _blur.set_sensitive(false);
     }
-    _filter_primitive.set_visible(filters > 0 && !gaussian_blur);
-    _blur.set_visible(gaussian_blur && filters > 0);
-    _edit_filter.set_visible(!gaussian_blur && filters > 0);
-    _clear_filters.set_visible(filters > 0);
-    _add_blur.set_visible(filters == 0);
+
+    // Update visibility
+    _blur.set_visible(gaussian_blur);
+    _blur.set_sensitive(gaussian_blur);
+    _clear_blur.set_visible(gaussian_blur);
+
+    _filter_primitive.set_visible(other_filter);
+
+    _clear_filters.set_visible(other_filter);
+
+    _add_blur.set_visible(!gaussian_blur);
+    _add_filter.set_visible(true);
+    _add_filter.set_icon_name(other_filter ? "edit" : "plus");
+    _add_filter.set_tooltip_text(
+    other_filter ? _("Edit filter") : _("Add filter")
+   );
 }
 
 void details::AttributesPanel::update_lpes(SPObject* object) {

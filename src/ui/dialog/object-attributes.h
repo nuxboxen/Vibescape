@@ -139,8 +139,9 @@ private:
     Gtk::Entry& _filter_primitive;
     Widget::InkSpinButton& _blur;
     Gtk::Button& _clear_filters;
+    Gtk::Button& _clear_blur;
     Gtk::Button& _add_blur;
-    Gtk::Button& _edit_filter;
+    Gtk::Button& _add_filter;
     Gtk::ListBox& _lpe_menu;
     Gtk::ListBox& _lpe_list;
     Gtk::MenuButton& _add_lpe;
