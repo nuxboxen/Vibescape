@@ -182,25 +182,24 @@ TEST_F(SurfaceSvgFactory, RenderOneItemArea)
         auto item = cast<SPItem>(_doc_trans->getObjectById("g1"));
         auto surface = factory.render(item);
         ASSERT_TRUE(surface);
-        EXPECT_EQ(surface->width(), 7);
-        EXPECT_EQ(surface->height(), 16);
+        EXPECT_EQ(surface->width(), 6);
+        EXPECT_EQ(surface->height(), 15);
         EXPECT_IMAGE_IS<PixelPatch::Method::ALPHA>(*surface,
-        "       "
-        " &&&&&&"
-        " &&&&&&"
-        " &&&&&&"
-        " &&&&&&"
-        " &&&&&&"
-        " &&&&&&"
-        "       "
-        "       "
-        "       "
-        "  +XX+ "
-        " +&&&&+"
-        " X&&&&X"
-        " X&&&&X"
-        " +&&&&+"
-        "  +XX+ ");
+        "&&&&&&"
+        "&&&&&&"
+        "&&&&&&"
+        "&&&&&&"
+        "&&&&&&"
+        "&&&&&&"
+        "      "
+        "      "
+        "      "
+        " +XX+ "
+        "+&&&&+"
+        "X&&&&X"
+        "X&&&&X"
+        "+&&&&+"
+        " +XX+ ");
     }
 }
 

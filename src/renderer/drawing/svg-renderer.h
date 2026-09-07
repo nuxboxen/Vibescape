@@ -55,9 +55,7 @@ public:
     /**
      * The area to render in document units.
      */
-    void set_area(Geom::Rect const &area) {
-        _area = area.roundOutwards();
-    }
+    void set_area(Geom::Rect const &area) { _area = area; }
 
     /**
      * The resolution of the final output.
