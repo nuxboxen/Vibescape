@@ -93,14 +93,17 @@ void PageSelector::setDocument(SPDocument *document)
             page_manager.connectPagesChanged(sigc::mem_fun(*this, &PageSelector::pagesChanged));
         _page_selected_connection =
             page_manager.connectPageSelected(sigc::mem_fun(*this, &PageSelector::selectonChanged));
-        pagesChanged(nullptr);
+        pagesChanged(page_manager.getSelected());
     }
 }
 
 void PageSelector::pagesChanged(SPPage *new_page)
 {
+    auto scoped(_update.block());
     _selector_changed_connection.block();
+
     auto &page_manager = _document->getPageManager();
+    auto page = page_manager.getSelected();
 
     // Destroy all existing pages in the model.
     _pageitem_liststore->splice(0, _pageitem_liststore->get_n_items(), {});
@@ -112,6 +115,9 @@ void PageSelector::pagesChanged(SPPage *new_page)
     // are not guaranteed to be in node order, they are in first-seen order.
     for (auto &page : page_manager.getPages()) {
         _pageitem_liststore->append(PageItem::create(page));
+        if (page == new_page) {
+            page_manager.selectPage(page);
+        }
     }
     selectonChanged(page_manager.getSelected());
 
@@ -120,7 +126,9 @@ void PageSelector::pagesChanged(SPPage *new_page)
 
 void PageSelector::selectonChanged(SPPage *page)
 {
+    auto scoped(_update.block());
     _selector_changed_connection.block();
+
     _next_button.set_sensitive(_document->getPageManager().hasNextPage());
     _prev_button.set_sensitive(_document->getPageManager().hasPrevPage());
 
@@ -142,14 +150,14 @@ void PageSelector::selectonChanged(SPPage *page)
 void PageSelector::nextPage()
 {
     if (_document->getPageManager().selectNextPage()) {
-        _document->getPageManager().zoomToSelectedPage(_desktop);
+        _document->getPageManager().centerToSelectedPage(_desktop);
     }
 }
 
 void PageSelector::prevPage()
 {
     if (_document->getPageManager().selectPrevPage()) {
-        _document->getPageManager().zoomToSelectedPage(_desktop);
+        _document->getPageManager().centerToSelectedPage(_desktop);
     }
 }
 
@@ -210,6 +218,11 @@ void PageSelector::unbindPageItemCB(const Glib::RefPtr<Gtk::ListItem>& list_item
 }
 
 void PageSelector::onDropDownChangedCB() {
+
+    if (_update.pending()) {
+        return;
+    }
+
     const unsigned index = _dropdown.get_selected();
     if (index == GTK_INVALID_LIST_POSITION ||
         index >= _pageitem_liststore->get_n_items()) {
@@ -218,7 +231,7 @@ void PageSelector::onDropDownChangedCB() {
     auto pageitem = _pageitem_liststore->get_item(index);
     auto page = pageitem->getPage();
     if (page && _document->getPageManager().selectPage(page)) {
-        _document->getPageManager().zoomToSelectedPage(_desktop);
+        _document->getPageManager().centerToSelectedPage(_desktop);
     }
 }
 
