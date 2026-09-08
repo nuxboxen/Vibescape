@@ -499,6 +499,9 @@ bool SPPage::setPageIndex(int index, bool swap_page)
         if (sibling && swap_page) {
             swapPage(sibling, true);
         }
+
+        page_manager.selectPage(this);
+
         return true;
     }
     return false;

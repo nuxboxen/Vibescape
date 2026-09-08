@@ -22,6 +22,7 @@
 #include <gtkmm/listitem.h>
 
 #include "object/sp-page.h"
+#include "ui/operation-blocker.h"
 
 class SPDesktop;
 class SPDocument;
@@ -81,6 +82,8 @@ private:
     Gtk::Button _next_button;
 
     Glib::RefPtr<Gio::ListStore<PageItem>> _pageitem_liststore;
+
+    OperationBlocker _update;
 
     sigc::connection _selector_changed_connection;
     sigc::connection _pages_changed_connection;
