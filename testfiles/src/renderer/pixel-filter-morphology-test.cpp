@@ -9,7 +9,7 @@ TEST(PixelFilterMorphologyTest, MorphologyErode)
 {
     auto src = TestSurface<MEMORY_FORMAT_CMYA_KA256F, PixelAccessEdgeMode::ZERO>(21, 21);
     auto mid = TestSurface<MEMORY_FORMAT_CMYA_KA256F, PixelAccessEdgeMode::ZERO>(21, 21);
-    auto dst = TestSurface<MEMORY_FORMAT_CMYA_KA256F, PixelAccessEdgeMode::NO_CHECK>(21, 21);
+    auto dst = TestSurface<MEMORY_FORMAT_CMYA_KA256F, PixelAccessEdgeMode::ZERO>(21, 21);
 
     src.rect(3, 3, 15, 15, {0.5, 0.0, 0.0, 1.0, 1.0});
 

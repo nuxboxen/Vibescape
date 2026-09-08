@@ -14,7 +14,7 @@ TEST(PixelFilterMorphology, MorphologyErode)
 
     src.rect(3, 3, 15, 15, {0.5, 0.0, 0.0, 1.0, 1.0});
 
-    dst.run_pixel_filter<PixelAccessEdgeMode::NO_CHECK, PixelAccessEdgeMode::ZERO>(PixelFilter::Morphology(true, {3, 3}), mid, src);
+    dst.run_pixel_filter<PixelAccessEdgeMode::ZERO, PixelAccessEdgeMode::ZERO>(PixelFilter::Morphology(true, {3, 3}), mid, src);
     auto result = dst.run_pixel_filter(PixelPatch(PixelPatch::Method::COLORS));
     EXPECT_EQ(result,
               "       "

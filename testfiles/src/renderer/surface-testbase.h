@@ -61,7 +61,7 @@ public:
 };
 
 template <PixelPatch::Method method = PixelPatch::Method::COLORS>
-void EXPECT_IMAGE_IS(Renderer::Surface &surface, std::string result, unsigned scale = 3, Geom::OptRect clip = {})
+::testing::AssertionResult is_image_eq(Renderer::Surface &surface, std::string result, unsigned scale = 3, Geom::OptRect clip = {})
 {
     auto patch = surface.run_pixel_filter(PixelPatch{
         ._method = method,
@@ -69,7 +69,17 @@ void EXPECT_IMAGE_IS(Renderer::Surface &surface, std::string result, unsigned sc
         ._patch_y = scale,
         ._clip = clip,
     });
-    EXPECT_EQ(patch, PatchResult(result, patch._stride));
+    auto expected = PatchResult(result, patch._stride);
+    if (expected != patch) {
+        return ::testing::AssertionFailure() << expected << " != " << patch;
+    }
+    return ::testing::AssertionSuccess();
+}
+
+template <PixelPatch::Method method = PixelPatch::Method::COLORS>
+void EXPECT_IMAGE_IS(Renderer::Surface &surface, std::string result, unsigned scale = 3, Geom::OptRect clip = {})
+{
+    EXPECT_TRUE(is_image_eq<method>(surface, result, scale, clip));
 }
 
 void EXPECT_COLOR_IS(Renderer::Surface &surface, int x, int y, std::vector<double> const &cmp)

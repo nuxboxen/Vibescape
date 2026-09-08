@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <glibmm/init.h>
 #include <pangomm/wrap_init.h>
+#include <pangomm/fontdescription.h>
 
 #include "colors/color.h"
 #include "colors/manager.h"
@@ -377,14 +378,19 @@ TEST_F(RenderContextTest, PaintText)
     context->setSource(Color(cmyk_cpp, {0.0, 1.0, 0.0, 0.6, 1.0}));
     context->move_to(0, -9);
     context->paintText("Sans 21", "N");
-    EXPECT_IMAGE_IS(*surface,
-                    " nt  8 "
-                    "4nn  xt"
-                    "4nxt xt"
-                    "4n4n xt"
-                    "4n 8nxt"
-                    "4n  xnt"
-                    "4n  4nt");
+    auto font_found = Pango::FontDescription("Sans 21").to_string();
+    if (font_found != "Sans 21") {
+        GTEST_SKIP() << "Font 'Sans 21' not available, found '" << font_found << "' instead.";
+    } else {
+        EXPECT_TRUE(is_image_eq(*surface,
+                        " nt  8 "
+                        "4nn  xt"
+                        "4nxt xt"
+                        "4n4n xt"
+                        "4n 8nxt"
+                        "4n  xnt"
+                        "4n  4nt"));
+    }
 }
 
 /*
