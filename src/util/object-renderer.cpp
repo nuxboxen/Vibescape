@@ -186,15 +186,9 @@ void draw_gradient(const std::shared_ptr<Renderer::Context>& cr, SPGradient* gra
     cr->fill_preserve();
 
     if (gradient) {
-        // TODO auto p = gradient->create_preview_pattern(width);
-        int p = 0;
-        if (!p) {
-            return;
-        }
-        cairo_matrix_t m;
-        cairo_matrix_init_translate(&m, -x, 0);
-        // cairo_pattern_set_matrix(p, &m);
-        // TODO cairo_set_source(cr->cobj(), p);
+        auto p = gradient->createPreviewPattern(width);
+        p->setMatrix(Geom::Translate(-x, 0));
+        cr->setSource(*p);
         cr->fill();
     }
 }

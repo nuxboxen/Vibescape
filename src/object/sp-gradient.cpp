@@ -1227,6 +1227,18 @@ Color SPGradient::getPreviewAverageColor()
     }
 }
 
+std::shared_ptr<Renderer::Pattern> SPGradient::createPreviewPattern(double width)
+{
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto pattern = std::make_shared<Renderer::LinearGradientPattern>(srgb, 0, 0, width, 0);
+
+    forEachPreviewPatternStop([&] (double offset, Color const &col) {
+        pattern->addColorStop(offset, col);
+    });
+
+    return pattern;
+}
+
 bool SPGradient::isSolid() const
 {
     if (swatch && hasStops() && getStopCount() == 1) {

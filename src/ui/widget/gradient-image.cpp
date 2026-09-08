@@ -17,25 +17,27 @@
 
 #include "object/sp-gradient.h"
 #include "object/sp-stop.h"
+#include "renderer/context.h"
+#include "renderer/surface-texture.h"
 
-static void sp_gradient_draw(SPGradient *gr, int width, int height, cairo_t *ct)
+static Renderer::CheckerboardPattern make_gradient_checkerboard()
+{
+    return Renderer::CheckerboardPattern(Colors::Color(0xc4c4c400), 6);
+}
+
+static void sp_gradient_draw(SPGradient *gr, int width, int height, Cairo::RefPtr<Cairo::Context> const &cr)
 {
     if (!gr) {
         return;
     }
-/* TODO
-    auto check = ink_cairo_pattern_create_checkerboard();
-    cairo_set_source(ct, check->cobj());
-    cairo_paint(ct);
 
-    auto p = gr->create_preview_pattern(width);
-    if (!p) {
-        return;
-    }
-    cairo_set_source(ct, p);
-    cairo_paint(ct);
-    cairo_pattern_destroy(p);
-    */
+    auto ctx = Renderer::Context(cr);
+
+    ctx.setSource(make_gradient_checkerboard());
+    ctx.paint();
+
+    ctx.setSource(*gr->createPreviewPattern(width));
+    ctx.paint();
 }
 
 namespace Inkscape::UI::Widget {
@@ -49,7 +51,7 @@ GradientImage::GradientImage(SPGradient *gradient)
 
 void GradientImage::draw_func(Cairo::RefPtr<Cairo::Context> const &cr, int width, int height)
 {
-    sp_gradient_draw(_gradient, width, height, cr->cobj());
+    sp_gradient_draw(_gradient, width, height, cr);
 }
 
 void GradientImage::set_gradient(SPGradient *gradient)
@@ -79,22 +81,15 @@ void GradientImage::set_gradient(SPGradient *gradient)
 
 } // namespace Inkscape::UI::Widget
 
-Glib::RefPtr<Gdk::Pixbuf> sp_gradient_to_pixbuf(SPGradient *gr, int width, int height)
+Glib::RefPtr<Gdk::Texture> sp_gradient_to_texture(SPGradient *gr, int width, int height)
 {
-    cairo_surface_t *s = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-    cairo_t *ct = cairo_create(s);
-    sp_gradient_draw(gr, width, height, ct);
-    cairo_destroy(ct);
-    cairo_surface_flush(s);
-
-    // no need to free s - the call below takes ownership
-    return {}; // TODO Glib::wrap(ink_pixbuf_create_from_cairo_surface(s));
+    return Renderer::build_texture(sp_gradient_to_surface(gr, width, height));
 }
 
 Cairo::RefPtr<Cairo::ImageSurface> sp_gradient_to_surface(SPGradient* gr, int width, int height) {
     auto surface = Cairo::ImageSurface::create(Cairo::ImageSurface::Format::ARGB32, width, height);
     auto ctx = Cairo::Context::create(surface);
-    sp_gradient_draw(gr, width, height, ctx->cobj());
+    sp_gradient_draw(gr, width, height, ctx);
     surface->flush();
 
     return surface;
@@ -103,29 +98,27 @@ Cairo::RefPtr<Cairo::ImageSurface> sp_gradient_to_surface(SPGradient* gr, int wi
 Cairo::RefPtr<Cairo::ImageSurface> sp_gradstop_to_surface(SPStop *stop, int width, int height)
 {
     auto surface = Cairo::ImageSurface::create(Cairo::ImageSurface::Format::ARGB32, width, height);
-    auto ctx = Cairo::Context::create(surface);
-    cairo_t *ct = ctx->cobj();
+    auto cairo_ctx = Cairo::Context::create(surface);
+    auto ctx = Renderer::Context(cairo_ctx);
 
     /* Checkerboard background */
-    /* TODO
-    auto check = ink_cairo_pattern_create_checkerboard();
-    cairo_rectangle(ct, 0, 0, width, height);
-    cairo_set_source(ct, check->cobj());
-    cairo_fill_preserve(ct);
-    */
+    auto check = make_gradient_checkerboard();
+    ctx.rectangle(0, 0, width, height);
+    ctx.setSource(check);
+    ctx.fillPreserve();
 
     if (stop) {
         /* Alpha area */
-        cairo_rectangle(ct, 0, 0, width/2, height);
-        //ink_cairo_set_source_color(ct, stop->getColor());
-        cairo_fill(ct);
+        ctx.rectangle(0, 0, width/2, height);
+        ctx.setSource(stop->getColor());
+        ctx.fill();
 
         /* Solid area */
         auto no_alpha = stop->getColor();
         no_alpha.enableOpacity(false);
-        cairo_rectangle(ct, width/2, 0, width, height);
-        //ink_cairo_set_source_color(ct, no_alpha);
-        cairo_fill(ct);
+        ctx.rectangle(width/2, 0, width, height);
+        ctx.setSource(no_alpha);
+        ctx.fill();
     }
 
     surface->flush();

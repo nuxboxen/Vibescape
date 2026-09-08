@@ -21,6 +21,7 @@
 #include <glibmm/ustring.h>
 #include <2geom/affine.h>
 
+#include "renderer/context-pattern.h"
 #include "sp-paint-server.h"
 #include "sp-paint-server-data.h"
 #include "sp-mesh-array.h"
@@ -208,6 +209,7 @@ public:
 
     void forEachPreviewPatternStop(std::function<void (double offset, Inkscape::Colors::Color const &col)> const &callback);
     Inkscape::Colors::Color getPreviewAverageColor();
+    std::shared_ptr<Renderer::Pattern> createPreviewPattern(double width);
 
     /** Transforms to/from gradient position space in given environment */
     Geom::Affine get_g2d_matrix(Geom::Affine const &ctm,

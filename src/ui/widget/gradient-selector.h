@@ -53,7 +53,7 @@ public:
             add(refcount);
             add(color);
             add(data);
-            add(pixbuf);
+            add(texture);
         }
         ~ModelColumns() override = default;
 
@@ -61,7 +61,7 @@ public:
         Gtk::TreeModelColumn<unsigned long> color;
         Gtk::TreeModelColumn<gint> refcount;
         Gtk::TreeModelColumn<SPGradient *> data;
-        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf>> pixbuf;
+        Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Texture>> texture;
     };
 
 private:
