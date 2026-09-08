@@ -92,6 +92,7 @@ void PageManager::addPage(SPPage *page)
     page->_updateTotalHRefCount(1);
     _pages.push_back(page);
     reorderPages();
+    selectPage(page); // Since this is called from namedview, select last page added.
     pagesChanged(page);
 }
 
@@ -381,14 +382,11 @@ void PageManager::pagesChanged(SPPage *new_page)
         selectPage(nullptr);
     }
 
-    _pages_changed_signal.emit(new_page);
-
     if (!_selected_page) {
-        for (auto &page : _pages) {
-            selectPage(page);
-            break;
-        }
+        selectPage(new_page);
     }
+
+    _pages_changed_signal.emit(new_page);
 }
 
 /**
