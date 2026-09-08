@@ -55,7 +55,7 @@ ColorPage::ColorPage(std::shared_ptr<Space::AnySpace> space, std::shared_ptr<Col
         }
     });
 
-    _selected_colors->signal_cleared.connect([this]() {
+    _selected_cleared_connection = _selected_colors->signal_cleared.connect([this]() {
         auto scoped = SignalBlocker(_specific_changed_connection);
         _specific_colors->clear();
     });

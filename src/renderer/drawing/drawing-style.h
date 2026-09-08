@@ -401,21 +401,12 @@ public:
 private:
     struct CachedPattern
     {
-        // Compile problems!
-        mutable std::unique_ptr<InitLock> _inited;
+        mutable std::unique_ptr<InitLock> inited = std::make_unique<InitLock>();
         mutable std::shared_ptr<Pattern> pattern;
 
-        InitLock &inited() const {
-            if (!_inited) {
-                _inited = std::make_unique<InitLock>();
-            }
-            return *_inited;
-        }
         void reset()
         {
-            if (_inited) {
-                _inited->reset();
-            }
+            inited->reset();
             pattern.reset();
         }
     };

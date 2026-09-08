@@ -35,7 +35,7 @@ std::shared_ptr<Pattern> DrawingStyle::preparePaint(Context &dc, DrawingOptions 
     }
 
     // Otherwise, init or re-use cached pattern.
-    cp.inited().init([&] {
+    cp.inited->init([&] {
         // Handle remaining non-DrawingPattern cases.
         switch (paint.type) {
             case DrawingStyle::PaintType::SERVER:
