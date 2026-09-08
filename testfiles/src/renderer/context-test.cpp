@@ -375,21 +375,23 @@ TEST_F(RenderContextTest, SetSourceSurface)
 
 TEST_F(RenderContextTest, PaintText)
 {
+    static auto font_target = "GeomTest 18";
     context->setSource(Color(cmyk_cpp, {0.0, 1.0, 0.0, 0.6, 1.0}));
-    context->move_to(0, -9);
-    context->paintText("Sans 21", "N");
-    auto font_found = Pango::FontDescription("Sans 21").to_string();
-    if (font_found != "Sans 21") {
-        GTEST_SKIP() << "Font 'Sans 21' not available, found '" << font_found << "' instead.";
+    context->paintText(font_target, "C");
+    auto font_found = Pango::FontDescription(font_target).to_string();
+    if (font_found != font_target) {
+        GTEST_SKIP() << "Font '" << font_target << "' not available, found '" << font_found << "' instead.";
     } else {
+        // Font contains various shapes, C is a triangle
         EXPECT_TRUE(is_image_eq(*surface,
-                        " nt  8 "
-                        "4nn  xt"
-                        "4nxt xt"
-                        "4n4n xt"
-                        "4n 8nxt"
-                        "4n  xnt"
-                        "4n  4nt"));
+            "nnnnnnn"
+            "nnnnxnn"
+            "nnnt4nn"
+            "nnn  xn"
+            "nnt  4n"
+            "nn    8"
+            "ntttttt"
+        ));
     }
 }
 
