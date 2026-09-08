@@ -20,6 +20,21 @@ TEST(SurfaceToTextureTest, RGB16SurfaceTexture)
     EXPECT_EQ(texture->get_height(), 423);
 }
 
+TEST(SurfaceToTextureTest, MemoryReferences)
+{
+    Gtk::init_gtkmm_internals();
+
+    auto surface = std::make_shared<Renderer::Surface>(INKSCAPE_TESTS_DIR "/data/renderer/transform-source-16.png");
+    auto cobj = cairo_surface_reference(surface->getCairoSurfaces()[0]->cobj());
+    auto texture = Renderer::build_texture(surface);
+    EXPECT_EQ(cairo_surface_get_reference_count(cobj), 3); // shared ptr, texture, and our manual ref
+    surface.reset();
+    EXPECT_EQ(cairo_surface_get_reference_count(cobj), 2);
+    texture.reset();
+    EXPECT_EQ(cairo_surface_get_reference_count(cobj), 1);
+    cairo_surface_destroy(cobj);
+}
+
 /*
   Local Variables:
   mode:c++
