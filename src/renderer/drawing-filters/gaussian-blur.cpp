@@ -96,7 +96,12 @@ void GaussianBlur::render(Slot &slot) const
 
 std::shared_ptr<Surface> GaussianBlur::_render(Slot &slot, int input) const
 {
+
     auto out = slot.get_copy(input, _color_space);
+    Geom::IntPoint size = out->dimensions();
+    if (size.x() <= 0 || size.y() <= 0) {
+        return out; // nothing to do, prevent transform crash
+    }
 
     // Handle bounding box case.
     auto &item_opt = slot.get_item_options();
@@ -115,7 +120,6 @@ std::shared_ptr<Surface> GaussianBlur::_render(Slot &slot, int input) const
 
     Geom::Point deviation(dx * trans.expansionX() * device_scale,
                           dy * trans.expansionY() * device_scale);
-    Geom::IntPoint size = out->dimensions();
     Geom::Point old = size;
 
     downsampleForQuality(slot.get_drawing_options().blurquality, size, deviation);
