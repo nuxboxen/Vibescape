@@ -34,7 +34,7 @@ void Morphology::render(Slot &slot) const
 
     auto mid = input->similar();
     auto out = mid->similar();
-    out->run_pixel_filter<PixelAccessEdgeMode::NO_CHECK,
+    out->run_pixel_filter<PixelAccessEdgeMode::ZERO,
                           PixelAccessEdgeMode::ZERO,
                           PixelAccessEdgeMode::ZERO>(
         PixelFilter::Morphology(Operator == MorphologyOperator::ERODE, radius), *mid, *input);

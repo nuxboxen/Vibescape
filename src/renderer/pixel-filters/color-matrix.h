@@ -46,10 +46,9 @@ struct ColorMatrixBase
     template <class AccessDst, class AccessSrc>
     void filter(AccessDst &dst, AccessSrc const &src) const
     {
-        // typename AccessDst::Color out; // Compiler error
-        auto out = dst.colorAt(0, 0); // Workaround
+        typename AccessDst::Color out;
 
-        auto matrix_width = AccessSrc::channel_total + 1;
+        auto matrix_width = AccessSrc::channel_total + AccessSrc::has_alpha;
         auto matrix_height = out.size();
         auto matrix = get_matrix(matrix_width, matrix_height);
 

@@ -64,6 +64,11 @@ struct Morphology
     template <typename Comparison, Geom::Dim2 axis, class AccessDst, class AccessSrc>
     void singleAxisPass(AccessDst &dst, AccessSrc const &src) const
     {
+        // Morphology will attempt to write to pixels outside the w*h so refuse to
+        // filter on pixel access' with no edge checking.
+        assert(dst.checks_edge);
+        assert(src.checks_edge);
+
         int channels = dst.getOutputChannels() + 1;
         Comparison comp;
 
