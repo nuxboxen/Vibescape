@@ -98,6 +98,7 @@ private:
     void update_label(SPObject* object, Inkscape::Selection* selection);
     void update_size_location();
     void update_filters(SPObject* object);
+    void populate_filter_menu();
     void update_lpes(SPObject* object);
     void update_names(SPObject* object);
     void update_interactive_props(SPObject* object);
@@ -142,6 +143,8 @@ private:
     Gtk::Button& _clear_blur;
     Gtk::Button& _add_blur;
     Gtk::Button& _add_filter;
+    Gtk::MenuButton& _select_filter;
+    Gtk::ListBox& _filter_select_list;
     Gtk::ListBox& _lpe_menu;
     Gtk::ListBox& _lpe_list;
     Gtk::MenuButton& _add_lpe;

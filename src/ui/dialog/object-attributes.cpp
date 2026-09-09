@@ -357,6 +357,8 @@ details::AttributesPanel::AttributesPanel()
     , _clear_blur(get_widget<Gtk::Button>(_builder, "clear-blur"))
     , _add_blur(get_widget<Gtk::Button>(_builder, "add-blur"))
     , _add_filter(get_widget<Gtk::Button>(_builder, "add-filter"))
+    , _select_filter(get_widget<Gtk::MenuButton>(_builder, "select-filter"))
+    , _filter_select_list(get_widget<Gtk::ListBox>(_builder, "filter-select-list"))
     , _blur(get_widget<Widget::InkSpinButton>(_builder, "filter-blur"))
     , _lpe_menu(get_widget<Gtk::ListBox>(_builder, "lpe-menu"))
     , _lpe_search(get_widget<Gtk::SearchEntry2>(_builder, "lpe-search"))
@@ -709,7 +711,59 @@ void details::AttributesPanel::add_filters(bool separate) {
      if (auto container = _desktop->getContainer()) {
         container->new_dialog("FilterEffects");
      }
-   });
+    });
+     _filter_select_list.signal_row_activated().connect([this](Gtk::ListBoxRow* row) {
+    if (!row || !can_update()) return;
+
+    auto child = row->get_child();
+    auto filter = child ? static_cast<SPFilter*>(child->get_data("filter")) : nullptr;
+    auto item = cast<SPItem>(_current_object);
+    if (!filter || !item || !filter->valid_for(item)) return;
+
+    auto scoped(_update.block());
+    sp_style_set_property_url(item, "filter", filter, false);
+    DocumentUndo::done(_current_object->document, RC_("Undo", "Change filter"), "dialog-fill-and-stroke", TAG);
+    update_filters(_current_object);
+
+    _select_filter.popdown();
+    });
+    if (auto popover = _select_filter.get_popover()) {
+        popover->signal_show().connect([this] { populate_filter_menu(); });
+    }
+
+    _blur.signal_value_changed().connect([this](auto value) {
+        if (!can_update()) return;
+
+        auto scoped(_update.block());
+        if (modify_filter_gaussian_blur_amount(cast<SPItem>(_current_object), value * 100)) {
+            DocumentUndo::maybeDone(_current_object->document, "change-blur-radius", RC_("Undo", "Change blur filter"), "dialog-fill-and-stroke", TAG);
+        }
+    });
+  
+}
+
+   void details::AttributesPanel::populate_filter_menu() {
+    while (auto child = _filter_select_list.get_first_child()) {
+        _filter_select_list.remove(*child);
+    }
+
+    if (!_document || !_current_object) return;
+
+    auto item = cast<SPItem>(_current_object);
+    auto current = item && item->style ? item->style->getFilter() : nullptr;
+
+    for (auto obj : _document->getResourceList("filter")) {
+        auto filter = cast<SPFilter>(obj);
+        if (!filter || filter == current) continue;
+
+        auto label = filter->label();
+        auto id = filter->getId();
+        auto row_label = Gtk::make_managed<Gtk::Label>(label ? label : (id ? id : _("Filter")));
+        row_label->set_halign(Gtk::Align::START);
+        row_label->set_margin(4);
+        row_label->set_data("filter", filter);
+        _filter_select_list.append(*row_label);
+    }
     _blur.signal_value_changed().connect([this](auto value) {
         if (!can_update()) return;
 
@@ -887,6 +941,14 @@ void details::AttributesPanel::update_filters(SPObject* object) {
     _clear_filters.set_visible(other_filter);
 
     _add_blur.set_visible(!gaussian_blur);
+    bool other_filters_available = false;
+    if (_document) {
+        for (auto obj : _document->getResourceList("filter")) {
+            auto f = cast<SPFilter>(obj);
+            if (f && f != filter) { other_filters_available = true; break; }
+        }
+    }
+    _select_filter.set_visible(other_filters_available);
     _add_filter.set_visible(true);
     _add_filter.set_icon_name(other_filter ? "edit" : "plus");
     _add_filter.set_tooltip_text(
