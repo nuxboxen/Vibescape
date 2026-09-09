@@ -38,6 +38,9 @@
 #include "io/sys.h"
 #include "io/resource.h"
 
+#include "document.h"
+#include "libnrtype/document-font-map.h"
+#include "libnrtype/document-font-prefs.h"
 #include "libnrtype/font-factory.h"
 #include "libnrtype/font-instance.h"
 #include "libnrtype/font-utils.h"
@@ -469,8 +472,15 @@ std::unique_ptr<FontInstance> FontFactory::create_face(PangoFontDescription* des
     return std::make_unique<FontInstance>(pango_font_map_load_font(fontServer, fontContext, descr), descr_copy);
 }
 
-std::shared_ptr<FontInstance> FontFactory::Face(PangoFontDescription *descr, bool canFail)
+std::shared_ptr<FontInstance> FontFactory::Face(PangoFontDescription *descr, bool canFail, SPDocument *document)
 {
+    if (document && Inkscape::DocumentFontPrefs::enabled()) {
+        auto &dfm = document->getDocumentFontMap();
+        if (dfm.has_faces()) {
+            return dfm.face(descr, canFail);
+        }
+    }
+
     // Mandatory huge size (hinting workaround).
     pango_font_description_set_size(descr, fontSize * PANGO_SCALE);
 

@@ -29,6 +29,7 @@
 #include "util/cached_map.h"
 
 class FontInstance;
+class SPDocument;
 
 // Wraps calls to pango_font_description_get_family with some name substitution
 char const *sp_font_description_get_family(PangoFontDescription const *fontDescr);
@@ -83,7 +84,7 @@ public:
     std::shared_ptr<FontInstance> FaceFromDescr(char const *family, char const *style);
     std::shared_ptr<FontInstance> FaceFromPangoString(char const *pangoString);
     std::shared_ptr<FontInstance> FaceFromFontSpecification(char const *fontSpecification);
-    std::shared_ptr<FontInstance> Face(PangoFontDescription *descr, bool canFail = true);
+    std::shared_ptr<FontInstance> Face(PangoFontDescription *descr, bool canFail = true, SPDocument *document = nullptr);
 
     std::unique_ptr<FontInstance> create_face(PangoFontDescription* descr);
 
