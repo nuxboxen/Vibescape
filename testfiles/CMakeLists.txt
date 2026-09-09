@@ -228,7 +228,7 @@ add_unit_tests(TEST_SOURCES
                             "renderer/pixel-filter-*-test.cpp"
                             "renderer/surface-filter-*-test.cpp"
                             "renderer/surface-test.cpp"
-                    ENVIRONMENT "INKSCAPE_FONTCONFIG=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/isolated.conf"
+                    ENVIRONMENT "FONTCONFIG_FILE=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/geomtest.conf"
                                 "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
                     EXTRA_LIBS renderer_unit_lib colors_unit_lib)
 

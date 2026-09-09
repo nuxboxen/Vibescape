@@ -4,7 +4,6 @@
 #include <gtest/gtest.h>
 #include <glibmm/init.h>
 #include <pangomm/wrap_init.h>
-#include <pangomm/fontdescription.h>
 
 #include "colors/color.h"
 #include "colors/manager.h"
@@ -375,24 +374,21 @@ TEST_F(RenderContextTest, SetSourceSurface)
 
 TEST_F(RenderContextTest, PaintText)
 {
-    static auto font_target = "GeomTest 18";
+    static auto font_target = "GeomTest 19";
+
     context->setSource(Color(cmyk_cpp, {0.0, 1.0, 0.0, 0.6, 1.0}));
+    context->move_to(-3, -3);
     context->paintText(font_target, "C");
-    auto font_found = Pango::FontDescription(font_target).to_string();
-    if (font_found != font_target) {
-        GTEST_SKIP() << "Font '" << font_target << "' not available, found '" << font_found << "' instead.";
-    } else {
-        // Font contains various shapes, C is a triangle
-        EXPECT_TRUE(is_image_eq(*surface,
-            "nnnnnnn"
-            "nnnnxnn"
-            "nnnt4nn"
-            "nnn  xn"
-            "nnt  4n"
-            "nn    8"
-            "ntttttt"
-        ));
-    }
+    // Font contains various shapes, C is a triangle
+    EXPECT_TRUE(is_image_eq(*surface,
+         "nnnnnnn"
+         "nnn nnn"
+         "nn  nnn"
+         "nt   nn"
+         "n    tn"
+         "t     n"
+         "nnnnnnn"
+    ));
 }
 
 /*
