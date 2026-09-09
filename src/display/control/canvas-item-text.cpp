@@ -122,6 +122,8 @@ void CanvasItemText::_update(bool)
  */
 void CanvasItemText::_render(Inkscape::CanvasItemBuffer buf) const
 {
+    buf.cr.save();
+
     // Screen to desktop coords.
     buf.cr.translate(-buf.rect.left(), -buf.rect.top());
 
