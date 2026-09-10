@@ -29,7 +29,7 @@ TEST(SurfaceDisplacementMapTest, OverlapEdges)
     auto map = TestSurface({21, 21}, 1, {});
     map.run_pixel_filter(pixels);
 
-    auto displace = PixelFilter::DisplacementMap(0, 1, 255 * 6, 255 * 6);
+    auto displace = PixelFilter::DisplacementMap(0, 1, 6, 6);
     auto dest = TestSurface({21, 21}, 1, cmyk);
     dest.run_pixel_filter<PixelAccessEdgeMode::NO_CHECK, PixelAccessEdgeMode::ZERO>(displace, texture, map);
 

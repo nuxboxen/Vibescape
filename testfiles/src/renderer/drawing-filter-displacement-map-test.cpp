@@ -10,7 +10,7 @@ TEST(DrawingDisplacementMapTest, BananaMap)
     dm->set_output(1);
 
     dm->set_channels(1, 2);
-    dm->set_scale(40);
+    dm->set_scale(0.16);
     dm->set_input(0, DrawingFilter::SLOT_SOURCE_IMAGE);
     dm->set_input(1, DrawingFilter::SLOT_BACKGROUND_IMAGE);
 

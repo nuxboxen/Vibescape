@@ -43,16 +43,16 @@ TEST(DrawingCompositeTest, CompositeArithmetic)
     cp->setInterpolationSpace(rgb);
 
     EXPECT_PRIMITIVE_IS(std::move(cp),
-                        "          "
-                        "     Y    "
-                        "    XXX   "
-                        "   XXXXX  "
-                        "  XXXXXXX "
-                        " 88888888 "
-                        "  ::::::4 "
-                        "   ::::5  "
-                        "    ::5   "
-                        "          ");
+                        "RRRRRRRRRR"
+                        "RRRRRZRRRR"
+                        "TTTTXXXTTT"
+                        "XXXXXXXXXX"
+                        "XXXXXXXXXX"
+                        "8888888888"
+                        "::::::::::"
+                        "::::::::::"
+                        "::::::::::"
+                        "6666666666");
 }
 
 /*

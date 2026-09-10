@@ -23,7 +23,7 @@ TEST(PixelFilterDisplacementTest, DisplacementMap)
         }
     }
 
-    auto f = DisplacementMap(0, 1, 255 * 6, 255 * 6);
+    auto f = DisplacementMap(0, 1, 6, 6);
     auto dst = TestSurface<MEMORY_FORMAT_CMYA_KA256F>(21, 21);
     f.filter(*dst._d, *texture._d, *map._d);
 
