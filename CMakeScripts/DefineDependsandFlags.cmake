@@ -345,8 +345,8 @@ else()
     message(STATUS "Glycin not found or too old, will compile it from source")
     include(ExternalProject)
     ExternalProject_Add(glycin
-        URL https://gitlab.gnome.org/GNOME/glycin/-/archive/2.2.beta/glycin-2.2.beta.tar.bz2
-        URL_HASH SHA256=ab96e49e1437309258aac1073b0fa93f35041b54a9d885699edb401effe00083
+        URL https://gitlab.gnome.org/GNOME/glycin/-/archive/2.2.0/glycin-2.2.0.tar.bz2
+        URL_HASH SHA256=5e03ee8a4364367e729e8dbf2f8f3f3d3eb4a41dfc11f08fddbd5f804279da1f
         # Specify loaders list, to exclude glycin-jxl until Ubuntu ships the required libjxl-dev 0.11.2 version
         CONFIGURE_COMMAND meson setup --libdir lib . ../glycin --prefix=${CMAKE_CURRENT_BINARY_DIR}/deps -Dloaders=glycin-heif,glycin-image-rs,glycin-svg
         BUILD_COMMAND meson compile
