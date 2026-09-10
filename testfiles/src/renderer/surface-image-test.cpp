@@ -35,6 +35,11 @@ TEST(SurfaceImage, LoadPngFile)
     , 50);
 }
 
+/**
+ * LoadPngSaveJpegBase64 and LoadPngWithICCProfile are disabled because they cause crashes in glycin in CI.
+ * We have not been able to reproduce these issues locally, it's only seen in CI.
+ * The thrown exception is "Failed to allocate memory: Operation not permitted (os error 1)"
+ * If you can figure out why that's happening, please re-enable these.
 TEST(SurfaceImage, LoadPngSaveJpegBase64)
 {
     Glib::init();
@@ -76,6 +81,7 @@ TEST(SurfaceImage, LoadPngWithICCProfile)
     , 9);
     image.write_to_png("/tmp/foo");
 }
+*/
 
 TEST(SurfaceImage, LoadSVGFile)
 {
