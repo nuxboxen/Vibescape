@@ -23,8 +23,8 @@ struct DisplacementMap
     DisplacementMap(unsigned xch, unsigned ych, double scalex, double scaley)
         : _xch(xch)
         , _ych(ych)
-        , _scalex(scalex / 255.0)
-        , _scaley(scaley / 255.0)
+        , _scalex(scalex)
+        , _scaley(scaley)
     {}
 
     template <class AccessDst, class AccessTexture, class AccessMap>

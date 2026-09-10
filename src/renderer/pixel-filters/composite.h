@@ -33,11 +33,11 @@ struct CompositeArithmetic
     void filter(AccessDst &dst, AccessSrc const &src) const
     {
         //dst.forEachPixel([&](int x, int y) {
-        for (auto y = 0; y < dst.width(); y++) {
-        for (auto x = 0; x < dst.height(); x++) {
+        for (auto y = 0; y < dst.height(); y++) {
+        for (auto x = 0; x < dst.width(); x++) {
             auto c1 = src.colorAt(x, y, true);
             auto c2 = dst.colorAt(x, y, true);
-            for (unsigned i = 0; i < c1.size() - 1 && i < c2.size() - 1; i++) {
+            for (unsigned i = 0; i < c1.size() && i < c2.size(); i++) {
                 c2[i] = std::clamp(_k1 * c1[i] * c2[i] + _k2 * c1[i] + _k3 * c2[i] + _k4, 0.0, 1.0);
             }
             dst.colorTo(x, y, c2, true);
