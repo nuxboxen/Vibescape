@@ -222,7 +222,8 @@ std::vector<Cairo::RefPtr<Cairo::ImageSurface>> const &Image::getCairoSurfaces()
     } else if (_image) {
         // Moving some parts of this to the loader requires more metadata about the file
         // such as it's width and height, prior to being fully loaded. Not available in glycin.
-        if ((_frame = gly_image_next_frame(_image, nullptr))) {
+        GError *error = nullptr;
+        if ((_frame = gly_image_next_frame(_image, &error))) {
 
             // There's a future here were we support 4 channel CMYK but Glycin
             // today can't do it. If upstream supports it, we'd load in two memory
@@ -254,7 +255,9 @@ std::vector<Cairo::RefPtr<Cairo::ImageSurface>> const &Image::getCairoSurfaces()
                     break;
             }
         } else {
-            throw Image::ImageError("Glycin: No frame to load.");
+            auto msg = "Glycin: No frame to load: " + std::string(error->message);
+            g_error_free(error);
+            throw Image::ImageError(msg);
         }
     } else if (_doc) {
         // Rendering into the surfaces at get time does require a bit of const shinanigans.
