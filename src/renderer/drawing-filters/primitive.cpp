@@ -25,10 +25,9 @@
 namespace Inkscape::Renderer::DrawingFilter {
 
 Primitive::Primitive()
+    : _input(SLOT_NOT_SET)
+    , _output(SLOT_NOT_SET)
 {
-    _input = SLOT_NOT_SET;
-    _output = SLOT_NOT_SET;
-
     // Primitive subregion, should default to the union of all subregions of referenced nodes
     // (i.e. other filter primitives except feTile).  If no referenced nodes, defaults to filter
     // region expressed in percent. At the moment, we do not check referenced nodes.

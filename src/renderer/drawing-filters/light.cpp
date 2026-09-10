@@ -25,9 +25,12 @@ void DiffuseLighting::render(Slot &slot) const
     static auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
     static auto default_color = Colors::Color(rgb, {0, 0, 0, 1});
 
-    // Only alpha channel of input is used, no need to check input color_interpolation_filter value.
-    auto input = slot.get_copy(_input, _color_space);
-    auto output = slot.get(_input)->similar({}, input->getColorSpace());
+    // Only alpha channel of input is used, no need to convert to the color interpolation space.
+    auto input = slot.get(_input);
+
+    // Output is the same dimensions as the input, but not an alpha channel
+    auto output = slot.get_empty_copy(_input, _color_space);
+    auto cs = output->getColorSpace() ? output->getColorSpace() : rgb;
 
     int device_scale = slot.get_drawing_options().device_scale;
     Geom::Rect slot_area = *slot.get_item_options().get_slot_box();
@@ -40,8 +43,6 @@ void DiffuseLighting::render(Slot &slot) const
 
     double x0 = p.x(), y0 = p.y();
     double scale = surfaceScale * trans.descrim() * device_scale;
-
-    auto cs = output->getColorSpace() ? output->getColorSpace() : rgb;
 
     std::vector<double> color;
     auto lc = lighting_color.value_or(default_color);

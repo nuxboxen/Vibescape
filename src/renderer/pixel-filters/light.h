@@ -112,10 +112,10 @@ struct Lighting
     {}
 
 protected:
-    template <class AccessSrc, typename Output>
+    template <class AccessSrc, typename Color>
     void doLighting(AccessSrc const &src, int x, int y, vector3d light,
-                    std::array<double, AccessSrc::channel_total> const &color,
-                    Output &output) const
+                    Color const &input,
+                    Color &output) const
     {
         if (_specular) {
             normalized_sum(light, light, EYE_VECTOR);
@@ -124,8 +124,8 @@ protected:
         double sp = scalar_product(normal, light);
         double k = sp <= 0.0 ? 0.0 : _const * std::pow(sp, _exp);
 
-        for (unsigned i = 0; i < color.size() - 1 && i < output.size(); i++) {
-            output[i] = std::clamp(k * color[i], 0.0, 1.0);
+        for (unsigned i = 0; i < input.size() - 1 && i < output.size(); i++) {
+            output[i] = std::clamp(k * input[i], 0.0, 1.0);
             output.back() = std::max(output[i], output.back());
         }
     }
@@ -259,13 +259,13 @@ protected:
                        p01 = src.alphaAt(x - 1, y    ), p11 = 0.0,                   p21 = src.alphaAt(x + 1, y    ),
                        p02 = src.alphaAt(x - 1, y + 1), p12 = src.alphaAt(x, y + 1), p22 = src.alphaAt(x + 1, y + 1);
                 normal[X_3D] =
-                    -1.0 * p00 +0.0 * p10 +1.0 * p20
-                    -2.0 * p01 +0.0 * p11 +2.0 * p21
-                    -1.0 * p02 +0.0 * p12 +1.0 * p22;
+                    -1.0 * p00 + 0.0 * p10 + 1.0 * p20
+                    -2.0 * p01 + 0.0 * p11 + 2.0 * p21
+                    -1.0 * p02 + 0.0 * p12 + 1.0 * p22;
                 normal[Y_3D] =
-                    -1.0 * p00 -2.0 * p10 -1.0 * p20
-                    +0.0 * p01 +0.0 * p11 +0.0 * p21
-                    +1.0 * p02 +2.0 * p12 +1.0 * p22;
+                    -1.0 * p00 - 2.0 * p10 - 1.0 * p20
+                    +0.0 * p01 + 0.0 * p11 + 0.0 * p21
+                    +1.0 * p02 + 2.0 * p12 + 1.0 * p22;
             }
         }
         normal[X_3D] *= fx;
@@ -297,17 +297,16 @@ struct DistantLight : public Lighting
     void filter(AccessDst &dst, AccessSrc const &src) const
         requires (AccessSrc::checks_edge)
     {
-        typename AccessSrc::Color lit_color;
+        typename AccessDst::Color lit_color;
         typename AccessDst::Color output;
         // Conversion of color here
-        for (auto i = 0; i < _color.size(); i++) {
+        for (auto i = 0; i < _color.size() && i < lit_color.size(); i++) {
             lit_color[i] = _color[i];
         }
-        if (!_specular) { // Diffuse is alpha 1.0
-            output.back() = 1.0;
-        }
+
         for (int y = 0; y < dst.height(); y++) {
             for (int x = 0; x < dst.width(); x++) {
+                output.back() = !_specular; // Diffuse is alpha 1.0, Specular 0.0
                 doLighting(src, x, y, _lightv, lit_color, output);
                 dst.colorTo(x, y, output, true);
             }
@@ -345,15 +344,14 @@ struct PointLight : public Lighting
     void filter(AccessDst &dst, AccessSrc const &src) const
         requires (AccessSrc::checks_edge)
     {
-        typename AccessSrc::Color lit_color;
+        typename AccessDst::Color lit_color;
         typename AccessDst::Color output;
         // Conversion of color here
-        for (auto i = 0; i < _color.size(); i++) {
+        for (auto i = 0; i < _color.size() && i < lit_color.size(); i++) {
             lit_color[i] = _color[i];
         }
-        if (!_specular) { // Diffuse is alpha 1.0
-            output.back() = 1.0;
-        }
+        output.back() = !_specular; // Diffuse is alpha 1.0, Specular 0.0
+
         for (int y = 0; y < dst.height(); y++) {
             for (int x = 0; x < dst.width(); x++) {
                 vector3d light{_coords[X_3D] - (_x0 + x), _coords[Y_3D] - (_y0 + y),
@@ -395,7 +393,7 @@ struct SpotLight : public Lighting
     void filter(AccessDst &dst, AccessSrc const &src) const
         requires (AccessSrc::checks_edge)
     {
-        typename AccessSrc::Color lit_color;
+        typename AccessDst::Color lit_color;
         typename AccessDst::Color output;
         if (!_specular) { // Diffuse is alpha 1.0
             output.back() = 1.0;
@@ -413,7 +411,7 @@ struct SpotLight : public Lighting
                 } else {
                     spmod = std::pow(spmod, _spe_exp);
                 }
-                for (unsigned i = 0; i < _color.size() - 1; i++) {
+                for (auto i = 0; i < _color.size() && i < lit_color.size(); i++) {
                     lit_color[i] = _color[i] * spmod;
                 }
                 doLighting(src, x, y, light, lit_color, output);

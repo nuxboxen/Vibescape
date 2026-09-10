@@ -81,6 +81,11 @@ public:
     std::shared_ptr<Surface> get_copy(int slot, std::shared_ptr<Colors::Space::AnySpace> const &space) const;
 
     /**
+     * Create a new surface of the same dimensions with a new color space
+     */
+    std::shared_ptr<Surface> get_empty_copy(int slot, std::shared_ptr<Colors::Space::AnySpace> const &space) const;
+
+    /**
      * Returns the same as get() but will undo any transformation applied
      * to the input source graphic when filters were appplied.
      */

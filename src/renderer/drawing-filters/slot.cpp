@@ -88,6 +88,18 @@ std::shared_ptr<Surface> Slot::get_copy(int slot, std::shared_ptr<Colors::Space:
     return get_copy(slot);
 }
 
+std::shared_ptr<Surface> Slot::get_empty_copy(int slot, std::shared_ptr<Colors::Space::AnySpace> const &space) const
+{
+    if (_int_based && space && space->getType() != Colors::Space::Type::Alpha) {
+        return get_empty_copy(slot, {});
+    }
+    auto surface = get(slot);
+    if (!surface) {
+        return {};
+    }
+    return surface->similar({}, space);
+}
+
 void Slot::set_alpha(int slot_from, int slot_to)
 {
     static auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
@@ -136,10 +148,19 @@ void Slot::set(int slot, std::shared_ptr<Surface> surface)
 
     auto found = _slots.find(slot);
     if (found == _slots.end() || found->second != surface) {
+        /* DEBUG, Keep for filter debugging
+        static int total = 0;
+        surface->write_to_png("/tmp/filter/" + std::to_string(total++) + "-" + std::to_string(slot) + "-");
+        */
         _slots[slot] = std::move(surface);
     }
 
-    _last_out = slot;
+    // Set is called by the rendering initialisation, but last_out should
+    // never override it's SLOT_SOURCE_IMAGE default during init.
+    if (slot != SLOT_SOURCE_IMAGE && slot != SLOT_BACKGROUND_IMAGE &&
+        slot != SLOT_SOURCE_ALPHA && slot != SLOT_BACKGROUND_ALPHA) {
+        _last_out = slot;
+    }
 }
 
 std::shared_ptr<Surface> Slot::get_result(int slot) const

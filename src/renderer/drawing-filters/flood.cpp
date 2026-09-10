@@ -26,11 +26,7 @@ Flood::Flood()
 
 void Flood::render(Slot &slot) const
 {
-    auto input = slot.get(_input);
-
-    // Disable color-spaces if parent is in INT format
-    auto parent_cs = input->getColorSpace();
-    auto out = input->similar({}, parent_cs ? _color_space : parent_cs);
+    auto out = slot.get_empty_copy(_input, _color_space);
 
     // Get filter primitive area in user units
     Geom::Rect fp = filter_primitive_area(slot.get_item_options());

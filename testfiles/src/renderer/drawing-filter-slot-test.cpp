@@ -137,9 +137,9 @@ TEST(DrawingFilterSlotTest, setSetLast)
     auto surface2 = std::make_shared<Surface>(Geom::IntPoint(4, 4), 1, rgb);
 
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, surface1);
-    EXPECT_EQ(slot.get(), surface1);
+    EXPECT_EQ(slot.get(), surface1); // Source image is the first default
     slot.set(DrawingFilter::SLOT_BACKGROUND_IMAGE, surface2);
-    EXPECT_EQ(slot.get(), surface2);
+    EXPECT_EQ(slot.get(), surface1); // Background never sets last
     EXPECT_EQ(slot.get(DrawingFilter::SLOT_BACKGROUND_IMAGE), surface2);
     EXPECT_EQ(slot.get(DrawingFilter::SLOT_SOURCE_IMAGE), surface1);
     slot.set(2, surface1);
@@ -148,6 +148,8 @@ TEST(DrawingFilterSlotTest, setSetLast)
     slot.set(2, surface2);
     EXPECT_EQ(slot.get(), surface2);
     EXPECT_EQ(slot.get(2), surface2);
+    slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, surface1);
+    EXPECT_EQ(slot.get(), surface2); // Source never sets last
 }
 
 TEST(DrawingFilterSlotTest, setAlphaSlot)
