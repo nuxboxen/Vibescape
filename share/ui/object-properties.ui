@@ -350,30 +350,14 @@
 </child>
 
 <child>
-  <object class="GtkEntry" id="filter-primitive">
-    <property name="max-width-chars">8</property>
-    <property name="editable">false</property>
-    <property name="focus-on-click">false</property>
-    <property name="focusable">false</property>
-    <property name="can-focus">false</property>
-    <property name="hexpand">true</property>
-    <layout>
+   <object class="GtkBox" id="filter-dropdown">
+     <property name="hexpand">true</property>
+     <property name="hexpand-set">true</property>
+   <layout>
       <property name="column">2</property>
       <property name="row">2</property>
-    </layout>
-  </object>
-</child>
-<child>
-  <object class="GtkMenuButton" id="select-filter">
-    <property name="valign">center</property>
-    <property name="has-frame">false</property>
-    <property name="popover">filter-select-popup</property>
-    <property name="tooltip-text" translatable="yes">Select another filter already used in this document</property>
-    <property name="icon-name">pan-down-symbolic</property>
-    <layout>
-      <property name="column">3</property>
-      <property name="row">2</property>
-    </layout>
+      <property name="column-span">2</property>
+   </layout>
   </object>
 </child>
 <child>
@@ -496,21 +480,4 @@
       </object>
     </property>
   </object>
-  <object class="GtkPopover" id="filter-select-popup">
-  <property name="child">
-    <object class="GtkScrolledWindow">
-      <property name="height-request">160</property>
-      <property name="width-request">150</property>
-      <property name="vscrollbar-policy">automatic</property>
-      <property name="hscrollbar-policy">never</property>
-      <property name="has-frame">true</property>
-      <property name="child">
-        <object class="GtkListBox" id="filter-select-list">
-          <property name="selection-mode">none</property>
-          <property name="activate-on-single-click">true</property>
-        </object>
-      </property>
-    </object>
-  </property>
-</object>
 </interface>
