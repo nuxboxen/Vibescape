@@ -95,9 +95,6 @@ public:
     /// Add a directory from which to include additional fonts
     void AddFontsDir(char const *utf8dir);
 
-    /// Add an additional font.
-    void AddFontFile(char const *utf8file);
-
     /// Add a new font config file
     void AddFontConfig(char const *utf8file);
 
