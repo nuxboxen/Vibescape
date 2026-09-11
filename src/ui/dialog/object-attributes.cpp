@@ -682,8 +682,14 @@ void details::AttributesPanel::add_filters(bool separate) {
     _clear_filters.signal_clicked().connect([this] {
         if (!can_update()) return;
 
+        auto item = cast<SPItem>(_current_object);
+        if (!item) return;
+        auto filter = item->style ? item->style->getFilter() : nullptr;
         auto scoped(_update.block());
         remove_filter(_current_object, false);
+        if (filter) {
+            filter->collectOrphan();
+        }
         DocumentUndo::done(_current_object->document, RC_("Undo", "Remove filter"), "dialog-fill-and-stroke", TAG);
         update_filters(_current_object);
     });
@@ -932,17 +938,11 @@ void details::AttributesPanel::update_filters(SPObject* object) {
    _clear_filters.set_visible(other_filter);
  
    _add_blur.set_visible(!gaussian_blur);
-   bool other_filters_available = false;
-    if (_document) {
-        for (auto obj : _document->getResourceList("filter")) {
-          auto f = cast<SPFilter>(obj);
-          if (f && f != filter) { other_filters_available = true; break; }
-        }
-    }
-    _filter_dropdown.set_visible(other_filters_available);
-    populate_filter_menu();
-    _add_filter.set_visible(true);
-    _add_filter.set_icon_name(other_filter ? "edit" : "plus");
+   populate_filter_menu();
+   _filter_dropdown.set_visible(filter && !_filter_list.empty());
+   _add_filter.set_visible(true);
+   _add_filter.set_icon_name(other_filter ? "edit" : "plus");
+   _add_filter.set_tooltip_text(other_filter ? _("Edit filter") : _("Add filter"));
    
 }
 

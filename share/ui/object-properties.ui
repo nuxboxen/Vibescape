@@ -333,8 +333,6 @@
     </layout>
   </object>
 </child>
-
-  <!-- Filter -->
 <child>
   <object class="GtkLabel">
     <property name="halign">start</property>
@@ -348,41 +346,43 @@
     </style>
   </object>
 </child>
-
 <child>
-   <object class="GtkBox" id="filter-dropdown">
-     <property name="hexpand">true</property>
-     <property name="hexpand-set">true</property>
-   <layout>
+  <object class="GtkBox">
+    <property name="hexpand">true</property>
+    <property name="hexpand-set">true</property>
+    <property name="valign">center</property>
+    <property name="spacing">4</property>
+    <layout>
       <property name="column">2</property>
       <property name="row">2</property>
       <property name="column-span">2</property>
-   </layout>
+    </layout>
+    <child>
+      <object class="GtkBox" id="filter-dropdown">
+        <property name="hexpand">true</property>
+        <property name="hexpand-set">true</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkButton" id="clear-filters">
+        <property name="valign">center</property>
+        <property name="has-frame">false</property>
+        <property name="icon-name">minus</property>
+        <property name="tooltip-text" translatable="yes">Remove filter</property>
+      </object>
+    </child>
   </object>
 </child>
 <child>
-  <object class="GtkBox">
+  <object class="GtkButton" id="add-filter">
     <property name="valign">center</property>
+    <property name="has-frame">false</property>
+    <property name="icon-name">plus</property>
+    <property name="tooltip-text" translatable="yes">Add filter</property>
     <layout>
       <property name="column">4</property>
       <property name="row">2</property>
     </layout>
-
-    <child>
-      <object class="GtkButton" id="clear-filters">
-        <property name="tooltip-text" translatable="yes">Remove filter</property>
-        <property name="has-frame">false</property>
-        <property name="icon-name">minus</property>
-      </object>
-    </child>
-
-    <child>
-      <object class="GtkButton" id="add-filter">
-        <property name="tooltip-text" translatable="yes">Add filter</property>
-        <property name="has-frame">false</property>
-        <property name="icon-name">plus</property>
-      </object>
-    </child>
   </object>
 </child>
 </object>
