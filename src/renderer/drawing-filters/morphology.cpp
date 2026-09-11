@@ -30,7 +30,8 @@ void Morphology::render(Slot &slot) const
 
     int device_scale = slot.get_drawing_options().device_scale;
     Geom::Affine p2pb = slot.get_item_options().get_matrix_primitiveunits2pb();
-    auto radius = Geom::Point(xradius, yradius) * p2pb * device_scale;
+    auto radius = Geom::Point(fabs(xradius * p2pb.expansionX()) * device_scale,
+                              fabs(yradius * p2pb.expansionY()) * device_scale);
 
     auto mid = input->similar();
     auto out = mid->similar();

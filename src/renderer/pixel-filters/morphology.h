@@ -97,10 +97,10 @@ struct Morphology
             int out_x = 0;
 
             for (int j = 0; j < w + ri; ++j) {
+                auto input = src.colorAt(axis == Geom::Y ? in_x : i, axis == Geom::Y ? i : in_x);
+
                 for (int p = 0; p < channels; ++p) {
-                    auto input = src.colorAt(axis == Geom::Y ? in_x : i, axis == Geom::Y ? i : in_x);
-                    // Push new value onto FIFO, erasing any previous values that are "useless" (see paper) or
-                    // out-of-range
+                    // Push new value onto FIFO, erasing any previous values that are "useless" (see paper) or out-of-range
                     if (!vals[p].empty() && vals[p].front().first + wi <= j)
                         vals[p].pop_front(); // out-of-range
                     if (j < w) {
