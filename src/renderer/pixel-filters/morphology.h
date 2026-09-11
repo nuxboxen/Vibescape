@@ -97,7 +97,7 @@ struct Morphology
             int out_x = 0;
 
             for (int j = 0; j < w + ri; ++j) {
-                auto input = src.colorAt(axis == Geom::Y ? in_x : i, axis == Geom::Y ? i : in_x);
+                auto input = src.colorAt(axis != Geom::Y ? in_x : i, axis != Geom::Y ? i : in_x);
 
                 for (int p = 0; p < channels; ++p) {
                     // Push new value onto FIFO, erasing any previous values that are "useless" (see paper) or out-of-range
@@ -121,10 +121,11 @@ struct Morphology
                     }
                 }
                 if (j >= ri) {
-                    dst.colorTo(axis == Geom::Y ? out_x : i, axis == Geom::Y ? i : out_x, output);
+                    dst.colorTo(axis != Geom::Y ? out_x : i, axis != Geom::Y ? i : out_x, output);
                     out_x++;
                 }
             }
+
         });
     }
 };

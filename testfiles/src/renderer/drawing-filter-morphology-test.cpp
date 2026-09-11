@@ -18,17 +18,16 @@ TEST(DrawingMergeTest, SimpleMerge)
 
     // The result is squashed offset 45 degrees
     EXPECT_PRIMITIVE_IS(std::move(mg),
-                        "          "
-                        "          "
-                        "          "
-                        "   48     "
-                        "   888    "
-                        "    888   "
-                        "     884  "
-                        "      4   "
-                        "          "
-                        "          "
-    );
+         "          "
+         "          "
+         "          "
+         "     88   "
+         "    8884  "
+         "   8888   "
+         "   888    "
+         "    8     "
+         "          "
+         "          ");
 }
 
 /*
