@@ -764,6 +764,7 @@ SPDesktop *InkscapeApplication::createDesktop(SPDocument *document, bool replace
         desktop = desktopOpen(document, new_window);
     }
 
+    desktop->getNamedView()->set_clip_to_page(desktop, desktop->getNamedView()->clip_to_page);
     return desktop;
 }
 
