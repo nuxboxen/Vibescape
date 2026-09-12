@@ -613,7 +613,9 @@ public:
             function(
                 get_line(y),
                 get_other_line<3>(y),
-                get_line(y+1),
+                // The end doesn't use stride, as we want the end to indicate
+                // the end of the line of pixels, not the end of the surface memory.
+                get_line(y) + (_width * primary_total),
                 other.get_line(y),
                 other.template get_other_line<3>(y)
             );

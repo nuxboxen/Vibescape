@@ -10,7 +10,21 @@ TEST(PixelFilterCompositeTest, CompositeArithmetic)
     EXPECT_TRUE(FilterColors(CompositeArithmetic(0.5, 0.5, 0.2, 0.5), {0.7, 1.0, 0.5, 1.0},
                                 {1.0, 0.0, 0.0, 1.0},     // input1
                                 {{0.0, 1.0, 0.0, 1.0}})); // input2
-    EXPECT_TRUE(FilterColors(CompositeArithmetic(0.2, 0.2, 0.2, 0.8), {0.8, 1.0, 1.0, 1.0}, {0.0, 0.0, 1.0, 1.0},
+    EXPECT_TRUE(FilterColors(CompositeArithmetic(0.2, 0.2, 0.2, 0.8), {0.8, 1.0, 1.0, 1.0},
+                                {0.0, 0.0, 1.0, 1.0},
+                                {{0.0, 1.0, 0.0, 1.0}}));
+    EXPECT_TRUE(FilterColors(CompositeArithmetic(1.5, 0.5, 0.5, 0.0), {0.131, 0.297, 0.731, 0.875},
+                                {0.2, 0.4, 0.8, 0.5},
+                                {{0.2, 0.4, 0.8, 0.5}}));
+}
+
+TEST(PixelFilterCompositeTest, CompositeArithmeticInt)
+{
+    EXPECT_TRUE(FilterColors<MEMORY_FORMAT_ARGB32>(CompositeArithmetic(0.5, 0.5, 0.2, 0.5), {0.698, 1, 0.498, 1.0},
+                                {1.0, 0.0, 0.0, 1.0},     // input1
+                                {{0.0, 1.0, 0.0, 1.0}})); // input2
+    EXPECT_TRUE(FilterColors<MEMORY_FORMAT_ARGB32>(CompositeArithmetic(0.2, 0.2, 0.2, 0.8), {0.8, 1.0, 1.0, 1.0},
+                                {0.0, 0.0, 1.0, 1.0},
                                 {{0.0, 1.0, 0.0, 1.0}}));
 }
 

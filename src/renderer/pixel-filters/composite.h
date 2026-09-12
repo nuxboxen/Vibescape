@@ -32,17 +32,45 @@ struct CompositeArithmetic
     template <class AccessDst, class AccessSrc>
     void filter(AccessDst &dst, AccessSrc const &src) const
     {
-        //dst.forEachPixel([&](int x, int y) {
-        for (auto y = 0; y < dst.height(); y++) {
-        for (auto x = 0; x < dst.width(); x++) {
-            auto c1 = src.colorAt(x, y, true);
-            auto c2 = dst.colorAt(x, y, true);
-            for (unsigned i = 0; i < c1.size() && i < c2.size(); i++) {
-                c2[i] = std::clamp(_k1 * c1[i] * c2[i] + _k2 * c1[i] + _k3 * c2[i] + _k4, 0.0, 1.0);
+        src.forEachLine(dst, [k1=_k1, k2=_k2, k3=_k3, k4=_k4](AccessSrc::PrimaryType const *src1,
+                                AccessSrc::PrimaryType const *src2,
+                                AccessSrc::PrimaryType const *end,
+                                AccessDst::PrimaryType *dst1,
+                                AccessDst::PrimaryType *dst2) {
+            while (src1 < end) {
+                // NOTE: Nowhere in the SVG specification does it explain that this calulcation is done
+                // on the pre-multiplied alpha directly and not on regular colors.
+                double a1 = (AccessSrc::has_alpha ? (double)*(src1 + AccessSrc::primary_alpha_pos) * AccessSrc::primary_unscale : 1.0);
+                double a2 = (AccessDst::has_alpha ? (double)*(dst1 + AccessDst::primary_alpha_pos) * AccessDst::primary_unscale : 1.0);
+                double ao = std::clamp((k1*a1*a2 + k2*a1 + k3*a2 + k4), 0.0, 1.0);
+
+                for (int c = 0; c < AccessSrc::primary_total; c++, src1++, dst1++) {
+                    if (AccessSrc::has_alpha && c == AccessSrc::primary_alpha_pos) {
+
+                        *dst1 = ao * AccessDst::primary_scale;
+                        if constexpr (AccessSrc::has_more_channels && AccessDst::has_more_channels) {
+                            *dst2 = ao * AccessDst::primary_scale;
+                            src2++;
+                            dst2++;
+                        }
+                    } else {
+                        {
+                            double b1 = a1 > 0.0 ? (double)*src1 * AccessSrc::primary_unscale : 0.0;
+                            double b2 = a2 > 0.0 ? (double)*dst1 * AccessDst::primary_unscale : 0.0;
+                            double bo = std::clamp((k1*b1*b2 + k2*b1 + k3*b2 + k4), 0.0, ao);
+                            *dst1 = bo * AccessDst::primary_scale;
+                        }
+                        if constexpr (AccessSrc::has_more_channels && AccessDst::has_more_channels) {
+                            auto b3 = a1 > 0.0 ? *src2 * AccessSrc::primary_unscale : 0.0;
+                            auto b4 = a2 > 0.0 ? *dst2 * AccessDst::primary_unscale : 0.0;
+                            *dst2 = std::clamp((k1*b3*b4 + k2*b3 + k3*b4 + k4), 0.0, ao) * AccessDst::primary_scale;
+                            src2++;
+                            dst2++;
+                        }
+                    }
+                }
             }
-            dst.colorTo(x, y, c2, true);
-        }
-        }
+        });
     }
 };
 

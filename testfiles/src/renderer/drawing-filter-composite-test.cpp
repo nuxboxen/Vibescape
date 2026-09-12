@@ -36,23 +36,23 @@ TEST(DrawingCompositeTest, CompositeArithmetic)
     cp->set_input(0, DrawingFilter::SLOT_BACKGROUND_IMAGE);
     cp->set_input(1, DrawingFilter::SLOT_SOURCE_IMAGE);
     cp->set_operator(CompositeOperator::ARITHMETIC);
-    cp->set_arithmetic(4.0, 0.5, 1.0, 0.1);
+    cp->set_arithmetic(0.0, 0.0, 2.0, 0.0);
 
     // This is much slower in linearRGB which is the default
     auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
     cp->setInterpolationSpace(rgb);
 
-    EXPECT_PRIMITIVE_IS<PixelPatch::Method::LIGHT>(std::move(cp),
-         ".........."
-         ".....:...."
-         "....:::..."
-         "...:::::.."
-         "..::::::.."
-         ".........."
-         "...:::::.."
-         "...::::..."
-         "....::...."
-         "..........");
+    EXPECT_PRIMITIVE_IS<PixelPatch::Method::COLORS>(std::move(cp),
+         "          "
+         "     8    "
+         "    888   "
+         "   88888  "
+         "  8888888 "
+         " 88888888 "
+         "  8888884 "
+         "   88884  "
+         "    884   "
+         "          ");
 }
 
 /*

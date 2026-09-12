@@ -31,7 +31,7 @@ void Composite::render(Slot &slot) const
     }
 
     if (op == CompositeOperator::ARITHMETIC) {
-        dest->run_pixel_filter<PixelAccessEdgeMode::WRAP>(PixelFilter::CompositeArithmetic(k1, k2, k3, k4), *src);
+        dest->run_pixel_filter(PixelFilter::CompositeArithmetic(k1, k2, k3, k4), *src);
     } else {
         auto ct = Context(*dest);
         ct.setSource(*src);

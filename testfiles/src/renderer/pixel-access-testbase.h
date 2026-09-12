@@ -159,13 +159,13 @@ template <class Filter>
     return ImageIs(*dst._d, test, method, true);
 }
 
-template <class Filter>
+template <MemoryFormat Format = MEMORY_FORMAT_RGBA128F, class Filter>
 ::testing::AssertionResult FilterColors(Filter &&f, std::array<double, 4> const &test,
                                         std::array<double, 4> const &i1,
                                         std::optional<std::array<double, 4>> const &i2 = {})
 {
-    auto src1 = TestSurface(6, 6);
-    auto src2 = TestSurface(6, 6);
+    auto src1 = TestSurface<Format>(6, 6);
+    auto src2 = TestSurface<Format>(6, 6);
     if (i2) {
         src1.rect(0, 0, 6, 6, i1);
         src2.rect(0, 0, 6, 6, *i2);

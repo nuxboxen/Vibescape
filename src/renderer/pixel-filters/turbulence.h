@@ -242,8 +242,7 @@ public:
 
         for (auto i = 0; i < channel_total; i++) {
             if (_fractalnoise) {
-                output[i] += 1;
-                output[i] /= 2;
+                output[i] = (output[i] + 1.0) / 2;
             }
             output[i] = std::clamp(output[i], 0.0, 1.0);
         }
