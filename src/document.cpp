@@ -405,12 +405,15 @@ std::unique_ptr<SPDocument> SPDocument::createDoc(
     nv->setDefaultAttribute("inkscape:pagecheckerboard", "/template/base/pagecheckerboard", "0");
     nv->setDefaultAttribute("inkscape:deskcolor",        "/template/base/deskcolor", "#d1d1d1");
 
-    // If no units are set in the document, try and guess them from the width/height
+    // If no units are set in the document, get the default units from preferences. if no
+    // preference is set, try and guess them from the width/height.
     // XXX Replace these calls with nv->setDocumentUnit(document->root->width.getUnit());
     if (document->root->width.isAbsolute()) {
-        nv->setDefaultAttribute("inkscape:document-units", "", document->root->width.getUnit()->abbr);
+        nv->setDefaultAttribute("inkscape:document-units", "/options/defaultunits/value",
+                                document->root->width.getUnit()->abbr);
     } else if (document->root->height.isAbsolute()) {
-        nv->setDefaultAttribute("inkscape:document-units", "", document->root->height.getUnit()->abbr);
+        nv->setDefaultAttribute("inkscape:document-units", "/options/defaultunits/value",
+                                document->root->height.getUnit()->abbr);
     }
 
     // Defs

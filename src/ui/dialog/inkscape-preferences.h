@@ -78,6 +78,7 @@ enum
     PREFS_PAGE_BEHAVIOR_CLIPBOARD,
     PREFS_PAGE_BEHAVIOR_CLEANUP,
     PREFS_PAGE_BEHAVIOR_LPE,
+    PREFS_PAGE_BEHAVIOR_UNITS,
     PREFS_PAGE_IO,
     PREFS_PAGE_IO_MOUSE,
     PREFS_PAGE_IO_SVGOUTPUT,
@@ -182,6 +183,7 @@ protected:
     UI::Widget::DialogPage _page_clipboard;
     UI::Widget::DialogPage _page_cleanup;
     UI::Widget::DialogPage _page_lpe;
+    UI::Widget::DialogPage _page_units;
 
     UI::Widget::DialogPage _page_io;
     UI::Widget::DialogPage _page_mouse;
@@ -409,6 +411,8 @@ protected:
 
     UI::Widget::PrefCheckButton _lpe_copy_mirroricons;
     UI::Widget::PrefCheckButton _lpe_show_experimental;
+
+    UI::Widget::PrefUnit        _units_default;
 
     UI::Widget::PrefSpinButton  _importexport_export_res;
     UI::Widget::PrefSpinButton  _importexport_import_res;
