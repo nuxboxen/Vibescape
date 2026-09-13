@@ -1653,8 +1653,7 @@ bool CairoRenderContext::renderImage(std::shared_ptr<const Renderer::Surface> co
     int h = img->height();
 
     // Ask for rgb version of the surface in RGB8 (not float) as that's what it used before
-    auto rgb_surface = img->convertedToColorSpace({}); // No color space means 8bit INT surface
-    auto raw_surface = rgb_surface->getCairoSurfaces()[0]->cobj();
+    auto raw_surface = img->exportToARGB32();
 
     cairo_save(_cr);
 
@@ -1662,7 +1661,7 @@ bool CairoRenderContext::renderImage(std::shared_ptr<const Renderer::Surface> co
     transform(image_transform);
 
     // cairo_set_source_surface only modifies refcount of 'image_surface', which is an implementation detail
-    cairo_set_source_surface(_cr, const_cast<cairo_surface_t*>(raw_surface), 0.0, 0.0);
+    cairo_set_source_surface(_cr, const_cast<cairo_surface_t*>(raw_surface->cobj()), 0.0, 0.0);
 
     // set clip region so that the pattern will not be repeated (bug in Cairo-PDF)
     if (_vector_based_target) {
