@@ -78,7 +78,7 @@ void Pattern::setExtend(SPGradientSpread spread)
 void Pattern::setMatrix(Geom::Affine const &m, Geom::OptRect const &rect)
 {
     for (auto &pt : _pts) {
-        pt->set_matrix(geom_to_cairo(rect ? viewbox_matrix(m, rect).inverse() : m));
+        pt->set_matrix(geom_to_cairo(rect ? viewbox_matrix(m, rect).inverse() : m.inverse()));
     }
 }
 

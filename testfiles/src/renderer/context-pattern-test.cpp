@@ -219,7 +219,7 @@ TEST_F(RenderContextPatternTest, PatternMatrix)
 {
     auto pattern = get_default_pattern();
     context->setSource(*pattern);
-    pattern->setMatrix(Geom::Rotate(45));
+    pattern->setMatrix(Geom::Rotate(-45));
     context->rectangle(Geom::Rect(3, 3, 18, 18));
     context->fill();
 
@@ -327,13 +327,13 @@ TEST_F(RenderContextPatternTest, Stripes)
     auto black = Colors::Color(cmyk_cpp, {0.0, 0.0, 0.0, 1.0, 1.0});
     context->paint(StripesPattern(black));
     EXPECT_IMAGE_IS(*surface,
-                    "  ffp p"
-                    " ffp pf"
-                    "ffp pff"
-                    "fp pff "
-                    "p pff  "
-                    " pff  f"
-                    "pff  ff");
+         "p  ffp "
+         "fp  ffp"
+         "ffp  ff"
+         " ffp  f"
+         "  ffp  "
+         "f  ffp "
+         "ff  ffp");
 }
 
 TEST_F(RenderContextPatternTest, GradientShadow)
