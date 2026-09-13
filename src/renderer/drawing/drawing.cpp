@@ -243,8 +243,9 @@ void Drawing::render(Context &dc, Geom::IntRect const &area, unsigned flags) con
     auto opt = DrawingOptions{
         .outline_color = _outline_color,
         .antialiasing_override = _antialiasing_override,
-        .dithering = _use_dithering
-        // TODO: Add blurquality and filterquality
+        .dithering = _use_dithering,
+        .filterquality = _filter_quality,
+        .blurquality = _blur_quality
     };
     flags |= rendermode_to_renderflags(_rendermode);
 
