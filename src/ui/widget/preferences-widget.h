@@ -333,7 +333,7 @@ private:
 class PrefUnit : public UnitMenu
 {
 public:
-    void init(Glib::ustring const &prefs_path);
+    void init(Glib::ustring const &prefs_path, Glib::ustring const &def = "");
 
 private:
     Glib::ustring _prefs_path;

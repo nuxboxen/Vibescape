@@ -1107,12 +1107,13 @@ void PrefColorPicker::on_changed(Inkscape::Colors::Color const &color)
     }
 }
 
-void PrefUnit::init(Glib::ustring const &prefs_path)
+void PrefUnit::init(Glib::ustring const &prefs_path, Glib::ustring const &def)
 {
     _prefs_path = prefs_path;
     Inkscape::Preferences *prefs = Inkscape::Preferences::get();
+    Glib::ustring pref = prefs->getString(_prefs_path, def);
     setUnitType(UNIT_TYPE_LINEAR);
-    setUnit(prefs->getString(_prefs_path));
+    setUnit(pref);
 }
 
 void PrefUnit::on_changed()

@@ -2965,6 +2965,14 @@ void InkscapePreferences::initPageBehavior()
     _page_lpe.add_line( true, "", _lpe_copy_mirroricons, "",
                            _("Enables using 16 advanced mirror options between the copies (so there can be copies that are mirrored differently between the rows and the columns) for Tiling LPE")); // tooltip
     this->AddPage(_page_lpe, _("Live Path Effects (LPE)"), iter_behavior, PREFS_PAGE_BEHAVIOR_LPE);
+
+    // Display units options
+    _units_default.init("/options/defaultunits/value", "mm");
+
+    _page_units.add_line(true, _("Default display units:"), _units_default, "",
+                         _("Set the default display units to use for new documents"));
+
+    this->AddPage(_page_units, _("Display Units"), iter_behavior, PREFS_PAGE_BEHAVIOR_UNITS);
 }
 
 void InkscapePreferences::initPageRendering()
