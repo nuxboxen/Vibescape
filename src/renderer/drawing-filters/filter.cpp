@@ -78,7 +78,6 @@ int Filter::render(Geom::Rect const &carea, Geom::Affine const &trans, Geom::Opt
         graphic.resetSource(0.0);
         graphic.set_operator(Cairo::Context::Operator::SOURCE);
         graphic.paint();
-        graphic.set_operator(Cairo::Context::Operator::OVER);
         return 1;
     }
 
@@ -104,8 +103,8 @@ int Filter::render(Geom::Rect const &carea, Geom::Affine const &trans, Geom::Opt
 
     item_opt.set_resolution(resolution.first, resolution.second);
     item_opt.set_automatic_resolution(_x_pixels <= 0);
-
     item_opt.set_paraller(false);
+
     Geom::Affine pbtrans = item_opt.get_matrix_display2pb();
     for (auto &i : primitives) {
         if (!i->can_handle_affine(pbtrans)) {
@@ -141,7 +140,6 @@ int Filter::render(Geom::Rect const &carea, Geom::Affine const &trans, Geom::Opt
         graphic.setSource(*result);
         graphic.set_operator(Cairo::Context::Operator::SOURCE);
         graphic.paint();
-        graphic.set_operator(Cairo::Context::Operator::OVER);
     }
 
     return 0;

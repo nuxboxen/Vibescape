@@ -81,6 +81,8 @@ public:
     void save() { for (auto &ct : _cts) { ct->save(); } }
     void restore() { for (auto &ct : _cts) { ct->restore(); } }
     void flush() { for (auto &ct : _cts) { ct->get_target()->flush(); } }
+
+    // These functions are VERY BAD as they subvert our own control over the surface pixels, Remove if possible
     void push_group() { for (auto &ct : _cts) { ct->push_group(); } }
     void push_group_with_content(Cairo::Content type) { for (auto &ct : _cts) { ct->push_group_with_content(type); } }
     void pop_group_to_source() { for (auto &ct : _cts) { ct->pop_group_to_source(); } }

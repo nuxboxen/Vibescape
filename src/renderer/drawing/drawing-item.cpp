@@ -827,18 +827,18 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
         ict.set_operator(Cairo::Context::Operator::OVER);
     }
 
-    // 3. Render object itself
-    ict.pushGroup();
-    ict.setAntialiasing(antialias);
-    render_result = _renderItem(ict, rc, *carea, flags, stop_at);
-
-    // 5. Render object inside the composited mask + clip
-    ict.popGroupToSource();
-    ict.set_operator(Cairo::Context::Operator::IN);
-    ict.paint();
+    // 3. Render object itself into a seperate surface for clipping and masking (5.)
+    auto group = intermediate->similar();
+    {
+        auto graphic = Context(*group, carea->min());
+        graphic.setAntialiasing(antialias);
+        render_result = _renderItem(graphic, rc, *carea, flags, stop_at);
+    }
 
     // 4. Apply filter.
     if (_filter && render_filters) {
+        // Push group (above) means the ict target is now NOT intermediate, but instead
+        // an internal copy which we have to dig out so filters can modify their pixels
         std::shared_ptr<Surface> bg;
         if ((
                  _filter->uses_input(DrawingFilter::SLOT_BACKGROUND_IMAGE)
@@ -854,8 +854,14 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
                 bg_root->render(bgdc, rc, *carea, flags | RENDER_FILTER_BACKGROUND, this);
             }
         }
-        _filter->render(*carea, ctm(), itemBounds(), intermediate, bg, rc);
+        _filter->render(*carea, ctm(), itemBounds(), group, bg, rc);
     }
+
+    // 5. Render object inside the composited mask + clip
+    ict.translate(Geom::Translate(carea->min()));
+    ict.setSource(*group);
+    ict.set_operator(Cairo::Context::Operator::IN);
+    ict.paint();
 }
 
     // Both may ne null, not not either, see above where a null target_space is
