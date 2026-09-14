@@ -290,6 +290,9 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     _reset_button.signal_clicked().connect([this]() { TextToolbar::on_reset_button_pressed(); });
 
     _initMenuBtns();
+
+    // Defocus font-size spinbutton on "Esc".
+    set_defocus_target(this, this);
 }
 
 TextToolbar::~TextToolbar() = default;

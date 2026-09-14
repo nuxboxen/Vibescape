@@ -27,6 +27,7 @@
 
 #include <glibmm/markup.h>
 #include <gtkmm/menubutton.h>
+#include <gtkmm/notebook.h>
 #include <gtkmm/popover.h>
 #include <gtkmm/searchentry2.h>
 #include <gtkmm/separator.h>
@@ -187,8 +188,6 @@ TextEdit::TextEdit(bool use_browser)
             }
         }
     });
-
-    set_defocus_target(this, this);
 
     onChange();
     on_page_changed(nullptr, 0);
