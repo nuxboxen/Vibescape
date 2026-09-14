@@ -251,6 +251,7 @@ public:
     char const *getDocumentBase() const { return document_base; };
 
     /** basename or other human-readable label for the document. */
+    void setDocumentName(char const *name);
     char const* getDocumentName() const { return document_name; }
 
 
@@ -430,6 +431,8 @@ private:
     char *document_filename;   ///< A filename, or NULL
     char *document_base;  ///< To be used for resolving relative hrefs.
     char *document_name;  ///< basename or other human-readable label for the document.
+
+    bool persist_name;
 
     // Find items ----------------------------
     std::map<std::string, SPObject *> iddef;

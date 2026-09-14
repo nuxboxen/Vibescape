@@ -66,6 +66,9 @@ void sp_file_exit ();
 
 // See src/actions/actions-file-window.h
 
+// Opens the specified template for editing.
+void sp_file_edit_template(std::string const &templ, std::string const &name);
+
 /**
  * Reverts file to disk-copy on "YES"
  */

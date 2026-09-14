@@ -63,6 +63,7 @@
 #include "colors/spaces/base.h"
 #include "display/nr-filter-gaussian.h"
 #include "document.h"
+#include "file.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
 #include "io/recent-files.h"
@@ -392,6 +393,7 @@ InkscapePreferences::InkscapePreferences()
     initPageBitmaps();
     initPageRendering();
     initPageSpellcheck();
+    initPageTemplates();
 
     signal_map().connect(sigc::mem_fun(*this, &InkscapePreferences::showPage));
 
@@ -3808,6 +3810,17 @@ void InkscapePreferences::initPageSpellcheck()
 
     AddPage(_page_spellcheck, _("Spellcheck"), PREFS_PAGE_SPELLCHECK);
 #endif
+}
+
+void InkscapePreferences::initPageTemplates()
+{
+    _templates_default.set_label(_("Open for Editing..."));
+    _templates_default.signal_clicked().connect(
+        []() { sp_file_edit_template(sp_file_default_template_uri(), _("Default Template")); });
+
+    _page_templates.add_line(false, _("Default template:"), _templates_default, "", _("Default template:"), false);
+
+    AddPage(_page_templates, _("Templates"), PREFS_PAGE_TEMPLATES);
 }
 
 template <typename string_type>

@@ -99,7 +99,8 @@ public:
     SPDocument *document_add(std::unique_ptr<SPDocument> document);
 
     SPDocument *document_new(std::string const &template_filename = {});
-    std::pair<SPDocument *, bool /*cancelled*/> document_open(Glib::RefPtr<Gio::File> const &file);
+    std::pair<SPDocument *, bool /*cancelled*/> document_open(Glib::RefPtr<Gio::File> const &file,
+                                                              std::string const &name = "");
     SPDocument *document_open(std::span<char const> buffer);
     bool                  document_swap(SPDesktop *desktop, SPDocument *document);
     bool                  document_revert(SPDocument* document);

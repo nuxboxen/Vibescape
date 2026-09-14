@@ -112,6 +112,7 @@ SPDocument::SPDocument()
     , document_filename(nullptr)
     , document_base(nullptr)
     , document_name(nullptr)
+    , persist_name(false)
     , console_output_undo_observer{Inkscape::create_console_output_observer()}
     , object_id_counter(1)
     , _router(std::make_unique<Avoid::Router>(Avoid::PolyLineRouting | Avoid::OrthogonalRouting))
@@ -1256,10 +1257,13 @@ void SPDocument::do_change_filename(gchar const *const filename, bool const reba
             repr->setAttribute("sodipodi:docname", new_document_name);
     }
 
-    g_free(this->document_name);
+    if (!persist_name) {
+        g_free(this->document_name);
+        this->document_name = new_document_name;
+    }
+
     g_free(this->document_base);
     g_free(this->document_filename);
-    this->document_name = new_document_name;
     this->document_base = new_document_base;
     this->document_filename = new_document_filename;
 
@@ -1287,6 +1291,19 @@ void SPDocument::setDocumentFilename(gchar const *filename)
 void SPDocument::changeFilenameAndHrefs(gchar const *filename)
 {
     do_change_filename(filename, true);
+}
+
+/**
+ * Sets a persistent name for the document that overrides the file-derived
+ * name. Used when editing a template to make it clearer to the user that they
+ * are editing a template instead of just any old file.
+ */
+void SPDocument::setDocumentName(gchar const *name)
+{
+    g_free(document_name);
+    document_name = g_strdup(name);
+
+    persist_name = true;
 }
 
 void SPDocument::bindObjectToId(char const *id, SPObject *object)
