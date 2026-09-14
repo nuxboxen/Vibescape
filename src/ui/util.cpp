@@ -35,7 +35,6 @@
 #include "desktop.h"
 #include "inkscape.h"
 #include "inkscape-window.h"
-#include "ui/dialog-run.h"
 #include "colors/utils.h" // color to hex string
 #include "ui/dialog-run.h"
 #include "util/numeric/converters.h"
