@@ -66,6 +66,7 @@
 #include "inkscape-window.h"
 #include "inkscape.h"
 #include "io/recent-files.h"
+#include "io/resource.h"
 #include "object/box3d-side.h"
 #include "object/box3d.h"
 #include "path-prefix.h"
@@ -392,6 +393,7 @@ InkscapePreferences::InkscapePreferences()
     initPageBitmaps();
     initPageRendering();
     initPageSpellcheck();
+    initPageTemplates();
 
     signal_map().connect(sigc::mem_fun(*this, &InkscapePreferences::showPage));
 
@@ -3808,6 +3810,34 @@ void InkscapePreferences::initPageSpellcheck()
 
     AddPage(_page_spellcheck, _("Spellcheck"), PREFS_PAGE_SPELLCHECK);
 #endif
+}
+
+void InkscapePreferences::initPageTemplates()
+{
+    _templates_default.set_label(_("Open for Editing..."));
+    _templates_default.signal_clicked().connect([]()
+    {
+        std::string cur_path = Inkscape::IO::Resource::get_filename(Inkscape::IO::Resource::TEMPLATES, "default.svg");
+
+        InkscapeApplication *app = InkscapeApplication::instance();
+
+        SPDocument *doc = app->document_open(Gio::File::create_for_path(cur_path)).first;
+
+        if (doc)
+        {
+            std::string user_path = Inkscape::IO::Resource::get_path_string(Inkscape::IO::Resource::USER,
+                                                                            Inkscape::IO::Resource::TEMPLATES,
+                                                                            "default.svg");
+
+            doc->setDocumentFilename(user_path.c_str());
+
+            app->desktopOpen(doc);
+        }
+    });
+
+    _page_templates.add_line(false, _("Default template:"), _templates_default, "", _("Default template:"), false);
+
+    AddPage(_page_templates, _("Templates"), PREFS_PAGE_TEMPLATES);
 }
 
 template <typename string_type>

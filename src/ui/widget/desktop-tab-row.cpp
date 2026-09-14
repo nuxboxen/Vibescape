@@ -142,6 +142,10 @@ Glib::ustring get_title(SPDesktop *desktop)
 
     result += doc->getDocumentName();
 
+    if (doc->isTemplate()) {
+        result += " (template)";
+    }
+
     if (auto const v = desktop->viewNumber(); v > 1) {
         result += ": ";
         result += Glib::ustring::format(v);

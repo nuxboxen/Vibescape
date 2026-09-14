@@ -89,6 +89,7 @@ enum
     PREFS_PAGE_BITMAPS,
     PREFS_PAGE_RENDERING,
     PREFS_PAGE_SPELLCHECK,
+    PREFS_PAGE_TEMPLATES,
     PREFS_PAGE_NOTFOUND
 };
 
@@ -194,6 +195,7 @@ protected:
     UI::Widget::DialogPage _page_system;
     UI::Widget::DialogPage _page_bitmaps;
     UI::Widget::DialogPage _page_spellcheck;
+    UI::Widget::DialogPage _page_templates;
 
     UI::Widget::DialogPage _page_keyshortcuts;
     Glib::RefPtr<Gtk::SizeGroup> _keyboard_sizegroup;
@@ -483,6 +485,9 @@ protected:
     UI::Widget::PrefCheckButton _spell_ignorenumbers;
     UI::Widget::PrefCheckButton _spell_ignoreallcaps;
 
+    // Templates
+    Gtk::Button                 _templates_default;
+
     // Bitmaps
     UI::Widget::PrefCombo       _misc_overs_bitmap;
     UI::Widget::PrefEntryFileButtonHBox       _misc_bitmap_editor;
@@ -675,6 +680,7 @@ protected:
 
     void initPageRendering();
     void initPageSpellcheck();
+    void initPageTemplates();
     void initPageBitmaps();
     void initPageSystem();
     void initPageI18n(); // Do we still need it?

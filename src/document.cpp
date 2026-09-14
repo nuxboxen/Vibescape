@@ -64,6 +64,7 @@
 #include "inkscape-window.h"
 #include "inkscape.h"
 #include "io/dir-util.h"
+#include "io/resource.h"
 #include "layer-manager.h"
 #include "live_effects/lpeobject.h"
 #include "object/persp3d.h"
@@ -1287,6 +1288,18 @@ void SPDocument::setDocumentFilename(gchar const *filename)
 void SPDocument::changeFilenameAndHrefs(gchar const *filename)
 {
     do_change_filename(filename, true);
+}
+
+bool SPDocument::isTemplate()
+{
+    if (!document_filename) {
+        return false;
+    }
+
+    std::string templates = Inkscape::IO::Resource::get_path_string(Inkscape::IO::Resource::USER,
+                                                                    Inkscape::IO::Resource::TEMPLATES);
+
+    return !strcmp(document_base, templates.c_str());
 }
 
 void SPDocument::bindObjectToId(char const *id, SPObject *object)

@@ -253,6 +253,7 @@ public:
     /** basename or other human-readable label for the document. */
     char const* getDocumentName() const { return document_name; }
 
+    bool isTemplate();
 
     // Document geometry ------------------------
     Inkscape::Util::Unit const* getDisplayUnit();

@@ -408,6 +408,10 @@ void SPDesktopWidget::_updateTitle()
 
         Name += doc->getDocumentName();
 
+        if (doc->isTemplate()) {
+            Name += " (template)";
+        }
+
         if (auto const v = _desktop->viewNumber(); v > 1) {
             Name += ": ";
             Name += std::to_string(v);
