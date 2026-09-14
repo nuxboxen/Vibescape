@@ -1296,12 +1296,10 @@ bool SPDocument::isTemplate()
         return false;
     }
 
-    // we don't really need default.svg, just the directory it's in, but
-    // without including the file, get_filename uses the global config
-    // location even when building from source.
-    std::string templates = Inkscape::IO::Resource::get_filename(Inkscape::IO::Resource::TEMPLATES, "default.svg");
+    std::string templates = Inkscape::IO::Resource::get_path_string(Inkscape::IO::Resource::USER,
+                                                                    Inkscape::IO::Resource::TEMPLATES);
 
-    return !strcmp(document_base, g_path_get_dirname(templates.c_str()));
+    return !strcmp(document_base, templates.c_str());
 }
 
 void SPDocument::bindObjectToId(char const *id, SPObject *object)

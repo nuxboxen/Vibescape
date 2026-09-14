@@ -63,10 +63,10 @@
 #include "colors/spaces/base.h"
 #include "display/nr-filter-gaussian.h"
 #include "document.h"
-#include "file.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
 #include "io/recent-files.h"
+#include "io/resource.h"
 #include "object/box3d-side.h"
 #include "object/box3d.h"
 #include "path-prefix.h"
@@ -3817,11 +3817,22 @@ void InkscapePreferences::initPageTemplates()
     _templates_default.set_label(_("Open for Editing..."));
     _templates_default.signal_clicked().connect([]()
     {
+        std::string cur_path = Inkscape::IO::Resource::get_filename(Inkscape::IO::Resource::TEMPLATES, "default.svg");
+
         InkscapeApplication *app = InkscapeApplication::instance();
 
-        SPDocument *doc = app->document_open(Gio::File::create_for_path(sp_file_default_template_uri())).first;
+        SPDocument *doc = app->document_open(Gio::File::create_for_path(cur_path)).first;
 
-        app->desktopOpen(doc);
+        if (doc)
+        {
+            std::string user_path = Inkscape::IO::Resource::get_path_string(Inkscape::IO::Resource::USER,
+                                                                            Inkscape::IO::Resource::TEMPLATES,
+                                                                            "default.svg");
+
+            doc->setDocumentFilename(user_path.c_str());
+
+            app->desktopOpen(doc);
+        }
     });
 
     _page_templates.add_line(false, _("Default template:"), _templates_default, "", _("Default template:"), false);
