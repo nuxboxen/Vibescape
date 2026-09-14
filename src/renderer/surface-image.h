@@ -20,7 +20,7 @@
 namespace Inkscape::Renderer {
 
 using GlyLoad = std::pair<GlyLoader *, GlyImage *>;
-using ImageType = std::variant<std::monostate, GlyLoad, std::unique_ptr<SPDocument>>;
+using ImageType = std::variant<std::monostate, GlyLoad, std::unique_ptr<SPDocument>, SPDocument *>;
 
 class SvgRenderer; // Svg loading
 using SvgFactory = std::shared_ptr<SvgRenderer>;
@@ -64,6 +64,11 @@ public:
      */
     Image(Glib::RefPtr<Glib::Bytes> bytes, SvgFactory const &svg_factory = {});
     Image(std::string_view const &base64_uri, SvgFactory const &svg_factory = {});
+
+    /**
+     * Render from an svg document into a surface image.
+     */
+    Image(SPDocument *doc, SvgFactory const &svg_factory);
 
     /**
      * Output a raster surface as a set of encoded bytes in the format of the mime_type

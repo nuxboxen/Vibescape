@@ -253,9 +253,7 @@ load_svg_cursor(Gtk::Widget &widget,
     if (!res.texture) {
         return {};
     }
-
-    //return Gdk::Cursor::create(std::move(res.texture), res.hotspot.x(), res.hotspot.y());
-    return {};
+    return Gdk::Cursor::create(std::move(res.texture), res.hotspot.x(), res.hotspot.y());
 #endif
 }
 

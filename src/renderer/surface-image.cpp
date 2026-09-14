@@ -159,6 +159,10 @@ static Geom::IntPoint get_image_size(ImageType &image, SvgFactory const &svg_fac
         if (auto pt = svg_factory->get_dimensions(std::get<std::unique_ptr<SPDocument>>(image).get())) {
             return *pt;
         }
+    } else if (std::holds_alternative<SPDocument *>(image)) {
+        if (auto pt = svg_factory->get_dimensions(std::get<SPDocument *>(image))) {
+            return *pt;
+        }
     }
     return Geom::IntPoint(0, 0);
 }
@@ -179,6 +183,9 @@ Image::Image(Glib::RefPtr<Gio::File> const &file, SvgFactory const &svg_factory)
 Image::Image(Glib::RefPtr<Glib::Bytes> bytes, SvgFactory const &svg_factory)
     : Image(load_from_bytes(bytes), svg_factory ? std::move(svg_factory) : default_svg_factory(), bytes)
 {}
+Image::Image(SPDocument *doc, SvgFactory const &svg_factory)
+    : Image(ImageType(doc), svg_factory ? std::move(svg_factory) : default_svg_factory())
+{}
 
 // Note: This is private and we expect svg_factory will have had a default set by
 // the time this code runs. It's a bug if the svg_factory is empty here.
@@ -187,6 +194,9 @@ Image::Image(ImageType image, SvgFactory const &svg_factory, Glib::RefPtr<Glib::
     , _svg_factory(std::move(svg_factory))
     , _byte_cache(bytes)
 {
+    // This mime type is used to keep the data stable, svg files get rendered to png by default
+    _mime_type = "image/png";
+
     if (std::holds_alternative<GlyLoad>(image)) {
         auto pair = std::get<GlyLoad>(image);
         _loader = pair.first;
@@ -197,7 +207,9 @@ Image::Image(ImageType image, SvgFactory const &svg_factory, Glib::RefPtr<Glib::
         }
     } else if (std::holds_alternative<std::unique_ptr<SPDocument>>(image)) {
         _doc = std::move(std::get<std::unique_ptr<SPDocument>>(image));
-        _mime_type = "image/svg+xml";
+    } else if (std::holds_alternative<SPDocument *>(image)) {
+        // Render right away as we don't own this svg and don't know when it will be deleted
+        _svg_factory->render(*const_cast<Image *>(this), std::get<SPDocument *>(image));
     }
 }
 

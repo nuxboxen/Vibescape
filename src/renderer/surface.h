@@ -156,11 +156,6 @@ public:
     void *getUserData(const void *key) { return _user_data[key]; }
 
     /**
-     * Get the first valid mime type data from this surface. see setMimeData.
-     */
-    std::pair<std::string, std::string> getMimeData(std::string const &default_mimetype = "") const;
-
-    /**
      * Same as above but does not replace the drawing surface internally, it returns a new copy.
      */
     std::shared_ptr<Surface> convertedToColorSpace(std::shared_ptr<Colors::Space::AnySpace> const &color_space) const;

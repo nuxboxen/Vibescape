@@ -589,33 +589,12 @@ Geom::PathVector const *SPImage::get_curve() const
     return curve ? &*curve : nullptr;
 }
 
-void sp_embed_image(Inkscape::XML::Node *image_node, std::shared_ptr<Renderer::Image> pb)
+void sp_embed_image(Inkscape::XML::Node *image_node, std::shared_ptr<Renderer::Image> img)
 {
-    // check whether the image has MIME data
-    auto [data_mimetype, data] = pb->getMimeData("image/png");
-
-    // Save base64 encoded data in image node
-    // this formula taken from Glib docs
-    gsize needed_size = data.size() * 4 / 3 + data.size() * 4 / (3 * 72) + 7;
-    needed_size += 5 + 8 + data_mimetype.size(); // 5 bytes for data: + 8 for ;base64,
-
-    gchar *buffer = (gchar *) g_malloc(needed_size);
-    gchar *buf_work = buffer;
-    buf_work += g_sprintf(buffer, "data:%s;base64,", data_mimetype.c_str());
-
-    gint state = 0;
-    gint save = 0;
-    gsize written = 0;
-    written += g_base64_encode_step((const guchar*)data.c_str(), data.size(), TRUE, buf_work, &state, &save);
-    written += g_base64_encode_close(TRUE, buf_work + written, &state, &save);
-    buf_work[written] = 0; // null terminate
-
     // TODO: this is very wasteful memory-wise.
     // It would be better to only keep the binary data around,
     // and base64 encode on the fly when saving the XML.
-    Inkscape::setHrefAttribute(*image_node, buffer);
-
-    g_free(buffer);
+    Inkscape::setHrefAttribute(*image_node, img->encode_as_base64().c_str());
 }
 
 void sp_embed_svg(Inkscape::XML::Node *image_node, std::string const &fn)

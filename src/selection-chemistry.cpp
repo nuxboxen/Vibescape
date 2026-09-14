@@ -40,6 +40,8 @@
 #include "display/control/canvas-item-drawing.h"
 #include "path/path-curve.h"
 #include "renderer/drawing/drawing.h"
+#include "renderer/drawing/svg-renderer.h"
+#include "renderer/surface-image.h"
 #include "document-undo.h"
 #include "file.h"
 #include "filter-chemistry.h"
@@ -3497,23 +3499,18 @@ void ObjectSet::createBitmapCopy()
     }
 
     // anti-aliasing override
-    /*
-    std::optional<Antialiasing> antialias;
-    if (auto nv = doc->getNamedView()) {
+    auto svg_factory = std::make_shared<Renderer::SvgRenderer>();
+    svg_factory->set_dpi(res);
+    svg_factory->set_area(*bbox);
+    if (auto nv = doc->getNamedView(); !nv->antialias_rendering) {
         // if off, then disable antialiasing; if on, then let SVG dictate what it is
-        if (!nv->antialias_rendering) {
-            antialias = Antialiasing::None;
-        }
+        svg_factory->set_antialiasing(Renderer::Antialiasing::None);
     }
 
-    Inkscape::Pixbuf *pb = sp_generate_internal_bitmap(doc, *bbox, res, items_vec, false, nullptr, 1, antialias);
-
-    if (pb) {
-    */
-    if (false) {
+    if (auto img = std::make_shared<Renderer::Image>(doc, svg_factory)) {
         // Create the repr for the image
         Inkscape::XML::Node * repr = xml_doc->createElement("svg:image");
-        //sp_embed_image(repr, pb);
+        sp_embed_image(repr, img);
         repr->setAttributeSvgDouble("width", bbox->width());
         repr->setAttributeSvgDouble("height", bbox->height());
 

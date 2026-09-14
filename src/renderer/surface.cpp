@@ -288,22 +288,6 @@ void Surface::setMimeData(std::string const &format, std::string const &data)
     }
 }
 
-std::pair<std::string, std::string> Surface::getMimeData(std::string const &default_mimetype) const
-{
-    if (_surfaces.empty()) {
-        return {default_mimetype, ""};
-    }
-
-    for (auto mime_type : {CAIRO_MIME_TYPE_JPEG, CAIRO_MIME_TYPE_JP2, CAIRO_MIME_TYPE_PNG}) {
-        unsigned long len = 0;
-        if (auto data = _surfaces[0]->get_mime_data(mime_type, len)) {
-            auto ret = std::string((char const *)data, len);
-            return {mime_type, ret};
-        }
-    }
-    return {default_mimetype, ""};
-}
-
 } // namespace Inkscape::Renderer
 
 /*
