@@ -71,7 +71,7 @@ std::unique_ptr<SPDocument> ink_file_open(std::span<char const> buffer)
 /**
  * Open a document.
  */
-std::pair<std::unique_ptr<SPDocument>, bool> ink_file_open(Glib::RefPtr<Gio::File> const &file, std::string const &name)
+std::pair<std::unique_ptr<SPDocument>, bool> ink_file_open(Glib::RefPtr<Gio::File> const &file)
 {
     std::unique_ptr<SPDocument> doc;
     std::string path = file->get_path();
@@ -79,7 +79,7 @@ std::pair<std::unique_ptr<SPDocument>, bool> ink_file_open(Glib::RefPtr<Gio::Fil
     // TODO: It's useless to catch these exceptions here (and below) unless we do something with them.
     //       If we can't properly handle them (e.g. by showing a user-visible message) don't catch them!
     try {
-        doc = Inkscape::Extension::open(nullptr, path.c_str(), name);
+        doc = Inkscape::Extension::open(nullptr, path.c_str());
     } catch (Inkscape::Extension::Input::no_extension_found const &) {
     } catch (Inkscape::Extension::Input::open_failed const &) {
     } catch (Inkscape::Extension::Input::open_cancelled const &) {
@@ -90,7 +90,7 @@ std::pair<std::unique_ptr<SPDocument>, bool> ink_file_open(Glib::RefPtr<Gio::Fil
     // TODO: Why is this necessary? Shouldn't this be handled by the first call already?
     if (!doc) {
         try {
-            doc = Inkscape::Extension::open(Inkscape::Extension::db.get(SP_MODULE_KEY_INPUT_SVG), path.c_str(), name);
+            doc = Inkscape::Extension::open(Inkscape::Extension::db.get(SP_MODULE_KEY_INPUT_SVG), path.c_str());
         } catch (Inkscape::Extension::Input::no_extension_found const &) {
         } catch (Inkscape::Extension::Input::open_failed const &) {
         } catch (Inkscape::Extension::Input::open_cancelled const &) {

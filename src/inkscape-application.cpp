@@ -158,11 +158,10 @@ SPDocument *InkscapeApplication::document_new(std::string const &template_filena
 }
 
 // Open a document, add it to app.
-std::pair<SPDocument *, bool> InkscapeApplication::document_open(Glib::RefPtr<Gio::File> const &file,
-                                                                 std::string const &name)
+std::pair<SPDocument *, bool> InkscapeApplication::document_open(Glib::RefPtr<Gio::File> const &file)
 {
     // Open file
-    auto [document, cancelled] = ink_file_open(file, name);
+    auto [document, cancelled] = ink_file_open(file);
     if (cancelled) {
         return {nullptr, true};
     }

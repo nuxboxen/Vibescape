@@ -63,7 +63,7 @@ namespace Inkscape::Extension {
  *
  * Lastly, the open function is called in the module itself.
  */
-std::unique_ptr<SPDocument> open(Extension *key, char const *filename, std::string const &name, bool is_importing)
+std::unique_ptr<SPDocument> open(Extension *key, char const *filename, bool is_importing)
 {
     Input *imod = dynamic_cast<Input *>(key ? key : Input::find_by_filename(filename));
 
@@ -128,11 +128,6 @@ std::unique_ptr<SPDocument> open(Extension *key, char const *filename, std::stri
     // and there's no need to warn the user about it, just do it.
 
     doc->setDocumentFilename(filename);
-
-    if (!name.empty()) {
-        doc->setDocumentName(name.c_str());
-    }
-
     if (!show) {
         imod->set_gui(true);
     }

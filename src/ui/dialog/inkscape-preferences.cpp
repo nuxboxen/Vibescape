@@ -3815,8 +3815,14 @@ void InkscapePreferences::initPageSpellcheck()
 void InkscapePreferences::initPageTemplates()
 {
     _templates_default.set_label(_("Open for Editing..."));
-    _templates_default.signal_clicked().connect(
-        []() { sp_file_edit_template(sp_file_default_template_uri(), _("Default Template")); });
+    _templates_default.signal_clicked().connect([]()
+    {
+        InkscapeApplication *app = InkscapeApplication::instance();
+
+        SPDocument *doc = app->document_open(Gio::File::create_for_path(sp_file_default_template_uri())).first;
+
+        app->desktopOpen(doc);
+    });
 
     _page_templates.add_line(false, _("Default template:"), _templates_default, "", _("Default template:"), false);
 

@@ -113,19 +113,6 @@ SPDesktop* sp_file_new_default()
     return desk;
 }
 
-void sp_file_edit_template(std::string const &templ, std::string const &name)
-{
-    InkscapeApplication *app = InkscapeApplication::instance();
-
-    SPDocument *doc = app->document_open(Gio::File::create_for_path(templ), name).first;
-
-    if (!doc) {
-        std::cerr << "sp_file_edit_template: failed to open document: " << templ << std::endl;
-    }
-
-    app->desktopOpen(doc);
-}
-
 /**
  *  Handle prompting user for "do you want to revert"?  Revert on "OK"
  */
@@ -655,7 +642,7 @@ SPObject *file_import(SPDocument *in_doc, std::string const &path, Inkscape::Ext
     // DEBUG_MESSAGE( fileImport, "file_import( in_doc:%p uri:[%s], key:%p", in_doc, uri, key );
     std::unique_ptr<SPDocument> doc;
     try {
-        doc = Inkscape::Extension::open(key, path.c_str(), "", true);
+        doc = Inkscape::Extension::open(key, path.c_str(), true);
     } catch (Inkscape::Extension::Input::no_extension_found const &) {
     } catch (Inkscape::Extension::Input::open_failed const &) {
     } catch (Inkscape::Extension::Input::open_cancelled const &) {
