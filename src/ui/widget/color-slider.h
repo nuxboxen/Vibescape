@@ -68,7 +68,6 @@ private:
     bool _dragging = false;
     Glib::RefPtr<Gtk::GestureDrag> _drag;
 
-    std::shared_ptr<Renderer::LinearGradientPattern> _gradient;
     bool _hover = false;
     unsigned int _tick_callback = 0;
     double _ring_size = 0;

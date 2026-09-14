@@ -30,6 +30,7 @@
 #include "util/theme-utils.h"
 
 #include "renderer/context.h"
+#include "renderer/surface.h"
 #include "renderer/context-pattern.h"
 
 constexpr int THUMB_SPACE = 16;
@@ -44,6 +45,7 @@ ColorSlider::ColorSlider(std::shared_ptr<Colors::ColorSet> colors, Colors::Space
     _colors(std::move(colors)),
     _component(std::move(component)) {
 
+    assert(_colors->getSpaceConstraint());
     construct();
 }
 
@@ -56,6 +58,7 @@ ColorSlider::ColorSlider(
     , _colors(std::move(colors))
     , _component(std::move(component)) {
 
+    assert(_colors->getSpaceConstraint());
     construct();
 }
 
@@ -256,58 +259,51 @@ void ColorSlider::draw_func(Cairo::RefPtr<Cairo::Context> const &ct,
         return;
     }
 
-    // The alpha background is a checkerboard pattern of light and dark pixels
-    if (is_alpha) {
-        Colors::Color color(Util::is_current_theme_dark(*this) ? 0x606060ff : 0xe0e0e0ff, true);
-        auto pattern = Renderer::CheckerboardPattern(color, 6);
+    // We're targeting the average color in the slider previews
+    auto paint_color = _colors->getAverage();
+    auto target_space = _colors->getSpaceConstraint();
+
+    if (!is_alpha) {
+        // Remove alpha channel from paint
+        paint_color.enableOpacity(false);
+    } else {
+        // The alpha background is a checkerboard pattern of light and dark pixels
+        Colors::Color color(Util::is_current_theme_dark(*this) ? 0x40404040 : 0xe0e0e080, true);
+        auto pattern = Renderer::CheckerboardPattern(color, 4.5);
         pattern.setMatrix(Geom::Translate(left, top));
         cr->setSource(pattern);
         cr->fill_preserve();
     }
 
-    // Draw row of colored pixels here
-    auto paint_color = _colors->getAverage();
+    // 1. What range of colors are we trying to show? from 0 to 1 for this component channel.
+    Colors::Color start_color = paint_color;
+    start_color.set(_component.index, 0.0);
+    Colors::Color end_color = paint_color;
+    end_color.set(_component.index, 1.0);
 
-    if (!is_alpha) {
-        // Remove alpha channel from paint
-        paint_color.enableOpacity(false);
+    // 2. Create a gradient in the target color space
+    auto pattern = std::make_shared<Renderer::LinearGradientPattern>(target_space, 0, 0, full_width, 0);
+    pattern->addColorStop(0, start_color);
+    pattern->addColorStop(1, end_color);
+
+    // 3. Paint the gradient onto a 1px high surface
+    auto surface = Renderer::Surface({full_width, 1}, 1, target_space); // Float surface
+    {
+        auto ctx = Renderer::Context(surface);
+        ctx.setSource(*pattern);
+        ctx.paint();
     }
 
-    /*
-    TODO: This must use gradient rendering by creating a surface in the _component color space
-    And then use the color_space to get an sRGB version of the rendered surface.
+    // 4. Convert the target_space surface into sRGB for the display. This is where you would
+    // convert to a wider gammut for GdkTexture if and when Gtk supports that.
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto srgb_surface = surface.convertedToColorSpace(srgb);
 
-    This is a good test of the interpolation of any gradient in svg too.
-
-    double lim = width > 1 ? width - 1.0 : 1.0;
-    auto space_rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-    for (int x = 0; x < width; x++) {
-        paint_color.set(_component.index, x / lim);
-        auto c = Colors::to_gamut_css(paint_color, space_rgb);
-        _gr_buffer[x] = c.toABGR();// paint_color.toABGR();
-    }
-
-    _gradient->setMatrix(Geom::Affine(), border); // Add media box?
-    cr->setSource(*_gradient);
+    // 5. Paint the 1px high surface, stetching it to the full height of the widget surface
+    cr->set_antialias(Cairo::ANTIALIAS_NONE);
+    cr->scale(1, full_height);
+    cr->setSource(*srgb_surface);
     cr->fill();
-
-    bool dark_theme = Util::is_current_theme_dark(*this);
-    Util::draw_standard_border(cr, border, dark_theme, radius, scale);
-
-    // draw slider thumb
-    if (_colors->isValid(_component)) {
-        auto ring = get_color();
-        auto dark = get_luminance(ring) < 0.5;
-        float x = dark ? 1.0f : 0.0f;
-        float alpha = dark ? 0.40f : 0.25f;
-        auto stroke = Gdk::RGBA(x, x, x, alpha);
-
-        double value = std::clamp(_colors->getAverage(_component), 0.0, 1.0);
-        if (std::isfinite(value)) {
-            draw_slider_thumb(cr, Geom::Point(area.left() + value * area.width(), area.midpoint().y()), _ring_size, _ring_thickness, ring, stroke);
-        }
-    }
-    */
 }
 
 double ColorSlider::getScaled() const
