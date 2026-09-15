@@ -70,7 +70,10 @@ int bezier_fit(Geom::Point bezier[4], const std::vector<InputPoint>& data) {
         bezier[3].x() = spline->to->me.x;
         bezier[3].y() = spline->to->me.y;
 
-	// Check for handles that are too large and result in kinks.
+	// When handles are near parallel, solutions may not be found
+	// or found solutions are unstable resulting sometime in
+	// handles that are too long which causes kinks. Catch that
+	// situation and fall back to older, less optimized algorithm.
 	auto a = (bezier[0]-bezier[3]).length();
 	auto b = (bezier[0]-bezier[1]).length();
 	auto c = (bezier[2]-bezier[3]).length();
