@@ -26,6 +26,7 @@
 #include "preferences.h"
 #include "pattern-manager.h"
 #include "pattern-manipulation.h"
+#include "renderer/surface-texture.h"
 #include "ui/builder-utils.h"
 #include "ui/monitor.h"
 #include "ui/util.h"
@@ -229,7 +230,7 @@ void PatternEditor::bind_store(Gtk::FlowBox& list, PatternStore& pat) {
 
     list.bind_list_store(pat.store.get_store(), [&pat, this](const Glib::RefPtr<PatternItem>& item){
         auto const box = Gtk::make_managed<Box>(Gtk::Orientation::VERTICAL);
-        auto const image = Gtk::make_managed<Gtk::Image>(to_texture(item->pix));
+        auto const image = Gtk::make_managed<Gtk::Image>(Renderer::build_texture(item->pix));
         image->set_size_request(_tile_size, _tile_size);
         image->set_pixel_size(_tile_size);
         box->append(*image);
@@ -349,7 +350,7 @@ void sort_patterns(std::vector<Glib::RefPtr<PatternItem>>& list) {
 Glib::RefPtr<PatternItem> create_pattern_item(PatternManager& manager, SPPaintServer* paint, int tile_size, double scale) {
     auto item = manager.get_item(paint);
     if (item && scale > 0) {
-        item->pix = manager.get_image(paint, tile_size, tile_size, scale);
+        // TODO item->pix = manager.get_image(paint, tile_size, tile_size, scale);
     }
     return item;
 }
@@ -407,8 +408,8 @@ void PatternEditor::_set_selected(SPPaintServer* link_paint, SPPaintServer* root
             if (pattern_item->id == item->id && pattern_item->collection == nullptr) {
                 // update preview
                 const double device_scale = get_scale_factor();
-                pattern_item->pix = _manager.get_image(root_paint, _tile_size, _tile_size, device_scale);
-                item->pix = pattern_item->pix;
+                //TODO pattern_item->pix = _manager.get_image(root_paint, _tile_size, _tile_size, device_scale);
+                //item->pix = pattern_item->pix;
                 break;
             }
         }
@@ -451,7 +452,7 @@ std::vector<Glib::RefPtr<PatternItem>> PatternEditor::update_doc_pattern_list(SP
         else {
             if (!item->pix) {
                 // generate a preview for a newly added pattern
-                item->pix = _manager.get_image(cast<SPPaintServer>(document->getObjectById(item->id)), _tile_size, _tile_size, device_scale);
+                // TODO item->pix = _manager.get_image(cast<SPPaintServer>(document->getObjectById(item->id)), _tile_size, _tile_size, device_scale);
             }
             modified = true;
             _cached_items[item->id] = item;
@@ -531,7 +532,7 @@ void PatternEditor::set_active(Gtk::FlowBox& gallery, PatternStore& pat, Glib::R
                             for_each_descendant(*box, [&](Widget &widget){
                                 if (auto const image = dynamic_cast<Gtk::Image *>(&widget)) {
                                     image->set_pixel_size(_tile_size);
-                                    image->set(to_texture(item->pix));
+                                    image->set(Renderer::build_texture(item->pix));
                                     return ForEachResult::_break;
                                 }
                                 return ForEachResult::_continue;
@@ -653,7 +654,7 @@ void regenerate_tile_images(PatternManager& manager, PatternStore& pat_store, in
     auto& patterns = pat_store.store.get_items();
     for (auto& item : patterns) {
         if (auto pattern = get_pattern(*item.get(), current)) {
-            item->pix = manager.get_image(pattern, tile_size, tile_size, device_scale);
+            // TODO item->pix = manager.get_image(pattern, tile_size, tile_size, device_scale);
         }
     }
     pat_store.store.refresh();
@@ -674,8 +675,8 @@ void PatternEditor::draw_preview(const Cairo::RefPtr<Cairo::Context>& ctx, int w
     const double device_scale = get_scale_factor();
     // use white for checkerboard since most stock patterns are black
     unsigned int background = 0xffffffff;
-    auto surface = _manager.get_preview(link_pattern, width, height, background, device_scale);
-    ctx->set_source(surface, 0, 0);
+    // TODO auto surface = _manager.get_preview(link_pattern, width, height, background, device_scale);
+    // ctx->set_source(surface, 0, 0);
     ctx->paint();
 }
 

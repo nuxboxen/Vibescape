@@ -23,7 +23,7 @@
 #include <cstdint>
 #include <cairomm/surface.h>
 
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "async/channel.h"
 
 class SPDocument;
@@ -52,8 +52,8 @@ namespace Preview {
  *      ownership of the drawing (=> Sync), and snapshotting prevents modification of the data being read by the
  *      background task (=> Send/const).
  */
-Cairo::RefPtr<Cairo::ImageSurface>
-render_preview(SPDocument *doc, std::shared_ptr<Inkscape::Drawing> drawing, uint32_t bg_color, Inkscape::DrawingItem *item,
+std::shared_ptr<Renderer::Surface>
+render_preview(SPDocument *doc, std::shared_ptr<Renderer::Drawing> drawing, Colors::Color bg_color, Renderer::DrawingItem *item,
                                     unsigned width_in, unsigned height_in, Geom::Rect const &dboxIn);
 
 } // namespace Preview

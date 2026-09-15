@@ -34,7 +34,7 @@ struct ItemData : public Glib::Object {
     Glib::ustring icon;
     Glib::ustring tooltip;
     std::optional<Color> color;
-    Cairo::RefPtr<Cairo::Pattern> pattern;
+    std::shared_ptr<Renderer::Pattern> pattern;
     bool is_swatch = false;
     bool is_radial = false;
 
@@ -45,7 +45,7 @@ struct ItemData : public Glib::Object {
         const Glib::ustring& icon,
         const Glib::ustring& tooltip,
         std::optional<Color> color,
-        Cairo::RefPtr<Cairo::Pattern> pattern,
+        std::shared_ptr<Renderer::Pattern> pattern,
         bool is_swatch,
         bool is_radial
     ) {
@@ -113,7 +113,7 @@ GridViewList::~GridViewList() {
 }
 
 Glib::RefPtr<Glib::Object> GridViewList::create_item(const std::string& id, double value, const Glib::ustring& label,
-    const Glib::ustring& icon, const Glib::ustring& tooltip, std::optional<Colors::Color> color, Cairo::RefPtr<Cairo::Pattern> pattern,
+    const Glib::ustring& icon, const Glib::ustring& tooltip, std::optional<Colors::Color> color, std::shared_ptr<Renderer::Pattern> pattern,
     bool is_swatch, bool is_radial) {
 
     return ItemData::create(id, value, label, icon, tooltip, color, pattern, is_swatch, is_radial);

@@ -25,9 +25,10 @@
 
 namespace Inkscape {
 
+namespace Renderer {
 class Drawing;
 class DrawingItem;
-class Updatecontext;
+}
 
 class CanvasItemDrawing final : public CanvasItem
 {
@@ -38,11 +39,11 @@ public:
     bool contains(Geom::Point const &p, double tolerance = 0) override;
 
     // Display
-    Inkscape::Drawing *get_drawing() { return _drawing.get(); }
+    Renderer::Drawing *get_drawing() { return _drawing.get(); }
 
     // Drawing items
-    void set_active(Inkscape::DrawingItem *active);
-    Inkscape::DrawingItem *get_active() { return _active_item ? _active_item->second : nullptr; }
+    void set_active(Renderer::DrawingItem *active);
+    Renderer::DrawingItem *get_active() { return _active_item ? _active_item->second : nullptr; }
 
     // Events
     bool handle_event(CanvasEvent const &event) override;
@@ -50,7 +51,7 @@ public:
     void set_pick_outline(bool pick_outline) { _pick_outline = pick_outline; }
 
     // Signals
-    sigc::connection connect_drawing_event(sigc::slot<bool(CanvasEvent const &, Inkscape::DrawingItem *)> slot) {
+    sigc::connection connect_drawing_event(sigc::slot<bool(CanvasEvent const &, Renderer::DrawingItem *)> slot) {
         return _drawing_event_signal.connect(slot);
     }
 
@@ -59,15 +60,15 @@ protected:
     ~CanvasItemDrawing() override;
 
     void _update(bool propagate) override;
-    void _render(Inkscape::CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
 
     // Selection
     Geom::Point _c;
     double _delta = Geom::infinity();
-    std::optional<std::pair<unsigned, Inkscape::DrawingItem *>>  _active_item;
+    std::optional<std::pair<unsigned, Renderer::DrawingItem *>>  _active_item;
 
     // Display
-    std::unique_ptr<Inkscape::Drawing> _drawing;
+    std::unique_ptr<Renderer::Drawing> _drawing;
     Geom::Affine _drawing_affine;
 
     // Events
@@ -76,7 +77,7 @@ protected:
     bool _pick_outline = false;
 
     // Signals
-    sigc::signal<bool(CanvasEvent const &, Inkscape::DrawingItem *)> _drawing_event_signal;
+    sigc::signal<bool(CanvasEvent const &, Renderer::DrawingItem *)> _drawing_event_signal;
 
     // Prefs
     void _loadPrefs();

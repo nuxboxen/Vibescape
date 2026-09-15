@@ -23,9 +23,14 @@ class EventControllerMotion;
 class GestureClick;
 } // namespace Gtk
 
-namespace Inkscape::Colors {
+namespace Inkscape {
+namespace Colors {
 class ColorSet;
-} // namespace Inkscape::Colors
+} // namespace Colors
+namespace Renderer {
+class LinearGradientPattern;
+} // namespace Renderer
+} // namespace Inkscape
 
 namespace Inkscape::UI::Widget {
 
@@ -62,9 +67,7 @@ private:
     sigc::signal<void ()> signal_value_changed;
     bool _dragging = false;
     Glib::RefPtr<Gtk::GestureDrag> _drag;
-    // Memory buffers for the painted gradient
-    std::vector<unsigned int> _gr_buffer;
-    Glib::RefPtr<Gdk::Pixbuf> _gradient;
+
     bool _hover = false;
     unsigned int _tick_callback = 0;
     double _ring_size = 0;

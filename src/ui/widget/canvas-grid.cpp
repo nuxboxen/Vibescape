@@ -266,20 +266,20 @@ void CanvasGrid::on_realize()
         disp_action->get_state<int>(display_mode);
 
         Glib::ustring id;
-        switch (static_cast<Inkscape::RenderMode>(display_mode)) {
-            case RenderMode::NORMAL:
+        switch (static_cast<Renderer::RenderMode>(display_mode)) {
+            case Renderer::RenderMode::NORMAL:
                 id = "display";
                 break;
-            case RenderMode::OUTLINE:
+            case Renderer::RenderMode::OUTLINE:
                 id = "display-outline";
                 break;
-            case RenderMode::OUTLINE_OVERLAY:
+            case Renderer::RenderMode::OUTLINE_OVERLAY:
                 id = "display-outline-overlay";
                 break;
-            case RenderMode::VISIBLE_HAIRLINES:
+            case Renderer::RenderMode::VISIBLE_HAIRLINES:
                 id = "display-enhance-stroke";
                 break;
-            case RenderMode::NO_FILTERS:
+            case Renderer::RenderMode::NO_FILTERS:
                 id = "display-no-filter";
                 break;
             default:

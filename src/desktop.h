@@ -42,7 +42,7 @@
 #include <2geom/transforms.h>
 #include <2geom/parallelogram.h>
 
-#include "display/rendermode.h"
+#include "renderer/drawing/enums.h"
 #include <sigc++/scoped_connection.h>
 #include "message-stack.h"
 #include "object/sp-gradient.h" // TODO refactor enums out to their own .h file
@@ -393,8 +393,8 @@ public:
     void showInfoDialog(Glib::ustring const &message);
     bool warnDialog (Glib::ustring const &text);
 
-    void setRenderMode(Inkscape::RenderMode mode);
-    void setColorMode(Inkscape::ColorMode  mode);
+    void setRenderMode(Renderer::RenderMode mode);
+    void setColorMode(Renderer::ColorMode  mode);
 
     void toggleCommandPalette();
     void toggleRulers();
@@ -570,7 +570,7 @@ private:
     sigc::scoped_connection _y_axis_flipped;
     sigc::scoped_connection _layer_changed_connection;
 
-    bool drawing_handler(Inkscape::CanvasEvent const &event, Inkscape::DrawingItem *item);
+    bool drawing_handler(Inkscape::CanvasEvent const &event, Inkscape::Renderer::DrawingItem *item);
     void reconstruction_start();
     void reconstruction_finish();
     void handle_y_axis_flip(double yshift);

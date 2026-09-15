@@ -64,6 +64,7 @@ public:
     }
 
     std::pair<std::string, bool> checkProfileName(Colors::CMS::Profile const &profile, RenderingIntent intent, std::optional<std::string> name = {}) const;
+    std::shared_ptr<Inkscape::Colors::Space::AnySpace> ensureColorSpaceIsInstalled(std::shared_ptr<Inkscape::Colors::Space::AnySpace> const &space);
     std::optional<std::string> attachProfileToDoc(std::string const &lookup, ColorProfileStorage storage,
                                                   RenderingIntent intent);
     std::string attachProfileToDoc(Colors::CMS::Profile const &profile, ColorProfileStorage storage,

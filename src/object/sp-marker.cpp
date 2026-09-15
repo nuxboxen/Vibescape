@@ -31,8 +31,7 @@
 #include "preferences.h"
 #include "sp-defs.h"
 
-#include "display/drawing-group.h"
-#include "display/drawing-item-ptr.h"
+#include "renderer/drawing-forward.h"
 #include "object/object-set.h"
 #include "svg/css-ostringstream.h"
 #include "svg/svg.h"
@@ -44,7 +43,7 @@ using Inkscape::ObjectSet;
 
 struct SPMarkerView
 {
-    std::vector<DrawingItemPtr<Inkscape::DrawingItem>> items;
+    std::vector<DrawingItemPtr<Inkscape::Renderer::DrawingItem>> items;
 };
 
 SPMarker::SPMarker() : SPGroup(), SPViewBox(),
@@ -220,7 +219,7 @@ void SPMarker::update(SPCtx *ctx, guint flags) {
     for (auto &it : views_map) {
         for (auto &item : it.second.items) {
             if (item) {
-                auto g = cast<Inkscape::DrawingGroup>(item.get());
+                auto g = cast<Inkscape::Renderer::DrawingGroup>(item.get());
                 g->setChildTransform(c2p);
             }
         }
@@ -286,12 +285,12 @@ Inkscape::XML::Node* SPMarker::write(Inkscape::XML::Document *xml_doc, Inkscape:
 	return repr;
 }
 
-Inkscape::DrawingItem* SPMarker::show(Inkscape::Drawing &/*drawing*/, unsigned int /*key*/, unsigned int /*flags*/) {
+Inkscape::Renderer::DrawingItem* SPMarker::show(Inkscape::Renderer::Drawing &/*drawing*/, unsigned int /*key*/, unsigned int /*flags*/) {
     // Markers in tree are never shown directly even if outside of <defs>.
     return  nullptr;
 }
 
-Inkscape::DrawingItem* SPMarker::private_show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) {
+Inkscape::Renderer::DrawingItem* SPMarker::private_show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) {
     return SPGroup::show(drawing, key, flags);
 }
 
@@ -405,14 +404,14 @@ void SPMarker::print(SPPrintContext* /*ctx*/) {
 
 /**
  * Removes any SPMarkerViews that a marker has with a specific key.
- * Set up the DrawingItem array's size in the specified SPMarker's SPMarkerView.
+ * Set up the Renderer::DrawingItem array's size in the specified SPMarker's SPMarkerView.
  * This is called from sp_shape_update() for shapes that have markers.  It
  * removes the old view of the marker and establishes a new one, registering
  * it with the marker's list of views for future updates.
  *
  * \param marker Marker to create views in.
  * \param key Key to give each SPMarkerView.
- * \param size Number of DrawingItems to put in the SPMarkerView.
+ * \param size Number of Renderer::DrawingItems to put in the SPMarkerView.
  */
 // If marker views are always created in order, then this function could be eliminated
 // by doing the push_back in sp_marker_show_instance.
@@ -441,8 +440,8 @@ sp_marker_show_dimension (SPMarker *marker, unsigned int key, unsigned int size)
  * Shows an instance of a marker.  This is called during sp_shape_update_marker_view()
  * show and transform a child item in the drawing for all views with the given key.
  */
-Inkscape::DrawingItem *
-sp_marker_show_instance ( SPMarker *marker, Inkscape::DrawingItem *parent,
+Inkscape::Renderer::DrawingItem *
+sp_marker_show_instance ( SPMarker *marker, Inkscape::Renderer::DrawingItem *parent,
                           unsigned int loc, unsigned int pos, unsigned int z_order,
                           Geom::Affine const &marker_transform, float linewidth)
 {
@@ -474,7 +473,7 @@ sp_marker_show_instance ( SPMarker *marker, Inkscape::DrawingItem *parent,
 
         if (view->items[pos]) {
             parent->appendChild(view->items[pos].get());
-            if (auto g = cast<Inkscape::DrawingGroup>(view->items[pos].get())) {
+            if (auto g = cast<Inkscape::Renderer::DrawingGroup>(view->items[pos].get())) {
                 g->setChildTransform(marker->c2p);
             }
         }

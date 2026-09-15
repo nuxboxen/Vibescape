@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+set(drawing_filters_unit_SRC
+	blend.cpp
+	color-matrix.cpp
+	component-transfer.cpp
+	composite.cpp
+	convolve-matrix.cpp
+	displacement-map.cpp
+	drop-shadow.cpp
+	filter.cpp
+	flood.cpp
+	gaussian-blur.cpp
+	image.cpp
+	light.cpp
+	merge.cpp
+	morphology.cpp
+	offset.cpp
+	primitive.cpp
+	slot.cpp
+	tile.cpp
+	turbulence.cpp
+	units.cpp
+
+	# -------
+	blend.h
+	color-matrix.h
+	component-transfer.h
+	composite.h
+	convolve-matrix.h
+	displacement-map.h
+	drop-shadow.h
+	filter.h
+	flood.h
+	gaussian-blur.h
+	image.h
+	light.h
+	merge.h
+	morphology.h
+	offset.h
+	primitive.h
+	slot.h
+	tile.h
+	turbulence.h
+	units.h
+)
+
+function(get_drawing_filters_unit_lib)
+    list(TRANSFORM drawing_filters_unit_SRC PREPEND "renderer/drawing-filters/")
+    list(PREPEND drawing_filters_unit_SRC
+        "svg/stringstream.cpp"
+        "svg/strip-trailing-zeros.cpp"
+        "svg/svg-length.cpp"
+        "util/units.cpp"
+        "util/units-internal.cpp"
+        "util/numeric/precision.cpp"
+    )
+    list(TRANSFORM drawing_filters_unit_SRC PREPEND "${CMAKE_SOURCE_DIR}/src/")
+    add_library(drawing_filters_unit_lib SHARED "${drawing_filters_unit_SRC}")
+    pkg_check_modules(DRAWING_UNIT_DEPS REQUIRED IMPORTED_TARGET cairomm-1.16)
+    target_link_libraries(drawing_filters_unit_lib renderer_unit_lib colors_unit_lib PkgConfig::DRAWING_UNIT_DEPS 2Geom::2geom GLibmm::GLibmm )
+    make_target_unit_testable(drawing_filters_unit_lib)
+endfunction(get_drawing_filters_unit_lib)
+

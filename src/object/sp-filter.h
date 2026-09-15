@@ -23,10 +23,10 @@
 #include "sp-item.h"
 #include "sp-object.h"
 
-namespace Inkscape {
+namespace Inkscape::Renderer {
 class Drawing;
 class DrawingItem;
-namespace Filters { class Filter; }
+namespace DrawingFilter { class Filter; }
 } // namespace Inkscape
 
 class SPFilterReference;
@@ -42,7 +42,7 @@ public:
     int tag() const override { return tag_of<decltype(*this)>; }
 
     /// Returns a renderer for this filter, for use by the DrawingItem item.
-    std::unique_ptr<Inkscape::Filters::Filter> build_renderer(Inkscape::DrawingItem *item);
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Filter> build_renderer(Inkscape::Renderer::DrawingItem *item);
 
     /// Returns the number of filter primitives in this SPFilter object.
     int primitive_count() const;
@@ -58,8 +58,8 @@ public:
     /// Returns a result image name that is not in use inside this filter.
     Glib::ustring get_new_result_name() const;
 
-    void show(Inkscape::DrawingItem *item);
-    void hide(Inkscape::DrawingItem *item);
+    void show(Inkscape::Renderer::DrawingItem *item);
+    void hide(Inkscape::Renderer::DrawingItem *item);
 
     SPFilterUnits filterUnits;
     bool filterUnits_set : 1;
@@ -92,7 +92,7 @@ protected:
 private:
     bool slots_valid = true;
 
-    std::vector<Inkscape::DrawingItem*> views;
+    std::vector<Inkscape::Renderer::DrawingItem*> views;
 };
 
 #endif // SP_FILTER_H_SEEN

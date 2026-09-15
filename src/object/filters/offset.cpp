@@ -19,27 +19,14 @@
 
 #include "attributes.h"                          // for SPAttr
 
-#include "display/nr-filter-offset.h"            // for FilterOffset
+#include "renderer/drawing-filters/offset.h"     // for FilterOffset
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/numeric/converters.h"             // for read_number
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Node;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeOffset::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::DX);
     readAttr(SPAttr::DY);
 }
@@ -70,9 +57,9 @@ void SPFeOffset::set(SPAttr key, char const *value)
     }
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeOffset::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeOffset::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto offset = std::make_unique<Inkscape::Filters::FilterOffset>();
+    auto offset = std::make_unique<Inkscape::Renderer::DrawingFilter::Offset>();
     build_renderer_common(offset.get());
 
     offset->set_dx(dx);

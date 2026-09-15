@@ -10,7 +10,7 @@
 #include <glibmm/ustring.h>
 #include <memory>
 #include <optional>
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "object/sp-object.h"
 #include "document.h"
 
@@ -76,7 +76,7 @@ public:
         std::optional<uint32_t> _checkerboard;
     };
 
-    Cairo::RefPtr<Cairo::Surface> render(SPObject& object, double width, double height, double device_scale, options options = {});
+    std::shared_ptr<Renderer::Surface> render(SPObject& object, double width, double height, double device_scale, options options = {});
 
 private:
     std::unique_ptr<SPDocument> _symbol_document;
@@ -85,7 +85,7 @@ private:
 
 // Place 'image' on a solid background with a given color optionally adding border.
 // If no image is provided, only a background surface will be created.
-Cairo::RefPtr<Cairo::Surface> add_background_to_image(Cairo::RefPtr<Cairo::Surface> image, uint32_t rgb, double margin, double radius, int device_scale, std::optional<uint32_t> border = std::optional<uint32_t>());
+std::shared_ptr<Renderer::Surface> add_background_to_image(std::shared_ptr<Renderer::Surface> image, uint32_t rgb, double margin, double radius, int device_scale, std::optional<uint32_t> border = std::optional<uint32_t>());
 
 /**
  * Returns a new document containing default start, mid, and end markers.
@@ -100,14 +100,14 @@ std::unique_ptr<SPDocument> ink_markers_preview_doc(const Glib::ustring& group_i
  * area in the bounding box, and then renders it. This allows us to fill in
  * preview images of each marker in the marker combobox.
  */
-Cairo::RefPtr<Cairo::ImageSurface> create_marker_image(
+std::shared_ptr<Renderer::Surface> create_marker_image(
     const Glib::ustring& group_id,
     SPDocument* _sandbox,
     Gdk::RGBA marker_color,
     Geom::IntPoint pixel_size,
     const char* mname,
     SPDocument* source,
-    Inkscape::Drawing& drawing,
+    Renderer::Drawing& drawing,
     std::optional<guint32> checkerboard,
     bool no_clip,
     double scale,
@@ -117,8 +117,7 @@ Cairo::RefPtr<Cairo::ImageSurface> create_marker_image(
 /**
  * Renders a preview of a gradient into the passed context.
  */
-void draw_gradient(const Cairo::RefPtr<Cairo::Context>& cr, SPGradient* gradient, int x, int width, int checkerboard_tile_size = 6);
-
+void draw_gradient(const std::shared_ptr<Renderer::Context>& cr, SPGradient* gradient, int x, int width, int checkerboard_tile_size = 6);
 
 } // namespace
 

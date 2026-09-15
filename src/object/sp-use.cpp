@@ -41,7 +41,7 @@
 #include "style.h"
 #include "uri.h"
 
-#include "display/drawing-group.h"
+#include "renderer/drawing/drawing-group.h"
 #include "xml/document.h"                            // for Document
 #include "xml/href-attribute-helper.h"               // for getHrefAttribute
 
@@ -295,16 +295,16 @@ gchar* SPUse::description() const {
     }
 }
 
-Inkscape::DrawingItem* SPUse::show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) {
+Inkscape::Renderer::DrawingItem* SPUse::show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) {
 
     // std::cout << "SPUse::show: " << (getId()?getId():"null") << std::endl;
-    Inkscape::DrawingGroup *ai = new Inkscape::DrawingGroup(drawing);
+    Inkscape::Renderer::DrawingGroup *ai = new Inkscape::Renderer::DrawingGroup(drawing);
     ai->setPickChildren(false);
     this->context_style = this->style;
     ai->setStyle(this->style, this->context_style);
     
     if (this->child) {
-        Inkscape::DrawingItem *ac = this->child->invoke_show(drawing, key, flags);
+        Inkscape::Renderer::DrawingItem *ac = this->child->invoke_show(drawing, key, flags);
 
         if (ac) {
             ai->prependChild(ac);
@@ -686,7 +686,7 @@ void SPUse::update(SPCtx *ctx, unsigned flags) {
 
     if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
         for (auto &v : views) {
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             context_style = style;
             g->setStyle(style, context_style);
         }
@@ -694,7 +694,7 @@ void SPUse::update(SPCtx *ctx, unsigned flags) {
 
     /* As last step set additional transform of arena group */
     for (auto &v : views) {
-        auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+        auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
         auto t = Geom::Translate(x.computed, y.computed);
         g->setChildTransform(t);
     }
@@ -707,7 +707,7 @@ void SPUse::modified(unsigned flags)
 
     if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
         for (auto &v : views) {
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             context_style = style;
             g->setStyle(style, context_style);
         }

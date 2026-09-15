@@ -40,8 +40,6 @@
 #include "style.h"
 #include "style-enums.h"          // Fill rules
 
-#include "display/cairo-utils.h"  // for Inkscape::Pixbuf::PF_CAIRO
-
 #include "extension/system.h"
 #include "extension/print.h"
 
@@ -327,7 +325,7 @@ int PrintEmf::create_brush(SPStyle const *style, PU_COLORREF fcolor)
     U_LOGBRUSH    lb;
     uint32_t      brush, fmode;
     MFDrawMode    fill_mode;
-    Inkscape::Pixbuf const *pixbuf;
+    Cairo::RefPtr<Cairo::ImageSurface> image;
     uint32_t      brushStyle;
     int           hatchType;
     U_COLORREF    hatchColor;
@@ -372,8 +370,8 @@ int PrintEmf::create_brush(SPStyle const *style, PU_COLORREF fcolor)
             double dheight = pat->height();
             width  = dwidth;
             height = dheight;
-            brush_classify(pat, 0, &pixbuf, &hatchType, &hatchColor, &bkColor);
-            if (pixbuf) {
+            brush_classify(pat, 0, &image, &hatchType, &hatchColor, &bkColor);
+            if (image) {
                 fill_mode = DRAW_IMAGE;
             } else { // pattern
                 fill_mode = DRAW_PATTERN;
@@ -458,11 +456,11 @@ int PrintEmf::create_brush(SPStyle const *style, PU_COLORREF fcolor)
         int                  numCt;
         U_BITMAPINFOHEADER   Bmih;
         PU_BITMAPINFO        Bmi;
-        rgba_px = (char const*) pixbuf->pixels(); // Do NOT free this!!!
+        rgba_px = (const char *)image->get_data(); // Do NOT free this!!!
+        break;
         colortype = U_BCBM_COLOR32;
         (void) RGBA_to_DIB(&px, &cbPx, &ct, &numCt,  rgba_px,  width, height, width * 4, colortype, 0, 1);
-        // pixbuf can be either PF_CAIRO or PF_GDK, and these have R and B bytes swapped
-        if (pixbuf->pixelFormat() == Inkscape::Pixbuf::PF_CAIRO) { swapRBinRGBA(px, width * height); }
+        swapRBinRGBA(px, width * height); // Pixels are always in Cairo format
         Bmih = bitmapinfoheader_set(width, height, 1, colortype, U_BI_RGB, 0, PXPERMETER, PXPERMETER, numCt, 0);
         Bmi = bitmapinfo_set(Bmih, ct);
         rec = createdibpatternbrushpt_set(&brush, eht, U_DIB_RGB_COLORS, Bmi, cbPx, px);
@@ -523,13 +521,13 @@ int PrintEmf::create_pen(SPStyle const *style, const Geom::Affine &transform)
     int                  linejoin  = 0;
     uint32_t             pen;
     uint32_t             brushStyle;
-    Inkscape::Pixbuf const *pixbuf;
+    Cairo::RefPtr<Cairo::ImageSurface> image;
     int                  hatchType;
     U_COLORREF           hatchColor;
     U_COLORREF           bkColor;
     uint32_t             width, height;
     char                *px = nullptr;
-    char                *rgba_px;
+    char const          *rgba_px;
     uint32_t             cbPx = 0;
     uint32_t             colortype;
     PU_RGBQUAD           ct = nullptr;
@@ -555,16 +553,17 @@ int PrintEmf::create_pen(SPStyle const *style, const Geom::Affine &transform)
             double dheight = pat->height();
             width  = dwidth;
             height = dheight;
-            brush_classify(pat, 0, &pixbuf, &hatchType, &hatchColor, &bkColor);
-            if (pixbuf) {
+            brush_classify(pat, 0, &image, &hatchType, &hatchColor, &bkColor);
+            if (image) {
                 brushStyle    = U_BS_DIBPATTERN;
-                rgba_px = (char *) pixbuf->pixels(); // Do NOT free this!!!
+                rgba_px = (const char *)image->get_data(); // Do NOT free this!!!
+                if (rgba_px) {
                 colortype = U_BCBM_COLOR32;
                 (void) RGBA_to_DIB(&px, &cbPx, &ct, &numCt,  rgba_px,  width, height, width * 4, colortype, 0, 1);
-                // pixbuf can be either PF_CAIRO or PF_GDK, and these have R and B bytes swapped
-                if (pixbuf->pixelFormat() == Inkscape::Pixbuf::PF_CAIRO) { swapRBinRGBA(px, width * height); }
+                swapRBinRGBA(px, width * height); // Pixels are always in Cairo format
                 Bmih = bitmapinfoheader_set(width, height, 1, colortype, U_BI_RGB, 0, PXPERMETER, PXPERMETER, numCt, 0);
                 Bmi = bitmapinfo_set(Bmih, ct);
+                }
             } else { // pattern
                 brushStyle    = U_BS_HATCHED;
                 if (usebk) { // OPAQUE mode ALWAYS cancels after the next draw, otherwise it would mess up future text output.

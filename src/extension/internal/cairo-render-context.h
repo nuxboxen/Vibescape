@@ -32,7 +32,9 @@ typedef struct _PangoFont PangoFont;
 typedef struct _PangoLayout PangoLayout;
 
 namespace Inkscape {
-class Pixbuf;
+namespace Renderer {
+class Surface;
+}
 
 namespace Extension::Internal {
 
@@ -171,7 +173,7 @@ public:
     void addClippingRect(double x, double y, double width, double height);
 
     bool renderPathVector(Geom::PathVector const &pathv, SPStyle const *style, Geom::OptRect const &pbox, CairoPaintOrder order = STROKE_OVER_FILL);
-    bool renderImage(Inkscape::Pixbuf const *pb,
+    bool renderImage(std::shared_ptr<const Renderer::Surface> const img,
                      Geom::Affine const &image_transform, SPStyle const *style);
     bool renderGlyphtext(PangoFont *font, Geom::Affine const &font_matrix,
                          std::vector<CairoGlyphInfo> const &glyphtext, SPStyle const *style,
@@ -265,6 +267,8 @@ private:
 
     CairoRenderState *_addState() { return &_state_stack.emplace_back(); }
 };
+
+cairo_operator_t ink_css_blend_to_cairo_operator(SPBlendMode css_blend);
 
 }  // namespace Extension::Internal
 }  // namespace Inkscape

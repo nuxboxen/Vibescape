@@ -17,8 +17,7 @@
 #include <cassert>
 
 #include "canvas-item-quad.h"
-
-#include "display/cairo-utils.h"
+#include "colors/color.h"
 #include "helper/geom.h"
 
 namespace Inkscape {
@@ -106,7 +105,7 @@ void CanvasItemQuad::_update(bool)
 /**
  * Render quad to screen via Cairo.
  */
-void CanvasItemQuad::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemQuad::_render(Inkscape::CanvasItemBuffer buf) const
 {
     // Document to canvas
     Geom::Point p0 = _p0 * affine();
@@ -120,29 +119,24 @@ void CanvasItemQuad::_render(Inkscape::CanvasItemBuffer &buf) const
     p2 *= Geom::Translate(-buf.rect.min());
     p3 *= Geom::Translate(-buf.rect.min());
 
-    buf.cr->save();
-
-    buf.cr->begin_new_path();
-
-    buf.cr->move_to(p0.x(), p0.y());
-    buf.cr->line_to(p1.x(), p1.y());
-    buf.cr->line_to(p2.x(), p2.y());
-    buf.cr->line_to(p3.x(), p3.y());
-    buf.cr->close_path();
+    buf.cr.begin_new_path();
+    buf.cr.move_to(p0.x(), p0.y());
+    buf.cr.line_to(p1.x(), p1.y());
+    buf.cr.line_to(p2.x(), p2.y());
+    buf.cr.line_to(p3.x(), p3.y());
+    buf.cr.close_path();
 
     if (_inverted) {
-        cairo_set_operator(buf.cr->cobj(), CAIRO_OPERATOR_DIFFERENCE);
+        buf.cr.set_operator((Cairo::Context::Operator)CAIRO_OPERATOR_DIFFERENCE);
     }
 
-    ink_cairo_set_source_color(buf.cr, Colors::Color(_fill));
-    buf.cr->fill_preserve();
+    buf.cr.setSource(Colors::Color(_fill));
+    buf.cr.fill_preserve();
 
-    buf.cr->set_line_width(1);
-    ink_cairo_set_source_color(buf.cr, Colors::Color(_stroke));
-    buf.cr->stroke_preserve();
-    buf.cr->begin_new_path();
-
-    buf.cr->restore();
+    buf.cr.setSource(Colors::Color(_stroke));
+    buf.cr.set_line_width(1);
+    buf.cr.stroke_preserve();
+    buf.cr.begin_new_path();
 }
 
 void CanvasItemQuad::set_inverted(bool inverted)

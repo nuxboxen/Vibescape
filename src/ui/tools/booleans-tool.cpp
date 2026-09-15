@@ -15,7 +15,6 @@
 #include "actions/actions-tools.h" // set_active_tool()
 #include "display/control/canvas-item-drawing.h"
 #include "display/translucency-group.h"
-#include "display/drawing.h"
 #include "document-undo.h"
 #include "document.h"
 #include "event-log.h"

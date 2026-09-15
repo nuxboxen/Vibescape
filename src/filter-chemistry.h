@@ -17,7 +17,7 @@
 
 #include <optional>
 
-#include "display/nr-filter-types.h"
+#include "renderer/drawing-filters/enums.h"
 #include "style-enums.h"
 
 class SPDocument;
@@ -26,7 +26,7 @@ class SPFilterPrimitive;
 class SPItem;
 class SPObject;
 
-SPFilterPrimitive *filter_add_primitive(SPFilter *filter, Inkscape::Filters::FilterPrimitiveType);
+SPFilterPrimitive *filter_add_primitive(SPFilter *filter, Inkscape::Renderer::DrawingFilter::PrimitiveType);
 SPFilter *new_filter (SPDocument *document);
 SPFilter *new_filter_gaussian_blur (SPDocument *document, double stdDeviation, double expansion);
 SPFilter *new_filter_simple_from_item (SPDocument *document, SPItem *item, const char *mode, double stdDeviation);

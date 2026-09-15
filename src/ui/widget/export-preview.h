@@ -23,7 +23,9 @@ class SPItem;
 
 namespace Inkscape {
 
+namespace Renderer {
 class Drawing;
+}
 
 namespace UI::Dialog {
 
@@ -43,7 +45,7 @@ private:
     void construct();
 
     SPDocument *_document = nullptr;
-    std::shared_ptr<Inkscape::Drawing> _drawing;
+    std::shared_ptr<Renderer::Drawing> _drawing;
     unsigned _visionkey = 0;
     bool _to_destruct = false;
 
@@ -68,7 +70,7 @@ public:
     void setPreview(Cairo::RefPtr<Cairo::ImageSurface>);
     void setBackgroundColor(std::uint32_t bg_color);
 
-    static std::shared_ptr<Inkscape::Drawing> makeDrawing(SPDocument *doc);
+    static std::shared_ptr<Renderer::Drawing> makeDrawing(SPDocument *doc);
 
 private:
     int size = 128; // size of preview image

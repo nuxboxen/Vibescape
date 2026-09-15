@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "ctrl-handle-styling.h"
 
+#include <iostream>
 #include <optional>
 #include <ranges>
 #include <boost/functional/hash.hpp>
@@ -16,7 +17,7 @@
 #include "3rdparty/libcroco/src/cr-rgb.h"
 #include "3rdparty/libcroco/src/cr-utils.h"
 
-#include "display/cairo-utils.h" // argb32_from_rgba()
+#include "colors/utils.h"
 #include "display/control/canvas-item-enums.h"
 #include "io/resource.h"
 #include "util/delete-with.h"
@@ -141,7 +142,7 @@ uint32_t parse_rgb(CRTerm const *term)
     if (status != CR_OK) {
         throw Exception{Glib::ustring::compose(_("Unrecognized color '%1'"), get_string(term))};
     }
-    return Display::AssembleARGB32(255, rgb->red, rgb->green, rgb->blue);
+    return SP_RGBA32_U_COMPOSE(255, rgb->red, rgb->green, rgb->blue);
 }
 
 float parse_opacity(CRTerm const *term)
@@ -355,8 +356,7 @@ void clear_selectors(CRDocHandler *a_handler, CRSelector *a_selector)
 
 uint32_t combine_rgb_a(uint32_t rgb, float a)
 {
-    EXTRACT_ARGB32(rgb, _, r, g, b)
-    return Display::AssembleARGB32(r, g, b, a * 255);
+    return SP_RGBA32_U_COMPOSE(SP_RGBA32_G_U(rgb), SP_RGBA32_B_U(rgb), SP_RGBA32_A_U(rgb), a * 255);
 }
 
 } // namespace

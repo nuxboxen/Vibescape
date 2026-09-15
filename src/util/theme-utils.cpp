@@ -17,13 +17,4 @@ bool is_current_theme_dark(Gtk::Widget& widget) {
     return dark_theme;
 }
 
-std::tuple<std::uint32_t, std::uint32_t> get_checkerboard_colors(Gtk::Widget& widget, bool argb) {
-    auto dark = is_current_theme_dark(widget);
-    Colors::Color a(dark ? 0x606060ff : 0xe0e0e0ff, true);
-    auto b = make_contrasted_color(a, 1.8);
-    return argb ?
-        std::make_tuple(a.toARGB(), b.toARGB()) :
-        std::make_tuple(a.toRGBA(), b.toRGBA());
-}
-
 }

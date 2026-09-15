@@ -35,9 +35,6 @@
 #include <glibmm/i18n.h>
 
 #include "colors/color.h"
-#include "display/drawing.h"
-#include "display/cairo-utils.h"
-#include "display/drawing-paintserver.h"
 
 #include "object/sp-clippath.h"
 #include "object/sp-flowtext.h"
@@ -51,6 +48,10 @@
 #include "object/sp-mask.h"
 #include "object/sp-text.h"
 
+#include "renderer/context-paths.h"
+#include "renderer/drawing/drawing.h"
+#include "renderer/drawing/drawing-paintserver.h"
+#include "renderer/surface-image.h"
 #include "util/source_date_epoch.h"
 #include "util/units.h"
 
@@ -88,26 +89,56 @@
 //#define TEST(_args) _args
 #define TEST(_args)
 
-// FIXME: expose these from sp-clippath/mask.cpp
-/*struct SPClipPathView {
-    SPClipPathView *next;
-    unsigned int key;
-    Inkscape::DrawingItem *arenaitem;
-    Geom::OptRect bbox;
-};
-
-struct SPMaskView {
-    SPMaskView *next;
-    unsigned int key;
-    Inkscape::DrawingItem *arenaitem;
-    Geom::OptRect bbox;
-};*/
-
 namespace Inkscape {
 namespace Extension {
 namespace Internal {
 
 static cairo_status_t _write_callback(void *closure, const unsigned char *data, unsigned int length);
+
+cairo_operator_t ink_css_blend_to_cairo_operator(SPBlendMode css_blend)
+{
+    // All of the blend modes are implemented in Cairo as of 1.10.
+    // For a detailed description, see:
+    // http://cairographics.org/operators/
+
+    switch (css_blend) {
+        case SP_CSS_BLEND_MULTIPLY:
+            return CAIRO_OPERATOR_MULTIPLY;
+        case SP_CSS_BLEND_SCREEN:
+            return CAIRO_OPERATOR_SCREEN;
+        case SP_CSS_BLEND_DARKEN:
+            return CAIRO_OPERATOR_DARKEN;
+        case SP_CSS_BLEND_LIGHTEN:
+            return CAIRO_OPERATOR_LIGHTEN;
+        case SP_CSS_BLEND_OVERLAY:
+            return CAIRO_OPERATOR_OVERLAY;
+        case SP_CSS_BLEND_COLORDODGE:
+            return CAIRO_OPERATOR_COLOR_DODGE;
+        case SP_CSS_BLEND_COLORBURN:
+            return CAIRO_OPERATOR_COLOR_BURN;
+        case SP_CSS_BLEND_HARDLIGHT:
+            return CAIRO_OPERATOR_HARD_LIGHT;
+        case SP_CSS_BLEND_SOFTLIGHT:
+            return CAIRO_OPERATOR_SOFT_LIGHT;
+        case SP_CSS_BLEND_DIFFERENCE:
+            return CAIRO_OPERATOR_DIFFERENCE;
+        case SP_CSS_BLEND_EXCLUSION:
+            return CAIRO_OPERATOR_EXCLUSION;
+        case SP_CSS_BLEND_HUE:
+            return CAIRO_OPERATOR_HSL_HUE;
+        case SP_CSS_BLEND_SATURATION:
+            return CAIRO_OPERATOR_HSL_SATURATION;
+        case SP_CSS_BLEND_COLOR:
+            return CAIRO_OPERATOR_HSL_COLOR;
+        case SP_CSS_BLEND_LUMINOSITY:
+            return CAIRO_OPERATOR_HSL_LUMINOSITY;
+        case SP_CSS_BLEND_NORMAL:
+            return CAIRO_OPERATOR_OVER;
+        default:
+            g_error("Invalid SPBlendMode %d", css_blend);
+            return CAIRO_OPERATOR_OVER;
+    }
+}
 
 CairoRenderContext::CairoRenderContext(CairoRenderer *parent)
     : _renderer(parent)
@@ -960,7 +991,8 @@ void CairoRenderContext::transform(Geom::Affine const &transform)
         return;
     }
 
-    ink_cairo_transform(_cr, transform);
+    auto cm = Cairo::Matrix(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
+    cairo_transform(_cr, &cm);
 
     // store new CTM
     _state_stack.back().transform = getTransform();
@@ -969,7 +1001,8 @@ void CairoRenderContext::transform(Geom::Affine const &transform)
 void CairoRenderContext::setTransform(Geom::Affine const &transform)
 {
     g_assert(_is_valid);
-    ink_cairo_transform(_cr, transform);
+    auto cm = Cairo::Matrix(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
+    cairo_transform(_cr, &cm);
     _state_stack.back().transform = transform;
 }
 
@@ -985,7 +1018,7 @@ Geom::Affine CairoRenderContext::getTransform() const
 
     cairo_matrix_t ctm;
     cairo_get_matrix(_cr, &ctm);
-    return ink_matrix_to_2geom(ctm);
+    return Geom::Affine(ctm.xx, ctm.xy, ctm.x0, ctm.yx, ctm.yy, ctm.y0);
 }
 
 Geom::Affine CairoRenderContext::getItemTransform() const
@@ -1110,7 +1143,7 @@ CairoRenderContext::_createPatternPainter(SPPaintServer const *const paintserver
     pattern_ctx.pushState();
 
     // create drawing and group
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     unsigned dkey = SPItem::display_key_new(1);
 
     // show items and render them
@@ -1135,7 +1168,9 @@ CairoRenderContext::_createPatternPainter(SPPaintServer const *const paintserver
     cairo_pattern_set_extend(result, CAIRO_EXTEND_REPEAT);
 
     // set pattern transformation
-    ink_cairo_pattern_set_matrix(result, ps2user.inverse());
+    auto transform = ps2user.inverse();
+    auto cm = Cairo::Matrix(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
+    cairo_pattern_set_matrix(result, &cm);
 
     // hide all items
     for (SPPattern *pat_i = pat; pat_i != nullptr; pat_i = pat_i->ref.getObject()) {
@@ -1160,7 +1195,7 @@ CairoRenderContext::_createHatchPainter(SPPaintServer const *const paintserver, 
     g_assert(hatch->pitch() > 0);
 
     // create drawing and group
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     unsigned dkey = SPItem::display_key_new(1);
 
     // TODO need to refactor 'evil' referenced code for const correctness.
@@ -1218,9 +1253,9 @@ CairoRenderContext::_createHatchPainter(SPPaintServer const *const paintserver, 
     cairo_pattern_t *result = cairo_pattern_create_for_surface(pattern_surface);
     cairo_pattern_set_extend(result, CAIRO_EXTEND_REPEAT);
 
-    Geom::Affine pattern_transform;
-    pattern_transform = render_info.pattern_to_user_transform.inverse() * drawing_transform;
-    ink_cairo_pattern_set_matrix(result, pattern_transform);
+    auto transform = render_info.pattern_to_user_transform.inverse() * drawing_transform;
+    auto cm = Cairo::Matrix(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
+    cairo_pattern_set_matrix(result, &cm);
 
     evil->hide(dkey);
     return result;
@@ -1253,7 +1288,8 @@ CairoRenderContext::_createPatternForPaintServer(SPPaintServer const *const pain
 
             // add stops
             for (gint i = 0; unsigned(i) < lg->vector.stops.size(); i++) {
-                ink_cairo_pattern_add_color_stop(pattern, lg->vector.stops[i].offset, *lg->vector.stops[i].color, alpha);
+                auto color = *lg->vector.stops[i].color->converted(Colors::Space::Type::RGB);
+                cairo_pattern_add_color_stop_rgba(pattern, lg->vector.stops[i].offset, color[0], color[1], color[2], color.getOpacity());
             }
     } else if (auto rg = cast<SPRadialGradient>(paintserver_mutable)) {
 
@@ -1271,10 +1307,9 @@ CairoRenderContext::_createPatternForPaintServer(SPPaintServer const *const pain
 
         // add stops
         for (gint i = 0; unsigned(i) < rg->vector.stops.size(); i++) {
-            ink_cairo_pattern_add_color_stop(pattern, rg->vector.stops[i].offset, *rg->vector.stops[i].color, alpha);
+            auto color = *lg->vector.stops[i].color->converted(Colors::Space::Type::RGB);
+            cairo_pattern_add_color_stop_rgba(pattern, lg->vector.stops[i].offset, color[0], color[1], color[2], color.getOpacity());
         }
-    } else if (auto mg = cast<SPMeshGradient>(paintserver_mutable)) {
-        pattern = Inkscape::create_drawing_paintserver(mg)->create_pattern(_cr, pbox, 1.0);
     } else if (is<SPPattern>(paintserver)) {
         pattern = _createPatternPainter(paintserver, pbox);
     } else if (is<SPHatch>(paintserver) ) {
@@ -1314,7 +1349,9 @@ CairoRenderContext::_createPatternForPaintServer(SPPaintServer const *const pain
             pattern_matrix *= Geom::Affine(pbox->width(), 0, 0, pbox->height(), pbox->left(), pbox->top());
         }
         // Inverse because Cairo expects a userspace->patternspace matrix
-        ink_cairo_pattern_set_matrix(pattern, pattern_matrix.inverse());
+        auto transform = pattern_matrix.inverse();
+        auto cm = Cairo::Matrix(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
+        cairo_pattern_set_matrix(pattern, &cm);
     }
 
     return pattern;
@@ -1348,7 +1385,8 @@ void CairoRenderContext::_setFillStyle(SPStyle const *const style, Geom::OptRect
             cairo_pattern_destroy(pattern);
         }
     } else if (style->fill.isColor()) {
-        ink_cairo_set_source_color(_cr, style->fill.getColor().withOpacity(alpha));
+        auto color = *style->fill.getColor().withOpacity(alpha).converted(Colors::Space::Type::RGB);
+        cairo_set_source_rgba(_cr, color[0], color[1], color[2], color.getOpacity());
     } else { // unset fill is black
         g_assert(!style->fill.set
                 || (paint_server && !paint_server->isValid()));
@@ -1363,7 +1401,8 @@ void CairoRenderContext::_setStrokeStyle(SPStyle const *style, Geom::OptRect con
     if (style->stroke.isContext()) {
         // Do nothing. These are valid values but if not inside a <use> or <marker> element do nothing.
     } else if (style->stroke.isColor() || (style->stroke.isPaintserver() && !style->getStrokePaintServer()->isValid())) {
-        ink_cairo_set_source_color(_cr, style->stroke.getColor().withOpacity(alpha));
+        auto color = *style->stroke.getColor().withOpacity(alpha).converted(Colors::Space::Type::RGB);
+        cairo_set_source_rgba(_cr, color[0], color[1], color[2], color.getOpacity());
     } else {
         g_assert( style->stroke.isPaintserver()
                   || is<SPGradient>(SP_STYLE_STROKE_SERVER(style))
@@ -1397,7 +1436,14 @@ void CairoRenderContext::_setStrokeStyle(SPStyle const *style, Geom::OptRect con
     // It requires the following pull request in Cairo:
     // https://gitlab.freedesktop.org/cairo/cairo/merge_requests/21
     if (style->stroke_extensions.hairline) {
-        ink_cairo_set_hairline(_cr);
+#ifdef CAIRO_HAS_HAIRLINE
+        cairo_set_hairline(_cr, true);
+#else
+        // As a backup, use a device unit of 1
+        double x = 1.0, y = 0.0; 
+        cairo_device_to_user_distance(_cr, &x, &y); 
+        cairo_set_line_width(_cr, std::hypot(x, y)); 
+#endif
     } else {
         cairo_set_line_width(_cr, style->stroke_width.computed);
     }
@@ -1592,7 +1638,7 @@ bool CairoRenderContext::renderPathVector(Geom::PathVector const &pathv,
     return true;
 }
 
-bool CairoRenderContext::renderImage(Inkscape::Pixbuf const *pb,
+bool CairoRenderContext::renderImage(std::shared_ptr<const Renderer::Surface> const img,
                                      Geom::Affine const &image_transform, SPStyle const *style)
 {
     g_assert( _is_valid );
@@ -1603,16 +1649,11 @@ bool CairoRenderContext::renderImage(Inkscape::Pixbuf const *pb,
 
     _prepareRenderGraphic();
 
-    int w = pb->width();
-    int h = pb->height();
+    int w = img->width();
+    int h = img->height();
 
-    // TODO: reenable merge_opacity if useful
-
-    cairo_surface_t const *image_surface = pb->getSurfaceRaw();
-    if (cairo_surface_status(const_cast<cairo_surface_t*>(image_surface))) { // cairo_surface_status does not modify argument
-        TRACE(("Image surface creation failed:\n%s\n", cairo_status_to_string(cairo_surface_status(image_surface))));
-        return false;
-    }
+    // Ask for rgb version of the surface in RGB8 (not float) as that's what it used before
+    auto raw_surface = img->exportToARGB32();
 
     cairo_save(_cr);
 
@@ -1620,7 +1661,7 @@ bool CairoRenderContext::renderImage(Inkscape::Pixbuf const *pb,
     transform(image_transform);
 
     // cairo_set_source_surface only modifies refcount of 'image_surface', which is an implementation detail
-    cairo_set_source_surface(_cr, const_cast<cairo_surface_t*>(image_surface), 0.0, 0.0);
+    cairo_set_source_surface(_cr, const_cast<cairo_surface_t*>(raw_surface->cobj()), 0.0, 0.0);
 
     // set clip region so that the pattern will not be repeated (bug in Cairo-PDF)
     if (_vector_based_target) {
@@ -1741,9 +1782,9 @@ CairoRenderContext::renderGlyphtext(PangoFont *font, Geom::Affine const &font_ma
     cairo_set_font_face(_cr, font_face);
 
     // set the given font matrix
-    cairo_matrix_t matrix;
-    ink_matrix_to_cairo(matrix, font_matrix);
-    cairo_set_font_matrix(_cr, &matrix);
+    auto transform = font_matrix;
+    auto cm = Cairo::Matrix(transform[0], transform[1], transform[2], transform[3], transform[4], transform[5]);
+    cairo_set_font_matrix(_cr, &cm);
 
     if (_render_mode == RENDER_MODE_CLIP) {
         if (_clip_mode == CLIP_MODE_MASK) {
@@ -1811,7 +1852,8 @@ void CairoRenderContext::setPathVector(Geom::PathVector const &pv)
 
 void CairoRenderContext::addPathVector(Geom::PathVector const &pv)
 {
-    feed_pathvector_to_cairo(_cr, pv);
+    Cairo::RefPtr<Cairo::Context> context = Cairo::RefPtr<Cairo::Context>(new Cairo::Context(_cr, false));
+    Renderer::feed_pathvector_to_cairo(context, pv);
 }
 
 static cairo_status_t _write_callback(void *closure, const unsigned char *data, unsigned int length)

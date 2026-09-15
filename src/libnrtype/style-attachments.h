@@ -36,17 +36,20 @@ class SPFilter;
 class SPPaintServer;
 
 namespace Inkscape {
+
+namespace Renderer {
 class DrawingText;
 class DrawingPattern;
+}
 
 namespace Text {
 
 class StyleAttachments
 {
 public:
-    void attachFilter(DrawingText *item, SPFilter *filter);
-    void attachFill(DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox);
-    void attachStroke(DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox);
+    void attachFilter(Renderer::DrawingText *item, SPFilter *filter);
+    void attachFill(Renderer::DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox);
+    void attachStroke(Renderer::DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox);
     void unattachAll();
 
 private:
@@ -58,12 +61,12 @@ private:
         FilterEntry const &operator=(FilterEntry const &) = delete;
         ~FilterEntry();
 
-        void addItem(Inkscape::DrawingText *item);
+        void addItem(Renderer::DrawingText *item);
 
     private:
         SPFilter *_filter;
         sigc::connection _conn;
-        std::vector<Inkscape::DrawingText*> _items;
+        std::vector<Renderer::DrawingText*> _items;
 
         void _removeAllItems();
     };
@@ -76,8 +79,8 @@ private:
         PatternEntry const &operator=(PatternEntry const &) = delete;
         ~PatternEntry();
 
-        void addFill(Inkscape::DrawingText *item, Geom::OptRect const &bbox);
-        void addStroke(Inkscape::DrawingText *item, Geom::OptRect const &bbox);
+        void addFill(Renderer::DrawingText *item, Geom::OptRect const &bbox);
+        void addStroke(Renderer::DrawingText *item, Geom::OptRect const &bbox);
 
     private:
         SPPaintServer *_paintserver;

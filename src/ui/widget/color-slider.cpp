@@ -29,13 +29,15 @@
 #include "util/drawing-utils.h"
 #include "util/theme-utils.h"
 
+#include "renderer/context.h"
+#include "renderer/surface.h"
+#include "renderer/context-pattern.h"
+
 constexpr int THUMB_SPACE = 16;
 constexpr int TRACK_HEIGHT = 8;
 constexpr int THUMB_SIZE = TRACK_HEIGHT + 2;
 constexpr int RING_THICKNESS = 2;
 constexpr int CHECKERBOARD_TILE = TRACK_HEIGHT / 2;
-constexpr uint32_t ERR_DARK = 0xff00ff00;    // Green
-constexpr uint32_t ERR_LIGHT = 0xffff00ff;   // Magenta
 
 namespace Inkscape::UI::Widget {
 
@@ -43,6 +45,7 @@ ColorSlider::ColorSlider(std::shared_ptr<Colors::ColorSet> colors, Colors::Space
     _colors(std::move(colors)),
     _component(std::move(component)) {
 
+    assert(_colors->getSpaceConstraint());
     construct();
 }
 
@@ -55,6 +58,7 @@ ColorSlider::ColorSlider(
     , _colors(std::move(colors))
     , _component(std::move(component)) {
 
+    assert(_colors->getSpaceConstraint());
     construct();
 }
 
@@ -199,31 +203,6 @@ void ColorSlider::on_drag(Gdk::EventSequence* sequence) {
     }
 }
 
-/**
- * Generate a checkerboard pattern with the given colors.
- *
- * @arg dark - The RGBA dark color
- * @arg light - The RGBA light color
- * @arg scale - The scale factor of the cairo surface
- * @arg buffer - The memory to populate with this pattern
- *
- * @returns A Gdk::Pixbuf of the buffer memory.
- */
-Glib::RefPtr<Gdk::Pixbuf> _make_checkerboard(uint32_t dark, uint32_t light, unsigned scale, std::vector<uint32_t> &buffer)
-{
-    // A pattern of 2x2 blocks is enough for REPEAT mode to do the rest, this way we never need to recalculate the checkerboard
-    static auto block = CHECKERBOARD_TILE * scale;
-    static auto pattern = block * 2;
-
-    buffer = std::vector<uint32_t>(pattern * pattern);
-    for (auto y = 0; y < pattern; y++) {
-        for (auto x = 0; x < pattern; x++) {
-            buffer[(y * pattern) + x] = ((x / block) & 1) != ((y / block) & 1) ? dark : light;
-        }
-    }
-    return Gdk::Pixbuf::create_from_data((guint8*)buffer.data(), Gdk::Colorspace::RGB, true, 8, pattern, pattern, pattern * 4);
-}
-
 static void draw_slider_thumb(const Cairo::RefPtr<Cairo::Context>& ctx, const Geom::Point& location, double size, double thickness, const Gdk::RGBA& fill, const Gdk::RGBA& stroke) {
     auto center = location.round(); //todo - verify pix grid fit + Geom::Point(0.5, 0.5);
     auto radius = size / 2;
@@ -239,9 +218,11 @@ static void draw_slider_thumb(const Cairo::RefPtr<Cairo::Context>& ctx, const Ge
     ctx->stroke();
 }
 
-void ColorSlider::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
+void ColorSlider::draw_func(Cairo::RefPtr<Cairo::Context> const &ct,
                             int const full_width, int const full_height)
 {
+    auto cr = std::make_shared<Renderer::Context>(ct); // Does save();
+
     auto maybe_area = get_active_area(full_width, full_height);
     if (!maybe_area) return;
 
@@ -256,7 +237,7 @@ void ColorSlider::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
     border.setBottom(border.top() + TRACK_HEIGHT);
     // rounded ends
     auto radius = TRACK_HEIGHT / 2.0;
-    Util::rounded_rectangle(cr, border, radius);
+    cr->rectangle(border, radius);
 
     auto const scale = get_scale_factor();
     auto width = border.width() * scale;
@@ -265,78 +246,64 @@ void ColorSlider::draw_func(Cairo::RefPtr<Cairo::Context> const &cr,
     bool const is_alpha = _component.id == "alpha";
 
     // changing scale to draw pixmap at display resolution
-    cr->save();
     cr->scale(1.0 / scale, 1.0 / scale);
+
+    static auto ERR_DARK = Colors::Color(0xff00ff00); // Green
+    static auto ERR_LIGHT = Colors::Color(0xffff00ff); // Magenta
 
     // Color set is empty, this is not allowed, show warning colors
     if (_colors->isEmpty()) {
-        static std::vector<uint32_t> err_buffer;
-        static Glib::RefPtr<Gdk::Pixbuf> error = _make_checkerboard(ERR_DARK, ERR_LIGHT, scale, err_buffer);
-
-        Gdk::Cairo::set_source_pixbuf(cr, error, left, top);
-        cr->get_source()->set_extend(Cairo::Pattern::Extend::REPEAT);
+        cr->setSource(Renderer::CheckerboardPattern(ERR_DARK, ERR_LIGHT, 4));
         cr->fill();
-
         // Don't try and paint any color (there isn't any)
-        cr->restore();
         return;
     }
 
-    // The alpha background is a checkerboard pattern of light and dark pixels
-    if (is_alpha) {
-        std::vector<uint32_t> bg_buffer;
-        auto [col1, col2] = Util::get_checkerboard_colors(*this, true);
-        Glib::RefPtr<Gdk::Pixbuf> background = _make_checkerboard(col1, col2, scale, bg_buffer);
-
-        // Paint the alpha background
-        Gdk::Cairo::set_source_pixbuf(cr, background, left, top);
-        cr->get_source()->set_extend(Cairo::Pattern::Extend::REPEAT);
-        cr->fill_preserve();
-    }
-
-    // Draw row of colored pixels here
+    // We're targeting the average color in the slider previews
     auto paint_color = _colors->getAverage();
+    auto target_space = _colors->getSpaceConstraint();
 
     if (!is_alpha) {
         // Remove alpha channel from paint
         paint_color.enableOpacity(false);
+    } else {
+        // The alpha background is a checkerboard pattern of light and dark pixels
+        Colors::Color color(Util::is_current_theme_dark(*this) ? 0x40404040 : 0xe0e0e080, true);
+        auto pattern = Renderer::CheckerboardPattern(color, 4.5);
+        pattern.setMatrix(Geom::Translate(left, top));
+        cr->setSource(pattern);
+        cr->fill_preserve();
     }
 
-    // When the widget is wider, we want a new color gradient buffer
-    if (!_gradient || _gr_buffer.size() < static_cast<size_t>(width)) {
-        _gr_buffer.resize(width);
-        _gradient = Gdk::Pixbuf::create_from_data((guint8*)&_gr_buffer.front(), Gdk::Colorspace::RGB, true, 8, width, 1, width * 4);
+    // 1. What range of colors are we trying to show? from 0 to 1 for this component channel.
+    Colors::Color start_color = paint_color;
+    start_color.set(_component.index, 0.0);
+    Colors::Color end_color = paint_color;
+    end_color.set(_component.index, 1.0);
+
+    // 2. Create a gradient in the target color space
+    auto pattern = std::make_shared<Renderer::LinearGradientPattern>(target_space, 0, 0, full_width, 0);
+    pattern->addColorStop(0, start_color);
+    pattern->addColorStop(1, end_color);
+
+    // 3. Paint the gradient onto a 1px high surface
+    auto surface = Renderer::Surface({full_width, 1}, 1, target_space); // Float surface
+    {
+        auto ctx = Renderer::Context(surface);
+        ctx.setSource(*pattern);
+        ctx.paint();
     }
 
-    double lim = width > 1 ? width - 1.0 : 1.0;
-    auto space_rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-    for (int x = 0; x < width; x++) {
-        paint_color.set(_component.index, x / lim);
-        auto c = Colors::to_gamut_css(paint_color, space_rgb);
-        _gr_buffer[x] = c.toABGR();// paint_color.toABGR();
-    }
+    // 4. Convert the target_space surface into sRGB for the display. This is where you would
+    // convert to a wider gammut for GdkTexture if and when Gtk supports that.
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto srgb_surface = surface.convertedToColorSpace(srgb);
 
-    Gdk::Cairo::set_source_pixbuf(cr, _gradient, left, top);
-    cr->get_source()->set_extend(Cairo::Pattern::Extend::REPEAT);
+    // 5. Paint the 1px high surface, stetching it to the full height of the widget surface
+    cr->set_antialias(Cairo::ANTIALIAS_NONE);
+    cr->scale(1, full_height);
+    cr->setSource(*srgb_surface);
     cr->fill();
-    cr->restore();
-
-    bool dark_theme = Util::is_current_theme_dark(*this);
-    Util::draw_standard_border(cr, border, dark_theme, radius, scale);
-
-    // draw slider thumb
-    if (_colors->isValid(_component)) {
-        auto ring = get_color();
-        auto dark = get_luminance(ring) < 0.5;
-        float x = dark ? 1.0f : 0.0f;
-        float alpha = dark ? 0.40f : 0.25f;
-        auto stroke = Gdk::RGBA(x, x, x, alpha);
-
-        double value = std::clamp(_colors->getAverage(_component), 0.0, 1.0);
-        if (std::isfinite(value)) {
-            draw_slider_thumb(cr, Geom::Point(area.left() + value * area.width(), area.midpoint().y()), _ring_size, _ring_thickness, ring, stroke);
-        }
-    }
 }
 
 double ColorSlider::getScaled() const

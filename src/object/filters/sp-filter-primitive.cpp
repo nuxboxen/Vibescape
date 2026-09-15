@@ -18,7 +18,7 @@
 
 #include "sp-filter-primitive.h"
 #include "attributes.h"
-#include "display/nr-filter-primitive.h"
+#include "renderer/drawing-filters/primitive.h"
 #include "style.h"
 #include "slot-resolver.h"
 #include "util/optstr.h"
@@ -135,7 +135,7 @@ void SPFilterPrimitive::resolve_slots(SlotResolver &resolver)
 }
 
 // Common initialization for filter primitives
-void SPFilterPrimitive::build_renderer_common(Inkscape::Filters::FilterPrimitive *primitive) const
+void SPFilterPrimitive::build_renderer_common(Inkscape::Renderer::DrawingFilter::Primitive *primitive) const
 {
     g_assert(primitive);
     
@@ -147,7 +147,7 @@ void SPFilterPrimitive::build_renderer_common(Inkscape::Filters::FilterPrimitive
     primitive->set_subregion(x, y, width, height);
 
     // Give renderer access to filter properties
-    primitive->setStyle(style);
+    primitive->setInterpolationSpace(style->color_interpolation_filters.getInterpolationSpace());
 }
 
 /* Calculate the region taken up by this filter, given the previous region.

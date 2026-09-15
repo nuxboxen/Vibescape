@@ -9,7 +9,6 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "display/cairo-utils.h"
 #include "ui/widget/objects-dialog-cells.h"
 
 #include <gtkmm/snapshot.h>
@@ -44,6 +43,7 @@ void ColorTagRenderer::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapsho
                                       const Gdk::Rectangle &cell_area,
                                       Gtk::CellRendererState flags)
 {
+    /* TODO
     auto const cr = snapshot->append_cairo(background_area);
     cr->rectangle(background_area.get_x() + 0.5, background_area.get_y() + 0.5, background_area.get_width() - 1.0, background_area.get_height() -1.0);
     auto  color = Colors::Color(_property_color.get_value()); // RGBA
@@ -58,7 +58,7 @@ void ColorTagRenderer::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapsho
         cr->rectangle(background_area.get_x() + 0.5, background_area.get_y() + 0.5, background_area.get_width() - 1.0, background_area.get_height() - 1.0);
         cr->set_line_width(1.0);
         cr->stroke();
-    }
+    }*/
 }
 
 void ColorTagRenderer::get_preferred_width_vfunc(Gtk::Widget& widget, int& min_w, int& nat_w) const {

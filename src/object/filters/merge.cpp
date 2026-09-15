@@ -16,21 +16,11 @@
 #include <utility>                                   // for as_const
 
 #include "mergenode.h"                               // for SPFeMergeNode
-#include "display/nr-filter-merge.h"                 // for FilterMerge
+#include "renderer/drawing-filters/merge.h"          // for FilterMerge
 #include "object/filters/sp-filter-primitive.h"      // for SPFilterPrimitive
 #include "object/sp-object.h"                        // for SPObject, SP_OBJ...
 
 class SlotResolver;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Node;
-} // namespace XML
-} // namespace Inkscape
 
 void SPFeMerge::modified(unsigned flags)
 {
@@ -71,9 +61,9 @@ void SPFeMerge::resolve_slots(SlotResolver &resolver)
     SPFilterPrimitive::resolve_slots(resolver);
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeMerge::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeMerge::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto merge = std::make_unique<Inkscape::Filters::FilterMerge>();
+    auto merge = std::make_unique<Inkscape::Renderer::DrawingFilter::Merge>();
     build_renderer_common(merge.get());
 
     int in_nr = 0;

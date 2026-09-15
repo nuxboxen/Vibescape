@@ -23,7 +23,7 @@
 #include <gtkmm/popover.h>
 #include <gtkmm/cellrendererpixbuf.h>
 
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "document.h"
 #include "ui/operation-blocker.h"
 #include "ui/widget-vfuncs-class-init.h"
@@ -165,15 +165,15 @@ private:
     void marker_list_from_doc(SPDocument* source, bool history);
     std::vector<SPMarker*> get_marker_list(SPDocument* source);
     void add_markers(std::vector<SPMarker *> const& marker_list, SPDocument *source, bool history);
-    Cairo::RefPtr<Cairo::ImageSurface> create_marker_image(Geom::IntPoint pixel_size, gchar const *mname,
-        SPDocument *source, Inkscape::Drawing &drawing, double scale, bool add_cross);
+    std::shared_ptr<Renderer::Surface> create_marker_image(Geom::IntPoint pixel_size, gchar const *mname,
+        SPDocument *source, Renderer::Drawing &drawing, double scale, bool add_cross);
     void refresh_after_markers_modified();
     void draw_small_preview(const Glib::RefPtr<Gtk::Snapshot>& ctx, int width, int height, SPMarker* marker);
     void draw_big_preview(const Glib::RefPtr<Gtk::Snapshot>& snapshot, int width, int height);
     sigc::scoped_connection modified_connection;
     sigc::scoped_connection _idle;
     bool _is_up_to_date = false;
-    Cairo::RefPtr<Cairo::ImageSurface> marker_to_image(Geom::IntPoint size, SPMarker* marker);
+    std::shared_ptr<Renderer::Surface> marker_to_image(Geom::IntPoint size, SPMarker* marker);
 };
 
 } // namespace Inkscape::UI::Widget

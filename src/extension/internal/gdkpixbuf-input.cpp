@@ -21,13 +21,13 @@
 #include "preferences.h"
 #include "selection-chemistry.h"
 
-#include "display/cairo-utils.h"
-
 #include "extension/input.h"
 #include "extension/system.h"
 
 #include "object/sp-image.h"
 #include "object/sp-root.h"
+
+#include "renderer/surface-image.h"
 
 #include "util/units.h"
 
@@ -58,17 +58,17 @@ std::unique_ptr<SPDocument> GdkpixbufInput::open(Inkscape::Extension::Input *mod
     bool embed = (link == "embed");
  
     std::unique_ptr<SPDocument> doc;
-    std::unique_ptr<Inkscape::Pixbuf> pb(Inkscape::Pixbuf::create_from_file(uri));
+    auto img = std::make_shared<Renderer::Image>(std::string_view(uri));
 
     // TODO: the pixbuf is created again from the base64-encoded attribute in SPImage.
     // Find a way to create the pixbuf only once.
 
-    if (pb) {
+    if (img) {
         doc = SPDocument::createNewDoc(nullptr, true);
         DocumentUndo::ScopedInsensitive _no_undo(doc.get());
 
-        double width = pb->width();
-        double height = pb->height();
+        double width = img->width();
+        double height = img->height();
         double defaultxdpi = prefs->getDouble("/dialogs/import/defaultxdpi/value", Inkscape::Util::Quantity::convert(1, "in", "px"));
 
         double xscale = 1;
@@ -111,7 +111,7 @@ std::unique_ptr<SPDocument> GdkpixbufInput::open(Inkscape::Extension::Input *mod
         }
 
         if (embed) {
-            sp_embed_image(image_node, pb.get());
+            sp_embed_image(image_node, img);
         } else {
             // convert filename to uri
             gchar* _uri = g_filename_to_uri(uri, nullptr, nullptr);

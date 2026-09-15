@@ -42,7 +42,7 @@ private:
 
 } // namespace Inkscape::UI::Widget
 
-Glib::RefPtr<Gdk::Pixbuf> sp_gradient_to_pixbuf(SPGradient *gr, int width, int height);
+Glib::RefPtr<Gdk::Texture> sp_gradient_to_texture(SPGradient *gr, int width, int height);
 Cairo::RefPtr<Cairo::ImageSurface> sp_gradient_to_surface(SPGradient* gr, int width, int height);
 Cairo::RefPtr<Cairo::ImageSurface> sp_gradstop_to_surface(SPStop *stop, int width, int height);
 

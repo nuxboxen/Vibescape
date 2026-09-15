@@ -97,7 +97,7 @@ public:
 
     Method get_method() const override { return Method::Persistent; }
 
-    Cairo::RefPtr<Cairo::ImageSurface> request(Geom::IntPoint const &dimensions, bool nogl) override
+    std::shared_ptr<Renderer::Surface> request(Geom::IntPoint const &dimensions, bool nogl) override
     {
         // Calculate image properties required by cairo.
         int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, dimensions.x());
@@ -168,18 +168,20 @@ public:
         b.refs++;
 
         // Create the image surface.
-        auto surface = Cairo::ImageSurface::create(b.data + m.off, Cairo::Surface::Format::ARGB32, dimensions.x(), dimensions.y(), stride);
+        // TODO: This Integer based surface is bullshit and needs to be replaced with a float surface
+        auto sc = Cairo::ImageSurface::create(b.data + m.off, Cairo::Surface::Format::ARGB32, dimensions.x(), dimensions.y(), stride);
+        auto surface = std::make_shared<Renderer::Surface>(sc, false);
 
         // Attach the mapping handle as user data.
-        cairo_surface_set_user_data(surface->cobj(), &key, (void*)(uintptr_t)mapping, nullptr);
+        surface->setUserData(&key, (void*)(uintptr_t)mapping);
 
         return surface;
     }
 
-    void finish(Cairo::RefPtr<Cairo::ImageSurface> surface, bool junk) override
+    void finish(std::shared_ptr<Renderer::Surface> surface, bool junk) override
     {
         // Extract the mapping handle from the surface's user data.
-        auto mapping = (int)(uintptr_t)cairo_surface_get_user_data(surface->cobj(), &key);
+        auto mapping = (int)(uintptr_t)surface->getUserData(&key);
 
         // Flush all changes from the image surface to the buffer, and delete it.
         surface.reset();
@@ -288,7 +290,7 @@ class AsynchronousPixelStreamer : public PixelStreamer
 public:
     Method get_method() const override { return Method::Asynchronous; }
 
-    Cairo::RefPtr<Cairo::ImageSurface> request(Geom::IntPoint const &dimensions, bool nogl) override
+    std::shared_ptr<Renderer::Surface> request(Geom::IntPoint const &dimensions, bool nogl) override
     {
         // Calculate image properties required by cairo.
         int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, dimensions.x());
@@ -343,14 +345,17 @@ public:
         m.height = dimensions.y();
         m.stride = stride;
 
-        auto surface = Cairo::ImageSurface::create(m.buf.data, Cairo::Surface::Format::ARGB32, m.width, m.height, m.stride);
-        cairo_surface_set_user_data(surface->cobj(), &key, (void*)(uintptr_t)mapping, nullptr);
+        auto sc = Cairo::ImageSurface::create(m.buf.data, Cairo::Surface::Format::ARGB32, m.width, m.height, m.stride);
+        auto surface = std::make_shared<Renderer::Surface>(sc, false);
+
+        // Attach the mapping handle as user data.
+        surface->setUserData(&key, (void*)(uintptr_t)mapping);
         return surface;
     }
 
-    void finish(Cairo::RefPtr<Cairo::ImageSurface> surface, bool junk) override
+    void finish(std::shared_ptr<Renderer::Surface> surface, bool junk) override
     {
-        auto mapping = (int)(uintptr_t)cairo_surface_get_user_data(surface->cobj(), &key);
+        auto mapping = (int)(uintptr_t)surface->getUserData(&key);
         surface.reset();
 
         auto &m = mappings[mapping];
@@ -421,7 +426,7 @@ class SynchronousPixelStreamer : public PixelStreamer
 public:
     Method get_method() const override { return Method::Synchronous; }
 
-    Cairo::RefPtr<Cairo::ImageSurface> request(Geom::IntPoint const &dimensions, bool) override
+    std::shared_ptr<Renderer::Surface> request(Geom::IntPoint const &dimensions, bool) override
     {
         auto choose_mapping = [&, this] {
             for (int i = 0; i < mappings.size(); i++) {
@@ -443,14 +448,17 @@ public:
         m.size = m.stride * m.height;
         m.data.resize(m.size);
 
-        auto surface = Cairo::ImageSurface::create(&m.data[0], Cairo::Surface::Format::ARGB32, m.width, m.height, m.stride);
-        cairo_surface_set_user_data(surface->cobj(), &key, (void*)(uintptr_t)mapping, nullptr);
+        auto sc = Cairo::ImageSurface::create(&m.data[0], Cairo::Surface::Format::ARGB32, m.width, m.height, m.stride);
+        auto surface = std::make_shared<Renderer::Surface>(sc, false);
+
+        // Attach the mapping handle as user data.
+        surface->setUserData(&key, (void*)(uintptr_t)mapping);
         return surface;
     }
 
-    void finish(Cairo::RefPtr<Cairo::ImageSurface> surface, bool junk) override
+    void finish(std::shared_ptr<Renderer::Surface> surface, bool junk) override
     {
-        auto mapping = (int)(uintptr_t)cairo_surface_get_user_data(surface->cobj(), &key);
+        auto mapping = (int)(uintptr_t)surface->getUserData(&key);
         surface.reset();
 
         auto &m = mappings[mapping];

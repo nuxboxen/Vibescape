@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+set(drawing_unit_SRC
+        drawing.cpp
+        drawing-group.cpp
+        drawing-image.cpp
+        drawing-item.cpp
+        drawing-paintserver.cpp
+        drawing-pattern.cpp
+        drawing-shape.cpp
+        drawing-style.cpp
+        drawing-text.cpp
+
+        # -------
+        drawing.h
+        drawing-group.h
+        drawing-image.h
+        drawing-item.h
+        drawing-paintserver.h
+        drawing-pattern.h
+        drawing-shape.h
+        drawing-style.h
+        drawing-text.h
+)
+
+function(get_drawing_unit_lib)
+    list(TRANSFORM drawing_unit_SRC PREPEND "renderer/drawing/")
+    list(PREPEND drawing_unit_SRC
+         "util/funclog.cpp"
+         "util/pool.cpp"
+         "helper/geom.cpp"
+    )
+    list(TRANSFORM drawing_unit_SRC PREPEND "${CMAKE_SOURCE_DIR}/src/")
+    add_library(drawing_unit_lib SHARED "${drawing_unit_SRC}")
+    pkg_check_modules(DRAWING_UNIT_DEPS REQUIRED IMPORTED_TARGET cairomm-1.16)
+    target_link_libraries(drawing_unit_lib drawing_filters_unit_lib colors_unit_lib libnrtype_unit_lib JPEG::JPEG 2Geom::2geom GLibmm::GLibmm PkgConfig::DRAWING_UNIT_DEPS)
+    make_target_unit_testable(drawing_unit_lib)
+endfunction(get_drawing_unit_lib)
+

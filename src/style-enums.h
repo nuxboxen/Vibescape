@@ -18,6 +18,9 @@
 
 #include <cstdint>
 
+// Each layer represents a layer of paint which can be a fill, a stroke, or markers.
+inline constexpr int PAINT_ORDER_LAYERS = 3;
+
 /* fill-rule */
 /* clip-rule */
 enum SPWindRule : std::uint_least8_t {

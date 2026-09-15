@@ -18,10 +18,6 @@
 #include "extension/template.h"
 #include "ui/iconview-item-factory.h"
 
-namespace Gdk {
-class Pixbuf;
-} // namespace Gdk
-
 namespace Gtk {
 class Builder;
 class IconView;
@@ -29,6 +25,10 @@ class ListStore;
 } // namespace Gtk
 
 class SPDocument;
+
+namespace Inkscape::Renderer {
+class Surface;
+}
 
 namespace Inkscape::UI::Widget {
 
@@ -60,7 +60,7 @@ private:
     struct TemplateItem;
     Glib::RefPtr<TemplateItem> get_selected_item(Gtk::Widget* current_page = nullptr);
     Glib::RefPtr<Gio::ListStore<TemplateItem>> generate_category(std::string const &label, bool allow_unselect);
-    Cairo::RefPtr<Cairo::ImageSurface> icon_to_pixbuf(std::string const &name, int scale);
+    std::shared_ptr<Renderer::Surface> icon_to_pixbuf(std::string const &name, int scale);
     Gtk::GridView *get_iconview(Gtk::Widget *widget);
     bool is_item_visible(const Glib::RefPtr<Glib::ObjectBase>& item, const Glib::ustring& search) const;
     void refilter(Glib::ustring search);

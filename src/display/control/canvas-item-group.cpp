@@ -72,7 +72,7 @@ void CanvasItemGroup::visit_page_rects(std::function<void(Geom::Rect const &)> c
     }
 }
 
-void CanvasItemGroup::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemGroup::_render(Inkscape::CanvasItemBuffer buf) const
 {
     for (auto &item : items) {
         item.render(buf);

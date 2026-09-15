@@ -16,7 +16,7 @@
 #include <glibmm/ustring.h>
 #include <optional>
 #include "colors/color.h"
-#include "display/cairo-utils.h"
+#include "colors/manager.h"
 #include "document.h"
 #include "gradient-chemistry.h"
 #include "object/sp-gradient.h"
@@ -33,9 +33,12 @@
 #include "object/sp-root.h"
 #include "object/sp-symbol.h"
 #include "pattern-manager.h"
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
+#include "renderer/surface.h"
+#include "renderer/surface-image.h"
+#include "renderer/context.h"
+#include "renderer/context-pattern.h"
 #include "util/scope_exit.h"
-#include "ui/cache/svg_preview_cache.h"
 #include "ui/util.h"
 #include "xml/href-attribute-helper.h"
 using namespace std::literals;
@@ -96,7 +99,7 @@ static std::unique_ptr<SPDocument> symbols_preview_doc()
     return SPDocument::createNewDocFromMem(buffer);
 }
 
-Cairo::RefPtr<Cairo::Surface> draw_symbol(SPObject& symbol, double box_w, double box_h, double device_scale, SPDocument* preview_document, bool style_from_use) {
+std::shared_ptr<Renderer::Surface> draw_symbol(SPObject& symbol, double box_w, double box_h, double device_scale, SPDocument* preview_document, bool style_from_use) {
     // Create a copy repr of the symbol with id="the_symbol"
     Inkscape::XML::Node* repr = symbol.getRepr()->duplicate(preview_document->getReprDoc());
     repr->setAttribute("id", "the_symbol");
@@ -139,7 +142,7 @@ Cairo::RefPtr<Cairo::Surface> draw_symbol(SPObject& symbol, double box_w, double
     preview_document->ensureUpToDate();
 
     unsigned dkey = SPItem::display_key_new(1);
-    Inkscape::Drawing drawing; // New drawing for offscreen rendering.
+    Renderer::Drawing drawing; // New drawing for offscreen rendering.
     drawing.setRoot(preview_document->getRoot()->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY));
     auto invoke_hide_guard = scope_exit([&] { preview_document->getRoot()->invoke_hide(dkey); });
     // drawing.root()->setTransform(affine);
@@ -153,7 +156,7 @@ Cairo::RefPtr<Cairo::Surface> draw_symbol(SPObject& symbol, double box_w, double
 
     // We could use cache here, but it doesn't really work with the structure
     // of this user interface, and we've already cached the pixbuf in the gtklist
-    cairo_surface_t* s = nullptr;
+    std::shared_ptr<Renderer::Surface> s;
     // Find the object's bbox in a document.
     // Note symbols can have their own viewport... ignore for now.
     Geom::OptRect dbox = item->documentVisualBounds();
@@ -170,42 +173,29 @@ Cairo::RefPtr<Cairo::Surface> draw_symbol(SPObject& symbol, double box_w, double
             scale = 1.0;
         }
 
-        s = render_surface(drawing, scale, *dbox, Geom::IntPoint(box_w, box_h), device_scale, nullptr, true);
+        // TODO s = render_surface(drawing, scale, *dbox, Geom::IntPoint(box_w, box_h), device_scale, {}, true);
     }
 
     preview_document->getObjectByRepr(repr)->deleteObject(false);
-
-    if (s) {
-        cairo_surface_set_device_scale(s, device_scale, device_scale);
-    }
-
-    return Cairo::RefPtr<Cairo::Surface>(new Cairo::Surface(s, true));
+    return s;
 }
 
-void draw_gradient(const Cairo::RefPtr<Cairo::Context>& cr, SPGradient* gradient, int x, int width, int checkerboard_tile_size) {
-    auto check = ink_cairo_pattern_create_checkerboard(0xC4C4C4FF, true, checkerboard_tile_size);
+void draw_gradient(const std::shared_ptr<Renderer::Context>& cr, SPGradient* gradient, int x, int width, int checkerboard_tile_size) {
 
-    cr->set_source(check);
+    cr->setSource(Renderer::CheckerboardPattern(Colors::Color(0xC4C4C4FF), checkerboard_tile_size));
     cr->fill_preserve();
 
     if (gradient) {
-        auto p = gradient->create_preview_pattern(width);
-        if (!p) {
-            return;
-        }
-        cairo_matrix_t m;
-        cairo_matrix_init_translate(&m, -x, 0);
-        cairo_pattern_set_matrix(p, &m);
-        cairo_set_source(cr->cobj(), p);
+        auto p = gradient->createPreviewPattern(width);
+        p->setMatrix(Geom::Translate(-x, 0));
+        cr->setSource(*p);
         cr->fill();
-        cairo_pattern_destroy(p);
     }
 }
 
-Cairo::RefPtr<Cairo::Surface> draw_gradient(SPGradient* gradient, double width, double height, double device_scale, bool stops) {
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width * device_scale, height * device_scale);
-    cairo_surface_set_device_scale(surface->cobj(), device_scale, device_scale);
-    auto ctx = Cairo::Context::create(surface);
+std::shared_ptr<Renderer::Surface> draw_gradient(SPGradient* gradient, double width, double height, double device_scale, bool stops) {
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint(width * device_scale, height * device_scale), device_scale);
+    auto ctx = std::make_shared<Renderer::Context>(*surface);
 
     auto h = stops ? height / 2 : height;
     auto x = 0.5 * device_scale;
@@ -214,11 +204,11 @@ Cairo::RefPtr<Cairo::Surface> draw_gradient(SPGradient* gradient, double width, 
     h -= device_scale;
 
     ctx->rectangle(x, y, width, h);
-    draw_gradient(ctx, gradient, 0, width);
+    // TODO draw_gradient(ctx, gradient, 0, width);
 
     // border
     ctx->rectangle(x, y, width, h);
-    ctx->set_source_rgb(0.5, 0.5, 0.5);
+    // TODO ctx->set_source_rgb(0.5, 0.5, 0.5);
     ctx->set_line_width(1.0);
     ctx->stroke();
 
@@ -229,9 +219,9 @@ Cairo::RefPtr<Cairo::Surface> draw_gradient(SPGradient* gradient, double width, 
             double py = h + 2 * radius;
             double px = std::round(stop.offset * width);
             ctx->arc(px, py, radius, 0, 2 * M_PI);
-            ink_cairo_set_source_color(ctx->cobj(), *stop.color);
+            ctx->setSource(*stop.color);
             ctx->fill_preserve();
-            ctx->set_source_rgb(0.5, 0.5, 0.5);
+            // TODO ctx->set_source_rgb(0.5, 0.5, 0.5);
             ctx->stroke();
         }
     }
@@ -324,21 +314,21 @@ std::unique_ptr<SPDocument> ink_markers_preview_doc(const Glib::ustring& group_i
 }
 
 
-Cairo::RefPtr<Cairo::ImageSurface> create_marker_image(
+std::shared_ptr<Renderer::Surface> create_marker_image(
     const Glib::ustring& group_id,
     SPDocument* _sandbox,
     Gdk::RGBA marker_color,
     Geom::IntPoint pixel_size,
     const char* mname,
     SPDocument* source,
-    Inkscape::Drawing& drawing,
+    Renderer::Drawing& drawing,
     std::optional<guint32> checkerboard,
     bool no_clip,
     double scale,
     int device_scale,
     bool add_cross)
 {
-    Cairo::RefPtr<Cairo::ImageSurface> g_bad_marker;
+    std::shared_ptr<Renderer::Surface> g_bad_marker;
 
     // Retrieve the marker named 'mname' from the source SVG document
     const SPObject* marker = source ? source->getObjectById(mname) : nullptr;
@@ -484,22 +474,19 @@ Cairo::RefPtr<Cairo::ImageSurface> create_marker_image(
 
     /* Update to renderable state */
     // const double device_scale = get_scale_factor();
-    guint32 bgnd_color = checkerboard.has_value() ? *checkerboard : 0;
-    auto surface = render_surface(drawing, scale, *dbox, pixel_size, device_scale, checkerboard.has_value() ? &bgnd_color : nullptr, no_clip);
-    cairo_surface_set_device_scale(surface, device_scale, device_scale);
-    return Cairo::RefPtr<Cairo::ImageSurface>(new Cairo::ImageSurface(surface, true));
+    //std::optional<Colors::Color> bgnd_color = checkerboard.has_value() ? Colors::Color(*checkerboard) : std::optional<Colors::Color>{};
+    // TODO auto surface = render_surface(drawing, scale, *dbox, pixel_size, device_scale, bgnd_color, no_clip);
+    //return surface;
+    return {};
 }
 
-Cairo::RefPtr<Cairo::Surface> render_image(const Inkscape::Pixbuf* pixbuf, int width, int height, int device_scale) {
-    Cairo::RefPtr<Cairo::Surface> surface;
+std::shared_ptr<Renderer::Surface> render_image(std::shared_ptr<const Renderer::Image> pixbuf, int width, int height, int device_scale) {
+    std::shared_ptr<Renderer::Surface> surface;
 
     if (!pixbuf || width <= 0 || height <= 0 || pixbuf->width() <= 0 || pixbuf->height() <= 0) return surface;
 
-    auto src = Cairo::RefPtr<Cairo::Surface>(new Cairo::Surface(pixbuf->getSurfaceRaw(), false));
-    surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width * device_scale, height * device_scale);
-    cairo_surface_set_device_scale(surface->cobj(), device_scale, device_scale);
-
-    auto ctx = Cairo::Context::create(surface);
+    surface = std::make_shared<Renderer::Surface>(Geom::IntPoint(width * device_scale, height * device_scale), device_scale);
+    auto ctx = std::make_shared<Renderer::Context>(*surface);
 
     double sw = pixbuf->width();
     double sh = pixbuf->height();
@@ -511,22 +498,21 @@ Cairo::RefPtr<Cairo::Surface> render_image(const Inkscape::Pixbuf* pixbuf, int w
 
     ctx->translate(dx / 2, dy / 2);
     ctx->scale(scale, scale);
-    ctx->set_source(src, 0, 0);
+    ctx->setSource(*pixbuf);
     ctx->set_operator(Cairo::Context::Operator::OVER);
     ctx->paint();
 
     return surface;
 }
 
-Cairo::RefPtr<Cairo::Surface> add_background_to_image(Cairo::RefPtr<Cairo::Surface> image, uint32_t rgb, double margin, double radius, int device_scale, std::optional<uint32_t> border) {
-    auto w = image ? cairo_image_surface_get_width(image->cobj()) : 0;
-    auto h = image ? cairo_image_surface_get_height(image->cobj()) : 0;
+std::shared_ptr<Renderer::Surface> add_background_to_image(std::shared_ptr<Renderer::Surface> image, uint32_t rgb, double margin, double radius, int device_scale, std::optional<uint32_t> border) {
+    auto w = image ? image->width() : 0;
+    auto h = image ? image->height() : 0;
     auto width =  w / device_scale + 2 * margin;
     auto height = h / device_scale + 2 * margin;
 
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width * device_scale, height * device_scale);
-    cairo_surface_set_device_scale(surface->cobj(), device_scale, device_scale);
-    auto ctx = Cairo::Context::create(surface);
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint(width * device_scale, height * device_scale), device_scale);
+    auto ctx = std::make_shared<Renderer::Context>(*surface);
 
     auto x = 0;
     auto y = 0;
@@ -542,12 +528,13 @@ Cairo::RefPtr<Cairo::Surface> add_background_to_image(Cairo::RefPtr<Cairo::Surfa
     ctx->arc(x + radius, y + radius, radius, M_PI, 3 * M_PI_2);
     ctx->close_path();
 
-    ctx->set_source_rgb(SP_RGBA32_R_F(rgb), SP_RGBA32_G_F(rgb), SP_RGBA32_B_F(rgb));
+    ctx->setSource(Colors::Color(rgb, false));
     if (border.has_value()) {
         ctx->fill_preserve();
 
         auto b = *border;
-        ctx->set_source_rgb(SP_RGBA32_R_F(b), SP_RGBA32_G_F(b), SP_RGBA32_B_F(b));
+        static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+        ctx->setSource(Colors::Color(srgb, {b, b, b}));
         ctx->set_line_width(1.0);
         ctx->stroke();
     }
@@ -556,30 +543,28 @@ Cairo::RefPtr<Cairo::Surface> add_background_to_image(Cairo::RefPtr<Cairo::Surfa
     }
 
     if (image) {
-        ctx->set_source(image, margin, margin);
+        ctx->setSource(*image, margin, margin);
         ctx->paint();
     }
 
     return surface;
 }
 
-Cairo::RefPtr<Cairo::Surface> draw_frame(Cairo::RefPtr<Cairo::Surface> image, double image_alpha, uint32_t frame_rgba, double thickness, std::optional<uint32_t> checkerboard_color, int device_scale) {
+std::shared_ptr<Renderer::Surface> draw_frame(std::shared_ptr<Renderer::Surface> image, double image_alpha, uint32_t frame_rgba, double thickness, std::optional<uint32_t> checkerboard_color, int device_scale) {
     if (!image) return image;
 
-    auto w = cairo_image_surface_get_width(image->cobj());
-    auto h = cairo_image_surface_get_height(image->cobj());
+    auto w = image->width();
+    auto h = image->height();
     auto width =  w / device_scale + 2 * thickness;
     auto height = h / device_scale + 2 * thickness;
 
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, width * device_scale, height * device_scale);
-    cairo_surface_set_device_scale(surface->cobj(), device_scale, device_scale);
-    auto ctx = Cairo::Context::create(surface);
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint(width * device_scale, height * device_scale), device_scale);
+    auto ctx = std::make_shared<Renderer::Context>(*surface);
 
     if (checkerboard_color) {
-        auto pattern = ink_cairo_pattern_create_checkerboard(*checkerboard_color);
         ctx->save();
         ctx->set_operator(Cairo::Context::Operator::SOURCE);
-        ctx->set_source(pattern);
+        ctx->setSource(Renderer::CheckerboardPattern(Colors::Color(*checkerboard_color), 3));
         ctx->rectangle(thickness, thickness, width - 2*thickness, height - 2*thickness);
         ctx->fill();
         ctx->restore();
@@ -588,13 +573,13 @@ Cairo::RefPtr<Cairo::Surface> draw_frame(Cairo::RefPtr<Cairo::Surface> image, do
     ctx->rectangle(thickness / 2, thickness / 2, width - thickness, height - thickness);
 
     if (thickness > 0) {
-        ctx->set_source_rgba(SP_RGBA32_R_F(frame_rgba), SP_RGBA32_G_F(frame_rgba), SP_RGBA32_B_F(frame_rgba), SP_RGBA32_A_F(frame_rgba));
+        ctx->setSource(Colors::Color(frame_rgba));
         ctx->set_line_width(thickness);
         ctx->stroke();
     }
 
-    ctx->set_source(image, thickness, thickness);
-    ctx->paint_with_alpha(image_alpha);
+    ctx->setSource(*image, thickness, thickness);
+    ctx->paint(image_alpha);
 
     return surface;
 }
@@ -603,9 +588,9 @@ Cairo::RefPtr<Cairo::Surface> draw_frame(Cairo::RefPtr<Cairo::Surface> image, do
 object_renderer:: object_renderer() {
 }
 
-Cairo::RefPtr<Cairo::Surface> object_renderer::render(SPObject& object, double width, double height, double device_scale, object_renderer::options opt) {
+std::shared_ptr<Renderer::Surface> object_renderer::render(SPObject& object, double width, double height, double device_scale, object_renderer::options opt) {
 
-    Cairo::RefPtr<Cairo::Surface> surface;
+    std::shared_ptr<Renderer::Surface> surface;
     if (opt._draw_frame) {
         width -= 2 * opt._stroke;
         height -= 2 * opt._stroke;
@@ -637,7 +622,7 @@ Cairo::RefPtr<Cairo::Surface> object_renderer::render(SPObject& object, double w
         double scale = 1.0;
 
         unsigned const dkey = SPItem::display_key_new(1);
-        Inkscape::Drawing drawing; // New drawing for offscreen rendering.
+        Renderer::Drawing drawing; // New drawing for offscreen rendering.
         drawing.setRoot(_sandbox->getRoot()->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY));
         auto invoke_hide_guard = scope_exit([&] { _sandbox->getRoot()->invoke_hide(dkey); });
         drawing.setExact(); // Maximum quality for blurs.
@@ -652,7 +637,7 @@ Cairo::RefPtr<Cairo::Surface> object_renderer::render(SPObject& object, double w
         surface = PatternManager::get().get_image(pattern, width, height, device_scale);
     }
     else if (auto image = cast<SPImage>(&object)) {
-        surface = render_image(image->pixbuf.get(), width, height, device_scale);
+        surface = render_image(image->image, width, height, device_scale);
     }
     else {
         g_warning("object_renderer: don't know how to render this object type");

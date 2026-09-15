@@ -18,7 +18,7 @@
 
 #include "canvas-item-curve.h"
 
-#include "display/cairo-utils.h"
+#include "colors/color.h"
 #include "helper/geom.h"
 #include "ui/widget/canvas.h"
 
@@ -150,7 +150,7 @@ void CanvasItemCurve::_update(bool)
 /**
  * Render curve to screen via Cairo.
  */
-void CanvasItemCurve::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemCurve::_render(Inkscape::CanvasItemBuffer buf) const
 {
     assert(_curve); // Not called if _curve is null, since _bounds would be null.
 
@@ -159,37 +159,36 @@ void CanvasItemCurve::_render(Inkscape::CanvasItemBuffer &buf) const
     curve *= affine();                          // Document to canvas.
     curve *= Geom::Translate(-buf.rect.min());  // Canvas to screen.
 
-    buf.cr->save();
+    auto cr = buf.cr;
 
-    buf.cr->begin_new_path();
+    cr.newPath();
 
     if (curve.size() == 2) {
         // Line
-        buf.cr->move_to(curve[0].x(), curve[0].y());
-        buf.cr->line_to(curve[1].x(), curve[1].y());
+        cr.moveTo({curve[0].x(), curve[0].y()});
+        cr.lineTo({curve[1].x(), curve[1].y()});
     } else {
         // Curve
-        buf.cr->move_to(curve[0].x(), curve[0].y());
-        buf.cr->curve_to(curve[1].x(), curve[1].y(),  curve[2].x(), curve[2].y(),  curve[3].x(), curve[3].y());
+        cr.moveTo({curve[0].x(), curve[0].y()});
+        cr.curveTo({curve[1].x(), curve[1].y()}, {curve[2].x(), curve[2].y()}, {curve[3].x(), curve[3].y()});
     }
 
-    buf.cr->set_source_rgba(1.0, 1.0, 1.0, bg_alpha);
-    buf.cr->set_line_width(background_width);
-    buf.cr->stroke_preserve();
+    auto c = Colors::Color(_stroke);
+    cr.setSource(Colors::Color(c.getSpace(), {1.0, 1.0, 1.0, bg_alpha}));
+    cr.setLineWidth(background_width);
+    cr.strokePreserve();
 
-    ink_cairo_set_source_color(buf.cr, Colors::Color(_stroke));
-    buf.cr->set_line_width(_width);
-    buf.cr->stroke();
+    cr.setSource(c);
+    cr.setLineWidth(_width);
+    cr.stroke();
 
     // Uncomment to show bounds
     // Geom::Rect bounds = _bounds;
     // bounds.expandBy(-1);
     // bounds -= buf.rect.min();
-    // buf.cr->set_source_rgba(1.0, 0.0, 0.0, 1.0);
-    // buf.cr->rectangle(bounds.min().x(), bounds.min().y(), bounds.width(), bounds.height());
-    // buf.cr->stroke();
-
-    buf.cr->restore();
+    // cr.setSource(olors::Color(c.getSpace(), {1.0, 0.0, 0.0, 1.0});
+    // cr.rectangle(bounds);
+    // cr.stroke();
 }
 
 } // namespace Inkscape

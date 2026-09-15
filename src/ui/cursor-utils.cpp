@@ -16,10 +16,8 @@
 #include <gtkmm/settings.h>
 #include <gtkmm/version.h>
 
-#include "display/cairo-utils.h"
 #include "document-update.h"
 #include "document.h"
-#include "helper/pixbuf-ops.h"
 #include "io/file.h"
 #include "io/resource.h"
 #include "libnrtype/font-factory.h"
@@ -27,6 +25,8 @@
 #include "preferences.h"
 #include "ui/util.h"
 #include "util/units.h"
+#include "renderer/drawing/svg-renderer.h"
+#include "renderer/surface-texture.h"
 
 using Inkscape::IO::Resource::SYSTEM;
 using Inkscape::IO::Resource::ICONS;
@@ -198,10 +198,13 @@ CursorRenderResult render_svg_cursor(double scale, CursorInputParams const &in)
     Geom::Rect area(0, 0, w, h);
     int dpi = Inkscape::Util::Quantity::convert(scale, "in", "px");
 
-    // render document into internal bitmap; returns null on failure
-    auto ink_pixbuf = std::unique_ptr<Inkscape::Pixbuf>(sp_generate_internal_bitmap(root->document, area, dpi));
-    if (!ink_pixbuf) {
-        std::cerr << "load_svg_cursor: failed to create pixbuf for: " << in.file_name << std::endl;
+    Renderer::SvgRenderer svg_factory;
+    svg_factory.set_dpi(dpi);
+    svg_factory.set_area(area);
+    auto img = svg_factory.render(root->document);
+
+    if (!img) {
+        std::cerr << "load_svg_cursor: failed to create image for: " << in.file_name << std::endl;
         return {};
     }
 
@@ -210,7 +213,7 @@ CursorRenderResult render_svg_cursor(double scale, CursorInputParams const &in)
     auto const hotspot = (area.clamp(root_pos) * scale).round();
 
     auto cursor = CursorRenderResult{
-        .texture = to_texture(ink_pixbuf->getSurface()),
+        .texture = Renderer::build_texture(img),
         .size = {w, h},
         .hotspot = hotspot
     };
@@ -250,7 +253,6 @@ load_svg_cursor(Gtk::Widget &widget,
     if (!res.texture) {
         return {};
     }
-
     return Gdk::Cursor::create(std::move(res.texture), res.hotspot.x(), res.hotspot.y());
 #endif
 }

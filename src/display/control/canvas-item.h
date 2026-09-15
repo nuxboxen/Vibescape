@@ -30,14 +30,16 @@
 #include <boost/intrusive/list.hpp>
 #include <2geom/rect.h>
 #include <sigc++/sigc++.h>
-
-#include <gdkmm/cursor.h>
+#include <glibmm.h>
 
 #include "canvas-item-enums.h"
 #include "canvas-item-buffer.h"
 #include "canvas-item-context.h"
 #include "ui/widget/events/enums.h"
 
+namespace Gdk {
+class Cursor;
+}
 class SPItem;
 
 namespace Inkscape {
@@ -87,7 +89,7 @@ public:
     // Properties
     virtual void set_fill(uint32_t rgba);
     void set_fill(CanvasItemColor color) { set_fill(CANVAS_ITEM_COLORS[color]); }
-    void set_fill_pattern(Cairo::RefPtr<Cairo::Pattern> pattern);
+    void set_fill_pattern(std::shared_ptr<Renderer::Pattern> pattern);
     virtual void set_stroke(uint32_t rgba);
     void set_stroke(CanvasItemColor color) { set_stroke(CANVAS_ITEM_COLORS[color]); }
     void set_stroke_width(double width);
@@ -138,14 +140,14 @@ protected:
     // Display
     bool _visible = true;
     bool _net_visible = true;
-    virtual void _render(Inkscape::CanvasItemBuffer &buf) const = 0;
+    virtual void _render(Inkscape::CanvasItemBuffer buf) const = 0;
 
     // Selection
     bool _pickable = false; // Most items are just for display and are not pickable!
 
     // Properties
     uint32_t _fill    = CANVAS_ITEM_COLORS[CANVAS_ITEM_SECONDARY];
-    Cairo::RefPtr<Cairo::Pattern> _fill_pattern;
+    std::shared_ptr<Renderer::Pattern> _fill_pattern;
     uint32_t _stroke  = CANVAS_ITEM_COLORS[CANVAS_ITEM_PRIMARY];
     double _stroke_width = 1.0;
     uint32_t _outline = 0x0;

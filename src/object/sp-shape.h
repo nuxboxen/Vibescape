@@ -30,7 +30,7 @@
 
 class SPDesktop;
 class SPMarker;
-namespace Inkscape { class DrawingItem; }
+namespace Inkscape::Renderer { class DrawingItem; }
 
 /**
  * Base class for shapes, including <path> element
@@ -88,7 +88,7 @@ public:
     void print(SPPrintContext* ctx) override;
     std::optional<Geom::PathVector> documentExactBounds() const override;
 
-	Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+	Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
 	void hide(unsigned int key) override;
 
 	void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const override;

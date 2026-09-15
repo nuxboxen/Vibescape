@@ -25,9 +25,12 @@
 #include <gtkmm/snapshot.h>
 #include <gtkmm/togglebutton.h>
 
+#include "colors/manager.h"
 #include "desktop.h"
-#include "display/drawing-context.h"
-#include "display/drawing.h"
+#include "renderer/context.h"
+#include "renderer/surface-texture.h"
+#include "renderer/drawing/drawing.h"
+#include "renderer/surface.h"
 #include "object/sp-root.h"
 #include "page-manager.h"
 #include "preferences.h"
@@ -256,7 +259,7 @@ void IconPreviewPanel::documentReplaced()
     drawing_doc = getDocument();
 
     if (drawing_doc) {
-        drawing = std::make_unique<Inkscape::Drawing>();
+        drawing = std::make_unique<Renderer::Drawing>();
         visionkey = SPItem::display_key_new(1);
         drawing->setRoot(drawing_doc->getRoot()->invoke_show(*drawing, visionkey, SP_ITEM_SHOW_DISPLAY));
         docDesConn = drawing_doc->connectDestroy([this]{ removeDrawing(); });
@@ -264,7 +267,7 @@ void IconPreviewPanel::documentReplaced()
     }
 }
 
-/// Safely delete the Inkscape::Drawing and references to it.
+/// Safely delete the Renderer::Drawing and references to it.
 void IconPreviewPanel::removeDrawing()
 {
     docDesConn.disconnect();
@@ -370,64 +373,8 @@ void IconPreviewPanel::modeToggled()
     refreshPreview();
 }
 
-static void overlayPixels(unsigned char *px, int width, int height, int stride, unsigned r, unsigned g, unsigned b)
-{
-    int bytesPerPixel = 4;
-    int spacing = 4;
-    for ( int y = 0; y < height; y += spacing ) {
-        auto ptr = px + y * stride;
-        for ( int x = 0; x < width; x += spacing ) {
-            *(ptr++) = 0xff;
-            *(ptr++) = r;
-            *(ptr++) = g;
-            *(ptr++) = b;
-
-            ptr += bytesPerPixel * (spacing - 1);
-        }
-    }
-
-    if ( width > 1 && height > 1 ) {
-        // point at the last pixel
-        auto ptr = px + ((height-1) * stride) + ((width - 1) * bytesPerPixel);
-
-        if ( width > 2 ) {
-            px[4] = 0xff;
-            px[5] = r;
-            px[6] = g;
-            px[7] = b;
-
-            ptr[-12] = 0xff;
-            ptr[-11] = r;
-            ptr[-10] = g;
-            ptr[-9]  = b;
-        }
-
-        ptr[-4] = 0xff;
-        ptr[-3] = r;
-        ptr[-2] = g;
-        ptr[-1] = b;
-
-        px[0 + stride] = 0xff;
-        px[1 + stride] = r;
-        px[2 + stride] = g;
-        px[3 + stride] = b;
-
-        ptr[0 - stride] = 0xff;
-        ptr[1 - stride] = r;
-        ptr[2 - stride] = g;
-        ptr[3 - stride] = b;
-
-        if ( height > 2 ) {
-            ptr[0 - stride * 3] = 0xff;
-            ptr[1 - stride * 3] = r;
-            ptr[2 - stride * 3] = g;
-            ptr[3 - stride * 3] = b;
-        }
-    }
-}
-
 // takes doc, drawing, icon, and icon name to produce pixels
-static Cairo::RefPtr<Cairo::ImageSurface> sp_icon_doc_icon(SPDocument *doc, Drawing &drawing, char const *name, unsigned psize)
+static std::shared_ptr<Renderer::Surface> sp_icon_doc_icon(SPDocument *doc, Renderer::Drawing &drawing, char const *name, unsigned psize)
 {
     if (!doc) {
         return nullptr;
@@ -508,27 +455,13 @@ static Cairo::RefPtr<Cairo::ImageSurface> sp_icon_doc_icon(SPDocument *doc, Draw
     }
 
     // Render.
-    auto s = Cairo::ImageSurface::create(Cairo::ImageSurface::Format::ARGB32, psize, psize);
-    auto dc = DrawingContext(s->cobj(), ua.min());
-
-    auto bg = doc->getPageManager().getDefaultBackgroundColor();
-
-    auto cr = Cairo::Context::create(s);
-    cr->set_source_rgba(bg[0], bg[1], bg[2], bg[3]);
-    cr->rectangle(0, 0, psize, psize);
-    cr->fill();
-    cr->save();
-    cr.reset();
-
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint(psize, psize), 1.0, srgb);
+    auto dc = Renderer::Context(*surface);
+    dc.transform(Geom::Translate(-ua.min()));
+    dc.paint(doc->getPageManager().getDefaultBackgroundColor());
     drawing.render(dc, ua);
-
-    if (Preferences::get()->getBool("/debug/icons/overlaySvg")) {
-        s->flush();
-        overlayPixels(s->get_data(), psize, psize, s->get_stride(), 0x00, 0x00, 0xff);
-        s->mark_dirty();
-    }
-
-    return s;
+    return surface;
 }
 
 void IconPreviewPanel::renderPreview( SPObject* obj )
@@ -545,7 +478,7 @@ void IconPreviewPanel::renderPreview( SPObject* obj )
 #endif // ICON_VERBOSE
 
     for (std::size_t i = 0; i < sizes.size(); ++i) {
-        textures[i] = to_texture(sp_icon_doc_icon(doc, *drawing, id, sizes[i]));
+        textures[i] = Renderer::build_texture(sp_icon_doc_icon(doc, *drawing, id, sizes[i]));
         images[i]->set(textures[i]);
     }
     updateMagnify();

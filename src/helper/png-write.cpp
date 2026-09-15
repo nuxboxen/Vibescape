@@ -25,9 +25,9 @@
 #include "png-write.h"
 #include "rdf.h"
 
-#include "display/cairo-utils.h"
-#include "display/drawing-context.h"
-#include "display/drawing.h"
+#include "renderer/context.h"
+#include "renderer/drawing/drawing.h"
+#include "renderer/drawing/svg-renderer.h"
 
 #include "io/sys.h"
 
@@ -37,23 +37,12 @@
 
 #include "ui/interface.h"
 #include <glibmm/convert.h>
-
-/* This is an example of how to use libpng to read and write PNG files.
- * The file libpng.txt is much more verbose then this.  If you have not
- * read it, do so first.  This was designed to be a starting point of an
- * implementation.  This is not officially part of libpng, and therefore
- * does not require a copyright notice.
- *
- * This file does not currently compile, because it is missing certain
- * parts, like allocating memory to hold an image.  You will have to
- * supply these parts to get it to compile.  For an example of a minimal
- * working PNG reader/writer, see pngtest.c, included in this distribution.
- */
+#include <glibmm/miscutils.h>
 
 struct SPEBP {
     unsigned long int width, height, sheight;
     std::optional<Inkscape::Colors::Color> background;
-    Inkscape::Drawing *drawing; // it is assumed that all unneeded items are hidden
+    Cairo::RefPtr<Cairo::ImageSurface> surface;
     guchar *px;
     unsigned (*status)(float, void *);
     void *data;
@@ -322,6 +311,171 @@ sp_png_write_rgba_striped(SPDocument *doc,
     return true;
 }
 
+static constexpr uint16_t get_luminance(uint32_t r, uint32_t g, uint32_t b)
+{
+    return ((1063 * r + 3576 * g + 361 * b) * 257 + 2500) / 5000;
+}
+
+G_GNUC_CONST static inline guint32
+unpremul_alpha(const guint32 color, const guint32 alpha)
+{
+    if (color >= alpha)
+        return 0xff;
+    return (255 * color + alpha/2) / alpha;
+}
+
+/**
+ * Converts a pixbuf to a PNG data structure.
+ * For 8-but RGBA png, this is like copying.
+ *
+ */
+static guchar *
+pixbuf_to_png(guchar const**rows, guchar* px, int num_rows, int num_cols, int stride, int color_type, int bit_depth)
+{
+    int n_fields = 1 + (color_type&2) + (color_type&4)/4;
+    guchar* new_data = (guchar*)malloc(((n_fields * bit_depth * num_cols + 7)/8) * num_rows);
+    char* ptr = (char*) new_data;
+    // Used when we write image data smaller than one byte (for instance in
+    // black and white images where 1px = 1bit). Only possible with greyscale.
+    int pad = 0;
+    for (int row = 0; row < num_rows; ++row) {
+        rows[row] = (const guchar*)ptr;
+        for (int col = 0; col < num_cols; ++col) {
+            guint32 *pixel = reinterpret_cast<guint32*>(px + row*stride)+col;
+
+            guint64 pix3 = (*pixel & 0xff000000) >> 24;
+            guint64 pix2 = (*pixel & 0x00ff0000) >> 16;
+            guint64 pix1 = (*pixel & 0x0000ff00) >> 8;
+            guint64 pix0 = (*pixel & 0x000000ff);
+
+            uint64_t a, r, g, b;
+            if constexpr (G_BYTE_ORDER == G_LITTLE_ENDIAN) {
+                a = pix3;
+                b = pix2;
+                g = pix1;
+                r = pix0;
+            } else {
+                r = pix3;
+                g = pix2;
+                b = pix1;
+                a = pix0;
+            }
+
+            // One of possible rgb to greyscale formulas. This one is called "luminance", "luminosity" or "luma"
+            uint16_t const gray = get_luminance(r, g, b);
+
+            if (color_type & 2) { // RGB or RGBA
+                // for 8bit->16bit transition, I take the FF -> FFFF convention (multiplication by 0x101).
+                // If you prefer FF -> FF00 (multiplication by 0x100), remove the <<8, <<24, <<40 and <<56
+                // for little-endian, and remove the <<0, <<16, <<32 and <<48 for big-endian.
+                if (color_type & 4) { // RGBA
+                    if (bit_depth == 8)
+                        *((guint32*)ptr) = *pixel;
+                    else
+                        // This uses the samples in the order they appear in pixel rather than
+                        // normalised to abgr or rgba in order to make it endian agnostic,
+                        // exploiting the symmetry of the expression (0x101 is the same in both
+                        // endiannesses and each sample is multiplied by that).
+                        *((guint64*)ptr) = (guint64)((pix3<<56)+(pix3<<48)+(pix2<<40)+(pix2<<32)+(pix1<<24)+(pix1<<16)+(pix0<<8)+(pix0));
+                } else { // RGB
+                    if (bit_depth == 8) {
+                        *ptr = r;
+                        *(ptr+1) = g;
+                        *(ptr+2) = b;
+                    } else {
+                        *((guint16*)ptr) = (r<<8)+r;
+                        *((guint16*)(ptr+2)) = (g<<8)+g;
+                        *((guint16*)(ptr+4)) = (b<<8)+b;
+                    }
+                }
+            } else { // Grayscale
+                if (bit_depth == 16) {
+                    if constexpr (G_BYTE_ORDER == G_LITTLE_ENDIAN) {
+                        *(guint16*)ptr = ((gray & 0xff00)>>8) + ((gray & 0x00ff)<<8);
+                    } else {
+                        *(guint16*)ptr = gray;
+                    }
+                    // For 8bit->16bit this mirrors RGB(A), multiplying by
+                    // 0x101; if you prefer multiplying by 0x100, remove the
+                    // <<8 for little-endian, and remove the unshifted value
+                    // for big-endian.
+                    if (color_type & 4) // Alpha channel
+                        *((guint16*)(ptr+2)) = a + (a<<8);
+                } else if (bit_depth == 8) {
+                    *ptr = guint8(gray >> 8);
+                    if (color_type & 4) // Alpha channel
+                        *((guint8*)(ptr+1)) = a;
+                } else {
+                    if (!pad) *ptr=0;
+                    // In PNG numbers are stored left to right, but in most significant bits first, so the first one processed is the ``big'' mask, etc.
+                    int realpad = 8 - bit_depth - pad;
+                    *ptr += guint8((gray >> (16-bit_depth))<<realpad); // Note the "+="
+                    if (color_type & 4) // Alpha channel
+                        *(ptr+1) += guint8((a >> (8-bit_depth))<<(bit_depth + realpad));
+                }
+            }
+
+            pad += bit_depth*n_fields;
+            ptr += pad/8;
+            pad %= 8;
+        }
+        // Align bytes on rows
+        if (pad) {
+            pad = 0;
+            ptr++;
+        }
+    }
+    return new_data;
+}
+
+/**
+ * Convert one pixel from ARGB to pixbuf format.
+ *
+ * @param c ARGB color
+ * @param bgcolor Color to use if c.alpha is zero (bgcolor.alpha is ignored)
+ */
+static guint32
+pixbuf_from_argb32(guint32 c, guint32 bgcolor)
+{
+    guint32 a = (c & 0xff000000) >> 24;
+    if (a == 0) {
+        assert(c == 0);
+        c = bgcolor;
+    }
+
+    // extract color components
+    guint32 r = (c & 0x00ff0000) >> 16;
+    guint32 g = (c & 0x0000ff00) >> 8;
+    guint32 b = (c & 0x000000ff);
+
+    if (a != 0) {
+        r = unpremul_alpha(r, a);
+        g = unpremul_alpha(g, a);
+        b = unpremul_alpha(b, a);
+    }
+
+    // combine into output
+    if constexpr (G_BYTE_ORDER == G_LITTLE_ENDIAN) {
+        return r | (g << 8) | (b << 16) | (a << 24);
+    } else {
+        return (r << 24) | (g << 16) | (b << 8) | a;
+    }
+}
+
+static void
+convert_pixels_argb32_to_pixbuf(guchar *data, int w, int h, int stride, guint32 bgcolor)
+{
+    if (!data || w < 1 || h < 1 || stride < 1) {
+        return;
+    }
+    for (size_t i = 0; i < h; ++i) {
+        guint32 *px = reinterpret_cast<guint32*>(data + i*stride);
+        for (size_t j = 0; j < w; ++j) {
+            *px = pixbuf_from_argb32(*px, bgcolor);
+            ++px;
+        }
+    }
+}
 
 /**
  *
@@ -341,38 +495,17 @@ sp_export_get_rows(guchar const **rows, void **to_free, int row, int num_rows, v
     num_rows = MIN(num_rows, static_cast<int>(ebp->sheight));
     num_rows = MIN(num_rows, static_cast<int>(ebp->height - row));
 
-    /* Set area of interest */
-    // bbox is now set to the entire image to prevent discontinuities
-    // in the image when blur is used (the borders may still be a bit
-    // off, but that's less noticeable).
-    Geom::IntRect bbox = Geom::IntRect::from_xywh(0, row, ebp->width, num_rows);
+    auto px = ebp->surface->get_data();
+    auto stride = ebp->surface->get_stride();
+    px += stride * row;
 
-    /* Update to renderable state */
-    ebp->drawing->update(bbox);
+    // TODO: Rip out custom png code out and replace with Glycin once it supports all the output options we need.
 
-    int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, ebp->width);
-    unsigned char *px = g_new(guchar, num_rows * stride);
-
-    cairo_surface_t *s = cairo_image_surface_create_for_data(
-        px, CAIRO_FORMAT_ARGB32, ebp->width, num_rows, stride);
-    Inkscape::DrawingContext dc(s, bbox.min());
-    dc.setSource(*ebp->background);
-    dc.setOperator(CAIRO_OPERATOR_SOURCE);
-    dc.paint();
-    dc.setOperator(CAIRO_OPERATOR_OVER);
-
-    /* Render */
-    ebp->drawing->render(dc, bbox, 0);
-    cairo_surface_destroy(s);
-
-    // PNG stores data as unpremultiplied big-endian RGBA, which means
-    // it's identical to the GdkPixbuf format.
+    // PNG stores data as unpremultiplied big-endian RGBA, which is identical to the GdkPixbuf format.
     convert_pixels_argb32_to_pixbuf(px, ebp->width, num_rows, stride, ebp->background->toARGB());
-    
+
     // If a custom bit depth or color type is asked, then convert rgb to grayscale, etc.
-    const guchar* new_data = pixbuf_to_png(rows, px, num_rows, ebp->width, stride, color_type, bit_depth);
-    *to_free = (void*) new_data;
-    free(px);
+    *to_free = pixbuf_to_png(rows, px, num_rows, ebp->width, stride, color_type, bit_depth);
 
     return num_rows;
 }
@@ -411,72 +544,29 @@ ExportResult sp_export_png_file(SPDocument *doc, gchar const *filename,
 
     if (!force_overwrite && !sp_ui_overwrite_file(Glib::filename_from_utf8(filename))) {
         // aborted overwrite
-	return EXPORT_ABORTED;
+        return EXPORT_ABORTED;
     }
 
-    doc->ensureUpToDate();
-
-    /* Calculate translation by transforming to document coordinates (flipping Y)*/
-    Geom::Point translation = -area.min();
-
-    /*  This calculation is only valid when assumed that (x0,y0)= area.corner(0) and (x1,y1) = area.corner(2)
-     * 1) a[0] * x0 + a[2] * y1 + a[4] = 0.0
-     * 2) a[1] * x0 + a[3] * y1 + a[5] = 0.0
-     * 3) a[0] * x1 + a[2] * y1 + a[4] = width
-     * 4) a[1] * x0 + a[3] * y0 + a[5] = height
-     * 5) a[1] = 0.0;
-     * 6) a[2] = 0.0;
-     *
-     * (1,3) a[0] * x1 - a[0] * x0 = width
-     * a[0] = width / (x1 - x0)
-     * (2,4) a[3] * y0 - a[3] * y1 = height
-     * a[3] = height / (y0 - y1)
-     * (1) a[4] = -a[0] * x0
-     * (2) a[5] = -a[3] * y1
-     */
-
-    Geom::Affine const affine(Geom::Translate(translation)
-                            * Geom::Scale(width / area.width(),
-                                        height / area.height()));
+    Inkscape::Renderer::SvgRenderer renderer;
+    renderer.set_area(area);
+    renderer.set_dpi(xdpi, ydpi);
+    renderer.set_viewbox_scale(width / area.width(), height / area.height());
+    renderer.set_item_limit(items_only);
+    renderer.set_background(bgcolor);
+    renderer.set_antialiasing(static_cast<Inkscape::Renderer::Antialiasing>(antialiasing));
+    auto cairo_surface = renderer.render(doc)->exportToARGB32();
 
     struct SPEBP ebp;
-    ebp.width  = width;
+    ebp.width = width;
     ebp.height = height;
     ebp.background = bgcolor;
-
-    /* Create new drawing */
-    Inkscape::Drawing drawing;
-    unsigned const dkey = SPItem::display_key_new(1);
-    drawing.setRoot(doc->getRoot()->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY));
-    drawing.root()->setTransform(affine);
-    drawing.setExact(); // export with maximum blur rendering quality
-    drawing.setAntialiasingOverride(static_cast<Inkscape::Antialiasing>(antialiasing));
-    drawing.setCacheLimit(Geom::IntRect::from_xywh(0, 0, width, height)); // enable caching for filtered objects to prevent seams at stripe boundaries #878
-
-    ebp.drawing = &drawing;
-
-    // We show all and then hide all items we don't want, instead of showing only requested items,
-    // because that would not work if the shown item references something in defs
-    if (!items_only.empty()) {
-        doc->getRoot()->invoke_hide_except(dkey, items_only);
-    }
-
+    ebp.surface = cairo_surface;
     ebp.status = status;
-    ebp.data   = data;
-
-    bool write_status = false;;
-
+    ebp.data = data;
     ebp.sheight = 64;
-    ebp.px = g_try_new(guchar, 4 * ebp.sheight * width);
 
-    if (ebp.px) {
-        write_status = sp_png_write_rgba_striped(doc, filename, width, height, xdpi, ydpi, sp_export_get_rows, &ebp, interlace, color_type, bit_depth, zlib);
-        g_free(ebp.px);
-    }
-
-    // Hide items, this releases arenaitem
-    doc->getRoot()->invoke_hide(dkey);
-
+    auto write_status = sp_png_write_rgba_striped(doc, filename, width, height, xdpi, ydpi, sp_export_get_rows, &ebp,
+                                                  interlace, color_type, bit_depth, zlib);
     return write_status ? EXPORT_OK : EXPORT_ERROR;
 }
 

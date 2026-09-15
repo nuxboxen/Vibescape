@@ -338,6 +338,32 @@ if(NOT (GTKMM_FOUND AND GLIBMM_FOUND))
 endif()
 list(APPEND INKSCAPE_LIBS GLibmm::GLibmm GTKmm::GTKmm)
 
+pkg_check_modules(GLYCIN QUIET IMPORTED_TARGET glycin-2>=2.2)
+if(GLYCIN_FOUND)
+    add_library(Inkscape::Glycin ALIAS PkgConfig::GLYCIN)
+else()
+    message(STATUS "Glycin not found or too old, will compile it from source")
+    include(ExternalProject)
+    ExternalProject_Add(glycin
+        URL https://gitlab.gnome.org/GNOME/glycin/-/archive/2.2.0/glycin-2.2.0.tar.bz2
+        URL_HASH SHA256=5e03ee8a4364367e729e8dbf2f8f3f3d3eb4a41dfc11f08fddbd5f804279da1f
+        # Specify loaders list, to exclude glycin-jxl until Ubuntu ships the required libjxl-dev 0.11.2 version
+        CONFIGURE_COMMAND meson setup --libdir lib . ../glycin --prefix=${CMAKE_CURRENT_BINARY_DIR}/deps -Dloaders=glycin-heif,glycin-image-rs,glycin-svg
+        BUILD_COMMAND meson compile
+        INSTALL_COMMAND meson install
+        STEP_TARGETS install
+    )
+    add_library(glycin_LIB INTERFACE)
+    add_dependencies(glycin_LIB glycin-install)
+    target_include_directories(glycin_LIB INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/deps/include/glycin-2)
+    target_link_directories(glycin_LIB INTERFACE ${CMAKE_CURRENT_BINARY_DIR}/deps/lib)
+    target_link_libraries(glycin_LIB INTERFACE -lglycin-2)
+    add_library(Inkscape::Glycin ALIAS glycin_LIB)
+    list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_CURRENT_BINARY_DIR}/deps/lib)
+    set(CMAKE_CTEST_ENV "GLYCIN_DATA_DIR=${CMAKE_CURRENT_BINARY_DIR}/deps/share;${CMAKE_CTEST_ENV}")
+endif()
+list(APPEND INKSCAPE_LIBS Inkscape::Glycin)
+
 if(WITH_LIBSPELLING)
     pkg_check_modules(LIBSPELLING IMPORTED_TARGET libspelling-1)
     if("${LIBSPELLING_FOUND}")

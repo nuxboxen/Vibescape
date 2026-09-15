@@ -5,8 +5,8 @@
 
 #include "glyph-draw.h"
 
-#include "display/cairo-utils.h"
 #include "libnrtype/font-instance.h"
+#include "renderer/context-paths.h"
 
 namespace Inkscape::Util {
 
@@ -108,7 +108,8 @@ void draw_glyph(const draw_glyph_params& params) {
     }
 
     ctx->translate(center - midpoint, 0);
-    feed_pathvector_to_cairo(ctx->cobj(), glyph->pathvector);
+    // TODO Use Renderer::Context instead
+    Renderer::feed_pathvector_to_cairo(ctx, glyph->pathvector);
     auto& fg = params.glyph_color;
     ctx->set_source_rgb(fg.get_red(), fg.get_green(), fg.get_blue());
     ctx->fill();

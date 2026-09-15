@@ -17,7 +17,7 @@
 #include "attributes.h"                          // for SPAttr
 #include "slot-resolver.h"                       // for SlotResolver
 
-#include "display/nr-filter-displacement-map.h"  // for FilterDisplacementMap
+#include "renderer/drawing-filters/displacement-map.h"
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/numeric/converters.h"             // for read_number
@@ -25,19 +25,9 @@
 #include "xml/document.h"                        // for Document
 #include "xml/node.h"                            // for Node
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-} // namespace Inkscape
-
 void SPFeDisplacementMap::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::SCALE);
     readAttr(SPAttr::IN2);
     readAttr(SPAttr::XCHANNELSELECTOR);
@@ -148,15 +138,14 @@ void SPFeDisplacementMap::resolve_slots(SlotResolver &resolver)
     SPFilterPrimitive::resolve_slots(resolver);
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeDisplacementMap::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeDisplacementMap::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto displacement_map = std::make_unique<Inkscape::Filters::FilterDisplacementMap>();
+    auto displacement_map = std::make_unique<Inkscape::Renderer::DrawingFilter::DisplacementMap>();
     build_renderer_common(displacement_map.get());
 
     displacement_map->set_input(1, in2_slot);
     displacement_map->set_scale(scale);
-    displacement_map->set_channel_selector(0, xChannelSelector);
-    displacement_map->set_channel_selector(1, yChannelSelector);
+    displacement_map->set_channels(xChannelSelector, yChannelSelector);
 
     return displacement_map;
 }

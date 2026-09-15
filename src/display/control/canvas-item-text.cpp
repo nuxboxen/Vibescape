@@ -23,7 +23,7 @@
 #include <utility> // std::move
 #include <glibmm/i18n.h>
 
-#include "display/cairo-utils.h"
+#include "colors/color.h"
 #include "ui/util.h"
 
 namespace Inkscape {
@@ -120,16 +120,16 @@ void CanvasItemText::_update(bool)
 /**
  * Render text to screen via Cairo.
  */
-void CanvasItemText::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemText::_render(Inkscape::CanvasItemBuffer buf) const
 {
-    buf.cr->save();
+    buf.cr.save();
 
     // Screen to desktop coords.
-    buf.cr->translate(-buf.rect.left(), -buf.rect.top());
+    buf.cr.translate(-buf.rect.left(), -buf.rect.top());
 
     if (_scaled) {
         // Convert from canvas space to document space
-        buf.cr->transform(geom_to_cairo(affine()));
+        buf.cr.transform(geom_to_cairo(affine()));
     }
 
     // Recalculate extents to make in sync
@@ -141,29 +141,29 @@ void CanvasItemText::_render(Inkscape::CanvasItemBuffer &buf) const
     // Background
     if (_use_background) {
         if (_bg_rad == 0.0) {
-            buf.cr->rectangle(x, y, w, h);
+            buf.cr.rectangle(x, y, w, h);
         } else {
             double radius = _bg_rad * (std::min(w ,h) / 2);
-            buf.cr->arc(x + w - radius, y + radius, radius, -M_PI_2, 0);
-            buf.cr->arc(x + w - radius, y + h - radius, radius, 0, M_PI_2);
-            buf.cr->arc(x + radius, y + h - radius, radius, M_PI_2, M_PI);
-            buf.cr->arc(x + radius, y + radius, radius, M_PI, 3*M_PI_2);
+            buf.cr.arc(x + w - radius, y + radius, radius, -M_PI_2, 0);
+            buf.cr.arc(x + w - radius, y + h - radius, radius, 0, M_PI_2);
+            buf.cr.arc(x + radius, y + h - radius, radius, M_PI_2, M_PI);
+            buf.cr.arc(x + radius, y + radius, radius, M_PI, 3*M_PI_2);
         }
-        buf.cr->set_line_width(2);
-        ink_cairo_set_source_color(buf.cr, Colors::Color(_background));
-        buf.cr->fill();
+        buf.cr.set_line_width(2);
+        buf.cr.setSource(Colors::Color(_background));
+        buf.cr.fill();
     }
 
-    buf.cr->move_to(x + _border, y + _border);
+    buf.cr.move_to(x + _border, y + _border);
+    buf.cr.setSource(Colors::Color(buf.cr.getColorSpace(), {1.0, 1.0, 1.0}));
 
-    buf.cr->set_source_rgb(1.0, 1.0, 1.0); // Explicitly set color
     // Show computed layout in buffer; otherwise if we compute on the fly,
     // the extents may be different than the existing one
-    _layout->add_to_cairo_context(buf.cr);
+    buf.cr.paintLayout(_layout);
 
-    ink_cairo_set_source_color(buf.cr, Colors::Color(_fill));
-    buf.cr->fill();
-    buf.cr->restore();
+    buf.cr.setSource(Colors::Color(_fill));
+    buf.cr.fill();
+    buf.cr.restore();
 }
 
 void CanvasItemText::set_text(Glib::ustring text)

@@ -29,13 +29,14 @@
 // Added for preserveAspectRatio support -- EAF
 #include "attributes.h"
 #include "colors/document-cms.h"
-#include "display/cairo-utils.h"
-#include "display/drawing-image.h"
 #include "document.h"
 #include "object/uri.h"
 #include "path/path-curve.h"
 #include "preferences.h"
 #include "print.h"
+#include "renderer/surface-image.h"
+#include "renderer/drawing/svg-renderer.h"
+#include "renderer/drawing-forward.h"
 #include "snap-candidate.h"
 #include "snap-preferences.h"
 #include "xml/href-attribute-helper.h"
@@ -61,7 +62,7 @@
 // TODO: also check if it is correct to be using two different epsilon values
 
 static void sp_image_set_curve(SPImage *image);
-static void sp_image_update_arenaitem (SPImage *img, Inkscape::DrawingImage *ai);
+static void sp_image_update_arenaitem (SPImage *img, Inkscape::Renderer::DrawingImage *ai);
 static void sp_image_update_canvas_image (SPImage *image);
 
 #ifdef DEBUG_LCMS
@@ -142,7 +143,7 @@ void SPImage::release() {
         this->href = nullptr;
     }
 
-    pixbuf.reset();
+    image.reset();
 
     if (this->color_profile) {
         g_free (this->color_profile);
@@ -238,64 +239,40 @@ void SPImage::update(SPCtx *ctx, unsigned int flags) {
     SPItem::update(ctx, flags);
 
     if (flags & SP_IMAGE_HREF_MODIFIED_FLAG) {
-        pixbuf.reset();
+        image.reset();
         if (href) {
-            Inkscape::Pixbuf *pb = nullptr;
+            std::shared_ptr<Renderer::Image> pb = nullptr;
             double svgdpi = 96;
             if (getRepr()->attribute("inkscape:svg-dpi")) {
                 svgdpi = g_ascii_strtod(getRepr()->attribute("inkscape:svg-dpi"), nullptr);
             }
             dpi = svgdpi;
-            pb = readImage(Inkscape::getHrefAttribute(*getRepr()).second,
-                           getRepr()->attribute("sodipodi:absref"),
-                           document->getDocumentBase(), svgdpi);
-            if (!pb) {
-                missing = true;
-                // Passing in our previous size allows us to preserve the image's expected size.
-                auto broken_width = width._set ? width.computed : 640;
-                auto broken_height = height._set ? height.computed : 640;
-                pb = getBrokenImage(broken_width, broken_height);
-            }
-            else {
-                missing = false;
-            }
-
-            if (pb) {
-                if (color_profile) {
-                    if (auto cp = document->getDocumentCMS().getSpace(color_profile)) {
-                        pb->ensurePixelFormat(Inkscape::Pixbuf::PF_GDK);
-                        // XXX TODO cp->transformToRGB(pb);
-                    }
-                }
-                pb->ensurePixelFormat(Inkscape::Pixbuf::PF_CAIRO); // Expected by rendering code, so convert now before making immutable.
-                pixbuf = std::shared_ptr<Inkscape::Pixbuf>(pb);
-            }
+            image = readImage(Inkscape::getHrefAttribute(*getRepr()).second,
+                              getRepr()->attribute("sodipodi:absref"),
+                              document->getDocumentBase(), svgdpi);
         }
     }
 
     SPItemCtx *ictx = (SPItemCtx *) ctx;
 
-    // Why continue without a pixbuf? So we can display "Missing Image" png.
-    // Eventually, we should properly support SVG image type (i.e. render it ourselves).
-    if (this->pixbuf) {
-        if (!this->x._set) {
-            this->x.unit = SVGLength::PX;
-            this->x.computed = 0;
-        }
+    if (!x._set) {
+        x.unit = SVGLength::PX;
+        x.computed = 0;
+    }
+    if (!y._set) {
+        y.unit = SVGLength::PX;
+        y.computed = 0;
+    }
 
-        if (!this->y._set) {
-            this->y.unit = SVGLength::PX;
-            this->y.computed = 0;
-        }
-
+    if (image) {
         if (!this->width._set) {
             this->width.unit = SVGLength::PX;
-            this->width.computed = this->pixbuf->width();
+            this->width.computed = this->image->width();
         }
 
         if (!this->height._set) {
             this->height.unit = SVGLength::PX;
-            this->height.computed = this->pixbuf->height();
+            this->height.computed = this->image->height();
         }
     }
 
@@ -308,54 +285,44 @@ void SPImage::update(SPCtx *ctx, unsigned int flags) {
 
     this->clipbox = ictx->viewport;
 
-    this->ox = this->x.computed;
-    this->oy = this->y.computed;
+    // When we have a broken image, we feed it the width/height of the request viewport
+    auto w = image ? image->width() : width.computed;
+    auto h = image ? image->height() : height.computed;
 
-    if (this->pixbuf) {
+    // Viewbox is either from SVG or dimensions of image (PNG, JPG)
+    viewBox = Geom::Rect::from_xywh(0, 0, w, h);
+    viewBox_set = true;
 
-        // Viewbox is either from SVG (not supported) or dimensions of pixbuf (PNG, JPG)
-        this->viewBox = Geom::Rect::from_xywh(0, 0, this->pixbuf->width(), this->pixbuf->height());
-        this->viewBox_set = true;
-
-        // SPItemCtx rctx =
-        get_rctx( ictx );
-
-        this->ox = c2p[4];
-        this->oy = c2p[5];
-        this->sx = c2p[0];
-        this->sy = c2p[3];
-    }
+    get_rctx(ictx);
+    ox = c2p[4];
+    oy = c2p[5];
+    sx = c2p[0];
+    sy = c2p[3];
 
     // TODO: eliminate ox, oy, sx, sy
 
     sp_image_update_canvas_image ((SPImage *) this);
 
-    // don't crash with missing xlink:href attribute
-    if (!this->pixbuf) {
-        return;
-    }
-
-    double proportion_pixbuf = this->pixbuf->height() / (double)this->pixbuf->width();
-    double proportion_image = this->height.computed / (double)this->width.computed;
-    if (this->prev_width &&
-        (this->prev_width != this->pixbuf->width() || this->prev_height != this->pixbuf->height())) {
-        if (std::abs(this->prev_width - this->pixbuf->width()) > std::abs(this->prev_height - this->pixbuf->height())) {
-            proportion_pixbuf = this->pixbuf->width() / (double)this->pixbuf->height();
-            proportion_image = this->width.computed / (double)this->height.computed;
-            if (proportion_pixbuf != proportion_image) {
-                double new_height = this->height.computed * proportion_pixbuf;
+    double proportion_img = h / (double)w;
+    double proportion_sp = this->height.computed / (double)this->width.computed;
+    if (this->prev_width && (this->prev_width != w || this->prev_height != h)) {
+        if (std::abs(this->prev_width - w) > std::abs(this->prev_height - h)) {
+            proportion_img = w / (double)h;
+            proportion_sp = this->width.computed / (double)this->height.computed;
+            if (proportion_sp != proportion_img) {
+                double new_height = this->height.computed * proportion_img;
                 this->getRepr()->setAttributeSvgDouble("width", new_height);
             }
         }
         else {
-            if (proportion_pixbuf != proportion_image) {
-                double new_width = this->width.computed * proportion_pixbuf;
+            if (proportion_sp != proportion_img) {
+                double new_width = this->width.computed * proportion_img;
                 this->getRepr()->setAttributeSvgDouble("height", new_width);
             }
         }
     }
-    this->prev_width = this->pixbuf->width();
-    this->prev_height = this->pixbuf->height();
+    this->prev_width = w;
+    this->prev_height = h;
 }
 
 void SPImage::modified(unsigned int flags) {
@@ -363,7 +330,7 @@ void SPImage::modified(unsigned int flags) {
 
     if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
         for (auto &v : views) {
-            auto img = cast<Inkscape::DrawingImage>(v.drawingitem.get());
+            auto img = cast<Inkscape::Renderer::DrawingImage>(v.drawingitem.get());
             img->setStyle(style);
         }
     }
@@ -417,11 +384,11 @@ Geom::OptRect SPImage::bbox(Geom::Affine const &transform, SPItem::BBoxType /*ty
 }
 
 void SPImage::print(SPPrintContext *ctx) {
-    if (pixbuf && width.computed > 0.0 && height.computed > 0.0) {
-        auto pb = *pixbuf;
-        pb.ensurePixelFormat(Inkscape::Pixbuf::PF_GDK);
+    if (image && width.computed > 0.0 && height.computed > 0.0) {
+        //image.ensurePixelFormat(Renderer::Surface::PF_GDK);
 
-        guchar *px = pb.pixels();
+        /*
+        guchar *px = image.pixels();
         int w = pb.width();
         int h = pb.height();
         int rs = pb.rowstride();
@@ -434,6 +401,7 @@ void SPImage::print(SPPrintContext *ctx) {
         Geom::Scale s(this->sx, this->sy);
         t = s * tp;
         ctx->image_R8G8B8A8_N(px, w, h, rs, t, this->style);
+        */
     }
 }
 
@@ -465,41 +433,19 @@ gchar* SPImage::description() const {
         href_desc = g_strdup("(null_pointer)"); // we call g_free() on href_desc
     }
 
-    char *ret = ( !pixbuf
+    char *ret = ( !image
                   ? g_strdup_printf(_("[bad reference]: %s"), href_desc)
                   : g_strdup_printf(_("%d &#215; %d: %s"),
-                                    pixbuf->width(),
-                                    pixbuf->height(),
+                                    image->width(),
+                                    image->height(),
                                     href_desc) );
-
-    if (!pixbuf && document)
-    {
-        Inkscape::Pixbuf * pb = nullptr;
-        double svgdpi = 96;
-        if (this->getRepr()->attribute("inkscape:svg-dpi")) {
-            svgdpi = g_ascii_strtod(this->getRepr()->attribute("inkscape:svg-dpi"), nullptr);
-        }
-        pb = readImage(Inkscape::getHrefAttribute(*this->getRepr()).second,
-                       this->getRepr()->attribute("sodipodi:absref"),
-                       this->document->getDocumentBase(), svgdpi);
-
-        if (pb) {
-            ret = g_strdup_printf(_("%d &#215; %d: %s"),
-                                        pb->width(),
-                                        pb->height(),
-                                        href_desc);
-            delete pb;
-        } else {
-            ret = g_strdup(_("{Broken Image}"));
-        }
-    }
 
     g_free(href_desc);
     return ret;
 }
 
-Inkscape::DrawingItem* SPImage::show(Inkscape::Drawing &drawing, unsigned int /*key*/, unsigned int /*flags*/) {
-    Inkscape::DrawingImage *ai = new Inkscape::DrawingImage(drawing);
+Inkscape::Renderer::DrawingItem* SPImage::show(Inkscape::Renderer::Drawing &drawing, unsigned int /*key*/, unsigned int /*flags*/) {
+    Inkscape::Renderer::DrawingImage *ai = new Inkscape::Renderer::DrawingImage(drawing);
 
     sp_image_update_arenaitem(this, ai);
 
@@ -507,109 +453,39 @@ Inkscape::DrawingItem* SPImage::show(Inkscape::Drawing &drawing, unsigned int /*
 }
 
 
-Inkscape::Pixbuf *SPImage::readImage(gchar const *href, gchar const *absref, gchar const *base, double svgdpi)
+std::shared_ptr<Renderer::Image> SPImage::readImage(gchar const *href, gchar const *absref, gchar const *base, double svgdpi)
 {
-    Inkscape::Pixbuf *inkpb = nullptr;
+    if (!href) {
+        return {};
+    }
+    auto svg_factory = std::make_shared<Renderer::SvgRenderer>();
+    svg_factory->set_dpi(svgdpi);
 
-    char const *filename = href;
-
-    if (filename) {
-        if (g_ascii_strncasecmp(filename, "data:", 5) == 0) {
-            /* data URI - embedded image */
-            filename += 5;
-            inkpb = Inkscape::Pixbuf::create_from_data_uri(filename, svgdpi);
-        } else {
-            auto url = Inkscape::URI::from_href_and_basedir(href, base);
-
-            if (url.hasScheme("file")) {
-                try {
-                    auto native = url.toNativeFilename();
-                    inkpb = Inkscape::Pixbuf::create_from_file(native.c_str(), svgdpi);
-                } catch (Glib::ConvertError const &e) {
-                    g_warning("readImage: %s", e.what());
-                    inkpb = nullptr;
-                }
-            } else {
-                try {
-                    auto contents = url.getContents();
-                    inkpb = Inkscape::Pixbuf::create_from_buffer(contents, svgdpi);
-                } catch (const Gio::Error &e) {
-                    g_warning("URI::getContents failed for '%.100s'", href);
-                }
-            }
-        }
-
-        if (inkpb) {
-            return inkpb;
-        }
+    if (g_ascii_strncasecmp(href, "data:", 5) == 0) {
+        /* data URI - embedded image */
+        std::string_view view(href + 5);
+        return std::make_shared<Renderer::Image>(view, svg_factory);
     }
 
-    /* at last try to load from sp absolute path name */
-    filename = absref;
-    if (filename != nullptr) {
-        // using absref is outside of SVG rules, so we must at least warn the user
-        if ( base != nullptr && href != nullptr ) {
-            g_warning ("<image xlink:href=\"%s\"> did not resolve to a valid image file (base dir is %s), now trying sodipodi:absref=\"%s\"", href, base, absref);
-        } else {
-            g_warning ("xlink:href did not resolve to a valid image file, now trying sodipodi:absref=\"%s\"", absref);
-        }
-
-        inkpb = Inkscape::Pixbuf::create_from_file(filename, svgdpi);
-        if (inkpb != nullptr) {
-            return inkpb;
-        }
+    auto url = Inkscape::URI::from_href_and_basedir(href, base);
+    try {
+        // handle non-data URIs with GVfs
+        auto file = Gio::File::create_for_uri(url.str());
+        return std::make_shared<Renderer::Image>(file, svg_factory);
+    } catch (Renderer::Image::ImageError const &e) {
+        g_warning("readImage: %s", e.what());
+    } catch (Glib::ConvertError const &e) {
+        g_warning("readImage: %s", e.what());
     }
-    return inkpb;
+    return {};
 }
 
-static std::string broken_image_svg = R"A(
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">
-  <defs>
-    <symbol id="nope" style="fill:none;stroke:#ffffff;stroke-width:3" viewBox="0 0 10 10" preserveAspectRatio="{aspect}">
-      <circle cx="0" cy="0" r="10" style="fill:#a40000;stroke:#cc0000" />
-      <line x1="0" x2="0" y1="-5" y2="5" transform="rotate(45)" />
-      <line x1="0" x2="0" y1="-5" y2="5" transform="rotate(-45)" />
-    </symbol>
-  </defs>
-  <rect width="100%" height="100%" style="fill:white;stroke:#cc0000;stroke-width:6%" />
-  <use xlink:href="#nope" width="30%" height="30%" x="50%" y="50%" />
-</svg>
-
-)A";
-
-/**
- * Load a standard broken image svg, used if we fail to load pixbufs from the href.
- */
-Inkscape::Pixbuf *SPImage::getBrokenImage(double width, double height)
-{
-    // Limit the size of the broken image raster. smaller than the size in cairo-utils.
-    Inkscape::Preferences *prefs = Inkscape::Preferences::get();
-    double dpi = prefs->getDouble("/dialogs/import/defaultxdpi/value", 96.0);
-    width = std::max(std::min(width, dpi * 20), 1.0);
-    height = std::max(std::min(height, dpi * 20), 1.0);
-
-    // Cheap templating for size allows for dynamic sized svg
-    std::string copy = broken_image_svg;
-    copy.replace(copy.find("{width}"), std::string("{width}").size(), std::to_string(width));
-    copy.replace(copy.find("{height}"), std::string("{height}").size(), std::to_string(height));
-
-    // Aspect attempts to make the image better for different ratios of images we might be dropped into
-    copy.replace(copy.find("{aspect}"), std::string("{aspect}").size(), width > height ? "xMinYMid" : "xMidYMin");
-
-    auto inkpb = Inkscape::Pixbuf::create_from_buffer(copy, 0, "brokenimage.svg");
-
-    /* It's included here so if it still does not does load, our libraries are broken! */
-    g_assert (inkpb != nullptr);
-
-    return inkpb;
-}
-
-/* We assert that realpixbuf is either NULL or identical size to pixbuf */
+/* We assert that realimage is either NULL or identical size to image */
 static void
-sp_image_update_arenaitem (SPImage *image, Inkscape::DrawingImage *ai)
+sp_image_update_arenaitem (SPImage *image, Inkscape::Renderer::DrawingImage *ai)
 {
     ai->setStyle(image->style);
-    ai->setPixbuf(image->pixbuf);
+    ai->setImage(image->image);
     ai->setOrigin(Geom::Point(image->ox, image->oy));
     ai->setScale(image->sx, image->sy);
     ai->setClipbox(image->clipbox);
@@ -618,7 +494,7 @@ sp_image_update_arenaitem (SPImage *image, Inkscape::DrawingImage *ai)
 static void sp_image_update_canvas_image(SPImage *image)
 {
     for (auto &v : image->views) {
-        sp_image_update_arenaitem(image, cast<Inkscape::DrawingImage>(v.drawingitem.get()));
+        sp_image_update_arenaitem(image, cast<Inkscape::Renderer::DrawingImage>(v.drawingitem.get()));
     }
 }
 
@@ -713,47 +589,12 @@ Geom::PathVector const *SPImage::get_curve() const
     return curve ? &*curve : nullptr;
 }
 
-void sp_embed_image(Inkscape::XML::Node *image_node, Inkscape::Pixbuf *pb)
+void sp_embed_image(Inkscape::XML::Node *image_node, std::shared_ptr<Renderer::Image> img)
 {
-    bool free_data = false;
-
-    // check whether the pixbuf has MIME data
-    guchar *data = nullptr;
-    gsize len = 0;
-    std::string data_mimetype;
-
-    data = const_cast<guchar *>(pb->getMimeData(len, data_mimetype));
-
-    if (data == nullptr) {
-        // if there is no supported MIME data, embed as PNG
-        data_mimetype = "image/png";
-        gdk_pixbuf_save_to_buffer(pb->getPixbufRaw(), reinterpret_cast<gchar**>(&data), &len, "png", nullptr, nullptr);
-        free_data = true;
-    }
-
-    // Save base64 encoded data in image node
-    // this formula taken from Glib docs
-    gsize needed_size = len * 4 / 3 + len * 4 / (3 * 72) + 7;
-    needed_size += 5 + 8 + data_mimetype.size(); // 5 bytes for data: + 8 for ;base64,
-
-    gchar *buffer = (gchar *) g_malloc(needed_size);
-    gchar *buf_work = buffer;
-    buf_work += g_sprintf(buffer, "data:%s;base64,", data_mimetype.c_str());
-
-    gint state = 0;
-    gint save = 0;
-    gsize written = 0;
-    written += g_base64_encode_step(data, len, TRUE, buf_work, &state, &save);
-    written += g_base64_encode_close(TRUE, buf_work + written, &state, &save);
-    buf_work[written] = 0; // null terminate
-
     // TODO: this is very wasteful memory-wise.
     // It would be better to only keep the binary data around,
     // and base64 encode on the fly when saving the XML.
-    Inkscape::setHrefAttribute(*image_node, buffer);
-
-    g_free(buffer);
-    if (free_data) g_free(data);
+    Inkscape::setHrefAttribute(*image_node, img->encode_as_base64().c_str());
 }
 
 void sp_embed_svg(Inkscape::XML::Node *image_node, std::string const &fn)
@@ -812,22 +653,24 @@ void sp_embed_svg(Inkscape::XML::Node *image_node, std::string const &fn)
 
 void SPImage::refresh_if_outdated()
 {
-    if ( href && pixbuf && pixbuf->modificationTime()) {
+    /*
+    if ( href && image && image->modificationTime()) {
         // It *might* change
 
         GStatBuf st;
         memset(&st, 0, sizeof(st));
         int val = 0;
-        if (g_file_test(pixbuf->originalPath().c_str(), G_FILE_TEST_EXISTS)) {
-            val = g_stat(pixbuf->originalPath().c_str(), &st);
+        if (g_file_test(image->originalPath().c_str(), G_FILE_TEST_EXISTS)) {
+            val = g_stat(image->originalPath().c_str(), &st);
         }
         if ( !val ) {
             // stat call worked. Check time now
-            if ( st.st_mtime != pixbuf->modificationTime() ) {
+            if ( st.st_mtime != image->modificationTime() ) {
                 requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG | SP_IMAGE_HREF_MODIFIED_FLAG);
             }
         }
     }
+    */
 }
 
 /**
@@ -844,7 +687,7 @@ bool SPImage::cropToArea(Geom::Rect area)
 
     // Apply the image's viewbox and scal to get us image pixels
     area *= Geom::Translate(-x.computed, -y.computed);
-    area *= Geom::Scale(pixbuf->width() / width.computed, pixbuf->height() / height.computed);
+    area *= Geom::Scale(image->width() / width.computed, image->height() / height.computed);
 
     // Any precision problems and we choose to retain more pixels (roundOut)
     return cropToArea(area.roundOutwards());
@@ -861,18 +704,18 @@ bool SPImage::cropToArea(Geom::Rect area)
 bool SPImage::cropToArea(const Geom::IntRect &area)
 {
     // Contrain requested area to the available pixels.
-    auto px = Geom::IntRect::from_xywh(0.0, 0.0, pixbuf->width(), pixbuf->height());
+    auto px = Geom::IntRect::from_xywh(0.0, 0.0, image->width(), image->height());
     auto px_area = area & px;
     if (!px_area)
         return false;
 
-    if (auto pb = pixbuf->cropTo(*px_area)) {
+    if (false) {  // TODO auto pb = image->cropTo(*px_area)) {
         // Crop ended up with bad pixels, this should rarely happen.
-        if (pb->width() <= 0 || pb->height() <= 0)
+        //if (pb->width() <= 0 || pb->height() <= 0)
             return false;
 
         // Cropping is done, now embed this image back into image tag.
-        sp_embed_image(getRepr(), pb);
+        //sp_embed_image(getRepr(), pb);
 
         // Our new image has new sizes, so adjust image tag's internal viewbox
         auto repr = getRepr();

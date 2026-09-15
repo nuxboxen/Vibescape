@@ -29,6 +29,8 @@ using namespace std::literals;
 #include "preferences.h"
 #include "selection.h"
 #include "include/gtkmm_version.h"
+#include "renderer/surface.h"
+#include "renderer/surface-texture.h"
 
 #include "io/resource.h"
 #include "object/sp-defs.h"
@@ -36,7 +38,6 @@ using namespace std::literals;
 #include "object/sp-symbol.h"
 #include "object/sp-use.h"
 #include "ui/builder-utils.h"
-#include "ui/cache/svg_preview_cache.h"
 #include "ui/clipboard.h"
 #include "ui/drag-and-drop.h"
 #include "ui/icon-loader.h"
@@ -1256,7 +1257,7 @@ Cairo::RefPtr<Cairo::Surface> SymbolsDialog::drawSymbol(SPSymbol *symbol)
     g_assert(item != nullptr);
     unsigned psize = SYMBOL_ICON_SIZES[pack_size];
   
-    cairo_surface_t* surface = 0;
+    std::shared_ptr<Renderer::Surface> surface;
     // We could use cache here, but it doesn't really work with the structure
     // of this user interface and we've already cached the pixbuf in the gtklist
   
@@ -1280,15 +1281,15 @@ Cairo::RefPtr<Cairo::Surface> SymbolsDialog::drawSymbol(SPSymbol *symbol)
         }
   
         int device_scale = get_scale_factor();
-        surface = render_surface(renderDrawing, scale, *dbox, Geom::IntPoint(psize, psize), device_scale, nullptr, true);
-        if (surface) {
-            cairo_surface_set_device_scale(surface, device_scale, device_scale);
-        }
+        // TODO surface = render_surface(renderDrawing, scale, *dbox, Geom::IntPoint(psize, psize), device_scale, {}, true);
+        // This entire thing needs to be torn down. The render factory should be capable of rendering a symbol at will
     }
   
     preview_document->getObjectByRepr(repr)->deleteObject(false);
 
-    return surface ? Cairo::RefPtr<Cairo::Surface>(new Cairo::Surface(surface, true))
+    // TODO Decide how to deal with this color space confusion
+    return surface ? surface->getCairoSurfaces()[0]
+    //return surface ? Cairo::RefPtr<Cairo::Surface>(new Cairo::Surface(surface, true))
                    : Cairo::RefPtr<Cairo::Surface>();
 }
 
@@ -1332,7 +1333,7 @@ Glib::RefPtr<Gdk::Texture> SymbolsDialog::get_image(const std::string& key, SPDo
         auto psize = SYMBOL_ICON_SIZES[pack_size];
         auto icon_size = Geom::Point(psize, psize);
         auto surface = render_icon(document, id, icon_size, get_scale_factor());
-        auto tex = to_texture(surface);
+        auto tex = Renderer::build_texture(surface);
         _image_cache.insert(key, tex);
         return tex;
     }

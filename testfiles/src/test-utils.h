@@ -43,9 +43,15 @@ struct traced_data
 template <typename T>
 std::string print_values(T const &v, T const *other = nullptr, std::vector<bool> failed = {})
 {
-    auto as_string = [](double v, int precision) {
+    using V = typename T::value_type;
+    auto as_string = [](V v, int precision) {
         std::ostringstream ch;
-        ch << std::setprecision(precision) << v;
+        ch << std::setprecision(precision);
+        if constexpr (std::is_same<V, char>::value || std::is_same<V, unsigned char>::value) {
+            ch << +v; // Remove 'char' as string.
+        } else {
+            ch << v;
+        }
         return ch.str();
     };
 
@@ -99,6 +105,12 @@ inline static ::testing::AssertionResult VectorIsNear(T const &A, T const &B, do
                                              << print_values(B, same_size ? &A : nullptr, failed);
     }
     return ::testing::AssertionSuccess();
+}
+
+template <typename T>
+inline static ::testing::AssertionResult MemoryArrayIsNear(T* A, std::vector<T> const &B, double epsilon)
+{
+    return VectorIsNear(std::vector<T>(A, A + B.size()), B, epsilon);
 }
 
 

@@ -21,6 +21,7 @@
 #include "document.h"
 #include "inkscape-application.h"
 #include "io/resource.h"
+#include "renderer/surface-texture.h"
 #include "ui/builder-utils.h"
 #include "ui/svg-renderer.h"
 #include "ui/util.h"
@@ -110,7 +111,7 @@ void TemplateList::init(Inkscape::Extension::TemplateShow mode, AddPage add_page
                     // add new template placeholder
                     auto const filepath = Glib::build_filename("icons", "custom.svg");
                     auto const fullpath = get_filename(TEMPLATES, filepath.c_str(), false, true);
-                    auto icon = to_texture(icon_to_pixbuf(fullpath, get_scale_factor()));
+                    auto icon = Renderer::build_texture(icon_to_pixbuf(fullpath, get_scale_factor()));
                     auto templ = TemplateItem::create(
                         Glib::Markup::escape_text(_("<new template>")),
                         "", "", icon, "-new-template-", -1, cat
@@ -125,7 +126,8 @@ void TemplateList::init(Inkscape::Extension::TemplateShow mode, AddPage add_page
 
             auto tooltip = _(desc.empty() ? name.c_str() : desc.c_str());
             auto trans_label = label.empty() ? "" : _(label.c_str());
-            auto icon = to_texture(icon_to_pixbuf(preset->get_icon_path(), get_scale_factor()));
+
+            auto icon = Renderer::build_texture(icon_to_pixbuf(preset->get_icon_path(), get_scale_factor()));
 
             auto templ = TemplateItem::create(
                 Glib::Markup::escape_text(_(name.c_str())),
@@ -151,11 +153,11 @@ void TemplateList::init(Inkscape::Extension::TemplateShow mode, AddPage add_page
 /**
  * Turn the requested template icon name into a pixbuf
  */
-Cairo::RefPtr<Cairo::ImageSurface> TemplateList::icon_to_pixbuf(std::string const &path, int scale)
+std::shared_ptr<Renderer::Surface> TemplateList::icon_to_pixbuf(std::string const &path, int scale)
 {
     // TODO: cache to filesystem. This function is a major bottleneck for startup time (ca. 1 second)!
     // The current memory-based caching only catches the case where multiple templates share the same icon.
-    static std::map<std::string, Cairo::RefPtr<Cairo::ImageSurface>> cache;
+    static std::map<std::string, std::shared_ptr<Renderer::Surface>> cache;
     if (path.empty()) {
         return {};
     }

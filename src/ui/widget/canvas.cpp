@@ -27,6 +27,7 @@
 #include <gdkmm/frameclock.h>
 #include <gdkmm/glcontext.h>
 #include <gtkmm/applicationwindow.h>
+#include <gtkmm/gesture.h> // Gtk::EventSequenceState
 #include <gtkmm/gestureclick.h>
 
 #include "canvas/graphics.h"
@@ -41,7 +42,7 @@
 #include "display/control/canvas-item-drawing.h"
 #include "display/control/canvas-item-group.h"
 #include "display/control/snap-indicator.h"
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "document.h"
 #include "events/canvas-event.h"
 #include "helper/geom.h"
@@ -109,14 +110,14 @@ auto pref_to_updater(int index)
     return arr[index - 1];
 }
 
-std::optional<Antialiasing> get_antialiasing_override(bool enabled)
+std::optional<Renderer::Antialiasing> get_antialiasing_override(bool enabled)
 {
     if (enabled) {
         // Default antialiasing, controlled by SVG elements.
         return {};
     } else {
         // Force antialiasing off.
-        return Antialiasing::None;
+        return Renderer::Antialiasing::None;
     }
 }
 
@@ -124,8 +125,8 @@ std::optional<Antialiasing> get_antialiasing_override(bool enabled)
 struct Tile
 {
     Fragment fragment;
-    Cairo::RefPtr<Cairo::ImageSurface> surface;
-    Cairo::RefPtr<Cairo::ImageSurface> outline_surface;
+    std::shared_ptr<Renderer::Surface> surface;
+    std::shared_ptr<Renderer::Surface> outline_surface;
 };
 
 // The urgency with which the async redraw process should exit.
@@ -260,11 +261,11 @@ public:
 
     int scale_factor = 1; // The device scale the stores are drawn at.
 
-    RenderMode render_mode = RenderMode::NORMAL;
-    SplitMode  split_mode  = SplitMode::NORMAL;
+    Renderer::RenderMode render_mode = Renderer::RenderMode::NORMAL;
+    Renderer::SplitMode  split_mode  = Renderer::SplitMode::NORMAL;
 
     bool outlines_enabled = false; // Whether to enable the outline layer.
-    bool outlines_required() const { return split_mode != SplitMode::NORMAL || render_mode == RenderMode::OUTLINE_OVERLAY; }
+    bool outlines_required() const { return split_mode != Renderer::SplitMode::NORMAL || render_mode == Renderer::RenderMode::OUTLINE_OVERLAY; }
 
     bool background_in_stores_enabled = false; // Whether the page and desk should be drawn into the stores/tiles; if not then transparency is used instead.
     bool background_in_stores_required() const { return !q->get_opengl_enabled() && SP_RGBA32_A_U(page) == 255 && SP_RGBA32_A_U(desk) == 255; } // Enable solid colour optimisation if both page and desk are solid (as opposed to checkerboard).
@@ -284,8 +285,8 @@ public:
     void process_redraw(Geom::IntRect const &bounds, Cairo::RefPtr<Cairo::Region> clean, bool interruptible = true, bool preemptible = true);
     void render_tile(int debug_id);
     void paint_rect(Geom::IntRect const &rect);
-    void paint_single_buffer(const Cairo::RefPtr<Cairo::ImageSurface> &surface, const Geom::IntRect &rect, bool need_background, bool outline_pass);
-    void paint_error_buffer(const Cairo::RefPtr<Cairo::ImageSurface> &surface);
+    void paint_single_buffer(const std::shared_ptr<Renderer::Surface> &surface, const Geom::IntRect &rect, bool need_background, bool outline_pass);
+    void paint_error_buffer(const std::shared_ptr<Renderer::Surface> &surface);
 
     // Trivial overload of GtkWidget function.
     void queue_draw_area(Geom::IntRect const &rect);
@@ -412,7 +413,7 @@ Canvas::Canvas()
     d->canvasitem_ctx.emplace(this);
 
     // Split view.
-    _split_direction = SplitDirection::EAST;
+    _split_direction = Renderer::SplitDirection::EAST;
     _split_frac = {0.5, 0.5};
 
     // CMS  Set initial CMS transform.
@@ -527,12 +528,12 @@ Canvas::~Canvas()
     d->canvasitem_ctx.reset();
 }
 
-void Canvas::set_drawing(Drawing *drawing)
+void Canvas::set_drawing(Renderer::Drawing *drawing)
 {
     if (d->active && !drawing) d->deactivate();
     _drawing = drawing;
     if (_drawing) {
-        _drawing->setRenderMode(_render_mode == RenderMode::OUTLINE_OVERLAY ? RenderMode::NORMAL : _render_mode);
+        _drawing->setRenderMode(_render_mode == Renderer::RenderMode::OUTLINE_OVERLAY ? Renderer::RenderMode::NORMAL : _render_mode);
         _drawing->setColorMode(_color_mode);
         _drawing->setOutlineOverlay(d->outlines_required());
         _drawing->setAntialiasingOverride(get_antialiasing_override(_antialiasing_enabled));
@@ -626,11 +627,11 @@ void CanvasPrivate::launch_redraw()
     assert(redraw_active);
 
     if (q->_render_mode != render_mode) {
-        if ((render_mode == RenderMode::OUTLINE_OVERLAY) != (q->_render_mode == RenderMode::OUTLINE_OVERLAY) && !q->get_opengl_enabled()) {
+        if ((render_mode == Renderer::RenderMode::OUTLINE_OVERLAY) != (q->_render_mode == Renderer::RenderMode::OUTLINE_OVERLAY) && !q->get_opengl_enabled()) {
             q->queue_draw(); // Clear the whitewash effect, an artifact of cairo mode.
         }
         render_mode = q->_render_mode;
-        q->_drawing->setRenderMode(render_mode == RenderMode::OUTLINE_OVERLAY ? RenderMode::NORMAL : render_mode);
+        q->_drawing->setRenderMode(render_mode == Renderer::RenderMode::OUTLINE_OVERLAY ? Renderer::RenderMode::NORMAL : render_mode);
         q->_drawing->setOutlineOverlay(outlines_required());
     }
 
@@ -990,7 +991,7 @@ Gtk::EventSequenceState Canvas::on_button_pressed(Gtk::GestureClick const &contr
     }
 
     // Drag the split view controller.
-    if (_split_mode == SplitMode::SPLIT && _hover_direction != SplitDirection::NONE) {
+    if (_split_mode == Renderer::SplitMode::SPLIT && _hover_direction != Renderer::SplitDirection::NONE) {
         if (n_press == 1) {
             _split_dragging = true;
             _split_drag_start = Geom::IntPoint(x, y);
@@ -1030,7 +1031,7 @@ Gtk::EventSequenceState Canvas::on_button_released(Gtk::GestureClick const &cont
     d->unreleased_presses &= ~(1 << button);
 
     // Drag the split view controller.
-    if (_split_mode == SplitMode::SPLIT && _split_dragging) {
+    if (_split_mode == Renderer::SplitMode::SPLIT && _split_dragging) {
         _split_dragging = false;
 
         // Check if we are near the edge. If so, revert to normal mode.
@@ -1041,7 +1042,7 @@ Gtk::EventSequenceState Canvas::on_button_released(Gtk::GestureClick const &cont
         {
             // Reset everything.
             update_cursor();
-            set_split_mode(SplitMode::NORMAL);
+            set_split_mode(Renderer::SplitMode::NORMAL);
 
             // Update action (turn into utility function?).
             auto window = dynamic_cast<Gtk::ApplicationWindow*>(get_root());
@@ -1062,7 +1063,7 @@ Gtk::EventSequenceState Canvas::on_button_released(Gtk::GestureClick const &cont
                 return Gtk::EventSequenceState::CLAIMED;
             }
 
-            saction->change_state(static_cast<int>(SplitMode::NORMAL));
+            saction->change_state(static_cast<int>(Renderer::SplitMode::NORMAL));
         }
     }
 
@@ -1183,17 +1184,17 @@ void Canvas::on_motion(Gtk::EventControllerMotion const &controller, double x, d
     _state = (int)controller.get_current_event_state();
 
     // Handle interactions with the split view controller.
-    if (_split_mode == SplitMode::XRAY) {
+    if (_split_mode == Renderer::SplitMode::XRAY) {
         queue_draw();
-    } else if (_split_mode == SplitMode::SPLIT) {
+    } else if (_split_mode == Renderer::SplitMode::SPLIT) {
         auto cursor_position = mouse.floor();
 
         // Move controller.
         if (_split_dragging) {
             auto delta = cursor_position - _split_drag_start;
-            if (_hover_direction == SplitDirection::HORIZONTAL) {
+            if (_hover_direction == Renderer::SplitDirection::HORIZONTAL) {
                 delta.x() = 0;
-            } else if (_hover_direction == SplitDirection::VERTICAL) {
+            } else if (_hover_direction == Renderer::SplitDirection::VERTICAL) {
                 delta.y() = 0;
             }
             _split_frac += Geom::Point(delta) / get_dimensions();
@@ -1204,33 +1205,33 @@ void Canvas::on_motion(Gtk::EventControllerMotion const &controller, double x, d
 
         auto split_position = (_split_frac * get_dimensions()).round();
         auto diff = cursor_position - split_position;
-        auto hover_direction = SplitDirection::NONE;
+        auto hover_direction = Renderer::SplitDirection::NONE;
         if (Geom::Point(diff).length() < 20.0) {
             // We're hovering over circle, figure out which direction we are in.
             if (diff.y() - diff.x() > 0) {
                 if (diff.y() + diff.x() > 0) {
-                    hover_direction = SplitDirection::SOUTH;
+                    hover_direction = Renderer::SplitDirection::SOUTH;
                 } else {
-                    hover_direction = SplitDirection::WEST;
+                    hover_direction = Renderer::SplitDirection::WEST;
                 }
             } else {
                 if (diff.y() + diff.x() > 0) {
-                    hover_direction = SplitDirection::EAST;
+                    hover_direction = Renderer::SplitDirection::EAST;
                 } else {
-                    hover_direction = SplitDirection::NORTH;
+                    hover_direction = Renderer::SplitDirection::NORTH;
                 }
             }
-        } else if (_split_direction == SplitDirection::NORTH ||
-                   _split_direction == SplitDirection::SOUTH)
+        } else if (_split_direction == Renderer::SplitDirection::NORTH ||
+                   _split_direction == Renderer::SplitDirection::SOUTH)
         {
             if (std::abs(diff.y()) < 3) {
                 // We're hovering over the horizontal line.
-                hover_direction = SplitDirection::HORIZONTAL;
+                hover_direction = Renderer::SplitDirection::HORIZONTAL;
             }
         } else {
             if (std::abs(diff.x()) < 3) {
                 // We're hovering over the vertical line.
-                hover_direction = SplitDirection::VERTICAL;
+                hover_direction = Renderer::SplitDirection::VERTICAL;
             }
         }
 
@@ -1240,7 +1241,7 @@ void Canvas::on_motion(Gtk::EventControllerMotion const &controller, double x, d
             queue_draw();
         }
 
-        if (_hover_direction != SplitDirection::NONE) {
+        if (_hover_direction != Renderer::SplitDirection::NONE) {
             // We're hovering, don't pick or emit event.
             return;
         }
@@ -1604,15 +1605,15 @@ Geom::IntRect Canvas::get_area_world() const
  */
 bool Canvas::canvas_point_in_outline_zone(Geom::Point const &p) const
 {
-    if (_render_mode == RenderMode::OUTLINE || _render_mode == RenderMode::OUTLINE_OVERLAY) {
+    if (_render_mode == Renderer::RenderMode::OUTLINE || _render_mode == Renderer::RenderMode::OUTLINE_OVERLAY) {
         return true;
-    } else if (_split_mode == SplitMode::SPLIT) {
+    } else if (_split_mode == Renderer::SplitMode::SPLIT) {
         auto split_position = _split_frac * get_dimensions();
         switch (_split_direction) {
-            case SplitDirection::NORTH: return p.y() > split_position.y();
-            case SplitDirection::SOUTH: return p.y() < split_position.y();
-            case SplitDirection::WEST:  return p.x() > split_position.x();
-            case SplitDirection::EAST:  return p.x() < split_position.x();
+            case Renderer::SplitDirection::NORTH: return p.y() > split_position.y();
+            case Renderer::SplitDirection::SOUTH: return p.y() < split_position.y();
+            case Renderer::SplitDirection::WEST:  return p.x() > split_position.x();
+            case Renderer::SplitDirection::EAST:  return p.x() < split_position.x();
             default: return false;
         }
     } else {
@@ -1789,14 +1790,14 @@ void Canvas::set_page(uint32_t rgba)
     queue_draw();
 }
 
-void Canvas::set_render_mode(RenderMode mode)
+void Canvas::set_render_mode(Renderer::RenderMode mode)
 {
     if (mode == _render_mode) return;
     _render_mode = mode;
     d->schedule_redraw();
 }
 
-void Canvas::set_color_mode(ColorMode mode)
+void Canvas::set_color_mode(Renderer::ColorMode mode)
 {
     _color_mode = mode;
     if (_drawing) {
@@ -1804,13 +1805,13 @@ void Canvas::set_color_mode(ColorMode mode)
     }
 }
 
-void Canvas::set_split_mode(SplitMode mode)
+void Canvas::set_split_mode(Renderer::SplitMode mode)
 {
     if (mode == _split_mode) return;
     _split_mode = mode;
     d->schedule_redraw();
-    if (_split_mode == SplitMode::SPLIT) {
-        _hover_direction = SplitDirection::NONE;
+    if (_split_mode == Renderer::SplitMode::SPLIT) {
+        _hover_direction = Renderer::SplitDirection::NONE;
         _split_frac = {0.5, 0.5};
     }
 }
@@ -1893,26 +1894,26 @@ void Canvas::update_cursor()
     }
 
     switch (_hover_direction) {
-        case SplitDirection::NONE:
+        case Renderer::SplitDirection::NONE:
             _desktop->getTool()->use_tool_cursor();
             break;
 
-        case SplitDirection::NORTH:
-        case SplitDirection::EAST:
-        case SplitDirection::SOUTH:
-        case SplitDirection::WEST:
+        case Renderer::SplitDirection::NORTH:
+        case Renderer::SplitDirection::EAST:
+        case Renderer::SplitDirection::SOUTH:
+        case Renderer::SplitDirection::WEST:
         {
             set_cursor("pointer");
             break;
         }
 
-        case SplitDirection::HORIZONTAL:
+        case Renderer::SplitDirection::HORIZONTAL:
         {
             set_cursor("ns-resize");
             break;
         }
 
-        case SplitDirection::VERTICAL:
+        case Renderer::SplitDirection::VERTICAL:
         {
             set_cursor("ew-resize");
             break;
@@ -1983,7 +1984,7 @@ Glib::RefPtr<Gdk::GLContext> Canvas::create_context()
     return result;
 }
 
-void Canvas::paint_widget(Cairo::RefPtr<Cairo::Context> const &cr)
+void Canvas::paint_widget(std::shared_ptr<Renderer::Context> const &cr)
 {
     framecheck_whole_function(d)
 
@@ -2457,20 +2458,18 @@ void CanvasPrivate::paint_rect(Geom::IntRect const &rect)
     }
 }
 
-void CanvasPrivate::paint_single_buffer(Cairo::RefPtr<Cairo::ImageSurface> const &surface, Geom::IntRect const &rect, bool need_background, bool outline_pass)
+void CanvasPrivate::paint_single_buffer(std::shared_ptr<Renderer::Surface> const &surface, Geom::IntRect const &rect, bool need_background, bool outline_pass)
 {
     // Create Cairo context.
-    auto cr = Cairo::Context::create(surface);
+    auto cr = Renderer::Context(*surface);
 
     // Clear background.
-    cr->save();
     if (need_background) {
         Graphics::paint_background(Fragment{ rd.store.affine, rect }, pi, rd.page, rd.desk, cr);
     } else {
-        cr->set_operator(Cairo::Context::Operator::CLEAR);
-        cr->paint();
+        cr.set_operator(Cairo::Context::Operator::CLEAR);
+        cr.paint();
     }
-    cr->restore();
 
     // Render drawing on top of background.
     auto buf = CanvasItemBuffer{ rect, scale_factor, cr, outline_pass };
@@ -2480,24 +2479,26 @@ void CanvasPrivate::paint_single_buffer(Cairo::RefPtr<Cairo::ImageSurface> const
     // the user will apply an RGB transform to color correct their screen. This happens now, so the
     // drawing plus all other canvas items (selection boxes, handles, etc) are also color corrected.
     if (rd.cms_transform) {
-        rd.cms_transform->do_transform(surface->get_width(), surface->get_height(), surface->get_data(), surface->get_data(), surface->get_stride(), surface->get_stride());
+        // TODO This transformation is handled by our renderer internally now
+        // rd.cms_transform->do_transform(surface->width(), surface->height(), surface->get_data(), surface->get_data(), surface->get_stride(), surface->get_stride());
     }
 
     // Paint over newly drawn content with a translucent random colour.
     if (rd.debug_show_redraw) {
-        cr->set_source_rgba((rand() % 256) / 255.0, (rand() % 256) / 255.0, (rand() % 256) / 255.0, 0.2);
-        cr->set_operator(Cairo::Context::Operator::OVER);
-        cr->paint();
+        auto rcolor = Colors::Color(cr.getColorSpace(), {(rand() % 256) / 255.0, (rand() % 256) / 255.0, (rand() % 256) / 255.0, 0.2});
+        cr.setSource(rcolor);
+        cr.set_operator(Cairo::Context::Operator::OVER);
+        cr.paint();
     }
 }
 
-void CanvasPrivate::paint_error_buffer(Cairo::RefPtr<Cairo::ImageSurface> const &surface)
+void CanvasPrivate::paint_error_buffer(std::shared_ptr<Renderer::Surface> const &surface)
 {
     // Paint something into surface to represent an "error" state for that tile.
     // Currently just paints solid black.
-    auto cr = Cairo::Context::create(surface);
-    cr->set_source_rgb(0, 0, 0);
-    cr->paint();
+    auto cr = Renderer::Context(*surface);
+    cr.setSource(Colors::Color(0xff));
+    cr.paint();
 }
 
 } // namespace Inkscape::UI::Widget

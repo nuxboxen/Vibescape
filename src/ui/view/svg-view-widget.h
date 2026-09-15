@@ -26,7 +26,10 @@ namespace Inkscape {
 class CanvasItemDrawing;
 class CanvasItemGroup;
 struct CanvasEvent;
+
+namespace Renderer {
 class DrawingItem;
+}
 
 namespace UI {
 
@@ -64,7 +67,7 @@ private:
     double _width = 0.0;
     double _height = 0.0;
 
-    bool event(CanvasEvent const &event, DrawingItem *drawing_item);
+    bool event(CanvasEvent const &event, Renderer::DrawingItem *drawing_item);
 
     /**
      * Helper function that sets rescale ratio.

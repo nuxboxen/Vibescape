@@ -26,6 +26,7 @@
 #include <gtkmm/messagedialog.h>
 
 #include "siox.h"
+#include "colors/manager.h"
 #include "desktop.h"
 #include "document.h"
 #include "document-undo.h"
@@ -37,9 +38,9 @@
 #include "async/async.h"
 #include "async/progress-splitter.h"
 #include "async/background-progress.h"
-#include "display/cairo-utils.h"
-#include "display/drawing.h"
-#include "display/drawing-context.h"
+#include "renderer/drawing-forward.h"
+#include "renderer/context.h"
+#include "renderer/surface-image.h"
 #include "object/sp-item.h"
 #include "object/sp-image.h"
 #include "object/weakptr.h"
@@ -133,18 +134,13 @@ Geom::Affine getImageTransform(SPImage const *img)
     double w = img->width.computed;
     double h = img->height.computed;
 
-    int iw = img->pixbuf->width();
-    int ih = img->pixbuf->height();
+    int iw = 1; //img->pixbuf->width();
+    int ih = 1; //img->pixbuf->height();
 
     double wscale = w / iw;
     double hscale = h / ih;
 
     return Geom::Scale(wscale, hscale) * Geom::Translate(x, y) * img->transform;
-}
-
-Geom::IntPoint dimensions(Inkscape::Pixbuf const &pixbuf)
-{
-    return { pixbuf.width(), pixbuf.height() };
 }
 
 bool confirm_image_size(TracingEngine const *engine, Geom::IntPoint const &dimensions)
@@ -166,14 +162,16 @@ bool confirm_image_size(TracingEngine const *engine, Geom::IntPoint const &dimen
 /**
  * Given a list of SPItems, apply a transform and rasterize them to a surface of the specified dimensions.
  */
-Cairo::RefPtr<Cairo::ImageSurface> rasterizeItems(std::vector<SPItem*> &items, Geom::Affine const &affine, Geom::IntPoint dimensions)
+std::shared_ptr<Renderer::Surface> rasterizeItems(std::vector<SPItem*> &items, Geom::Affine const &affine, Geom::IntPoint dimensions)
 {
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, dimensions.x(), dimensions.y());
-    auto dc = Inkscape::DrawingContext(surface->cobj(), {});
+    // TODO: Support other color spaces?
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto surface = std::make_shared<Renderer::Surface>(dimensions, 1.0, srgb);
+    auto dc = Renderer::Context(*surface);
     auto const inv = affine.inverse();
 
     auto dkey = SPItem::display_key_new(1);
-    Inkscape::Drawing drawing;
+    Inkscape::Renderer::Drawing drawing;
 
     for (auto item : items) {
         auto ai = item->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY);
@@ -317,7 +315,7 @@ private:
     // Unsafe. Cannot lock from worker thread since must be destroyed by main thread. (See above.)
     std::weak_ptr<SPWeakPtr<SPImage>> image_watcher_weak;
 
-    std::shared_ptr<Inkscape::Pixbuf const> image_pixbuf;
+    std::shared_ptr<Renderer::Image const> image_pixbuf;
     Geom::Affine image_transform;
     Cairo::RefPtr<Cairo::ImageSurface> siox_mask;
     Async::Channel::Source channel;
@@ -362,13 +360,13 @@ TraceFuture TraceTask::launch(std::unique_ptr<TraceTask> self)
 
     auto image = imageanditems->first;
 
-    image_pixbuf = image->pixbuf; // Note: image->pixbuf is immutable, so can be shared thread-safely.
+    image_pixbuf = image->image; // Note: image->pixbuf is immutable, so can be shared thread-safely.
     if (!image_pixbuf) {
         if (type == Type::Trace) log(Inkscape::ERROR_MESSAGE, _("Trace: Image has no bitmap data"));
         return {};
     }
 
-    if (type == Type::Trace && !confirm_image_size(engine.get(), dimensions(*image_pixbuf))) {
+    if (type == Type::Trace && !confirm_image_size(engine.get(), image_pixbuf->dimensions())) {
         // Image is too big and user decided to cancel.
         return {};
     }
@@ -376,7 +374,8 @@ TraceFuture TraceTask::launch(std::unique_ptr<TraceTask> self)
     image_transform = getImageTransform(image);
 
     if (sioxEnabled) {
-        siox_mask = rasterizeItems(imageanditems->second, image_transform, dimensions(*image_pixbuf));
+        // TODO: This looks like another pixelFilter rewrite situation
+        //siox_mask = rasterizeItems(imageanditems->second, image_transform, image_pixbuf->dimensions());
     }
 
     if (type == Type::Trace) log(Inkscape::NORMAL_MESSAGE, _("Trace: Starting trace..."));
@@ -415,12 +414,16 @@ void TraceTask::do_async_work(std::unique_ptr<TraceTask> self)
             .add_if(sub_trace, 0.9, type == Type::Trace);
 
         // Convert the pixbuf to a GdkPixbuf, which due to immutability requires making a copy first.
+        /* TODO: Find a way to convert from Glycin Image Surface to whatever this needs.
         auto copy = Pixbuf(*image_pixbuf);
-        auto gdkpixbuf = Glib::wrap(copy.getPixbufRaw(), true);
+        */
+        GdkPixbuf *target = nullptr; // CRASH!!
+        auto gdkpixbuf = Glib::wrap(target, true);
 
         // If SIOX has been enabled, run SIOX processing.
         if (sioxEnabled) {
-            gdkpixbuf = sioxProcessImage(gdkpixbuf, siox_mask, *sub_siox);
+            // TODO: This looks like another pixelFilter rewrite situation
+            //gdkpixbuf = sioxProcessImage(gdkpixbuf, siox_mask, *sub_siox);
             siox_mask.reset();
             sub_siox->report_or_throw(1.0);
         }

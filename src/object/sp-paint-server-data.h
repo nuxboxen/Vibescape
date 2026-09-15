@@ -19,6 +19,7 @@ enum class PaintServerType
     INVALID,
     SOLID_COLOR,
     HATCH_PATTERN,
+    GROUP_PATTERN,
     LINEAR_GRADIENT,
     RADIAL_GRADIENT,
     MESH_GRADIENT

@@ -24,11 +24,11 @@
 #include <gtkmm/textview.h>
 
 #include "desktop.h"
-#include "display/cairo-utils.h"
 #include "inkscape-version-info.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
 #include "io/resource.h"
+#include "renderer/surface-texture.h"
 #include "ui/builder-utils.h"
 #include "ui/svg-renderer.h"
 #include "ui/themes.h"
@@ -110,8 +110,8 @@ private:
             _frame->property_ratio() = width / height;
             viewer->set_size_request(width, height);
         }
-        viewer->set_paintable(to_texture(surface));
-        return surface;
+        viewer->set_paintable(Renderer::build_texture(surface));
+        return {}; //surface;
     }
 
     void set_footer_matching_color(Cairo::RefPtr<Cairo::ImageSurface> const &image)
@@ -132,7 +132,7 @@ private:
 
         // calculate footer color: light/dark depending on a theme
         bool dark = INKSCAPE.themecontext->isCurrentThemeDark(this);
-        auto foot = Colors::make_theme_color(ink_cairo_surface_average_color(surface->cobj()), dark);
+        auto foot = Colors::Color(0x0); // TODO Colors::make_theme_color(ink_cairo_surface_average_color(surface->cobj()), dark);
 
         auto style_context = _footer->get_style_context();
         _footer_style = Gtk::CssProvider::create();

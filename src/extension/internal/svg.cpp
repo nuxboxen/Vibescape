@@ -24,7 +24,6 @@
 #include "extension/input.h"
 #include "extension/system.h"
 #include "svg.h"
-#include "display/cairo-utils.h"
 #include "extension/system.h"
 #include "extension/output.h"
 
@@ -33,6 +32,9 @@
 
 #include "util/units.h"
 #include "util-string/ustring-format.h"
+
+#include "renderer/surface-image.h"
+#include "renderer/drawing/svg-renderer.h"
 
 #include "selection-chemistry.h"
 
@@ -230,8 +232,10 @@ std::unique_ptr<SPDocument> Svg::open(Inkscape::Extension::Input *mod, char cons
 
         // Do we embed or link?
         if (import_mode_svg == "embed") {
-            std::unique_ptr<Inkscape::Pixbuf> pb(Inkscape::Pixbuf::create_from_file(uri, svgdpi));
-            if(pb) {
+            Glib::RefPtr<Gio::File> file = Gio::File::create_for_path(uri);
+            auto svg_factory = std::make_shared<Renderer::SvgRenderer>();
+            svg_factory->set_dpi(svgdpi);
+            if (auto img = std::make_shared<Renderer::Image>(file, svg_factory)) {
                 sp_embed_svg(image_node, uri);
             }
         } else {

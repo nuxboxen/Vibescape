@@ -29,7 +29,7 @@
 #include "extension/print.h"
 #include "extension/db.h"
 #include "extension/output.h"
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 
 #include "path/path-curve.h"
 
@@ -80,7 +80,7 @@ ps_print_document_to_file(SPDocument *doc, gchar const *filename, unsigned int l
         return false;
     }
 
-    Inkscape::Drawing drawing;
+    Renderer::Drawing drawing;
     unsigned dkey = SPItem::display_key_new(1);
     root->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY);
 

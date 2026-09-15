@@ -1,45 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 target_sources(inkscape_base PRIVATE
-    cairo-utils.cpp
-    dispatch-pool.cpp
-    drawing-context.cpp
-    drawing-group.cpp
-    drawing-image.cpp
-    drawing-item.cpp
-    drawing-paintserver.cpp
-    drawing-pattern.cpp
-    drawing-shape.cpp
-    drawing-surface.cpp
-    drawing-text.cpp
-    drawing.cpp
     nr-3dutils.cpp
-    nr-filter-blend.cpp
-    nr-filter-colormatrix.cpp
-    nr-filter-component-transfer.cpp
-    nr-filter-composite.cpp
-    nr-filter-convolve-matrix.cpp
-    nr-filter-diffuselighting.cpp
-    nr-filter-displacement-map.cpp
-    nr-filter-dropshadow.cpp
-    nr-filter-flood.cpp
-    nr-filter-gaussian.cpp
-    nr-filter-image.cpp
-    nr-filter-merge.cpp
-    nr-filter-morphology.cpp
-    nr-filter-offset.cpp
-    nr-filter-primitive.cpp
-    # nr-filter-skeleton.cpp
-    nr-filter-slot.cpp
-    nr-filter-specularlighting.cpp
-    nr-filter-tile.cpp
-    nr-filter-turbulence.cpp
-    nr-filter-units.cpp
-    nr-filter.cpp
-    nr-light.cpp
-    nr-style.cpp
-    nr-svgfonts.cpp
-    threading.cpp
     translucency-group.cpp
 
     control/canvas-temporary-item-list.cpp
@@ -66,53 +28,8 @@ target_sources(inkscape_base PRIVATE
 
     # -------
     # Headers
-    cairo-templates.h
-    cairo-utils.h
-    dispatch-pool.h
-    drawing-context.h
-    drawing-group.h
-    drawing-image.h
-    drawing-item.h
-    drawing-item-ptr.h
-    drawing-paintserver.h
-    drawing-pattern.h
-    drawing-shape.h
-    drawing-surface.h
-    drawing-text.h
-    drawing.h
     initlock.h
     nr-3dutils.h
-    nr-filter-blend.h
-    nr-filter-colormatrix.h
-    nr-filter-component-transfer.h
-    nr-filter-composite.h
-    nr-filter-convolve-matrix.h
-    nr-filter-diffuselighting.h
-    nr-filter-displacement-map.h
-    nr-filter-dropshadow.h
-    nr-filter-flood.h
-    nr-filter-gaussian.h
-    nr-filter-image.h
-    nr-filter-merge.h
-    nr-filter-morphology.h
-    nr-filter-offset.h
-    nr-filter-primitive.h
-    nr-filter-skeleton.h
-    nr-filter-slot.h
-    nr-filter-specularlighting.h
-    nr-filter-tile.h
-    nr-filter-turbulence.h
-    nr-filter-types.h
-    nr-filter-units.h
-    nr-filter-utils.h
-    nr-filter.h
-    nr-light-types.h
-    nr-light.h
-    nr-style.h
-    nr-svgfonts.h
-    rendermode.h
-    tags.h
-    threading.h
     translucency-group.h
 
     control/canvas-temporary-item-list.h

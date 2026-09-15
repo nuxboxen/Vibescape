@@ -12,7 +12,7 @@ and the page labels in stdout. This is used by CMake to contruct tests.
 import os
 import sys
 
-def main(filename):
+def get_pages(filename):
     if not os.path.isfile(filename):
         sys.stderr.write(f"Can't find file: '{filename}'")
         sys.exit(1)
@@ -42,7 +42,10 @@ def main(filename):
 
     if not labels:
         labels = ["page0"]
+    return labels
 
+def main(filename):
+    labels = get_pages(filename)
     sys.stderr.write(";".join([str(i) for i in range(len(labels))]))
     sys.stdout.write(";".join(labels))
 

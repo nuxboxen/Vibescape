@@ -34,7 +34,7 @@
 #include "message-context.h"
 #include "selection.h"
 
-#include "display/drawing.h"
+#include "renderer/drawing/drawing.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-drawing.h"
 
@@ -389,7 +389,7 @@ double randomize01(double val, double rand)
 static guint32 getPickerData(Geom::IntRect area, SPDesktop *desktop)
 {
     Inkscape::CanvasItemDrawing *canvas_item_drawing = desktop->getCanvasDrawing();
-    Inkscape::Drawing *drawing = canvas_item_drawing->get_drawing();
+    Inkscape::Renderer::Drawing *drawing = canvas_item_drawing->get_drawing();
 
     // Get average color.
     auto avg = drawing->averageColor(area);

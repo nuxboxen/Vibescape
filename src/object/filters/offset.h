@@ -30,7 +30,7 @@ private:
     void build(SPDocument *doc, Inkscape::XML::Node *repr) override;
     void set(SPAttr key, char const *value) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FEOFFSET_H_SEEN

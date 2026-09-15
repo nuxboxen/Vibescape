@@ -20,24 +20,18 @@
 #include "document.h"    // for SPDocument
 #include "xml/node.h"    // for Node
 
-namespace Inkscape::XML {
-struct Document;
-} // namespace Inkscape::XML
-
-
 SPFeDistantLight::SPFeDistantLight()
     : azimuth(0)
     , azimuth_set(false)
     , elevation(0)
     , elevation_set(false)
-{
-}
+{}
 
 SPFeDistantLight::~SPFeDistantLight() = default;
 
 void SPFeDistantLight::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPObject::build(document, repr);
+    SPObject::build(document, repr);
 
     readAttr(SPAttr::AZIMUTH);
     readAttr(SPAttr::ELEVATION);

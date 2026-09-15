@@ -34,7 +34,7 @@
 #include "sp-use.h"
 
 #include "path/path-curve.h"
-#include "display/drawing-group.h"
+#include "renderer/drawing-forward.h"
 #include "libnrtype/font-factory.h"
 #include "libnrtype/font-instance.h"
 #include "livarot/Shape.h"
@@ -114,7 +114,7 @@ void SPFlowtext::update(SPCtx* ctx, unsigned int flags) {
     for (auto &v : views) {
         auto &sa = view_style_attachments[v.key];
         sa.unattachAll();
-        auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+        auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
         _clearFlow(g);
         g->setStyle(style);
         // pass the bbox of the flowtext object as paintbox (used for paintserver fills)
@@ -138,7 +138,7 @@ void SPFlowtext::modified(unsigned int flags) {
         for (auto &v : views) {
             auto &sa = view_style_attachments[v.key];
             sa.unattachAll();
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             _clearFlow(g);
             g->setStyle(style);
             layout.show(g, sa, pbox);
@@ -314,8 +314,8 @@ void SPFlowtext::snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inksca
     }
 }
 
-Inkscape::DrawingItem* SPFlowtext::show(Inkscape::Drawing &drawing, unsigned int key, unsigned int /*flags*/) {
-    Inkscape::DrawingGroup *flowed = new Inkscape::DrawingGroup(drawing);
+Inkscape::Renderer::DrawingItem* SPFlowtext::show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int /*flags*/) {
+    Inkscape::Renderer::DrawingGroup *flowed = new Inkscape::Renderer::DrawingGroup(drawing);
     flowed->setPickChildren(false);
     flowed->setStyle(this->style);
 
@@ -332,7 +332,7 @@ void SPFlowtext::hide(unsigned key)
 
     for (auto &v : views) {
         if (v.key == key) {
-            auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+            auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
             _clearFlow(g);
         }
     }
@@ -472,7 +472,7 @@ void SPFlowtext::rebuildLayout()
 #endif
 }
 
-void SPFlowtext::_clearFlow(Inkscape::DrawingGroup *in_arena)
+void SPFlowtext::_clearFlow(Inkscape::Renderer::DrawingGroup *in_arena)
 {
     in_arena->clearChildren();
 }

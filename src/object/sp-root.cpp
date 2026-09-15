@@ -18,8 +18,8 @@
 
 #include <2geom/affine.h>                            // for identity, Affine
 #include "attributes.h"                              // for SPAttr
-#include "display/drawing-group.h"                   // for DrawingGroup
-#include "display/drawing-item-ptr.h"                // for DrawingItemPtr
+#include "renderer/drawing/drawing-group.h"          // for DrawingGroup
+#include "renderer/drawing/drawing-item-ptr.h"       // for DrawingItemPtr
 #include "document.h"                                // for SPDocument
 #include "inkscape-version.h"
 #include "print.h"                                   // for SPPrintContext
@@ -294,7 +294,7 @@ void SPRoot::update(SPCtx *ctx, guint flags)
 
     /* As last step set additional transform of drawing group */
     for (auto &v : views) {
-        auto g = cast<Inkscape::DrawingGroup>(v.drawingitem.get());
+        auto g = cast<Inkscape::Renderer::DrawingGroup>(v.drawingitem.get());
         g->setChildTransform(c2p);
     }
 }
@@ -351,12 +351,12 @@ Inkscape::XML::Node *SPRoot::write(Inkscape::XML::Document *xml_doc, Inkscape::X
     return repr;
 }
 
-Inkscape::DrawingItem *SPRoot::show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags)
+Inkscape::Renderer::DrawingItem *SPRoot::show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags)
 {
-    Inkscape::DrawingItem *ai = SPGroup::show(drawing, key, flags);
+    Inkscape::Renderer::DrawingItem *ai = SPGroup::show(drawing, key, flags);
 
     if (ai) {
-        auto g = cast<Inkscape::DrawingGroup>(ai);
+        auto g = cast<Inkscape::Renderer::DrawingGroup>(ai);
         g->setChildTransform(this->c2p);
     }
 

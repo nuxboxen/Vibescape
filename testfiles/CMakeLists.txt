@@ -5,6 +5,7 @@ include_directories(${PROJECT_SOURCE_DIR})
 
 # custom "check" target with proper dependencies (builds inkscape and tests)
 file(TO_NATIVE_PATH "/" _separator)
+add_definitions(-DUNIT_TEST="true")
 add_definitions(-DINKSCAPE_TESTS_DIR="${CMAKE_SOURCE_DIR}/testfiles")
 add_definitions(-DINKSCAPE_SHARE_DIR="${CMAKE_SOURCE_DIR}/share")
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
@@ -28,7 +29,7 @@ if(NOT EXISTS ${INKSCAPE_DATADIR}/inkscape)
 endif()
 # check if creation succeeded
 if(EXISTS ${INKSCAPE_DATADIR}/inkscape)
-    set(CMAKE_CTEST_ENV INKSCAPE_DATADIR=${INKSCAPE_DATADIR})
+    set(CMAKE_CTEST_ENV "INKSCAPE_DATADIR=${INKSCAPE_DATADIR};${CMAKE_CTEST_ENV}")
 else()
     message(WARNING "Directory 'inkscape_datadir/inkscape' missing. Tests might not run properly.\n"
                     "Possible solutions:\n"
@@ -79,10 +80,10 @@ set(TEST_SOURCES
     util-expression-evaluator-test
     util-uri-test
     drag-and-drop-svgz
-    drawing-pattern-test
     split-path-test
     attributes-test
     dir-util-test
+    sp-image-test
     sp-item-test
     sp-object-test
     sp-object-lang-test
@@ -94,6 +95,8 @@ set(TEST_SOURCES
     path-reverse-lpe-test
     preferences-test
     rebase-hrefs-test
+    renderer/drawing-svg-renderer-test
+    renderer/surface-image-test
     stream-test
     style-elem-test
     style-internal-test
@@ -108,15 +111,12 @@ set(TEST_SOURCES
     livarot-pathoutline-test
     object-test
     sp-glyph-kerning-test
-    cairo-utils-test
     svg-extension-test
     2geom-characterization-test
-    test-feDropShadow
     xml-test
     sp-item-group-test
     store-test
     lpe-test
-    ui-util-test
     sp-document-test
     object-colors-test
     multi-marker-color-wheel-test
@@ -181,9 +181,11 @@ add_unit_tests(TEST_SOURCES "svg-length-test.cpp"
                             "svg/strip-trailing-zeros.cpp"
                             "util/numeric/precision.cpp"
                             "util/units.cpp"
-                            # MOCK object files to unitise these tests
-                            "mocks/util-units-filename.cpp"
+                            "util/units-internal.cpp"
                     EXTRA_LIBS GLibmm::GLibmm 2Geom::2geom)
+
+include("${CMAKE_SOURCE_DIR}/src/util/CMakeUnit.txt")
+get_statics_unit_lib()
 
 include("${CMAKE_SOURCE_DIR}/src/libnrtype/CMakeUnit.txt")
 get_libnrtype_unit_lib()
@@ -207,25 +209,7 @@ add_unit_tests(TEST_SOURCES "colors/cms-profile-test.cpp"
                             "colors/parser-test.cpp"
                             "colors/printer-test.cpp"
                             "colors/gradient-averager-test.cpp"
-                            "colors/spaces-alpha-test.cpp"
-                            "colors/spaces-cms-test.cpp"
-                            "colors/spaces-cmyk-test.cpp"
-                            "colors/spaces-convert-static-test.cpp"
-                            "colors/spaces-gray-test.cpp"
-                            "colors/spaces-hsl-test.cpp"
-                            "colors/spaces-hsluv-test.cpp"
-                            "colors/spaces-hsv-test.cpp"
-                            "colors/spaces-lab-test.cpp"
-                            "colors/spaces-lch-test.cpp"
-                            "colors/spaces-linear-rgb-test.cpp"
-                            "colors/spaces-luv-test.cpp"
-                            "colors/spaces-named-test.cpp"
-                            "colors/spaces-okhsl-test.cpp"
-                            "colors/spaces-okhsv-test.cpp"
-                            "colors/spaces-oklab-test.cpp"
-                            "colors/spaces-oklch-test.cpp"
-                            "colors/spaces-rgb-test.cpp"
-                            "colors/spaces-xyz-test.cpp"
+                            "colors/spaces-*-test.cpp"
                             "colors/utils-test.cpp"
                  EXTRA_LIBS colors_unit_lib)
 
@@ -234,6 +218,38 @@ get_path_unit_lib()
 add_unit_tests(TEST_SOURCES "path/path-boolop-test.cpp"
                             "path/path-curve-test.cpp"
                  EXTRA_LIBS path_unit_lib)
+
+include("${CMAKE_SOURCE_DIR}/src/renderer/CMakeUnit.txt")
+get_renderer_unit_lib()
+add_unit_tests(TEST_SOURCES 
+                            "renderer/context-test.cpp"
+                            "renderer/context-pattern-test.cpp"
+                            "renderer/pixel-access-test.cpp"
+                            "renderer/pixel-filter-*-test.cpp"
+                            "renderer/surface-filter-*-test.cpp"
+                            "renderer/surface-test.cpp"
+                    ENVIRONMENT "FONTCONFIG_FILE=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/geomtest.conf"
+                                "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.suppression"
+                    EXTRA_LIBS renderer_unit_lib colors_unit_lib)
+
+add_unit_tests(TEST_SOURCES
+                            "renderer/surface-texture-test.cpp"
+                    SOURCES "renderer/surface-texture.cpp"
+                    EXTRA_LIBS renderer_unit_lib colors_unit_lib GLibmm::GLibmm GTKmm::GTKmm PkgConfig::GTK)
+
+include("${CMAKE_SOURCE_DIR}/src/renderer/drawing-filters/CMakeUnit.txt")
+get_drawing_filters_unit_lib()
+add_unit_tests(TEST_SOURCES "renderer/drawing-filter-test.cpp" "renderer/drawing-filter-*-test.cpp"
+                    EXTRA_LIBS renderer_unit_lib drawing_filters_unit_lib colors_unit_lib)
+
+include("${CMAKE_SOURCE_DIR}/src/renderer/drawing/CMakeUnit.txt")
+get_drawing_unit_lib()
+add_unit_tests(TEST_SOURCES
+                            "renderer/drawing-paintserver-test.cpp"
+                            "renderer/drawing-style-test.cpp"
+                            "renderer/drawing-test-basics.cpp"
+                            "renderer/drawing-tests/*.cpp"
+                    EXTRA_LIBS renderer_unit_lib drawing_filters_unit_lib drawing_unit_lib colors_unit_lib libnrtype_unit_lib)
 
 add_unit_test(css-syntactic-decomposition-test TEST_SOURCE "css-syntactic-decomposition-test.cpp"
                                                    SOURCES "css/syntactic-decomposition.cpp"

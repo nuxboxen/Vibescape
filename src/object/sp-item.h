@@ -31,7 +31,7 @@
 
 #include "sp-object.h"
 #include "sp-marker-loc.h"
-#include "display/drawing-item-ptr.h"
+#include "renderer/drawing/drawing-item-ptr.h"
 #include "xml/repr.h"
 
 class SPGroup;
@@ -44,8 +44,11 @@ class SPPattern;
 struct SPPrintContext;
 
 namespace Inkscape {
+namespace Renderer {
 class Drawing;
 class DrawingItem;
+class DrawingGroup;
+} // namesapce Renderer
 class URIReference;
 class SnapCandidatePoint;
 class SnapPreferences;
@@ -59,8 +62,8 @@ struct SPItemView
 {
     unsigned flags;
     unsigned key;
-    DrawingItemPtr<Inkscape::DrawingItem> drawingitem;
-    SPItemView(unsigned flags, unsigned key, DrawingItemPtr<Inkscape::DrawingItem> drawingitem);
+    DrawingItemPtr<Inkscape::Renderer::DrawingItem> drawingitem;
+    SPItemView(unsigned flags, unsigned key, DrawingItemPtr<Inkscape::Renderer::DrawingItem> drawingitem);
 };
 
 enum SPItemKey
@@ -144,6 +147,9 @@ public:
 
     SPClipPathReference &getClipRef();
     SPMaskReference &getMaskRef();
+
+    std::shared_ptr<Inkscape::Colors::Space::AnySpace> getColorSpace() const;
+    bool setColorSpace(std::shared_ptr<Inkscape::Colors::Space::AnySpace> const &space);
 
     std::optional<Geom::PathVector> getClipPathVector() const;
     std::optional<Geom::PathVector> getClipPathVector(SPItem const *root) const;
@@ -330,9 +336,9 @@ public:
      *
      * @return The value of di->key() after assignment.
      */
-    static unsigned ensure_key(Inkscape::DrawingItem *di);
+    static unsigned ensure_key(Inkscape::Renderer::DrawingItem *di);
 
-    Inkscape::DrawingItem *invoke_show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags);
+    Inkscape::Renderer::DrawingItem *invoke_show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags);
 
     // Removed item from display tree.
     void invoke_hide(unsigned int key);
@@ -387,7 +393,7 @@ public:
      * Return the arenaitem corresponding to the given item in the display
      * with the given key
      */
-    Inkscape::DrawingItem *get_arenaitem(unsigned key) const;
+    Inkscape::Renderer::DrawingItem *get_arenaitem(unsigned key) const;
 
     /**
      * Returns the accumulated transformation of the item and all its ancestors, including root's viewport.
@@ -445,7 +451,7 @@ public:
     virtual const char* typeName() const;
     virtual const char* displayName() const;
 	virtual char* description() const;
-	virtual Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags);
+	virtual Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags);
 	virtual void hide(unsigned int key);
     virtual void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const;
     virtual Geom::Affine set_transform(Geom::Affine const &transform);

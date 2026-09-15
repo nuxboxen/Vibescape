@@ -32,9 +32,10 @@
 #include "selection.h"
 #include "page-manager.h"
 
-#include "display/cairo-utils.h"
-#include "display/drawing-context.h"
-#include "display/drawing.h"
+#include "colors/manager.h"
+
+#include "renderer/context.h"
+#include "renderer/drawing-forward.h"
 
 #include "livarot/Path.h"
 #include "livarot/Shape.h"
@@ -52,10 +53,6 @@
 #include "ui/widget/events/canvas-event.h"
 
 using Inkscape::DocumentUndo;
-
-using Inkscape::Display::ExtractARGB32;
-using Inkscape::Display::ExtractRGB32;
-using Inkscape::Display::AssembleARGB32;
 
 using namespace Inkscape::Colors;
 
@@ -130,6 +127,8 @@ void FloodTool::selection_changed(Selection *selection)
 
 inline static uint32_t compose_onto(uint32_t px, uint32_t bg)
 {
+    /*
+TODO: This looks like a pixelAccess filter
     uint32_t ap = 0, rp = 0, gp = 0, bp = 0;
     uint32_t rb = 0, gb = 0, bb = 0;
     ExtractARGB32(px, ap, rp, gp, bp);
@@ -140,6 +139,8 @@ inline static uint32_t compose_onto(uint32_t px, uint32_t bg)
     uint32_t bo = (255 - ap) * bb + 255 * bp; bo = (bo + 127) / 255;
 
     return AssembleARGB32(255, ro, go, bo);
+    */
+    return 0x0;
 }
 
 /**
@@ -185,16 +186,16 @@ static bool compare_uint32(uint32_t a, uint32_t b, uint32_t d)
 static bool compare_pixels(uint32_t check, uint32_t orig, uint32_t merged_orig_pixel, uint32_t dtc, int threshold, PaintBucketChannels method)
 {
     uint32_t ac = 0, rc = 0, gc = 0, bc = 0;
-    ExtractARGB32(check, ac, rc, gc, bc);
+    // TODO ExtractARGB32(check, ac, rc, gc, bc);
 
     uint32_t ao = 0, ro = 0, go = 0, bo = 0;
-    ExtractARGB32(orig, ao, ro, go, bo);
+    // TODO ExtractARGB32(orig, ao, ro, go, bo);
 
     uint32_t ad = 0, rd = 0, gd = 0, bd = 0;
-    ExtractARGB32(dtc, ad, rd, gd, bd);
+    // TODO ExtractARGB32(dtc, ad, rd, gd, bd);
 
     uint32_t amop = 0, rmop = 0, gmop = 0, bmop = 0;
-    ExtractARGB32(merged_orig_pixel, amop, rmop, gmop, bmop);
+    // TODO ExtractARGB32(merged_orig_pixel, amop, rmop, gmop, bmop);
 
     auto hsl_orig = Color(Space::Type::HSL, {0, 0, 0});
     auto hsl_check = hsl_orig;
@@ -208,6 +209,7 @@ static bool compare_pixels(uint32_t check, uint32_t orig, uint32_t merged_orig_p
         hsl_check.set(Color(Space::Type::RGB, {rc / dac, gc / dac, bc / dac}), true);
     }
     
+    /* TODO
     switch (method) {
         case FLOOD_CHANNELS_ALPHA:
             return compare_uint32(ac, ao, threshold);
@@ -245,7 +247,7 @@ static bool compare_pixels(uint32_t check, uint32_t orig, uint32_t merged_orig_p
             return ((int)(fabs(hsl_check[1] - hsl_orig[1]) * 100.0) <= threshold);
         case FLOOD_CHANNELS_L:
             return ((int)(fabs(hsl_check[2] - hsl_orig[2]) * 100.0) <= threshold);
-    }
+    }*/
     
     return false;
 }
@@ -717,7 +719,7 @@ static void sp_flood_do_flood_fill(SPDesktop *desktop, Geom::Point const &cursor
     // Draw image into data block px
     { // this block limits the lifetime of Drawing and DrawingContext
         // Create DrawingItems and set transform.
-        Drawing drawing;
+        Renderer::Drawing drawing;
         unsigned dkey = SPItem::display_key_new(1);
         auto root = document->getRoot()->invoke_show(drawing, dkey, SP_ITEM_SHOW_DISPLAY);
         root->setTransform(doc2img);
@@ -726,26 +728,17 @@ static void sp_flood_do_flood_fill(SPDesktop *desktop, Geom::Point const &cursor
         auto const final_bbox = Geom::IntRect::from_xywh(0, 0, width, height);
         drawing.update(final_bbox);
 
-        auto surf = Cairo::ImageSurface::create(px.get(), Cairo::Surface::Format::ARGB32, width, height, stride);
-        auto dc = DrawingContext(surf->cobj(), Geom::Point());
-        // cairo_translate not necessary here - surface origin is at 0,0
+        static auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
+        // TODO: Insert px into this surface on construction
+        auto surf = std::make_shared<Renderer::Surface>(final_bbox.dimensions(), 1.0, color_space);
+        auto dc = Renderer::Context(*surf);
 
         // make color transparent for 'alpha' flood mode to work
         auto bgcolor = document->getPageManager().getBackgroundColor();
         bgcolor.setOpacity(0.0);
-        dtc = bgcolor.toARGB();
-
-        dc.setSource(bgcolor);
-        dc.setOperator(CAIRO_OPERATOR_SOURCE);
-        dc.paint();
-        dc.setOperator(CAIRO_OPERATOR_OVER);
-
+        dc.paint(bgcolor);
         drawing.render(dc, final_bbox);
 
-        if constexpr (false) surf->write_to_png("cairo.png");
-
-        surf->flush();
-        
         // Hide items
         document->getRoot()->invoke_hide(dkey);
     }

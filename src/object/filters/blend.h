@@ -15,7 +15,7 @@
 #define SP_FEBLEND_H_SEEN
 
 #include "sp-filter-primitive.h"
-#include "display/nr-filter-blend.h"
+#include "renderer/drawing-filters/blend.h"
 
 class SPFeBlend final
     : public SPFilterPrimitive
@@ -31,13 +31,13 @@ protected:
     Inkscape::XML::Node *write(Inkscape::XML::Document *doc, Inkscape::XML::Node *repr, unsigned flags) override;
 
     void resolve_slots(SlotResolver &) override;
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 
 private:
     SPBlendMode blend_mode = SP_CSS_BLEND_NORMAL;
 
     std::optional<std::string> in2_name;
-    int in2_slot = Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
+    int in2_slot = Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
 };
 
 #endif // SP_FEBLEND_H_SEEN

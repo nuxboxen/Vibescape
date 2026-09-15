@@ -15,7 +15,6 @@
 
 #include "page-size-preview.h"
 
-#include "display/cairo-utils.h"
 #include "ui/pixel-alignment.h"
 
 namespace Inkscape {
@@ -37,7 +36,7 @@ void rounded_rectangle(const Cairo::RefPtr<Cairo::Context>& cr, double x, double
 }
 
 void set_source_rgba(const Cairo::RefPtr<Cairo::Context>& ctx, unsigned int rgba) {
-    ctx->set_source_rgba(SP_RGBA32_R_F(rgba), SP_RGBA32_G_F(rgba), SP_RGBA32_B_F(rgba), SP_RGBA32_A_F(rgba));
+// TODO    ctx->set_source_rgba(SP_RGBA32_R_F(rgba), SP_RGBA32_G_F(rgba), SP_RGBA32_B_F(rgba), SP_RGBA32_A_F(rgba));
 }
 
 void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int width, int height) {
@@ -49,6 +48,7 @@ void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int wi
 
     if (_draw_checkerboard) {
         // auto device_scale = get_scale_factor();
+        /* TODO
         auto pattern = ink_cairo_pattern_create_checkerboard(_desk_color);
         ctx->save();
         ctx->set_operator(Cairo::Context::Operator::SOURCE);
@@ -56,6 +56,7 @@ void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int wi
         rounded_rectangle(ctx, x, y, width, height, 2.0);
         ctx->fill();
         ctx->restore();
+        */
     }
     else {
         rounded_rectangle(ctx, x, y, width, height, 2.0);
@@ -89,6 +90,7 @@ void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int wi
     ctx->rectangle(rect.left(), rect.top(), rect.width(), rect.height());
 
     if (_draw_checkerboard) {
+        /* TODO
         auto pattern = ink_cairo_pattern_create_checkerboard(_page_color);
         ctx->save();
         ctx->set_operator(Cairo::Context::Operator::SOURCE);
@@ -96,6 +98,7 @@ void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int wi
         ctx->rectangle(rect.left(), rect.top(), rect.width(), rect.height());
         ctx->fill();
         ctx->restore();
+        */
     }
     else {
         ctx->rectangle(rect.left(), rect.top(), rect.width(), rect.height());
@@ -140,8 +143,8 @@ void PageSizePreview::draw_func(Cairo::RefPtr<Cairo::Context> const &ctx, int wi
         auto border = pixel_align(rect, RectLineAlignment::Outside, border_thickness * scaling_factor, scaling_factor);
 
         if (_draw_shadow) {
-            auto const a = SP_RGBA32_A_F(_shadow_color);
-            ink_cairo_draw_drop_shadow(ctx, rect, 12, _shadow_color, a);
+            // TODO auto const a = SP_RGBA32_A_F(_shadow_color);
+            //ink_cairo_draw_drop_shadow(ctx, rect, 12, _shadow_color, a);
         }
 
         ctx->rectangle(border.left(), border.top(), border.width(), border.height());

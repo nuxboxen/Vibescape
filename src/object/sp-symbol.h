@@ -40,7 +40,7 @@ public:
 	void child_added(Inkscape::XML::Node* child, Inkscape::XML::Node* ref) override;
 
     std::optional<Geom::PathVector> documentExactBounds() const override;
-	Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+	Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
 	void print(SPPrintContext *ctx) override;
 	Geom::OptRect bbox(Geom::Affine const &transform, SPItem::BBoxType type) const override;
 	void hide (unsigned int key) override;

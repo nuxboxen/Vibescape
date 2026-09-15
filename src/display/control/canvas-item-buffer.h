@@ -19,7 +19,8 @@
  */
 
 #include <2geom/rect.h>
-#include <cairomm/context.h>
+
+#include "renderer/context.h"
 
 namespace Inkscape {
 
@@ -30,7 +31,7 @@ struct CanvasItemBuffer
 {
     Geom::IntRect rect;
     int device_scale; // For high DPI monitors.
-    Cairo::RefPtr<Cairo::Context> cr;
+    Renderer::Context cr;
     bool outline_pass;
 };
 

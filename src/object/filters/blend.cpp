@@ -20,21 +20,11 @@
 #include "attributes.h"                          // for SPAttr
 #include "slot-resolver.h"                       // for SlotResolver
 
-#include "display/nr-filter-blend.h"             // for FilterBlend
+#include "renderer/drawing-filters/blend.h"
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/optstr.h"                         // for assign, to_cstr
 #include "xml/document.h"                        // for Document
-
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-} // namespace Inkscape
 
 void SPFeBlend::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
@@ -188,9 +178,9 @@ void SPFeBlend::resolve_slots(SlotResolver &resolver)
     SPFilterPrimitive::resolve_slots(resolver);
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeBlend::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeBlend::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto blend = std::make_unique<Inkscape::Filters::FilterBlend>();
+    auto blend = std::make_unique<Inkscape::Renderer::DrawingFilter::Blend>();
     build_renderer_common(blend.get());
 
     blend->set_mode(blend_mode);

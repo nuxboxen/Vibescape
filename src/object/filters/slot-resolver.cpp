@@ -2,17 +2,17 @@
 #include <cstring>
 #include <optional>
 #include "slot-resolver.h"
-#include "display/nr-filter-types.h"
+#include "renderer/drawing-filters/enums.h"
 
 static auto read_special_name(std::string const &name) -> std::optional<int>
 {
     static auto const dict = std::unordered_map<std::string, int>{
-        { "SourceGraphic",   Inkscape::Filters::NR_FILTER_SOURCEGRAPHIC },
-        { "SourceAlpha",     Inkscape::Filters::NR_FILTER_SOURCEALPHA },
-        { "StrokePaint",     Inkscape::Filters::NR_FILTER_STROKEPAINT },
-        { "FillPaint",       Inkscape::Filters::NR_FILTER_FILLPAINT },
-        { "BackgroundImage", Inkscape::Filters::NR_FILTER_BACKGROUNDIMAGE },
-        { "BackgroundAlpha", Inkscape::Filters::NR_FILTER_BACKGROUNDALPHA }
+        { "SourceGraphic",   Inkscape::Renderer::DrawingFilter::SLOT_SOURCE_IMAGE },
+        { "SourceAlpha",     Inkscape::Renderer::DrawingFilter::SLOT_SOURCE_ALPHA },
+        { "StrokePaint",     Inkscape::Renderer::DrawingFilter::SLOT_STROKE_PAINT },
+        { "FillPaint",       Inkscape::Renderer::DrawingFilter::SLOT_FILL_PAINT },
+        { "BackgroundImage", Inkscape::Renderer::DrawingFilter::SLOT_BACKGROUND_IMAGE },
+        { "BackgroundAlpha", Inkscape::Renderer::DrawingFilter::SLOT_BACKGROUND_ALPHA }
     };
 
     if (auto it = dict.find(name); it != dict.end()) {
@@ -24,7 +24,7 @@ static auto read_special_name(std::string const &name) -> std::optional<int>
 
 int SlotResolver::read(std::optional<std::string> const &name) const
 {
-    return name ? read(*name) : Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
+    return name ? read(*name) : Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
 }
 
 int SlotResolver::read(std::string const &name) const
@@ -37,12 +37,12 @@ int SlotResolver::read(std::string const &name) const
         return it->second;
     }
 
-    return Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
+    return Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
 }
 
 int SlotResolver::write(std::optional<std::string> const &name)
 {
-    return name ? write(*name) : Inkscape::Filters::NR_FILTER_SLOT_NOT_SET;
+    return name ? write(*name) : Inkscape::Renderer::DrawingFilter::SLOT_NOT_SET;
 }
 
 int SlotResolver::write(std::string const &name)

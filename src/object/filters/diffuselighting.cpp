@@ -24,28 +24,14 @@
 #include "pointlight.h"                          // for SPFePointLight
 #include "spotlight.h"                           // for SPFeSpotLight
 
-#include "display/nr-filter-diffuselighting.h"   // for FilterDiffuseLighting
-#include "display/nr-light-types.h"              // for SpotLightData, Light...
+#include "renderer/drawing-filters/light.h"
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "xml/node.h"                            // for Node
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Document;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeDiffuseLighting::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::SURFACESCALE);
     readAttr(SPAttr::DIFFUSECONSTANT);
     readAttr(SPAttr::KERNELUNITLENGTH);
@@ -173,29 +159,29 @@ void SPFeDiffuseLighting::order_changed(Inkscape::XML::Node *child, Inkscape::XM
     requestModified(SP_OBJECT_MODIFIED_FLAG);
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeDiffuseLighting::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeDiffuseLighting::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto diffuselighting = std::make_unique<Inkscape::Filters::FilterDiffuseLighting>();
+    auto diffuselighting = std::make_unique<Inkscape::Renderer::DrawingFilter::DiffuseLighting>();
     build_renderer_common(diffuselighting.get());
 
     diffuselighting->diffuseConstant = diffuseConstant;
     diffuselighting->surfaceScale = surfaceScale;
-    diffuselighting->lighting_color = lighting_color ? lighting_color->toRGBA() : 0x0;
+    diffuselighting->lighting_color = lighting_color ? *lighting_color : Inkscape::Colors::Color(0x0);
 
     // We assume there is at most one child
-    diffuselighting->light_type = Inkscape::Filters::NO_LIGHT;
+    diffuselighting->light_type = Inkscape::Renderer::DrawingFilter::NO_LIGHT;
 
     if (auto l = cast<SPFeDistantLight>(firstChild())) {
-        diffuselighting->light_type = Inkscape::Filters::DISTANT_LIGHT;
+        diffuselighting->light_type = Inkscape::Renderer::DrawingFilter::DISTANT_LIGHT;
         diffuselighting->light.distant.azimuth = l->azimuth;
         diffuselighting->light.distant.elevation = l->elevation;
     } else if (auto l = cast<SPFePointLight>(firstChild())) {
-        diffuselighting->light_type = Inkscape::Filters::POINT_LIGHT;
+        diffuselighting->light_type = Inkscape::Renderer::DrawingFilter::POINT_LIGHT;
         diffuselighting->light.point.x = l->x;
         diffuselighting->light.point.y = l->y;
         diffuselighting->light.point.z = l->z;
     } else if (auto l = cast<SPFeSpotLight>(firstChild())) {
-        diffuselighting->light_type = Inkscape::Filters::SPOT_LIGHT;
+        diffuselighting->light_type = Inkscape::Renderer::DrawingFilter::SPOT_LIGHT;
         diffuselighting->light.spot.x = l->x;
         diffuselighting->light.spot.y = l->y;
         diffuselighting->light.spot.z = l->z;

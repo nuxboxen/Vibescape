@@ -14,15 +14,16 @@
 #include "document.h"
 #include "preferences.h"
 
-#include "display/cairo-utils.h"
 #include "extension/db.h"
 #include "extension/effect.h"
+#include "object/sp-item.h"
 #include "io/file.h"
 #include "io/resource.h"
 #include "io/sys.h"
 #include "ui/builder-utils.h"
 #include "ui/svg-renderer.h"
 #include "ui/util.h"
+#include "renderer/surface-texture.h"
 
 namespace Inkscape::UI::Dialog {
 
@@ -107,7 +108,7 @@ Cairo::RefPtr<Cairo::Surface> add_shadow(Geom::Point image_size, Cairo::RefPtr<C
 
     // drop shadow
     auto black = 0x000000;
-    ink_cairo_draw_drop_shadow(ctx, rect, margin, black, 0.30);
+    // TODO ink_cairo_draw_drop_shadow(ctx, rect, margin, black, 0.30);
 
     return surface;
 }
@@ -156,7 +157,7 @@ Cairo::RefPtr<Cairo::Surface> render_icon(Extension::Effect* effect, std::string
                 auto scale = std::max(w / icon_size.x(), h / icon_size.y());
                 r.set_scale(1 / scale);
             }
-            image = r.render_surface(device_scale);
+            // TODO image = r.render_surface(device_scale);
         }
         catch (...) {
             g_warning("Cannot render icon for effect %s", effect->get_id());
@@ -534,7 +535,7 @@ Glib::RefPtr<Gdk::Texture> ExtensionsGallery::get_image(const std::string& key, 
         // render
         auto icon_size = get_thumbnail_size(_thumb_size_index, _type);
         auto surface = render_icon(effect, icon, icon_size, get_scale_factor());
-        auto tex = to_texture(surface);
+        auto tex = Renderer::build_texture(surface);
         _image_cache.insert(key, tex);
         return tex;
     }

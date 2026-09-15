@@ -12,7 +12,7 @@
 
 #include "translucency-group.h"
 
-#include "display/drawing-item.h"
+#include "renderer/drawing/drawing-item.h"
 
 #include "document.h"
 #include "object/sp-item.h"
@@ -111,8 +111,7 @@ void TranslucencyGroups::_update()
             }
 
             for (auto &item : _translucent_items) {
-                Inkscape::DrawingItem *arenaitem = item->get_arenaitem(_dkey);
-                arenaitem->setOpacityOverride(group.translucency);
+                item->get_arenaitem(_dkey)->setOpacityOverride(group.translucency);
             }
 
             return; // Last added, positive result wins.

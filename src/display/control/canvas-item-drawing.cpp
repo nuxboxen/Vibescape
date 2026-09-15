@@ -20,10 +20,8 @@
 
 #include "desktop.h"
 
-#include "display/drawing.h"
-#include "display/drawing-context.h"
-#include "display/drawing-item.h"
-#include "display/drawing-group.h"
+#include "renderer/context.h"
+#include "renderer/drawing-forward.h"
 
 #include "helper/geom.h"
 #include "ui/widget/canvas.h"
@@ -37,12 +35,12 @@ namespace Inkscape {
  */
 CanvasItemDrawing::CanvasItemDrawing(CanvasItemGroup *group)
     : CanvasItem(group)
-    , _drawing{std::make_unique<Drawing>()}
+    , _drawing{std::make_unique<Renderer::Drawing>()}
 {
     _name = "CanvasItemDrawing";
     _pickable = true;
 
-    auto root = new DrawingGroup(*_drawing);
+    auto root = new Renderer::DrawingGroup(*_drawing);
     root->setPickChildren(true);
     _drawing->setRoot(root);
 
@@ -61,7 +59,7 @@ CanvasItemDrawing::CanvasItemDrawing(CanvasItemGroup *group)
 
 CanvasItemDrawing::~CanvasItemDrawing() = default;
 
-void CanvasItemDrawing::set_active(Inkscape::DrawingItem *active)
+void CanvasItemDrawing::set_active(Renderer::DrawingItem *active)
 {
     if (active) {
         _active_item = {active->key(), active};
@@ -94,8 +92,14 @@ void CanvasItemDrawing::_loadPrefs()
     actions.emplace("/options/wireframecolors/masks",        [this] (auto &entry) { _drawing->setMaskOutlineColor (entry.getColor("#0000ff")); });
     actions.emplace("/options/wireframecolors/images",       [this] (auto &entry) { _drawing->setImageOutlineColor(entry.getColor("#ff0000")); });
     actions.emplace("/options/rendering/imageinoutlinemode", [this] (auto &entry) { _drawing->setImageOutlineMode(entry.getBool(false)); });
-    actions.emplace("/options/filterquality/value",          [this] (auto &entry) { _drawing->setFilterQuality(entry.getIntLimited(0, Filters::FILTER_QUALITY_WORST, Filters::FILTER_QUALITY_BEST)  ); });
-    actions.emplace("/options/blurquality/value",            [this] (auto &entry) { _drawing->setBlurQuality(entry.getInt(0)); });
+    actions.emplace("/options/filterquality/value",          [this] (auto &entry) { _drawing->setFilterQuality(
+        (Inkscape::Renderer::DrawingFilter::Quality)entry.getIntLimited(0,
+            (int)Renderer::DrawingFilter::Quality::WORST,
+            (int)Renderer::DrawingFilter::Quality::BEST
+        ));
+    });
+    actions.emplace("/options/blurquality/value",            [this] (auto &entry) { _drawing->setBlurQuality(
+        (Inkscape::Renderer::DrawingFilter::BlurQuality)entry.getInt(0)); });
     actions.emplace("/options/dithering/value",              [this] (auto &entry) { _drawing->setDithering(entry.getBool(true)); });
     actions.emplace("/options/selection/zeroopacity",        [this] (auto &entry) { _drawing->setSelectZeroOpacity(entry.getBool(false)); });
     actions.emplace("/options/renderingcache/size",          [this] (auto &entry) { _drawing->setCacheBudget((1 << 20) * entry.getIntLimited(64, 0, 4096)); });
@@ -147,7 +151,7 @@ void CanvasItemDrawing::_update(bool)
         _drawing_affine = new_drawing_affine;
     }
 
-    _drawing->update(Geom::IntRect::infinite(), _drawing_affine, DrawingItem::STATE_ALL, affine_changed * DrawingItem::STATE_ALL);
+    _drawing->update(Geom::IntRect::infinite(), _drawing_affine, Renderer::STATE_ALL, affine_changed * Renderer::STATE_ALL);
 
     _bounds = expandedBy(_drawing->root()->drawbox(), 1); // Avoid aliasing artifacts
 
@@ -176,10 +180,11 @@ void CanvasItemDrawing::_update(bool)
 /**
  * Render drawing to screen via Cairo.
  */
-void CanvasItemDrawing::_render(Inkscape::CanvasItemBuffer &buf) const
+void CanvasItemDrawing::_render(Inkscape::CanvasItemBuffer buf) const
 {
-    auto dc = Inkscape::DrawingContext(buf.cr->cobj(), buf.rect.min());
-    _drawing->render(dc, buf.rect, buf.outline_pass * DrawingItem::RENDER_OUTLINE);
+    auto dc = Renderer::Context(buf.cr);
+    dc.transform(Geom::Translate(buf.rect.min()).inverse());
+    _drawing->render(dc, buf.rect, buf.outline_pass * Renderer::DrawingItem::RENDER_OUTLINE);
 }
 
 /**
@@ -260,7 +265,7 @@ bool CanvasItemDrawing::handle_event(CanvasEvent const &event)
 
 unsigned CanvasItemDrawing::get_flags() const
 {
-    return _sticky * DrawingItem::PICK_STICKY | _pick_outline * DrawingItem::PICK_OUTLINE;
+    return _sticky * Renderer::DrawingItem::PICK_STICKY | _pick_outline * Renderer::DrawingItem::PICK_OUTLINE;
 }
 
 } // namespace Inkscape

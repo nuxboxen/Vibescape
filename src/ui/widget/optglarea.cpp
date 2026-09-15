@@ -7,6 +7,7 @@
 #include <gdkmm/gltexturebuilder.h>
 #include <gtkmm/snapshot.h>
 #include "ui/widget/canvas/texture.h"
+#include "renderer/context.h"
 
 namespace Inkscape::UI::Widget {
 namespace {
@@ -196,9 +197,8 @@ void OptGLArea::snapshot_vfunc(Glib::RefPtr<Gtk::Snapshot> const &snapshot)
         snapshot->scale(1, -1);
         snapshot->append_texture(std::move(gdktexture), Gdk::Graphene::Rect(0, 0, get_width(), get_height()).gobj());
         snapshot->restore();
-    } else {
-        auto const cr = snapshot->append_cairo(Gdk::Graphene::Rect(0, 0, get_width(), get_height()).gobj());
-        paint_widget(cr);
+    } else if (auto cr = snapshot->append_cairo(Gdk::Graphene::Rect(0, 0, get_width(), get_height()).gobj())) {
+        paint_widget(std::make_shared<Renderer::Context>(cr));
     }
 }
 

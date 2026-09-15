@@ -21,10 +21,9 @@
 
 #include "attributes.h"
 #include "bad-uri-exception.h"
-#include "display/drawing-pattern.h"
-#include "display/drawing.h"
 #include "document.h"
 #include "object/uri.h"
+#include "renderer/drawing-forward.h"
 #include "sp-defs.h"
 #include "sp-hatch-path.h"
 #include "sp-item.h"
@@ -519,9 +518,9 @@ bool SPHatch::isValid() const
                        [] (auto c) { return c->isValid(); });
 }
 
-Inkscape::DrawingPattern *SPHatch::show(Inkscape::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
+Inkscape::Renderer::DrawingPattern *SPHatch::show(Inkscape::Renderer::Drawing &drawing, unsigned key, Geom::OptRect const &bbox)
 {
-    views.emplace_back(make_drawingitem<Inkscape::DrawingPattern>(drawing), bbox, key);
+    views.emplace_back(make_drawingitem<Inkscape::Renderer::DrawingPattern>(drawing), bbox, key);
     auto &v = views.back();
     auto ai = v.drawingitem.get();
 
@@ -529,7 +528,7 @@ Inkscape::DrawingPattern *SPHatch::show(Inkscape::Drawing &drawing, unsigned key
 
     Geom::OptInterval extents = _calculateStripExtents(bbox);
     for (auto child : children) {
-        Inkscape::DrawingItem *cai = child->show(drawing, key, extents);
+        Inkscape::Renderer::DrawingItem *cai = child->show(drawing, key, extents);
         if (cai) {
             ai->appendChild(cai);
         }

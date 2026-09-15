@@ -15,6 +15,7 @@
 #include <gtkmm/image.h>
 #include <gtkmm/tooltip.h>
 
+#include "renderer/surface-texture.h"
 #include "ui/containerize.h"
 #include "ui/popup-menu.h"
 #include "ui/util.h"
@@ -490,7 +491,7 @@ private:
         if (_widget.get() == drag_icon->get_child()) {
             drag_icon->unset_child();
             // Fixme: Shouldn't be needed, but works around https://gitlab.gnome.org/GNOME/gtk/-/issues/7185
-            Gtk::DragIcon::set_from_paintable(_drag, to_texture(Cairo::ImageSurface::create(Cairo::ImageSurface::Format::ARGB32, 1, 1)), 0, 0);
+            Gtk::DragIcon::set_from_paintable(_drag, Renderer::build_texture(Cairo::ImageSurface::create(Cairo::ImageSurface::Format::ARGB32, 1, 1)), 0, 0);
         } else if (_widget->get_parent()) {
             assert(dynamic_cast<TabStrip *>(_widget->get_parent()));
             _widget->unparent();

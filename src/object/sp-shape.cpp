@@ -25,7 +25,8 @@
 #include <sigc++/functors/ptr_fun.h>
 #include <sigc++/adaptors/bind.h>
 
-#include "display/drawing-shape.h"
+#include "object/sp-paint-server.h"
+#include "renderer/drawing/drawing-shape.h"
 #include "print.h"
 #include "document.h"
 #include "style.h"
@@ -44,7 +45,7 @@
 
 #define noSHAPE_VERBOSE
 
-static void sp_shape_update_marker_view (SPShape *shape, Inkscape::DrawingItem *ai);
+static void sp_shape_update_marker_view (SPShape *shape, Inkscape::Renderer::DrawingItem *ai);
 
 SPShape::SPShape() : SPLPEItem() {
     for (auto & i : this->_marker) {
@@ -147,7 +148,7 @@ void SPShape::update(SPCtx* ctx, guint flags) {
             this->style->stroke_width.computed = this->style->stroke_width.value * aw;
 
             for (auto &v : views) {
-                auto sh = cast<Inkscape::DrawingShape>(v.drawingitem.get());
+                auto sh = cast<Inkscape::Renderer::DrawingShape>(v.drawingitem.get());
                 if (hasMarkers()) {
                     context_style = style;
                     sh->setStyle(style, context_style);
@@ -166,7 +167,7 @@ void SPShape::update(SPCtx* ctx, guint flags) {
         /* But on the other hand - how can we know that parent does not tie style and transform */
         for (auto &v : views) {
             if (flags & SP_OBJECT_MODIFIED_FLAG) {
-                auto sh = cast_unsafe<Inkscape::DrawingShape>(v.drawingitem.get());
+                auto sh = cast_unsafe<Inkscape::Renderer::DrawingShape>(v.drawingitem.get());
                 sh->setPath(_curve);
             }
         }
@@ -191,7 +192,7 @@ void SPShape::update(SPCtx* ctx, guint flags) {
     
         // Marker selector needs this here or marker previews are not rendered.
         for (auto &v : views) {
-            auto sh = static_cast<Inkscape::DrawingShape*>(v.drawingitem.get());
+            auto sh = static_cast<Inkscape::Renderer::DrawingShape*>(v.drawingitem.get());
             sh->setChildrenStyle(this->context_style); // Resolve 'context-xxx' in children.
         }
     }
@@ -405,7 +406,7 @@ Geom::Affine sp_shape_marker_get_transform_at_end(Geom::Curve const & c)
  *
  * @todo figure out what to do when both 'marker' and for instance 'marker-end' are set.
  */
-static void sp_shape_update_marker_view(SPShape *shape, Inkscape::DrawingItem *ai)
+static void sp_shape_update_marker_view(SPShape *shape, Inkscape::Renderer::DrawingItem *ai)
 {
     if (!shape->curve())
         return;
@@ -429,7 +430,7 @@ void SPShape::modified(unsigned int flags) {
 
     if (flags & SP_OBJECT_STYLE_MODIFIED_FLAG) {
         for (auto &v : views) {
-            auto sh = cast<Inkscape::DrawingShape>(v.drawingitem.get());
+            auto sh = cast<Inkscape::Renderer::DrawingShape>(v.drawingitem.get());
             if (hasMarkers()) {
                 this->context_style = this->style;
                 sh->setStyle(this->style, this->context_style);
@@ -683,9 +684,9 @@ void SPShape::update_patheffect(bool write)
     }
 }
 
-Inkscape::DrawingItem* SPShape::show(Inkscape::Drawing &drawing, unsigned int /*key*/, unsigned int /*flags*/) {
+Inkscape::Renderer::DrawingItem* SPShape::show(Inkscape::Renderer::Drawing &drawing, unsigned int /*key*/, unsigned int /*flags*/) {
     // std::cout << "SPShape::show(): " << (getId()?getId():"null") << std::endl;
-    Inkscape::DrawingShape *s = new Inkscape::DrawingShape(drawing);
+    Inkscape::Renderer::DrawingShape *s = new Inkscape::Renderer::DrawingShape(drawing);
 
     bool has_markers = this->hasMarkers();
 
@@ -721,7 +722,7 @@ Inkscape::DrawingItem* SPShape::show(Inkscape::Drawing &drawing, unsigned int /*
     }
 
     // apply 'shape-rendering' presentation attribute
-    Inkscape::propagate_antialias(style->shape_rendering.computed, *s);
+    Inkscape::Renderer::propagate_antialias(style->shape_rendering.computed, *s);
 
     return s;
 }

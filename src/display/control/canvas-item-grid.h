@@ -65,7 +65,7 @@ protected:
     friend class GridSnapperXY;
 
     void _update(bool propagate) override;
-    void _render(CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
 
     bool scaled[2];    /**< Whether the grid is in scaled mode, which can
                             be different in the X or Y direction, hence two
@@ -86,7 +86,7 @@ protected:
     friend class GridSnapperXY;
 
     void _update(bool propagate) override;
-    void _render(CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
 
     Geom::Point _world_origin;
     Geom::Point _world_pitch[2];
@@ -112,7 +112,7 @@ protected:
     friend class GridSnapperAxonom;
 
     void _update(bool propagate) override;
-    void _render(CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
 
     // Helper function to update the derived Y angle
     void update_derived_angle_y();

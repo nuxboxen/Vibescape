@@ -15,7 +15,7 @@
 
 #include "sp-filter-primitive.h"
 #include "number-opt-number.h"
-#include "display/nr-filter-morphology.h"
+#include "renderer/drawing-filters/morphology.h"
 
 class SPFeMorphology final
     : public SPFilterPrimitive
@@ -25,14 +25,14 @@ public:
     Geom::Rect calculate_region(Geom::Rect const &region) const override;
 
 private:
-    Inkscape::Filters::FilterMorphologyOperator Operator = Inkscape::Filters::MORPHOLOGY_OPERATOR_ERODE;
+    Inkscape::Renderer::DrawingFilter::MorphologyOperator Operator = Inkscape::Renderer::DrawingFilter::MorphologyOperator::ERODE;
     NumberOptNumber radius = NumberOptNumber(0);
 
 protected:
     void build(SPDocument *doc, Inkscape::XML::Node *repr) override;
     void set(SPAttr key, char const *value) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FEMORPHOLOGY_H_SEEN

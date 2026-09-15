@@ -15,7 +15,7 @@
 #include "style-internal.h"               // for SPIFontSize
 #include "style.h"                        // for SPStyle
 
-#include "display/drawing-paintserver.h"  // for DrawingLinearGradient, Draw...
+#include "renderer/drawing/drawing-paintserver.h"  // for DrawingLinearGradient, Draw...
 #include "object/sp-gradient.h"           // for SPGradient
 #include "object/sp-item.h"               // for SPItemCtx
 #include "object/sp-object.h"             // for SP_OBJECT_MODIFIED_FLAG

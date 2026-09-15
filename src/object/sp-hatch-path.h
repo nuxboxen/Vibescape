@@ -26,15 +26,13 @@
 
 #include "svg/svg-length.h"
 #include "object/sp-object.h"
-#include "display/drawing-item-ptr.h"
+#include "renderer/drawing/drawing-item-ptr.h"
 
-namespace Inkscape {
-
+namespace Inkscape::Renderer {
 class Drawing;
 class DrawingShape;
 class DrawingItem;
-
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
 class SPHatchPath final : public SPObject
 {
@@ -47,7 +45,7 @@ public:
 
     bool isValid() const;
 
-    Inkscape::DrawingItem *show(Inkscape::Drawing &drawing, unsigned int key, Geom::OptInterval extents);
+    Inkscape::Renderer::DrawingItem *show(Inkscape::Renderer::Drawing &drawing, unsigned int key, Geom::OptInterval extents);
     void hide(unsigned int key);
 
     void setStripExtents(unsigned int key, Geom::OptInterval const &extents);
@@ -64,10 +62,10 @@ protected:
 private:
     struct View
     {
-        DrawingItemPtr<Inkscape::DrawingShape> drawingitem;
+        DrawingItemPtr<Inkscape::Renderer::DrawingShape> drawingitem;
         Geom::OptInterval extents;
         unsigned key;
-        View(DrawingItemPtr<Inkscape::DrawingShape> drawingitem, Geom::OptInterval const &extents, unsigned key);
+        View(DrawingItemPtr<Inkscape::Renderer::DrawingShape> drawingitem, Geom::OptInterval const &extents, unsigned key);
     };
     std::vector<View> views;
 

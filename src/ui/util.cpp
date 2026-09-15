@@ -525,33 +525,6 @@ void truncate_digits(const Glib::RefPtr<Gtk::TextBuffer>& buffer, int precision)
     }
 }
 
-Glib::RefPtr<Gdk::Texture> to_texture(Cairo::RefPtr<Cairo::Surface> const &surface)
-{
-    if (!surface) {
-        return {};
-    }
-
-    assert(surface->get_type() == Cairo::Surface::Type::IMAGE);
-
-    auto img = Cairo::ImageSurface(surface->cobj());
-    assert(img.get_format() == Cairo::ImageSurface::Format::ARGB32);
-
-    auto bytes = g_bytes_new_with_free_func(img.get_data(),
-                                            img.get_stride() * img.get_height(),
-                                            (GDestroyNotify)cairo_surface_destroy,
-                                            cairo_surface_reference(surface->cobj()));
-
-    auto texture = gdk_memory_texture_new(img.get_width(),
-                                          img.get_height(),
-                                          GDK_MEMORY_DEFAULT,
-                                          bytes,
-                                          img.get_stride());
-
-    g_bytes_unref(bytes);
-
-    return Glib::wrap(texture);
-}
-
 void restrict_minsize_to_square(Gtk::Widget& widget, int min_size_px) {
     auto name = widget.get_name();
     assert(!name.empty());

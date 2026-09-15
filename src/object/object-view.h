@@ -15,7 +15,7 @@
 
 #include <2geom/rect.h>
 
-#include "display/drawing-item-ptr.h"
+#include "renderer/drawing/drawing-item-ptr.h"
 
 template <typename DrawingItemType>
 struct ObjectView

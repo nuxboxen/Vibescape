@@ -24,6 +24,11 @@ class Builder;
 namespace Cairo {
 class Context;
 } // namespace Cairo
+namespace Inkscape::Renderer {
+class Pattern;
+}
+
+class SPGradientStop;
 
 namespace Inkscape::UI::Widget {
 
@@ -49,7 +54,7 @@ public:
     // set preview color RGBA with opacity (alpha)
     void setRgba32(std::uint32_t rgba);
     // set arbitrary pattern-based preview
-    void setPattern(Cairo::RefPtr<Cairo::Pattern> pattern);
+    void setPattern(std::shared_ptr<Renderer::Pattern> pattern);
     // simple color patch vs outlined color patch
     enum Style { Simple, Outlined };
     void setStyle(Style style);
@@ -67,16 +72,12 @@ public:
     // Update the stroke indicator, showing this widget is the stroke of the current item.
     void set_stroke(bool on);
 
-    struct GradientStops {
-        double offset;
-        double red, green, blue, alpha;
-    };
     // Set a linear gradient to show in the color preview.
-    void set_gradient(std::vector<GradientStops> stops);
+    void set_gradient(std::vector<SPGradientStop> const &stops);
 private:
     void construct();
     std::uint32_t _rgba; // requested RGBA color, used if there is no pattern given
-    Cairo::RefPtr<Cairo::Pattern> _pattern; // pattern to show, if provided
+    std::shared_ptr<Renderer::Pattern> _pattern; // pattern to show, if provided
     Style _style = Simple;
     Indicator _indicator = None;
     int _radius = -1;
@@ -85,10 +86,6 @@ private:
     bool _is_stroke = false;
     void draw_func(Cairo::RefPtr<Cairo::Context> const &cr, int width, int height);
     int _checkerboard_tile_size = 6;
-    std::vector<GradientStops> _gradient;
-    Cairo::RefPtr<Cairo::LinearGradient> _linear_gradient;
-    int _linear_gradient_width = 0;
-    void create_gradient_preview(int width);
 };
 
 } // namespace Inkscape::UI::Widget

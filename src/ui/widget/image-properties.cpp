@@ -19,7 +19,6 @@
 #include <gtkmm/label.h>
 #include <gtkmm/window.h>
 
-#include "display/cairo-utils.h"
 #include "document-undo.h"
 #include "enums.h"
 #include "generic/spin-button.h"
@@ -28,7 +27,6 @@
 #include "object/sp-image.h"
 #include "ui/builder-utils.h"
 #include "ui/dialog/choose-file.h"
-#include "ui/dialog/save-image.h"
 #include "ui/icon-names.h"
 #include "ui/themes.h"
 #include "ui/util.h"
@@ -37,12 +35,15 @@
 #include "util/object-renderer.h"
 #include "xml/href-attribute-helper.h"
 
+#include "renderer/surface-image.h"
+#include "style.h"
+
 namespace Inkscape::UI::Widget {
 
 namespace {
 
 Cairo::RefPtr<Cairo::Surface> draw_preview(SPImage* image, double width, double height, int device_scale, uint32_t frame_color, uint32_t background) {
-    if (!image || !image->pixbuf) return Cairo::RefPtr<Cairo::Surface>();
+    if (!image || !image->image) return Cairo::RefPtr<Cairo::Surface>();
 
     object_renderer r;
     object_renderer::options opt;
@@ -52,7 +53,10 @@ Cairo::RefPtr<Cairo::Surface> draw_preview(SPImage* image, double width, double 
     double alpha = s && s->opacity.set && !s->opacity.inherit ? s->opacity.as_double() : 1.0;
     opt.image_opacity(alpha);
     opt.checkerboard(background);
-    return r.render(*image, width, height, device_scale, opt);
+
+    // This steals the firther (hopefully RGB) cairo surface out of the Inkscape Surface
+    // TODO: this should be converted to building a GlTexture instead of Cairo::Surface
+    return r.render(*image, width, height, device_scale, opt)->getCairoSurfaces()[0];
 }
 
 void set_rendering_mode(SPImage* image, int index) {
@@ -115,7 +119,8 @@ ImageProperties::ImageProperties() :
     extract.signal_clicked().connect([this]{
         if (_update.pending()) return;
         auto window = dynamic_cast<Gtk::Window*>(_preview.get_root());
-        extract_image(window, _image);
+        // TODO: What the fuck does this actually do to require the Gtk Window?
+        //extract_image(window, _image);
     });
 
     _url.signal_commit().connect([this] {
@@ -125,8 +130,8 @@ ImageProperties::ImageProperties() :
     _embed.signal_clicked().connect([this]{
         if (_update.pending() || !_image) return;
         // embed image in the current document
-        Inkscape::Pixbuf copy(*_image->pixbuf);
-        sp_embed_image(_image->getRepr(), &copy);
+        // TODO Inkscape::Pixbuf copy(*_image->pixbuf);
+        // sp_embed_image(_image->getRepr(), &copy);
         DocumentUndo::done(_image->document, RC_("Undo", "Embed image"), INKSCAPE_ICON("selection-make-bitmap-copy"));
     });
 
@@ -192,41 +197,36 @@ void ImageProperties::update(SPImage* image) {
             linked = true;
         }
 
-        if (image->pixbuf) {
-            std::ostringstream ost;
-            if (!image->missing) {
-                auto times = "\u00d7"; // multiplication sign
-                // dimensions
-                ost << image->pixbuf->width() << times << image->pixbuf->height() << " px\n";
+        std::ostringstream ost;
+        if (image->image) {
+            auto times = "\u00d7"; // multiplication sign
+            // dimensions
+            ost << image->image->width() << times << image->image->height() << " px\n";
 
-                if (embedded) {
-                    ost << _("Embedded");
-                    ost << " (" << Util::format_file_size(std::strlen(href)) << ")\n";
-                }
-                if (linked) {
-                    ost << _("Linked");
-                    ost << '\n';
-                }
-                // color space
-                if (image->color_profile && *image->color_profile) {
-                    ost << _("Color profile:") << ' ' << image->color_profile << '\n';
-                }
+            if (embedded) {
+                ost << _("Embedded");
+                ost << " (" << Util::format_file_size(std::strlen(href)) << ")\n";
             }
-            else {
-                ost << _("Missing image") << '\n';
+            if (linked) {
+                ost << _("Linked");
+                ost << '\n';
             }
-            info.set_markup(small(ost.str().c_str()));
+            // color space
+            if (image->color_profile && *image->color_profile) {
+                ost << _("Color profile:") << ' ' << image->color_profile << '\n';
+            }
         }
         else {
-            info.set_markup(small("-"));
+            ost << _("Missing image") << '\n';
         }
+        info.set_markup(small(ost.str().c_str()));
 
         auto new_href = linked ? href : "";
         if (url.get_text() != new_href) { // avoid losing cursor spot for no reason
             url.set_text(new_href);
         }
         url.set_sensitive(linked);
-        _embed.set_sensitive(linked && image->pixbuf);
+        _embed.set_sensitive(linked && image->image);
 
         // aspect ratio
         bool aspect_none = false;
@@ -251,9 +251,9 @@ void ImageProperties::update(SPImage* image) {
     if (!_preview_image) {
         int width = _preview_max_width;
         int height = _preview_max_height;
-        if (image && image->pixbuf) {
-            double sw = image->pixbuf->width();
-            double sh = image->pixbuf->height();
+        if (image && image->image) {
+            double sw = image->image->width();
+            double sh = image->image->height();
             double sx = sw / width;
             double sy = sh / height;
             auto scale = 1.0 / std::max(sx, sy);

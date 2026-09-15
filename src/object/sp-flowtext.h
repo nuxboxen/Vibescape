@@ -10,9 +10,6 @@
 #ifndef SEEN_SP_ITEM_FLOWTEXT_H
 #define SEEN_SP_ITEM_FLOWTEXT_H
 
-/*
- */
-
 #include <2geom/forward.h>
 
 #include "libnrtype/Layout-TNG.h"
@@ -22,11 +19,9 @@
 
 #include <memory>
 
-namespace Inkscape {
-
+namespace Inkscape::Renderer {
 class DrawingGroup;
-
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
 class SPFlowtext final : public SPItem {
 public:
@@ -56,7 +51,7 @@ public:
     std::unordered_map<unsigned, Inkscape::Text::StyleAttachments> view_style_attachments;
 
     /** discards the drawing objects representing this text. */
-    void _clearFlow(Inkscape::DrawingGroup* in_arena);
+    void _clearFlow(Inkscape::Renderer::DrawingGroup* in_arena);
 
     double par_indent;
 
@@ -98,7 +93,7 @@ public:
         const char* typeName() const override;
         const char* displayName() const override;
 	char* description() const override;
-	Inkscape::DrawingItem* show(Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+	Inkscape::Renderer::DrawingItem* show(Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
 	void hide(unsigned int key) override;
     void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const override;
 };

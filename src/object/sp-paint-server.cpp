@@ -16,7 +16,7 @@
 
 #include "sp-paint-server-reference.h"
 #include "sp-paint-server.h"
-#include "display/drawing-paintserver.h"
+#include "renderer/drawing/drawing-paintserver.h"
 
 SPPaintServer *SPPaintServerReference::getObject() const
 {
@@ -42,7 +42,7 @@ bool SPPaintServer::isValid() const
     return true;
 }
 
-Inkscape::DrawingPattern *SPPaintServer::show(Inkscape::Drawing &/*drawing*/, unsigned /*key*/, Geom::OptRect const &/*bbox*/)
+Inkscape::Renderer::DrawingPattern *SPPaintServer::show(Inkscape::Renderer::Drawing &/*drawing*/, unsigned /*key*/, Geom::OptRect const &/*bbox*/)
 {
     return nullptr;
 }

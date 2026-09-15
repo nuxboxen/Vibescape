@@ -22,7 +22,7 @@ public:
     int tag() const override { return tag_of<decltype(*this)>; }
 
 protected:
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FETILE_H_SEEN

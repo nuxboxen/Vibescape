@@ -17,7 +17,7 @@
 #include <vector>
 #include "sp-filter-primitive.h"
 #include "number-opt-number.h"
-#include "display/nr-filter-convolve-matrix.h"
+#include "renderer/drawing-filters/convolve-matrix.h"
 
 class SPFeConvolveMatrix final
     : public SPFilterPrimitive
@@ -30,7 +30,7 @@ public:
 
 private:
     double bias = 0.0;
-    Inkscape::Filters::FilterConvolveMatrixEdgeMode edgeMode = Inkscape::Filters::CONVOLVEMATRIX_EDGEMODE_DUPLICATE;
+    Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode edgeMode = Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode::DUPLICATE;
     bool preserveAlpha = false;
 
     double divisor = 0.0;
@@ -50,7 +50,7 @@ protected:
     void build(SPDocument *doc, Inkscape::XML::Node *repr) override;
     void set(SPAttr key, char const *value) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FECONVOLVEMATRIX_H_SEEN

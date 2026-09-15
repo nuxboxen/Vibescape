@@ -20,10 +20,6 @@
 #include "document.h"    // for SPDocument
 #include "xml/node.h"    // for Node
 
-namespace Inkscape::XML {
-struct Document;
-} // namespace Inkscape::XML
-
 SPFePointLight::SPFePointLight() 
     : x(0)
     , x_set(false)
@@ -31,8 +27,7 @@ SPFePointLight::SPFePointLight()
     , y_set(false)
     , z(0)
     , z_set(false)
-{
-}
+{}
 
 SPFePointLight::~SPFePointLight() = default;
 

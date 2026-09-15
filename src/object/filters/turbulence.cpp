@@ -26,22 +26,9 @@
 #include "util/numeric/converters.h"             // for read_number
 #include "xml/node.h"                            // for Node
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Document;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeTurbulence::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::BASEFREQUENCY);
     readAttr(SPAttr::NUMOCTAVES);
     readAttr(SPAttr::SEED);
@@ -71,26 +58,26 @@ static bool read_stitchtiles(char const *value)
     return false; // 'noStitch' is default
 }
 
-static Inkscape::Filters::FilterTurbulenceType read_type(char const *value)
+static Inkscape::Renderer::DrawingFilter::TurbulenceType read_type(char const *value)
 {
     if (!value) {
-    	return Inkscape::Filters::TURBULENCE_TURBULENCE; // 'turbulence' is default
+    	return Inkscape::Renderer::DrawingFilter::TurbulenceType::TURBULENCE; // 'turbulence' is default
     }
 
     switch (value[0]) {
         case 'f':
             if (std::strcmp(value, "fractalNoise") == 0) {
-            	return Inkscape::Filters::TURBULENCE_FRACTALNOISE;
+            	return Inkscape::Renderer::DrawingFilter::TurbulenceType::FRACTALNOISE;
             }
             break;
         case 't':
             if (std::strcmp(value, "turbulence") == 0) {
-            	return Inkscape::Filters::TURBULENCE_TURBULENCE;
+            	return Inkscape::Renderer::DrawingFilter::TurbulenceType::TURBULENCE;
             }
             break;
     }
 
-    return Inkscape::Filters::TURBULENCE_TURBULENCE; // 'turbulence' is default
+    return Inkscape::Renderer::DrawingFilter::TurbulenceType::TURBULENCE; // 'turbulence' is default
 }
 
 void SPFeTurbulence::set(SPAttr key, char const *value)
@@ -167,9 +154,9 @@ Inkscape::XML::Node *SPFeTurbulence::write(Inkscape::XML::Document *doc, Inkscap
     return repr;
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeTurbulence::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeTurbulence::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto turbulence = std::make_unique<Inkscape::Filters::FilterTurbulence>();
+    auto turbulence = std::make_unique<Inkscape::Renderer::DrawingFilter::Turbulence>();
     build_renderer_common(turbulence.get());
 
     turbulence->set_baseFrequency(0, baseFrequency.getNumber());

@@ -263,12 +263,6 @@ Glib::ustring round_numbers(const Glib::ustring& text, int precision);
 // As above, but operating in-place on a TextBuffer
 void truncate_digits(const Glib::RefPtr<Gtk::TextBuffer>& buffer, int precision);
 
-/**
- * Convert an image surface in ARGB32 format to a texture.
- * The texture shares data with the surface, so the surface shouldn't modified afterwards.
- */
-Glib::RefPtr<Gdk::Texture> to_texture(Cairo::RefPtr<Cairo::Surface> const &surface);
-
 // Restrict widget's min size (min-width & min-height) to specified minimum to keep it square (when it's centered).
 // Widget has to have a name given with set_name.
 void restrict_minsize_to_square(Gtk::Widget& widget, int min_size_px);

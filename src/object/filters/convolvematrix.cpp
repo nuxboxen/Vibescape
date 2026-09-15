@@ -24,22 +24,9 @@
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/numeric/converters.h"             // for read_number, read_bool
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Node;
-} // namespace XML
-} // namespace Inkscape
-
 void SPFeConvolveMatrix::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
-
+    SPFilterPrimitive::build(document, repr);
     readAttr(SPAttr::ORDER);
     readAttr(SPAttr::KERNELMATRIX);
     readAttr(SPAttr::DIVISOR);
@@ -51,31 +38,31 @@ void SPFeConvolveMatrix::build(SPDocument *document, Inkscape::XML::Node *repr)
     readAttr(SPAttr::PRESERVEALPHA);
 }
 
-static Inkscape::Filters::FilterConvolveMatrixEdgeMode read_edgemode(char const *value)
+static Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode read_edgemode(char const *value)
 {
     if (!value) {
-        return Inkscape::Filters::CONVOLVEMATRIX_EDGEMODE_DUPLICATE; // duplicate is default
+        return Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode::DUPLICATE; // duplicate is default
     }
     
     switch (value[0]) {
         case 'd':
             if (std::strcmp(value, "duplicate") == 0) {
-            	return Inkscape::Filters::CONVOLVEMATRIX_EDGEMODE_DUPLICATE;
+            	return Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode::DUPLICATE;
             }
             break;
         case 'w':
             if (std::strcmp(value, "wrap") == 0) {
-            	return Inkscape::Filters::CONVOLVEMATRIX_EDGEMODE_WRAP;
+            	return Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode::WRAP;
             }
             break;
         case 'n':
             if (std::strcmp(value, "none") == 0) {
-            	return Inkscape::Filters::CONVOLVEMATRIX_EDGEMODE_NONE;
+            	return Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode::NONE;
             }
             break;
     }
     
-    return Inkscape::Filters::CONVOLVEMATRIX_EDGEMODE_DUPLICATE; //duplicate is default
+    return Inkscape::Renderer::DrawingFilter::ConvolveMatrixEdgeMode::DUPLICATE; //duplicate is default
 }
 
 void SPFeConvolveMatrix::set(SPAttr key, gchar const *value)
@@ -227,9 +214,9 @@ void SPFeConvolveMatrix::set(SPAttr key, gchar const *value)
     }
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeConvolveMatrix::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeConvolveMatrix::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto convolve = std::make_unique<Inkscape::Filters::FilterConvolveMatrix>();
+    auto convolve = std::make_unique<Inkscape::Renderer::DrawingFilter::ConvolveMatrix>();
     build_renderer_common(convolve.get());
 
     convolve->set_targetX(targetX);

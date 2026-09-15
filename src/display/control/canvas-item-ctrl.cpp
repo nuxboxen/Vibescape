@@ -13,14 +13,18 @@
  */
 
 #include "canvas-item-ctrl.h"
+#include "canvas-item-group.h"
 
 #include <2geom/transforms.h>
 #include <algorithm>
 #include <array>
-#include <cairomm/context.h>
 #include <cmath>
 #include <iostream>
 
+#include "colors/color.h"
+#include "colors/manager.h"
+#include "renderer/context.h"
+#include "renderer/surface.h"
 #include "ctrl-handle-rendering.h"
 #include "preferences.h" // Default size.
 #include "ui/widget/canvas.h"
@@ -97,35 +101,33 @@ void CanvasItemCtrl::_dump()
         }
     }
 
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, (types.size() + 1) * step * scale, (h + 1) * step * scale);
-    cairo_surface_set_device_scale(surface->cobj(), 1, 1);
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint((types.size() + 1) * step * scale, (h + 1) * step * scale), 1.0, srgb);
+    Geom::Point d = surface->dimensions();
     auto buf = CanvasItemBuffer{
-        .rect = Geom::IntRect(0, 0, surface->get_width(), surface->get_height()),
+        .rect = Geom::IntRect(0, 0, d[Geom::X], d[Geom::Y]),
         .device_scale = scale,
-        .cr = Cairo::Context::create(surface),
+        .cr = Renderer::Context(*surface),
         .outline_pass = false
     };
 
     auto ctx = buf.cr;
-    ctx->set_source_rgb(1, 0.9, 0.9);
-    ctx->paint();
-    ctx->set_source_rgba(0, 0, 1, 0.2);
-    ctx->set_line_width(scale);
+    ctx.paint(Colors::Color(srgb, {1, 0.9, 0.9}));
+    ctx.setSource(Colors::Color(srgb, {0, 0, 1, 0.2}));
+    ctx.setLineWidth(scale);
     constexpr double pix = scale & 1 ? 0.5 : 0;
     for (int size = 1; size <= h; ++size) {
         double y = size * step * scale + pix;
-        ctx->move_to(0, y);
-        ctx->line_to(surface->get_width(), y);
-        ctx->stroke();
+        ctx.moveTo({0, y});
+        ctx.lineTo({d[Geom::X], y});
+        ctx.stroke();
     }
-    for (int i = 1; i <= types.size(); i++) {
+    for (int i = 1; i <= (int)types.size(); i++) {
         double x = i * step * scale + pix;
-        ctx->move_to(x, 0);
-        ctx->line_to(x, surface->get_height());
-        ctx->stroke();
+        ctx.moveTo({x, 0});
+        ctx.lineTo({x, d[Geom::Y]});
+        ctx.stroke();
     }
-
-    cairo_surface_set_device_scale(surface->cobj(), scale, scale);
 
     set_hover();
     for (int size = 1; size <= h; ++size) {
@@ -145,7 +147,6 @@ void CanvasItemCtrl::_dump()
         }
     }
 
-    cairo_surface_set_device_scale(surface->cobj(), scale, scale);
     surface->write_to_png("handles.png");
 }
 
@@ -511,9 +512,9 @@ void CanvasItemCtrl::_update(bool)
 /**
  * Render ctrl to screen via Cairo.
  */
-void CanvasItemCtrl::_render(CanvasItemBuffer &buf) const
+void CanvasItemCtrl::_render(CanvasItemBuffer buf) const
 {
-    _built.init([&, this] { build_cache(buf.device_scale); });
+    _built.init([&, this] { build_cache(buf.device_scale, buf.cr.getSurfaceColorSpace()); });
 
     if (!_cache) {
         return;
@@ -521,22 +522,22 @@ void CanvasItemCtrl::_render(CanvasItemBuffer &buf) const
 
     // Round to the device pixel at the very last minute so we get less bluring
 
-    auto cache_size = Geom::Point(_cache->get_width(), _cache->get_height());
-    auto center_offset = (cache_size * 0.5 / _cache->get_device_scale());
+    auto cache_size = _cache->dimensions();
+    auto center_offset = (cache_size * 0.5 / _cache->getDeviceScale());
 
     auto const [x, y] =
-        CanvasItem::align_to_pixels05(_pos, _cache->get_width(), buf.device_scale) - center_offset - buf.rect.min();
+        CanvasItem::align_to_pixels05(_pos, cache_size.x(), buf.device_scale) - center_offset - buf.rect.min();
 
     if constexpr (DUMP_HANDLES && DRAW_BOUNDS) {
         // draw bitmap bounds
-        buf.cr->rectangle(x, y, cache_size.x() / _cache->get_device_scale(),
-                          cache_size.y() / _cache->get_device_scale());
-        buf.cr->set_source_rgba(0, 1, 0.5, 0.5);
-        buf.cr->fill();
+        buf.cr.rectangle(Geom::IntRect::from_xywh(x, y, cache_size.x() / _cache->getDeviceScale(),
+                                                        cache_size.y() / _cache->getDeviceScale()));
+        buf.cr.setSource(Colors::Color(buf.cr.getColorSpace(), {0, 1, 0.5, 0.5}));
+        buf.cr.fill();
     }
 
-    cairo_set_source_surface(buf.cr->cobj(), const_cast<cairo_surface_t *>(_cache->cobj()), x, y); // C API is const-incorrect.
-    buf.cr->paint();
+    buf.cr.setSource(*_cache, x, y);
+    buf.cr.paint();
 }
 
 void CanvasItemCtrl::_invalidate_ctrl_handles()
@@ -556,7 +557,7 @@ float CanvasItemCtrl::get_stroke_width() const {
 /**
  * Build object-specific cache.
  */
-void CanvasItemCtrl::build_cache(int device_scale) const
+void CanvasItemCtrl::build_cache(int device_scale, std::shared_ptr<Colors::Space::AnySpace> const &color_space) const
 {
     auto width = get_width();
     if (width < 1) {
@@ -589,8 +590,52 @@ void CanvasItemCtrl::build_cache(int device_scale) const
         .size = size,
         .angle = _angle,
         .device_scale = device_scale,
-        .size_parity = preferred_parity
+        .size_parity = preferred_parity,
+        .color_space = color_space
     });
+}
+
+std::shared_ptr<Renderer::Surface> CanvasItemCtrl::draw_handles_preview(int device_scale)
+{
+    constexpr int step = 34; // selected to make handles fit at highest size
+    constexpr auto types = std::to_array({
+        CANVAS_ITEM_CTRL_TYPE_ADJ_SKEW,
+        CANVAS_ITEM_CTRL_TYPE_ADJ_ROTATE,
+        CANVAS_ITEM_CTRL_TYPE_POINTER, // pointy, triangular handle
+        CANVAS_ITEM_CTRL_TYPE_MARKER, // X mark
+        CANVAS_ITEM_CTRL_TYPE_NODE_AUTO,
+        CANVAS_ITEM_CTRL_TYPE_NODE_CUSP,
+        CANVAS_ITEM_CTRL_TYPE_NODE_SMOOTH,
+    });
+    auto h = static_cast<int>(1.5 * step);
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto surface = std::make_shared<Renderer::Surface>(Geom::IntPoint((types.size() + 1) * step, (h + 1) * step), device_scale, srgb);
+    auto buf = CanvasItemBuffer{
+        .rect = Geom::IntRect({0, 0}, surface->dimensions()),
+        .device_scale = device_scale,
+        .cr = Renderer::Context(*surface),
+        .outline_pass = false
+    };
+
+    auto canvas = std::make_unique<UI::Widget::Canvas>();
+    canvas->set_visible();
+    auto root = canvas->get_canvas_item_root();
+
+    int i = 1;
+    for (auto type : types) {
+        auto position = Geom::IntPoint{step * i++, h / 2};
+        auto handle = new CanvasItemCtrl(root, type, position);
+
+        if (type == CANVAS_ITEM_CTRL_TYPE_ADJ_SKEW) handle->set_hover();
+        if (type == CANVAS_ITEM_CTRL_TYPE_NODE_CUSP || type == CANVAS_ITEM_CTRL_TYPE_NODE_SMOOTH) handle->set_selected();
+        if (type == CANVAS_ITEM_CTRL_TYPE_POINTER) handle->set_angle(M_PI);
+
+        handle->set_size(Inkscape::HandleSize::NORMAL);
+    }
+
+    root->update(true);
+    root->render(buf);
+    return surface;
 }
 
 } // namespace Inkscape

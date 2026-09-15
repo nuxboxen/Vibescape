@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "style-attachments.h"
-#include "display/drawing-text.h"
+#include "renderer/drawing/drawing-text.h"
 #include "object/sp-paint-server.h"
 #include "object/sp-filter.h"
 
 namespace Inkscape {
 namespace Text {
 
-void StyleAttachments::attachFilter(DrawingText *item, SPFilter *filter)
+void StyleAttachments::attachFilter(Renderer::DrawingText *item, SPFilter *filter)
 {
     _filters.try_emplace(filter, filter).first->second.addItem(item);
 }
 
-void StyleAttachments::attachFill(DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox)
+void StyleAttachments::attachFill(Renderer::DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox)
 {
     _patterns.try_emplace(paintserver, paintserver).first->second.addFill(item, bbox);
 }
 
-void StyleAttachments::attachStroke(DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox)
+void StyleAttachments::attachStroke(Renderer::DrawingText *item, SPPaintServer *paintserver, Geom::OptRect const &bbox)
 {
     _patterns.try_emplace(paintserver, paintserver).first->second.addStroke(item, bbox);
 }
@@ -40,7 +40,7 @@ StyleAttachments::FilterEntry::~FilterEntry()
     _conn.disconnect();
 }
 
-void StyleAttachments::FilterEntry::addItem(DrawingText *item)
+void StyleAttachments::FilterEntry::addItem(Renderer::DrawingText *item)
 {
     _filter->show(item);
     _items.emplace_back(item);
@@ -66,7 +66,7 @@ StyleAttachments::PatternEntry::~PatternEntry()
     _conn.disconnect();
 }
 
-void StyleAttachments::PatternEntry::addFill(DrawingText *item, Geom::OptRect const &bbox)
+void StyleAttachments::PatternEntry::addFill(Renderer::DrawingText *item, Geom::OptRect const &bbox)
 {
     auto key = SPItem::display_key_new(1);
     auto pattern = _paintserver->show(item->drawing(), key, bbox);
@@ -74,7 +74,7 @@ void StyleAttachments::PatternEntry::addFill(DrawingText *item, Geom::OptRect co
     _keys.emplace_back(key);
 }
 
-void StyleAttachments::PatternEntry::addStroke(DrawingText *item, Geom::OptRect const &bbox)
+void StyleAttachments::PatternEntry::addStroke(Renderer::DrawingText *item, Geom::OptRect const &bbox)
 {
     auto key = SPItem::display_key_new(1);
     auto pattern = _paintserver->show(item->drawing(), key, bbox);

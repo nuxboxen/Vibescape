@@ -16,9 +16,8 @@
 #define INKSCAPE_UI_WIDGET_CANVAS_H
 
 #include <2geom/rect.h>
-#include <gtkmm/gesture.h> // Gtk::EventSequenceState
 
-#include "display/rendermode.h"
+#include "renderer/drawing/enums.h"
 #include "events/enums.h"
 #include "optglarea.h"
 
@@ -32,6 +31,7 @@ namespace Gtk {
 class EventControllerKey;
 class EventControllerMotion;
 class EventControllerScroll;
+enum class EventSequenceState : int;
 class GestureClick;
 } // namespace Gtk
 
@@ -41,7 +41,10 @@ namespace Inkscape {
 
 class CanvasItem;
 class CanvasItemGroup;
+
+namespace Renderer {
 class Drawing;
+}
 
 namespace Colors::CMS {
     class TransformSurface;
@@ -69,7 +72,7 @@ public:
     SPDesktop *get_desktop() const { return _desktop; }
 
     // Drawing
-    void set_drawing(Inkscape::Drawing *drawing);
+    void set_drawing(Renderer::Drawing *drawing);
 
     // Canvas item root
     CanvasItemGroup *get_canvas_item_root() const;
@@ -88,12 +91,12 @@ public:
     void set_page  (uint32_t rgba);
 
     //  Rendering modes
-    void set_render_mode(Inkscape::RenderMode mode);
-    void set_color_mode (Inkscape::ColorMode  mode);
-    void set_split_mode (Inkscape::SplitMode  mode);
-    Inkscape::RenderMode get_render_mode() const { return _render_mode; }
-    Inkscape::ColorMode  get_color_mode()  const { return _color_mode; }
-    Inkscape::SplitMode  get_split_mode()  const { return _split_mode; }
+    void set_render_mode(Renderer::RenderMode mode);
+    void set_color_mode (Renderer::ColorMode  mode);
+    void set_split_mode (Renderer::SplitMode  mode);
+    Renderer::RenderMode get_render_mode() const { return _render_mode; }
+    Renderer::ColorMode  get_color_mode()  const { return _color_mode; }
+    Renderer::SplitMode  get_split_mode()  const { return _split_mode; }
     void set_clip_to_page_mode(bool clip);
     void set_antialiasing_enabled(bool enabled);
 
@@ -179,7 +182,7 @@ private:
     void size_allocate_vfunc(int width, int height, int baseline) final;
 
     Glib::RefPtr<Gdk::GLContext> create_context() final;
-    void paint_widget(Cairo::RefPtr<Cairo::Context> const &) final;
+    void paint_widget(std::shared_ptr<Renderer::Context> const &) final;
 
     /* Configuration */
 
@@ -187,16 +190,16 @@ private:
     SPDesktop *_desktop = nullptr;
 
     // Drawing
-    Inkscape::Drawing *_drawing = nullptr;
+    Renderer::Drawing *_drawing = nullptr;
 
     // Geometry
     Geom::IntPoint _pos = {0, 0}; ///< Coordinates of top-left pixel of canvas view within canvas.
     Geom::Affine _affine; ///< The affine that we have been requested to draw at.
 
     // Rendering modes
-    Inkscape::RenderMode _render_mode = Inkscape::RenderMode::NORMAL;
-    Inkscape::SplitMode  _split_mode  = Inkscape::SplitMode::NORMAL;
-    Inkscape::ColorMode  _color_mode  = Inkscape::ColorMode::NORMAL;
+    Renderer::RenderMode _render_mode = Renderer::RenderMode::NORMAL;
+    Renderer::SplitMode  _split_mode  = Renderer::SplitMode::NORMAL;
+    Renderer::ColorMode  _color_mode  = Renderer::ColorMode::NORMAL;
     bool _antialiasing_enabled = true;
 
     // CMS
@@ -221,9 +224,9 @@ private:
     bool _need_update = true; // Set true so setting CanvasItem bounds are calculated at least once.
 
     // Split view
-    Inkscape::SplitDirection _split_direction;
+    Renderer::SplitDirection _split_direction;
     Geom::Point _split_frac;
-    Inkscape::SplitDirection _hover_direction;
+    Renderer::SplitDirection _hover_direction;
     bool _split_dragging;
     Geom::IntPoint _split_drag_start;
 

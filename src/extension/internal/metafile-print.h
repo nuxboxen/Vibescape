@@ -19,6 +19,7 @@
 #include <libuemf/uemf.h>
 #include <2geom/affine.h>
 #include <2geom/pathvector.h>
+#include <cairomm/surface.h>
 
 #include "colors/color.h"
 #include "extension/implementation/implementation.h"
@@ -30,8 +31,6 @@ class SPGradient;
 class SPObject;
 
 namespace Inkscape {
-class Pixbuf;
-
 namespace Extension {
 namespace Internal {
 
@@ -96,7 +95,7 @@ protected:
     U_COLORREF weight_colors(U_COLORREF c1, U_COLORREF c2, double t);
 
     void        hatch_classify(char *name, int *hatchType, U_COLORREF *hatchColor, U_COLORREF *bkColor);
-    void        brush_classify(SPObject *parent, int depth, Inkscape::Pixbuf const **epixbuf, int *hatchType, U_COLORREF *hatchColor, U_COLORREF *bkColor);
+    void        brush_classify(SPObject *parent, int depth, Cairo::RefPtr<Cairo::ImageSurface> *epixbuf, int *hatchType, U_COLORREF *hatchColor, U_COLORREF *bkColor);
     static void swapRBinRGBA(char *px, int pixels);
 
     int         hold_gradient(void *gr, int mode);

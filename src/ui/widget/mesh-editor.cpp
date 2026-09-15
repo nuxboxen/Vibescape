@@ -13,6 +13,7 @@
 #include "object/sp-defs.h"
 #include "object/sp-object.h"
 #include "object/sp-mesh-gradient.h"
+#include "renderer/surface-texture.h"
 #include "ui/util.h"
 #include "util/object-renderer.h"
 
@@ -210,7 +211,7 @@ void MeshEditor::rebuild_store(const std::vector<SPMeshGradient*>& list) {
         }
         auto labelstr = item->getAttribute("inkscape:label");
         auto label = label_fmt(labelstr, id);
-        auto image = to_texture(renderer.render(*item, width, height, device_scale, opt));
+        auto image = Renderer::build_texture(renderer.render(*item, width, height, device_scale, opt));
         _store->append(ResourceItem::create(id, label, image, item));
         index++;
     }

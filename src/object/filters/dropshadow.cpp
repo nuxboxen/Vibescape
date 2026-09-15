@@ -17,23 +17,11 @@
 #include <cstring>
 
 #include "attributes.h"                          // for SPAttr
-#include "display/nr-filter-dropshadow.h"        // for FilterDropShadow (to be created)
+#include "renderer/drawing-filters/drop-shadow.h" // for FilterDropShadow
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/numeric/converters.h"             // for read_number
 #include "colors/color.h"                        // for Colors::Color
-
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-namespace XML {
-class Node;
-} // namespace XML
-} // namespace Inkscape
 
 void SPFeDropShadow::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
@@ -109,16 +97,14 @@ Geom::Rect SPFeDropShadow::calculate_region(Geom::Rect const &region) const
     return expanded_region;
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeDropShadow::build_renderer(Inkscape::DrawingItem*) const
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeDropShadow::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto dropshadow = std::make_unique<Inkscape::Filters::FilterDropShadow>();
+    auto dropshadow = std::make_unique<Inkscape::Renderer::DrawingFilter::DropShadow>();
     build_renderer_common(dropshadow.get());
 
-    dropshadow->set_dx(dx);
-    dropshadow->set_dy(dy);
-    dropshadow->set_stdDeviation(stdDeviation);
-    dropshadow->set_flood_color(flood_color ? flood_color->toRGBA(flood_opacity) : 0x000000ff);
-    dropshadow->set_flood_opacity(1.0);  // Opacity is already included in the color
+    dropshadow->set_offset(Geom::Point(dx, dy));
+    dropshadow->set_deviation(stdDeviation);
+    dropshadow->set_color(flood_color ? flood_color->withOpacity(flood_opacity) : Inkscape::Colors::Color(0xff));
 
     return std::move(dropshadow);
 }

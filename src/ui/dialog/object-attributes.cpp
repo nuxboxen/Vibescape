@@ -1733,8 +1733,7 @@ auto paint_to_item(const PaintKey& paint) {
     }
     else if (paint.mode == Widget::PaintMode::Gradient) {
         // todo: pattern size needs to match tile size
-        auto pat_t = cast<SPGradient>(paint.vector)->create_preview_pattern(16);
-        auto pat = Cairo::RefPtr<Cairo::Pattern>(new Cairo::Pattern(pat_t, true));
+        auto pat = cast<SPGradient>(paint.vector)->createPreviewPattern(16);
         return GridViewList::create_item(paint.id, 0, label, {}, tooltip, {}, pat, false, is<SPRadialGradient>(paint.server));
     }
     else {
@@ -2421,8 +2420,7 @@ private:
             //     }
             //     else if (paint.mode == Widget::PaintMode::Gradient) {
             //         // todo: pattern size needs to match tile size
-            //         auto pat_t = cast<SPGradient>(paint.vector)->create_preview_pattern(16);
-            //         auto pat = Cairo::RefPtr<Cairo::Pattern>(new Cairo::Pattern(pat_t, true));
+            //         auto pat = cast<SPGradient>(paint.vector)->createPreviewPattern(16);
             //         return GridViewList::create_item(paint.id, 0, label, {}, tooltip, {}, pat, false, is<SPRadialGradient>(paint.server));
             //     }
             //     else {

@@ -13,19 +13,18 @@
 
 #include "rubberband.h"
 
-#include <cairomm/pattern.h>
 #include <cstdint>
 #include <unordered_map>
 #include <utility>
 
 #include <2geom/path.h>
 #include "desktop.h"
-#include "display/cairo-utils.h"
 #include "display/control/canvas-item-bpath.h"
 #include "display/control/canvas-item-enums.h"
 #include "display/control/canvas-item-rect.h"
 #include "display/control/ctrl-handle-manager.h"
 #include "display/control/ctrl-handle-styling.h"
+#include "renderer/context-pattern.h"
 #include "preferences.h"
 #include "ui/widget/canvas.h" // autoscroll
 
@@ -88,13 +87,13 @@ void Inkscape::Rubberband::stop()
     delete_canvas_items();
 }
 
-static std::unordered_map<uint32_t, Cairo::RefPtr<Cairo::Pattern>> _pattern_cache;
+static std::unordered_map<uint32_t, std::shared_ptr<Renderer::Pattern>> _pattern_cache;
 
-static Cairo::RefPtr<Cairo::Pattern> get_cached_pattern(uint32_t color)
+static std::shared_ptr<Renderer::Pattern> get_slanting_pattern(Colors::Color const &color)
 {
-    auto &pat = _pattern_cache[color];
+    auto &pat = _pattern_cache[color.toRGBA()];
     if (!pat) {
-        pat = ink_cairo_pattern_create_slanting_stripes(color);
+        pat = std::make_shared<Renderer::StripesPattern>(color);
     }
     return pat;
 }
@@ -177,7 +176,7 @@ void Inkscape::Rubberband::move(Geom::Point const &p)
                 _rect->set_shadow(0xffffffff, 0); // Not a shadow
             }
             _rect->set_rect(Geom::Rect(_start, _end));
-            _rect->set_fill_pattern(get_cached_pattern(fill_color));
+            _rect->set_fill_pattern(get_slanting_pattern(Colors::Color(fill_color)));
             _rect->set_stroke(stroke_color);
             _rect->set_visible(true);
             break;

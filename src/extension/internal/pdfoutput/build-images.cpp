@@ -13,10 +13,8 @@
 #include "bad-uri-exception.h"
 #include "build-drawing.h"
 #include "build-page.h"
-#include "display/cairo-utils.h"
-#include "display/drawing-item.h"
+#include "colors/spaces/base.h"
 #include "document.h"
-#include "helper/pixbuf-ops.h"
 #include "object/sp-image.h"
 #include "object/sp-root.h"
 #include "object/uri.h"
@@ -27,6 +25,9 @@
 #include "util/uri.h"
 #include "xml/href-attribute-helper.h"
 #include "xml/repr.h"
+#include "renderer/surface-image.h"
+#include "renderer/drawing/svg-renderer.h"
+#include "renderer/pixel-filters/pdf-image-builder.h"
 
 namespace Inkscape::Extension::Internal::PdfBuilder {
 
@@ -64,8 +65,8 @@ void DrawContext::paint_raster(SPImage const *image)
     // TODO: props.set_conversion_intent(...)
 
     // If pixbuf is requested AFTER getURI it will sometimes return zero. This is a bug.
-    auto img_width = image->pixbuf->width();
-    auto img_height = image->pixbuf->height();
+    auto img_width = image->image->width();
+    auto img_height = image->image->height();
 
     auto href = Inkscape::getHrefAttribute(*image->getRepr()).second;
     auto [base64, base64_type] = extract_uri_data(href);
@@ -167,56 +168,50 @@ void DrawContext::paint_raster(SPImage const *image)
  */
 void DrawContext::paint_item_to_raster(SPItem const *item, Geom::Affine const &tr, double resolution, bool antialias)
 {
-    auto doc = item->document;
+    Renderer::SvgRenderer factory;
+    factory.set_dpi(resolution);
+    factory.set_antialiasing(antialias ? Renderer::Antialiasing::Good : Renderer::Antialiasing::None);
+    auto img = factory.render(item);
 
-    std::vector<SPItem const *> items = {item};
-    auto const bbox = item->visualBounds(item->i2doc_affine(), true, false, true);
-    auto const gbox = item->visualBounds(Geom::identity(), true, false, true);
-    auto aa = antialias ? Antialiasing::Good : Antialiasing::None;
-
-    auto pb = std::unique_ptr<Pixbuf>{sp_generate_internal_bitmap(doc, *bbox, resolution, items, false, nullptr, 1, aa)};
-    if (!pb) {
+    if (!img) {
         return;
     }
 
-    auto surface = pb->getSurfaceRaw();
-
-    cairo_surface_flush(surface);
-    cairo_surface_write_to_png(surface, "/tmp/out.png");
-    auto data = cairo_image_surface_get_data(surface);
-    auto width = cairo_image_surface_get_width(surface);
-    auto height = cairo_image_surface_get_height(surface);
-    auto stride = cairo_image_surface_get_stride(surface);
-
     auto builder = capypdf::RasterImageBuilder();
-    builder.set_size(width, pb->height());
-    builder.set_colorspace(CAPY_IMAGE_CS_RGB);
-    builder.set_pixel_depth(8);
-    builder.set_alpha_depth(8);
+    builder.set_size(img->width(), img->height());
 
-    std::vector<char> pixels;
-    std::vector<char> alpha;
-    pixels.reserve(width * height * 3);
-    alpha.reserve(width * height * 1);
-
-    // Split the color and alpha from each other
-    for (int y = 0; y < height; y++) {
-        int p = y * stride;
-        for (int x = 0; x < width; x++) {
-            // Cairo surfaces are alpha pre-multiplied, PDF is not.
-            pixels.push_back(unpremul_alpha(data[p + 2], data[p + 3]));
-            pixels.push_back(unpremul_alpha(data[p + 1], data[p + 3]));
-            pixels.push_back(unpremul_alpha(data[p],     data[p + 3]));
-            alpha.push_back(data[p + 3]);
-            p += 4;
+    if (auto space = img->getColorSpace()) {
+        // TODO: Here we could set the icc profile for the image, if it is icc
+        switch (space->getComponentType()) {
+            case  Colors::Space::Type::Gray:
+                builder.set_colorspace(CAPY_IMAGE_CS_GRAY);
+                break;
+            case Colors::Space::Type::RGB:
+                builder.set_colorspace(CAPY_IMAGE_CS_RGB);
+                break;
+            case Colors::Space::Type::CMYK:
+                builder.set_colorspace(CAPY_IMAGE_CS_CMYK);
+                break;
+            default:
+                std::cerr << "Couldn't export image to PDF, color space not supported.\n";
         }
+        // TODO: We might want to allow saved bit depth to be configurable
+        builder.set_pixel_depth(16);
+        builder.set_alpha_depth(16);
+        auto [pixels, alpha] = img->run_pixel_filter(Renderer::PixelFilter::BuildPdfImageData<uint16_t>());
+        builder.set_pixel_data((char *)pixels.data(), pixels.size() * 2);
+        builder.set_alpha_data((char *)alpha.data(), alpha.size() * 2);
+    } else { // No color space means integer 8bit
+        builder.set_colorspace(CAPY_IMAGE_CS_RGB);
+        builder.set_pixel_depth(8);
+        builder.set_alpha_depth(8);
+        auto [pixels, alpha] = img->run_pixel_filter(Renderer::PixelFilter::BuildPdfImageData<uint8_t>());
+        builder.set_pixel_data((char *)pixels.data(), pixels.size());
+        builder.set_alpha_data((char *)alpha.data(), alpha.size());
     }
 
-    builder.set_pixel_data(pixels.data(), pixels.size());
-    builder.set_alpha_data(alpha.data(), alpha.size());
-
     auto image = builder.build();
-
+    auto const gbox = item->visualBounds(Geom::identity(), true, false, true);
     auto boxtr = Geom::Affine(gbox->width(), 0, 0, -gbox->height(), gbox->left(), gbox->bottom());
     auto props = capypdf::ImagePdfProperties();
 

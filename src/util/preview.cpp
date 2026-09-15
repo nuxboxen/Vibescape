@@ -15,16 +15,18 @@
 
 #include "preview.h"
 
-#include "display/cairo-utils.h"
-#include "display/drawing-context.h"
+#include <2geom/generic-rect.h>
+#include "colors/manager.h"
+#include "renderer/context.h"
+#include "renderer/context-pattern.h"
+#include "renderer/surface.h"
+#include "renderer/drawing/drawing-item.h"
 
-namespace Inkscape {
-namespace UI {
-namespace Preview {
+namespace Inkscape::UI::Preview {
 
-Cairo::RefPtr<Cairo::ImageSurface>
-render_preview(SPDocument *doc, std::shared_ptr<Inkscape::Drawing> drawing, uint32_t bg,
-               Inkscape::DrawingItem *item, unsigned width_in, unsigned height_in, Geom::Rect const &dboxIn)
+std::shared_ptr<Renderer::Surface>
+render_preview(SPDocument *doc, std::shared_ptr<Renderer::Drawing> drawing, Colors::Color bg,
+               Renderer::DrawingItem *item, unsigned width_in, unsigned height_in, Geom::Rect const &dboxIn)
 {
     if (!drawing->root())
         return {};
@@ -51,35 +53,32 @@ render_preview(SPDocument *doc, std::shared_ptr<Inkscape::Drawing> drawing, uint
     if (!ua) {
         return {};
     }
-    auto surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, ua->width(), ua->height());
+
+    auto color_space = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto surface = std::make_shared<Renderer::Surface>(ua->dimensions(), 1.0, color_space);
 
     auto on_error = [&] (char const *err) {
         std::cerr << "render_preview: " << err << std::endl;
-        surface = Cairo::ImageSurface::create(Cairo::Surface::Format::ARGB32, ua->width(), ua->height());
     };
 
     try {
-        {
-            auto cr = Cairo::Context::create(surface);
-            cr->rectangle(0, 0, ua->width(), ua->height());
+        auto cr = Renderer::Context(*surface);
+        cr.rectangle(Geom::Rect(0, 0, ua->width(), ua->height()));
 
-            // We always use checkerboard to indicate transparency.
-            if (SP_RGBA32_A_F(bg) < 1.0) {
-                auto background = ink_cairo_pattern_create_checkerboard(bg, false);
-                cr->set_source(background);
-                cr->fill();
-            }
-
-            // We always draw the background on top to indicate partial backgrounds.
-            cr->set_source_rgba(SP_RGBA32_R_F(bg), SP_RGBA32_G_F(bg), SP_RGBA32_B_F(bg), SP_RGBA32_A_F(bg));
-            cr->fill();
+        if (bg.hasOpacity()) {
+            cr.paint(Renderer::CheckerboardPattern(bg, 6.0));
         }
+
+        // We always draw the background on top to indicate partial backgrounds.
+        cr.setSource(bg);
+        cr.fill();
 
         // Resize the contents to the available space with a scale factor.
         drawing->root()->setTransform(Geom::Scale(sf));
         drawing->update();
 
-        auto dc = Inkscape::DrawingContext(surface->cobj(), ua->min());
+        auto dc = Renderer::Context(*surface);
+        dc.transform(Geom::Translate(-ua->min()));
         if (item) {
             // Render just one item
             item->render(dc, *ua);
@@ -87,8 +86,6 @@ render_preview(SPDocument *doc, std::shared_ptr<Inkscape::Drawing> drawing, uint
             // Render drawing.
             drawing->render(dc, *ua);
         }
-
-        surface->flush();
     } catch (std::bad_alloc const &e) {
         on_error(e.what());
     } catch (Cairo::logic_error const &e) {
@@ -98,6 +95,4 @@ render_preview(SPDocument *doc, std::shared_ptr<Inkscape::Drawing> drawing, uint
     return surface;
 }
 
-} // namespace Preview
-} // namespace UI
-} // namespace Inkscape
+} // namespace Preview::UI::Inkscape

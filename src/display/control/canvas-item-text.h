@@ -60,7 +60,7 @@ protected:
     ~CanvasItemText() override = default;
 
     void _update(bool propagate) override;
-    void _render(Inkscape::CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
 
     Geom::Point _p;  // Position of text (not box around text).
     Glib::RefPtr<Pango::Layout> _layout;

@@ -62,7 +62,7 @@ GradientSelector::GradientSelector()
 
     _treeview->append_column(_("Gradient"), *_icon_renderer);
     auto icon_column = _treeview->get_column(0);
-    icon_column->add_attribute(_icon_renderer->property_pixbuf(), _columns->pixbuf);
+    icon_column->add_attribute(_icon_renderer->property_texture(), _columns->texture);
     icon_column->set_sort_column(_columns->color);
     icon_column->set_clickable(true);
 

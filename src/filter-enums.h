@@ -13,20 +13,23 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "display/nr-filter-blend.h"
-#include "display/nr-filter-colormatrix.h"
-#include "display/nr-filter-component-transfer.h"
-#include "display/nr-filter-composite.h"
-#include "display/nr-filter-convolve-matrix.h"
-#include "display/nr-filter-morphology.h"
-#include "display/nr-filter-turbulence.h"
-#include "display/nr-filter-types.h"
+#include "renderer/drawing-filters/blend.h"
+#include "renderer/drawing-filters/color-matrix.h"
+#include "renderer/drawing-filters/component-transfer.h"
+#include "renderer/drawing-filters/composite.h"
+#include "renderer/drawing-filters/convolve-matrix.h"
+#include "renderer/drawing-filters/morphology.h"
+#include "renderer/drawing-filters/turbulence.h"
+#include "renderer/drawing-filters/enums.h"
 #include "object/filters/displacementmap.h"
 #include "util/enums.h"
 
+using namespace Inkscape::Renderer::DrawingFilter;
+#define ENUM_VALUE(c, v) static_cast<typename std::underlying_type<c>::type>(c::v)
+
 // Filter primitives
-extern const Inkscape::Util::EnumData<Inkscape::Filters::FilterPrimitiveType> FPData[Inkscape::Filters::NR_FILTER_ENDPRIMITIVETYPE];
-extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterPrimitiveType> FPConverter;
+extern const Inkscape::Util::EnumData<PrimitiveType> FPData[ENUM_VALUE(PrimitiveType, ENDPRIMITIVETYPE)];
+extern const Inkscape::Util::EnumDataConverter<PrimitiveType> FPConverter;
 
 enum FilterPrimitiveInput {
     FPINPUT_SOURCEGRAPHIC,
@@ -42,26 +45,26 @@ extern const Inkscape::Util::EnumData<FilterPrimitiveInput> FPInputData[FPINPUT_
 extern const Inkscape::Util::EnumDataConverter<FilterPrimitiveInput> FPInputConverter;
 
 // ColorMatrix type
-extern const Inkscape::Util::EnumData<Inkscape::Filters::FilterColorMatrixType> ColorMatrixTypeData[Inkscape::Filters::COLORMATRIX_ENDTYPE];
-extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterColorMatrixType> ColorMatrixTypeConverter;
+extern const Inkscape::Util::EnumData<ColorMatrixType> ColorMatrixTypeData[ENUM_VALUE(ColorMatrixType, ENDTYPE)];
+extern const Inkscape::Util::EnumDataConverter<ColorMatrixType> ColorMatrixTypeConverter;
 // ComponentTransfer type
-extern const Inkscape::Util::EnumData<Inkscape::Filters::FilterComponentTransferType> ComponentTransferTypeData[Inkscape::Filters::COMPONENTTRANSFER_TYPE_ERROR];
-extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterComponentTransferType> ComponentTransferTypeConverter;
+extern const Inkscape::Util::EnumData<ComponentTransferType> ComponentTransferTypeData[ENUM_VALUE(ComponentTransferType, ERROR)];
+extern const Inkscape::Util::EnumDataConverter<ComponentTransferType> ComponentTransferTypeConverter;
 // Composite operator
-extern const Inkscape::Util::EnumData<FeCompositeOperator> CompositeOperatorData[COMPOSITE_ENDOPERATOR];
-extern const Inkscape::Util::EnumDataConverter<FeCompositeOperator> CompositeOperatorConverter;
+extern const Inkscape::Util::EnumData<CompositeOperator> CompositeOperatorData[ENUM_VALUE(CompositeOperator, ENDOPERATOR)];
+extern const Inkscape::Util::EnumDataConverter<CompositeOperator> CompositeOperatorConverter;
 // ConvolveMatrix edgeMode
-extern const Inkscape::Util::EnumData<Inkscape::Filters::FilterConvolveMatrixEdgeMode> ConvolveMatrixEdgeModeData[Inkscape::Filters::CONVOLVEMATRIX_EDGEMODE_ENDTYPE];
-extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterConvolveMatrixEdgeMode> ConvolveMatrixEdgeModeConverter;
+extern const Inkscape::Util::EnumData<ConvolveMatrixEdgeMode> ConvolveMatrixEdgeModeData[ENUM_VALUE(ConvolveMatrixEdgeMode, ENDTYPE)];
+extern const Inkscape::Util::EnumDataConverter<ConvolveMatrixEdgeMode> ConvolveMatrixEdgeModeConverter;
 // DisplacementMap channel
 extern const Inkscape::Util::EnumData<FilterDisplacementMapChannelSelector> DisplacementMapChannelData[4];
 extern const Inkscape::Util::EnumDataConverter<FilterDisplacementMapChannelSelector> DisplacementMapChannelConverter;
 // Morphology operator
-extern const Inkscape::Util::EnumData<Inkscape::Filters::FilterMorphologyOperator> MorphologyOperatorData[Inkscape::Filters::MORPHOLOGY_OPERATOR_END];
-extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterMorphologyOperator> MorphologyOperatorConverter;
+extern const Inkscape::Util::EnumData<MorphologyOperator> MorphologyOperatorData[ENUM_VALUE(MorphologyOperator, END)];
+extern const Inkscape::Util::EnumDataConverter<MorphologyOperator> MorphologyOperatorConverter;
 // Turbulence type
-extern const Inkscape::Util::EnumData<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeData[Inkscape::Filters::TURBULENCE_ENDTYPE];
-extern const Inkscape::Util::EnumDataConverter<Inkscape::Filters::FilterTurbulenceType> TurbulenceTypeConverter;
+extern const Inkscape::Util::EnumData<TurbulenceType> TurbulenceTypeData[ENUM_VALUE(TurbulenceType, ENDTYPE)];
+extern const Inkscape::Util::EnumDataConverter<TurbulenceType> TurbulenceTypeConverter;
 // Lighting
 enum LightSource {
     LIGHT_DISTANT,

@@ -19,8 +19,7 @@
 #include "style.h"
 #include "svg/svg.h"
 #include "path/path-curve.h"
-#include "display/drawing.h"
-#include "display/drawing-shape.h"
+#include "renderer/drawing-forward.h"
 #include "helper/geom.h"
 #include "attributes.h"
 #include "sp-item.h"
@@ -111,9 +110,9 @@ bool SPHatchPath::isValid() const
     return !_curve || _repeatLength() > 0;
 }
 
-Inkscape::DrawingItem *SPHatchPath::show(Inkscape::Drawing &drawing, unsigned int key, Geom::OptInterval extents)
+Inkscape::Renderer::DrawingItem *SPHatchPath::show(Inkscape::Renderer::Drawing &drawing, unsigned int key, Geom::OptInterval extents)
 {
-    views.emplace_back(make_drawingitem<Inkscape::DrawingShape>(drawing), extents, key);
+    views.emplace_back(make_drawingitem<Inkscape::Renderer::DrawingShape>(drawing), extents, key);
     auto &v = views.back();
     auto s = v.drawingitem.get();
 
@@ -277,7 +276,7 @@ void SPHatchPath::_readHatchPathVector(char const *str, Geom::PathVector &pathv,
     }
 }
 
-SPHatchPath::View::View(DrawingItemPtr<Inkscape::DrawingShape> drawingitem, Geom::OptInterval const &extents, unsigned key)
+SPHatchPath::View::View(DrawingItemPtr<Inkscape::Renderer::DrawingShape> drawingitem, Geom::OptInterval const &extents, unsigned key)
     : drawingitem(std::move(drawingitem))
     , extents(extents)
     , key(key) {}

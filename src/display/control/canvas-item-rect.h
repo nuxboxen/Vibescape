@@ -52,7 +52,7 @@ protected:
     ~CanvasItemRect() override = default;
 
     void _update(bool propagate) override;
-    void _render(Inkscape::CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
 
     // Geometry
     double get_shadow_size() const;

@@ -20,7 +20,7 @@
 #include "attributes.h"                          // for SPAttr
 #include "slot-resolver.h"                       // for SlotResolver
 
-#include "display/nr-filter-composite.h"         // for FilterComposite
+#include "renderer/drawing-filters/composite.h"
 #include "object/filters/sp-filter-primitive.h"  // for SPFilterPrimitive
 #include "object/sp-object.h"                    // for SP_OBJECT_MODIFIED_FLAG
 #include "util/numeric/converters.h"             // for read_number
@@ -28,18 +28,9 @@
 #include "xml/document.h"                        // for Document
 #include "xml/node.h"                            // for Node
 
-class SPDocument;
-
-namespace Inkscape {
-class DrawingItem;
-namespace Filters {
-class FilterPrimitive;
-} // namespace Filters
-} // namespace Inkscape
-
 void SPFeComposite::build(SPDocument *document, Inkscape::XML::Node *repr)
 {
-	SPFilterPrimitive::build(document, repr);
+    SPFilterPrimitive::build(document, repr);
 
     readAttr(SPAttr::OPERATOR);
     readAttr(SPAttr::K1);
@@ -49,30 +40,30 @@ void SPFeComposite::build(SPDocument *document, Inkscape::XML::Node *repr)
     readAttr(SPAttr::IN2);
 }
 
-static FeCompositeOperator read_operator(char const *value)
+static CompositeOperator read_operator(char const *value)
 {
     if (!value) {
-    	return COMPOSITE_DEFAULT;
+    	return CompositeOperator::DEFAULT;
     }
 
     if (std::strcmp(value, "over") == 0) {
-    	return COMPOSITE_OVER;
+    	return CompositeOperator::OVER;
     } else if (std::strcmp(value, "in") == 0) {
-    	return COMPOSITE_IN;
+    	return CompositeOperator::IN;
     } else if (std::strcmp(value, "out") == 0) {
-    	return COMPOSITE_OUT;
+    	return CompositeOperator::OUT;
     } else if (std::strcmp(value, "atop") == 0) {
-    	return COMPOSITE_ATOP;
+    	return CompositeOperator::ATOP;
     } else if (std::strcmp(value, "xor") == 0) {
-    	return COMPOSITE_XOR;
+    	return CompositeOperator::XOR;
     } else if (std::strcmp(value, "arithmetic") == 0) {
-    	return COMPOSITE_ARITHMETIC;
+    	return CompositeOperator::ARITHMETIC;
     } else if (std::strcmp(value, "lighter") == 0) {
-    	return COMPOSITE_LIGHTER;
+    	return CompositeOperator::LIGHTER;
     }
 
-    std::cerr << "Inkscape::Filters::FilterCompositeOperator: Unimplemented operator: " << value << std::endl;
-    return COMPOSITE_DEFAULT;
+    std::cerr << "Inkscape::Renderer::DrawingFilter::CompositeOperator: Unimplemented operator: " << value << std::endl;
+    return CompositeOperator::DEFAULT;
 }
 
 void SPFeComposite::set(SPAttr key, char const *value)
@@ -91,7 +82,7 @@ void SPFeComposite::set(SPAttr key, char const *value)
             double n_k = value ? Inkscape::Util::read_number(value) : 0.0;
             if (n_k != k1) {
                 k1 = n_k;
-                if (composite_operator == COMPOSITE_ARITHMETIC)
+                if (composite_operator == CompositeOperator::ARITHMETIC)
                     requestModified(SP_OBJECT_MODIFIED_FLAG);
             }
             break;
@@ -101,7 +92,7 @@ void SPFeComposite::set(SPAttr key, char const *value)
             double n_k = value ? Inkscape::Util::read_number(value) : 0.0;
             if (n_k != k2) {
                 k2 = n_k;
-                if (composite_operator == COMPOSITE_ARITHMETIC)
+                if (composite_operator == CompositeOperator::ARITHMETIC)
                     requestModified(SP_OBJECT_MODIFIED_FLAG);
             }
             break;
@@ -111,7 +102,7 @@ void SPFeComposite::set(SPAttr key, char const *value)
             double n_k = value ? Inkscape::Util::read_number(value) : 0.0;
             if (n_k != k3) {
                 k3 = n_k;
-                if (composite_operator == COMPOSITE_ARITHMETIC)
+                if (composite_operator == CompositeOperator::ARITHMETIC)
                     requestModified(SP_OBJECT_MODIFIED_FLAG);
             }
             break;
@@ -121,7 +112,7 @@ void SPFeComposite::set(SPAttr key, char const *value)
             double n_k = value ? Inkscape::Util::read_number(value) : 0.0;
             if (n_k != k4) {
                 k4 = n_k;
-                if (composite_operator == COMPOSITE_ARITHMETIC)
+                if (composite_operator == CompositeOperator::ARITHMETIC)
                     requestModified(SP_OBJECT_MODIFIED_FLAG);
             }
             break;
@@ -151,26 +142,26 @@ Inkscape::XML::Node *SPFeComposite::write(Inkscape::XML::Document *doc, Inkscape
 
     char const *comp_op;
     switch (composite_operator) {
-        case COMPOSITE_OVER:
+        case CompositeOperator::OVER:
             comp_op = "over"; break;
-        case COMPOSITE_IN:
+        case CompositeOperator::IN:
             comp_op = "in"; break;
-        case COMPOSITE_OUT:
+        case CompositeOperator::OUT:
             comp_op = "out"; break;
-        case COMPOSITE_ATOP:
+        case CompositeOperator::ATOP:
             comp_op = "atop"; break;
-        case COMPOSITE_XOR:
+        case CompositeOperator::XOR:
             comp_op = "xor"; break;
-        case COMPOSITE_ARITHMETIC:
+        case CompositeOperator::ARITHMETIC:
             comp_op = "arithmetic"; break;
-        case COMPOSITE_LIGHTER:
+        case CompositeOperator::LIGHTER:
             comp_op = "lighter"; break;
         default:
             comp_op = nullptr;
     }
     repr->setAttribute("operator", comp_op);
 
-    if (composite_operator == COMPOSITE_ARITHMETIC) {
+    if (composite_operator == CompositeOperator::ARITHMETIC) {
         repr->setAttributeSvgDouble("k1", k1);
         repr->setAttributeSvgDouble("k2", k2);
         repr->setAttributeSvgDouble("k3", k3);
@@ -191,15 +182,15 @@ void SPFeComposite::resolve_slots(SlotResolver &resolver)
     SPFilterPrimitive::resolve_slots(resolver);
 }
 
-std::unique_ptr<Inkscape::Filters::FilterPrimitive> SPFeComposite::build_renderer(Inkscape::DrawingItem*) const
+std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeComposite::build_renderer(Inkscape::Renderer::DrawingItem*) const
 {
-    auto composite = std::make_unique<Inkscape::Filters::FilterComposite>();
+    auto composite = std::make_unique<Inkscape::Renderer::DrawingFilter::Composite>();
     build_renderer_common(composite.get());
 
     composite->set_operator(composite_operator);
     composite->set_input(1, in2_slot);
 
-    if (composite_operator == COMPOSITE_ARITHMETIC) {
+    if (composite_operator == CompositeOperator::ARITHMETIC) {
         composite->set_arithmetic(k1, k2, k3, k4);
     }
 

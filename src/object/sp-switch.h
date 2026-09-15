@@ -27,7 +27,7 @@ public:
     void resetChildEvaluated() { _reevaluate(); }
 
     std::vector<SPObject*> _childList(bool add_ref, SPObject::Action action);
-    void _showChildren (Inkscape::Drawing &drawing, Inkscape::DrawingItem *ai, unsigned int key, unsigned int flags) override;
+    void _showChildren (Inkscape::Renderer::Drawing &drawing, Inkscape::Renderer::DrawingItem *ai, unsigned int key, unsigned int flags) override;
 
     SPObject *_evaluateFirst();
     void _reevaluate(bool add_to_arena = false);

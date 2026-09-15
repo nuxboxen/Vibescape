@@ -34,10 +34,14 @@ function(add_unit_test test_name)
         list(APPEND test_sources "${CMAKE_SOURCE_DIR}/testfiles/src/${test_name}.cpp")
     else()
         if (ARG_TEST_SOURCE)
+            if(EXISTS "${ARG_TEST_SOURCE}")
+                list(APPEND test_sources "${ARG_TEST_SOURCE}")
+            else()
             if (EXISTS "${CMAKE_SOURCE_DIR}/testfiles/src/${ARG_TEST_SOURCE}")
                 list(APPEND test_sources "${CMAKE_SOURCE_DIR}/testfiles/src/${ARG_TEST_SOURCE}")
             else()
-                message(FATAL_ERROR "'${CMAKE_SOURCE_DIR}/testfiles/src/${ARG_TEST_SOURCE}' not found")
+                message(FATAL_ERROR "'${ARG_TEST_SOURCE}' not found, alone or inside '${CMAKE_SOURCE_DIR}/testfiles/src/'")
+            endif()
             endif()
         else()
             message(FATAL_ERROR "'${CMAKE_SOURCE_DIR}/testfiles/src/${test_name}.cpp' not found")
@@ -62,16 +66,29 @@ endfunction(add_unit_test)
 function(add_unit_tests)
     set(MULTI_VALUE_ARGS "TEST_SOURCES" "SOURCES" "EXTRA_LIBS" "ENVIRONMENT")
     cmake_parse_arguments(ARG "UNUSED_OPTIONS" "" "${MULTI_VALUE_ARGS}" ${ARGN})
+    set(PREFIX "${CMAKE_SOURCE_DIR}/testfiles/src/")
 
     foreach(testsource ${ARG_TEST_SOURCES})
         # Build a testname from the testsource filename
-        string(REPLACE "/" "-" testname "${testsource}")
-        get_filename_component(testname "${testname}" NAME_WE)
-        string(REPLACE "_" "-" testname "${testname}")
-        add_unit_test(${testname} TEST_SOURCE "${testsource}"
-                                  ENVIRONMENT "${ARG_ENVIRONMENT}"
-                                  SOURCES ${ARG_SOURCES}
-                                  EXTRA_LIBS ${ARG_EXTRA_LIBS})
+        if (testsource MATCHES "\\*")
+            set(FULLPATH "${PREFIX}${testsource}")
+            file(GLOB matches CONFIGURE_DEPENDS "${FULLPATH}")
+            add_unit_tests(TEST_SOURCES  ${matches}
+                                SOURCES  ${ARG_SOURCES}
+                             EXTRA_LIBS  ${ARG_EXTRA_LIBS}
+                            ENVIRONMENT "${ARG_ENVIRONMENT}"
+            )
+            cmake_path(GET FULLPATH PARENT_PATH parent_dir)
+        else()
+            string(REPLACE "${PREFIX}" "" testname "${testsource}")
+            string(REPLACE "/" "-" testname "${testname}")
+            get_filename_component(testname "${testname}" NAME_WE)
+            string(REPLACE "_" "-" testname "${testname}")
+            add_unit_test(${testname} TEST_SOURCE "${testsource}"
+                                      ENVIRONMENT "${ARG_ENVIRONMENT}"
+                                      SOURCES ${ARG_SOURCES}
+                                      EXTRA_LIBS ${ARG_EXTRA_LIBS})
+        endif()
     endforeach()
 
 endfunction(add_unit_tests)

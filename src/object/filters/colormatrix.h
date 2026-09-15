@@ -14,7 +14,7 @@
 
 #include <vector>
 #include "sp-filter-primitive.h"
-#include "display/nr-filter-colormatrix.h"
+#include "renderer/drawing-filters/color-matrix.h"
 
 class SPFeColorMatrix final
     : public SPFilterPrimitive
@@ -22,12 +22,12 @@ class SPFeColorMatrix final
 public:
     int tag() const override { return tag_of<decltype(*this)>; }
 
-    Inkscape::Filters::FilterColorMatrixType get_type() const { return type; }
+    Inkscape::Renderer::DrawingFilter::ColorMatrixType get_type() const { return type; }
     std::vector<double> const &get_values() const { return values; }
     double get_value() const { return value; }
 
 private:
-    Inkscape::Filters::FilterColorMatrixType type = Inkscape::Filters::COLORMATRIX_MATRIX;
+    Inkscape::Renderer::DrawingFilter::ColorMatrixType type = Inkscape::Renderer::DrawingFilter::ColorMatrixType::MATRIX;
     double value = 0.0;
     std::vector<double> values;
     bool value_set = false;
@@ -36,7 +36,7 @@ protected:
 	void build(SPDocument* doc, Inkscape::XML::Node* repr) override;
     void set(SPAttr key, char const *value) override;
 
-    std::unique_ptr<Inkscape::Filters::FilterPrimitive> build_renderer(Inkscape::DrawingItem *item) const override;
+    std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> build_renderer(Inkscape::Renderer::DrawingItem *item) const override;
 };
 
 #endif // SP_FECOLORMATRIX_H_SEEN

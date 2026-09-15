@@ -40,7 +40,7 @@ protected:
 
     void _update(bool propagate) override;
     void _mark_net_invisible() override;
-    void _render(Inkscape::CanvasItemBuffer &buf) const override;
+    void _render(CanvasItemBuffer buf) const override;
     void _invalidate_ctrl_handles() override;
 
     /**

@@ -17,12 +17,10 @@
 #include <map>
 #include "sp-lpe-item.h"
 
-namespace Inkscape {
-
+namespace Inkscape::Renderer {
 class Drawing;
 class DrawingItem;
-
-} // namespace Inkscape
+} // namespace Inkscape::Renderer
 
 class SPGroup : public SPLPEItem {
 public:
@@ -58,7 +56,7 @@ public:
     void scaleChildItemsRec(Geom::Scale const &sc, Geom::Point const &p, bool noRecurse);
 
     int getItemCount() const;
-    virtual void _showChildren (Inkscape::Drawing &drawing, Inkscape::DrawingItem *ai, unsigned int key, unsigned int flags);
+    virtual void _showChildren (Inkscape::Renderer::Drawing &drawing, Inkscape::Renderer::DrawingItem *ai, unsigned int key, unsigned int flags);
 
     std::vector<SPItem*> item_list();
 
@@ -84,7 +82,7 @@ public:
     const char* typeName() const override;
     const char* displayName() const override;
     char *description() const override;
-    Inkscape::DrawingItem *show (Inkscape::Drawing &drawing, unsigned int key, unsigned int flags) override;
+    Inkscape::Renderer::DrawingItem *show (Inkscape::Renderer::Drawing &drawing, unsigned int key, unsigned int flags) override;
     void hide (unsigned int key) override;
 
     void snappoints(std::vector<Inkscape::SnapCandidatePoint> &p, Inkscape::SnapPreferences const *snapprefs) const override;

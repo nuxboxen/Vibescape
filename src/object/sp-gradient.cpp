@@ -35,7 +35,6 @@
 #include "attributes.h"
 #include "bad-uri-exception.h"
 #include "colors/gradient-averager.h"
-#include "display/cairo-utils.h"
 #include "document.h"
 #include "gradient-chemistry.h"
 #include "object/uri.h"
@@ -1188,43 +1187,6 @@ Geom::OptRect SPGradient::getAllItemsBox() const
 
 /* CAIRO RENDERING STUFF */
 
-void
-sp_gradient_pattern_common_setup(cairo_pattern_t *cp,
-                                 SPGradient *gr,
-                                 Geom::OptRect const &bbox,
-                                 double opacity)
-{
-    // set spread type
-    switch (gr->getSpread()) {
-    case SP_GRADIENT_SPREAD_REFLECT:
-        cairo_pattern_set_extend(cp, CAIRO_EXTEND_REFLECT);
-        break;
-    case SP_GRADIENT_SPREAD_REPEAT:
-        cairo_pattern_set_extend(cp, CAIRO_EXTEND_REPEAT);
-        break;
-    case SP_GRADIENT_SPREAD_PAD:
-    default:
-        cairo_pattern_set_extend(cp, CAIRO_EXTEND_PAD);
-        break;
-    }
-
-    // add stops
-    if (!is<SPMeshGradient>(gr)) {
-        for (auto & stop : gr->vector.stops) {
-            // multiply stop opacity by paint opacity
-            ink_cairo_pattern_add_color_stop(cp, stop.offset, stop.color->withOpacity(opacity));
-        }
-    }
-
-    // set pattern transform matrix
-    Geom::Affine gs2user = gr->gradientTransform;
-    if (gr->getUnits() == SP_GRADIENT_UNITS_OBJECTBOUNDINGBOX && bbox) {
-        Geom::Affine bbox2user(bbox->width(), 0, 0, bbox->height(), bbox->left(), bbox->top());
-        gs2user *= bbox2user;
-    }
-    ink_cairo_pattern_set_matrix(cp, gs2user.inverse());
-}
-
 /// Iterate over the stops of the preview linear gradient.
 void SPGradient::forEachPreviewPatternStop(std::function<void (double, Color const &)> const &callback)
 {
@@ -1265,16 +1227,16 @@ Color SPGradient::getPreviewAverageColor()
     }
 }
 
-/// Deprecated, use GtkSnapshot.
-cairo_pattern_t *SPGradient::create_preview_pattern(double width)
+std::shared_ptr<Renderer::Pattern> SPGradient::createPreviewPattern(double width)
 {
-    auto result = cairo_pattern_create_linear(0, 0, width, 0);
+    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
+    auto pattern = std::make_shared<Renderer::LinearGradientPattern>(srgb, 0, 0, width, 0);
 
     forEachPreviewPatternStop([&] (double offset, Color const &col) {
-        ink_cairo_pattern_add_color_stop(result, offset, col);
+        pattern->addColorStop(offset, col);
     });
 
-    return result;
+    return pattern;
 }
 
 bool SPGradient::isSolid() const

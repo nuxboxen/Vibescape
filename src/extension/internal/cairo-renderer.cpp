@@ -51,9 +51,7 @@
 #include "cairo-renderer.h"
 #include "document.h"
 #include "style-internal.h"
-#include "display/cairo-utils.h"
 #include "filter-chemistry.h"
-#include "helper/pixbuf-ops.h"
 #include "helper/png-write.h"
 #include "libnrtype/Layout-TNG.h"
 
@@ -74,6 +72,9 @@
 #include "object/sp-symbol.h"
 #include "object/sp-text.h"
 #include "object/sp-use.h"
+
+#include "renderer/drawing/svg-renderer.h"
+#include "renderer/surface-image.h"
 
 #include "util/units.h"
 
@@ -340,7 +341,7 @@ static void sp_flowtext_render(SPFlowtext const *flowtext, CairoRenderContext *c
 
 static void sp_image_render(SPImage const *image, CairoRenderContext *ctx)
 {
-    if (!image->pixbuf) {
+    if (!image->image) {
         return;
     }
 
@@ -350,8 +351,8 @@ static void sp_image_render(SPImage const *image, CairoRenderContext *ctx)
         return;
     }
 
-    double const w = static_cast<double>(image->pixbuf->width());
-    double const h = static_cast<double>(image->pixbuf->height());
+    double const w = static_cast<double>(image->image->width());
+    double const h = static_cast<double>(image->image->height());
     double x = image->x.computed;
     double y = image->y.computed;
 
@@ -364,7 +365,7 @@ static void sp_image_render(SPImage const *image, CairoRenderContext *ctx)
     }
 
     Geom::Affine const transform = Geom::Scale(width / w, height / h) * Geom::Translate(x, y);
-    ctx->renderImage(image->pixbuf.get(), transform, image->style);
+    ctx->renderImage(image->image, transform, image->style);
 }
 
 static void sp_anchor_render(SPAnchor const *a, CairoRenderContext *ctx, SPItem const *origin, SPPage const *page)
@@ -461,12 +462,6 @@ static void sp_root_render(SPRoot const *root, CairoRenderContext *ctx)
 */
 static void sp_asbitmap_render(SPItem const *item, CairoRenderContext *ctx, SPPage const *page)
 {
-
-    // The code was adapted from sp_selection_create_bitmap_copy in selection-chemistry.cpp
-
-    // Calculate resolution
-    /** @TODO reimplement the resolution stuff   (WHY?)
-    */
     double res = ctx->getBitmapResolution();
     if (res == 0) {
         res = Inkscape::Util::Quantity::convert(1, "in", "px");
@@ -512,12 +507,10 @@ static void sp_asbitmap_render(SPItem const *item, CairoRenderContext *ctx, SPPa
     Geom::Affine t_item =  item->i2doc_affine();
     Geom::Affine t = t_on_document * t_item.inverse();
 
-    // Do the export
-    std::unique_ptr<Inkscape::Pixbuf> pb(sp_generate_internal_bitmap(item->document, *bbox, res, {item}, true));
-
-    if (pb) {
-        //TEST(gdk_pixbuf_save( pb, "bitmap.png", "png", NULL, NULL ));
-        ctx->renderImage(pb.get(), t, item->style);
+    Renderer::SvgRenderer svg_factory;
+    svg_factory.set_dpi(res);
+    if (auto img = svg_factory.render(item)) {
+        ctx->renderImage(img, t, item->style);
     }
 }
 

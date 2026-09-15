@@ -129,7 +129,7 @@ void PatternManager::init() {
     _initialized = true;
 }
 
-static Cairo::RefPtr<Cairo::Surface> create_pattern_image(SPDocument &sandbox,
+static std::shared_ptr<Renderer::Surface> create_pattern_image(SPDocument &sandbox,
     char const* name, SPDocument &source, double scale,
     std::optional<uint32_t> checkerboard = {})
 {
@@ -137,7 +137,7 @@ static Cairo::RefPtr<Cairo::Surface> create_pattern_image(SPDocument &sandbox,
     SPObject const* pattern = source.getObjectById(name);
     if (pattern == nullptr) {
         g_warning("bad name: %s", name);
-        return Cairo::RefPtr<Cairo::Surface>();
+        return std::shared_ptr<Renderer::Surface>();
     }
 
     auto list = sandbox.getDefs()->childList(true);
@@ -160,9 +160,6 @@ static Cairo::RefPtr<Cairo::Surface> create_pattern_image(SPDocument &sandbox,
         renderer.set_checkerboard_color(*checkerboard);
     }
     auto surface = renderer.render_surface(scale);
-    if (surface) {
-        cairo_surface_set_device_scale(surface->cobj(), scale, scale);
-    }
 
     // delete sample to release href to the original pattern, if any has been referenced by 'copy'
     SPObject* oldpattern = sandbox.getObjectById("sample");
@@ -268,7 +265,7 @@ static Glib::RefPtr<PatternItem> create_pattern_item(SPPattern* pattern, bool st
     return item;
 }
 
-Cairo::RefPtr<Cairo::Surface> PatternManager::get_image(SPPaintServer* pattern, int width, int height, double device_scale) {
+std::shared_ptr<Renderer::Surface> PatternManager::get_image(SPPaintServer* pattern, int width, int height, double device_scale) {
     if (!pattern) return {};
 
     _preview_doc->setWidth(Inkscape::Util::Quantity(width, "px"));
@@ -276,7 +273,7 @@ Cairo::RefPtr<Cairo::Surface> PatternManager::get_image(SPPaintServer* pattern, 
     return create_pattern_image(*_preview_doc, pattern->getId(), *pattern->document, device_scale);
 }
 
-Cairo::RefPtr<Cairo::Surface> PatternManager::get_preview(SPPaintServer* pattern, int width, int height, unsigned int rgba_background, double device_scale) {
+std::shared_ptr<Renderer::Surface> PatternManager::get_preview(SPPaintServer* pattern, int width, int height, unsigned int rgba_background, double device_scale) {
     if (!pattern) return {};
 
     _big_preview_doc->setWidth(Inkscape::Util::Quantity(width, "px"));
