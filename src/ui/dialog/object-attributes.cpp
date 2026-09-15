@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <sstream>
 #include <tuple>
 #include <2geom/rect.h>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
@@ -46,6 +47,7 @@
 #include "dialog-container.h"
 #include "filter-chemistry.h"
 #include "filter-enums.h"
+#include "filter-effects-dialog.h"
 #include "id-clash.h"
 #include "layer-manager.h"
 #include "livepatheffect-editor.h"
@@ -58,6 +60,7 @@
 #include "live_effects/effect.h"
 #include "live_effects/lpeobject.h"
 #include "live_effects/lpeobject-reference.h"
+#include "object/filters/gaussian-blur.h"
 #include "object/sp-anchor.h"
 #include "object/sp-ellipse.h"
 #include "object/sp-gradient.h"
@@ -351,10 +354,10 @@ details::AttributesPanel::AttributesPanel()
     , _obj_id(get_widget<Gtk::Entry>(_builder, "obj-id"))
     , _obj_set_id(get_widget<Gtk::Button>(_builder, "obj-set-id"))
     , _obj_description(get_widget<Gtk::TextView>(_builder, "obj-description"))
-    , _filter_primitive(get_widget<Gtk::Entry>(_builder, "filter-primitive"))
     , _clear_filters(get_widget<Gtk::Button>(_builder, "clear-filters"))
+    , _clear_blur(get_widget<Gtk::Button>(_builder, "clear-blur"))
     , _add_blur(get_widget<Gtk::Button>(_builder, "add-blur"))
-    , _edit_filter(get_widget<Gtk::Button>(_builder, "edit-filter"))
+    , _add_filter(get_widget<Gtk::Button>(_builder, "add-filter"))
     , _blur(get_widget<Widget::InkSpinButton>(_builder, "filter-blur"))
     , _lpe_menu(get_widget<Gtk::ListBox>(_builder, "lpe-menu"))
     , _lpe_search(get_widget<Gtk::SearchEntry2>(_builder, "lpe-search"))
@@ -674,12 +677,20 @@ void details::AttributesPanel::add_filters(bool separate) {
     Widget::reparent_properties(get_widget<Gtk::Grid>(_builder, "filter-box"), _grid);
     _grid.add_section_divider();
     _show_filters = true;
+    _filter_dropdown.set_hexpand();
+    get_widget<Gtk::Box>(_builder, "filter-dropdown").append(_filter_dropdown);
 
     _clear_filters.signal_clicked().connect([this] {
         if (!can_update()) return;
 
+        auto item = cast<SPItem>(_current_object);
+        if (!item) return;
+        auto filter = item->style ? item->style->getFilter() : nullptr;
         auto scoped(_update.block());
         remove_filter(_current_object, false);
+        if (filter) {
+            filter->collectOrphan();
+        }
         DocumentUndo::done(_current_object->document, RC_("Undo", "Remove filter"), "dialog-fill-and-stroke", TAG);
         update_filters(_current_object);
     });
@@ -692,27 +703,106 @@ void details::AttributesPanel::add_filters(bool separate) {
             update_filters(_current_object);
         }
     });
-    _blur.signal_value_changed().connect([this](auto value) {
+    _clear_blur.signal_clicked().connect([this] {
         if (!can_update()) return;
 
         auto scoped(_update.block());
-        if (modify_filter_gaussian_blur_amount(cast<SPItem>(_current_object), value * 100)) {
-            DocumentUndo::maybeDone(_current_object->document, "change-blur-radius", RC_("Undo", "Change blur filter"), "dialog-fill-and-stroke", TAG);
+        if (remove_filter_gaussian_blur(_current_object)) {
+            DocumentUndo::done(_current_object->document, RC_("Undo", "Remove blur filter"), "dialog-fill-and-stroke", TAG);
+            update_filters(_current_object);
         }
     });
-    _edit_filter.signal_clicked().connect([this] {
-        if (!_desktop) return;
-        // open filter editor
+    _add_filter.signal_clicked().connect([this] {
+        if (!_desktop || !_document) return;
+
+        auto item = cast<SPItem>(_current_object);
+        if (!item) return;
+        auto filter = item->style ? item->style->getFilter() : nullptr;
+        if (!filter) {
+            auto scoped(_update.block());
+            filter = new_filter(_document);
+            auto count = _document->getResourceList("filter").size();
+            std::ostringstream os;
+            os << _("filter") << count;
+            filter->setLabel(os.str().c_str());
+            sp_style_set_property_url(item, "filter", filter, false);
+            DocumentUndo::done(_document, RC_("Undo", "Add filter"), "dialog-fill-and-stroke", TAG);
+            update_filters(_current_object);
+        }
         if (auto container = _desktop->getContainer()) {
             container->new_dialog("FilterEffects");
+            if (auto dialog = dynamic_cast<FilterEffectsDialog*>(container->get_dialog("FilterEffects"))) {
+                dialog->select_filter(filter);
+            }
         }
     });
+    _filter_dropdown.signal_changed().connect([this] {
+      if (!can_update()) return;
+
+      auto pos = _filter_dropdown.get_selected();
+      if (pos >= _filter_list.size()) return;
+      auto filter = _filter_list[pos];
+
+      auto item = cast<SPItem>(_current_object);
+      if (!filter || !item || !filter->valid_for(item)) return;
+
+      auto scoped(_update.block());
+      sp_style_set_property_url(item, "filter", filter, false);
+      DocumentUndo::done(_current_object->document, RC_("Undo", "Change filter"), "dialog-fill-and-stroke", TAG);
+      update_filters(_current_object, false);
+    });
+    _blur.signal_value_changed().connect([this](auto value) {
+         if (!can_update()) return;
+
+         auto scoped(_update.block());
+         if (modify_filter_gaussian_blur_amount(cast<SPItem>(_current_object), value * 100)) {
+             DocumentUndo::maybeDone(_current_object->document, "change-blur-radius", RC_("Undo", "Change blur filter"), "dialog-fill-and-stroke", TAG);
+        }
+    });
+  
+}
+
+void details::AttributesPanel::populate_filter_menu() {
+    auto scoped(_update.block());
+    _filter_dropdown.remove_all();
+    _filter_list.clear();
+    
+    if (!_document || !_current_object) return;
+
+    auto item = cast<SPItem>(_current_object);
+    auto current = item && item->style ? item->style->getFilter() : nullptr;
+    int current_pos = -1;
+
+    for (auto obj : _document->getResourceList("filter")) {
+        auto filter = cast<SPFilter>(obj);
+        if (!filter) continue;
+
+        auto label = filter->label();
+        auto id = filter->getId();
+        Glib::ustring name = label ? label : (id ? id : _("Filter"));
+
+        if (filter == current) {
+            current_pos = static_cast<int>(_filter_list.size());
+        }
+        _filter_dropdown.append(name);
+        _filter_list.push_back(filter);
+    }
+     
+    if (current_pos >= 0) {
+        _filter_dropdown.set_selected(current_pos);
+    }
 }
 
 void details::AttributesPanel::set_document(SPDocument* document) {
     _document = document;
     if (_show_fill_stroke) {
         _paint->set_document(document);
+    }
+    _resource_changed.disconnect();
+    if (document) {
+        _resource_changed = document->connectResourcesChanged("filter", [this]{
+            update_filters(_current_object);
+        });
     }
 }
 
@@ -808,45 +898,60 @@ void details::AttributesPanel::update_size_location() {
     _height.set_value(rect.height());
 }
 
-void details::AttributesPanel::update_filters(SPObject* object) {
+void details::AttributesPanel::update_filters(SPObject* object, bool update_menu) {
     // Stop UI from changing filters
     auto scoped(_update.block());
 
-    auto filters = get_filter_primitive_count(object);
+    auto item = cast<SPItem>(object);
+    auto filter = item && item->style ? item->style->getFilter() : nullptr;
+
     bool gaussian_blur = false;
-    if (filters == 1) {
-        double blur = 0;
-        auto primitive = get_first_filter_component(object);
-        auto id = FPConverter.get_id_from_key(primitive->getRepr()->name());
-        _filter_primitive.set_text(_(FPConverter.get_label(id).c_str()));
-        if (id == Filters::NR_FILTER_GAUSSIANBLUR) {
-            auto item = cast<SPItem>(object);
-            if (auto radius = object_query_blur_filter(item)) {
-                if (auto bbox = item->desktopGeometricBounds()) {
-                    double perimeter = bbox->dimensions()[Geom::X] + bbox->dimensions()[Geom::Y];
-                    blur = std::sqrt(*radius * Widget::BLUR_MULTIPLIER / perimeter);
-                }
+    bool other_filter = false;
+    size_t other_filter_count = 0;
+
+    if (filter) {
+        for (auto &primitive : filter->children) {
+            if (cast<SPGaussianBlur>(&primitive)) {
+                gaussian_blur = true;
+            } else {
+                other_filter = true;
+                ++other_filter_count;
             }
-            gaussian_blur = true;
         }
+    }
+
+    // Update blur value
+    if (gaussian_blur) {
+        double blur = 0;
+
+        if (auto radius = object_query_blur_filter(item)) {
+            if (auto bbox = item->desktopGeometricBounds()) {
+                double perimeter = bbox->dimensions()[Geom::X] + bbox->dimensions()[Geom::Y];
+                blur = std::sqrt(*radius * Widget::BLUR_MULTIPLIER / perimeter);
+            }
+        }
+
         _blur.set_value(blur);
-        _blur.set_sensitive(gaussian_blur);
-    }
-    else if (filters > 1) {
-        _filter_primitive.set_text(_("Compound filter"));
+    } else {
         _blur.set_value(0);
-        _blur.set_sensitive(false);
     }
-    else {
-        _filter_primitive.set_text({});
-        _blur.set_value(0);
-        _blur.set_sensitive(false);
-    }
-    _filter_primitive.set_visible(filters > 0 && !gaussian_blur);
-    _blur.set_visible(gaussian_blur && filters > 0);
-    _edit_filter.set_visible(!gaussian_blur && filters > 0);
-    _clear_filters.set_visible(filters > 0);
-    _add_blur.set_visible(filters == 0);
+
+   // Update visibility
+   _blur.set_visible(gaussian_blur);
+   _blur.set_sensitive(gaussian_blur);
+   _clear_blur.set_visible(gaussian_blur);
+
+   _clear_filters.set_visible(filter != nullptr);
+ 
+   _add_blur.set_visible(!gaussian_blur);
+   if(update_menu) {
+      populate_filter_menu();
+   }
+   _filter_dropdown.set_visible(filter && !_filter_list.empty());
+   _add_filter.set_visible(true);
+   _add_filter.set_icon_name(filter ? "edit" : "plus");
+   _add_filter.set_tooltip_text(filter ? _("Edit filter") : _("Add filter"));
+   
 }
 
 void details::AttributesPanel::update_lpes(SPObject* object) {

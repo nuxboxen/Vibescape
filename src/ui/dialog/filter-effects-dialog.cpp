@@ -3128,6 +3128,11 @@ void FilterEffectsDialog::set_attrs_locked(const bool l)
     _locked = l;
 }
 
+void FilterEffectsDialog::select_filter(const SPFilter* filter)
+{
+    _filter_modifier.select_filter(filter);
+}
+
 void FilterEffectsDialog::init_settings_widgets()
 {
     // TODO: Find better range/climb-rate/digits values for the SpinScales,
