@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <sstream>
 #include <tuple>
 #include <2geom/rect.h>
 #include <boost/smart_ptr/intrusive_ptr.hpp>
@@ -720,6 +721,10 @@ void details::AttributesPanel::add_filters(bool separate) {
         if (!filter) {
             auto scoped(_update.block());
             filter = new_filter(_document);
+            auto count = _document->getResourceList("filter").size();
+            std::ostringstream os;
+            os << _("filter") << count;
+            filter->setLabel(os.str().c_str());
             sp_style_set_property_url(item, "filter", filter, false);
             DocumentUndo::done(_document, RC_("Undo", "Add filter"), "dialog-fill-and-stroke", TAG);
             update_filters(_current_object);
@@ -744,6 +749,7 @@ void details::AttributesPanel::add_filters(bool separate) {
       auto scoped(_update.block());
       sp_style_set_property_url(item, "filter", filter, false);
       DocumentUndo::done(_current_object->document, RC_("Undo", "Change filter"), "dialog-fill-and-stroke", TAG);
+      update_filters(_current_object, false);
     });
     _blur.signal_value_changed().connect([this](auto value) {
          if (!can_update()) return;
@@ -892,7 +898,7 @@ void details::AttributesPanel::update_size_location() {
     _height.set_value(rect.height());
 }
 
-void details::AttributesPanel::update_filters(SPObject* object) {
+void details::AttributesPanel::update_filters(SPObject* object, bool update_menu) {
     // Stop UI from changing filters
     auto scoped(_update.block());
 
@@ -935,14 +941,16 @@ void details::AttributesPanel::update_filters(SPObject* object) {
    _blur.set_sensitive(gaussian_blur);
    _clear_blur.set_visible(gaussian_blur);
 
-   _clear_filters.set_visible(other_filter);
+   _clear_filters.set_visible(filter != nullptr);
  
    _add_blur.set_visible(!gaussian_blur);
-   populate_filter_menu();
+   if(update_menu) {
+      populate_filter_menu();
+   }
    _filter_dropdown.set_visible(filter && !_filter_list.empty());
    _add_filter.set_visible(true);
-   _add_filter.set_icon_name(other_filter ? "edit" : "plus");
-   _add_filter.set_tooltip_text(other_filter ? _("Edit filter") : _("Add filter"));
+   _add_filter.set_icon_name(filter ? "edit" : "plus");
+   _add_filter.set_tooltip_text(filter ? _("Edit filter") : _("Add filter"));
    
 }
 

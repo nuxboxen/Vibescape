@@ -99,7 +99,7 @@ private:
     void transform();
     void update_label(SPObject* object, Inkscape::Selection* selection);
     void update_size_location();
-    void update_filters(SPObject* object);
+    void update_filters(SPObject* object, bool update_menu = true);
     void populate_filter_menu();
     void update_lpes(SPObject* object);
     void update_names(SPObject* object);
