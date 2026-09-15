@@ -46,6 +46,8 @@ target_sources(inkscape_base PRIVATE
   actions-layer.cpp
   actions-node-align.h
   actions-node-align.cpp
+  actions-node-tool.h
+  actions-node-tool.cpp
   actions-object.h
   actions-object.cpp
   actions-object-align.h

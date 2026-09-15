@@ -96,26 +96,9 @@ private:
     void sel_changed(Selection *selection);
     void sel_modified(Selection *selection, unsigned flags);
     void coord_changed(ControlPointSelection* selected_nodes);
-    void edit_add();
-    void edit_add_leftmost();
-    void edit_add_rightmost();
-    void edit_add_topmost();
-    void edit_add_bottommost();
-    void edit_delete();
-    void edit_join();
-    void edit_break();
-    void edit_join_segment();
-    void edit_delete_segment();
-    void edit_cusp();
-    void edit_smooth();
-    void edit_symmetrical();
-    void edit_auto();
-    void edit_toline();
-    void edit_tocurve();
     void on_pref_toggled(Gtk::ToggleButton *item, Glib::ustring const &path);
 
     void setup_derived_spin_button(UI::Widget::SpinButton &btn, Glib::ustring const &name);
-    void setup_insert_node_menu();
 
     Tools::NodeTool *get_node_tool() const;
 };
