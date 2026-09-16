@@ -182,7 +182,7 @@ std::shared_ptr<Renderer::Surface> draw_symbol(SPObject& symbol, double box_w, d
 
 void draw_gradient(const std::shared_ptr<Renderer::Context>& cr, SPGradient* gradient, int x, int width, int checkerboard_tile_size) {
 
-    cr->setSource(Renderer::CheckerboardPattern(Colors::Color(0xC4C4C4FF), checkerboard_tile_size));
+    cr->setSource(Renderer::CheckerboardPattern(Colors::Color(0xC4C4C444), checkerboard_tile_size));
     cr->fill_preserve();
 
     if (gradient) {

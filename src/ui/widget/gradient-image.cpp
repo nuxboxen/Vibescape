@@ -22,7 +22,7 @@
 
 static Renderer::CheckerboardPattern make_gradient_checkerboard()
 {
-    return Renderer::CheckerboardPattern(Colors::Color(0xc4c4c400), 6);
+    return Renderer::CheckerboardPattern(Colors::Color(0xc4c4c444), 6);
 }
 
 static void sp_gradient_draw(SPGradient *gr, int width, int height, Cairo::RefPtr<Cairo::Context> const &cr)
