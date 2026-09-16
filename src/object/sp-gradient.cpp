@@ -265,12 +265,17 @@ bool SPGradient::isAligned(SPGradient *that)
 /*
  * Gradient
  */
-SPGradient::SPGradient() : SPPaintServer(), units(),
-        spread(),
-        ref(nullptr),
-        state(2),
-        vector() {
-
+SPGradient::SPGradient()
+    : SPPaintServer()
+    , units()
+    , spread()
+    , ref(nullptr)
+    , state(2)
+    , vector()
+    , mesh()
+    , array()
+    , array_smoothed()
+{
     this->ref = new SPGradientReference(this);
     this->ref->changedSignal().connect(sigc::bind(sigc::ptr_fun(SPGradient::gradientRefChanged), this));
 
@@ -771,10 +776,9 @@ void SPGradient::ensureArray() const
 SPGradientMesh const *SPGradient::getGradientMesh() const
 {
     if (!mesh.built) {
-        rebuildArray();
-        mesh.rows = array.patch_rows();
-        mesh.cols = array.patch_columns();
+        ensureArray();
         mesh.patches = getGradientPatches();
+        mesh.built = true;
     }
     return &mesh;
 }
@@ -1020,6 +1024,7 @@ bool SPGradient::invalidateArray()
 
     if (array.built) {
         array.built = false;
+        mesh.built = false; // the mesh depends on the array
         // array.clear();
         ret = true;
     }
