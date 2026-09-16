@@ -144,11 +144,6 @@ public:
     void convertToColorSpace(std::shared_ptr<Colors::Space::AnySpace> const &color_space);
 
     /**
-     * Set the mime data information when this surface was constructed from outside images.
-     */
-    void setMimeData(std::string const &format, std::string const &data);
-
-    /**
      * Set and get a user datum against the surface using a key. Does not store this against
      * the cairo surface itself, only stored in the local object.
      */

@@ -177,6 +177,17 @@ template <MemoryFormat Format = MEMORY_FORMAT_RGBA128F, class Filter>
     return VectorIsNear(p, test, 0.001);
 }
 
+template <MemoryFormat Format = MEMORY_FORMAT_RGBA128F, class Filter>
+::testing::AssertionResult FilterColorsInPlace(Filter &&f, std::array<double, 4> const &test,
+                                        std::array<double, 4> const &i1)
+{
+    auto src = TestSurface<Format>(6, 6);
+    src.rect(0, 0, 6, 6, i1);
+    f.filter(*src._d);
+    auto p = src._d->colorAt((unsigned)1, 1, true);
+    return VectorIsNear(p, test, 0.001);
+}
+
 #endif // INKSCAPE_TEST_RENDERER_PIXEL_ACCESS_TESTBASE_H
 
 /*

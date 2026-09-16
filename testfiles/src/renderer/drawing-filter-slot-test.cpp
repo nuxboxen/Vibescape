@@ -26,9 +26,6 @@ TEST(DrawingFilterSlotTest, setGetSlot)
 
 TEST(DrawingFilterSlotTest, getInColorSpace)
 {
-    auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-    auto cmyk = Colors::Manager::get().find(Colors::Space::Type::CMYK);
-
     auto slot = DrawingFilter::Slot();
     auto surface = std::make_shared<Surface>(Geom::IntPoint(4, 4), 1.0, rgb);
     slot.set(DrawingFilter::SLOT_SOURCE_IMAGE, surface);
@@ -36,16 +33,13 @@ TEST(DrawingFilterSlotTest, getInColorSpace)
     ASSERT_EQ(surface, slot.get(DrawingFilter::SLOT_SOURCE_IMAGE));
     ASSERT_EQ(surface, slot.get(DrawingFilter::SLOT_SOURCE_IMAGE, rgb));
 
-    auto copy = slot.get(DrawingFilter::SLOT_SOURCE_IMAGE, cmyk);
+    auto copy = slot.get(DrawingFilter::SLOT_SOURCE_IMAGE, cmyk_cpp);
     ASSERT_NE(surface, copy);
-    ASSERT_EQ(copy->getColorSpace(), cmyk);
+    ASSERT_EQ(copy->getColorSpace(), cmyk_cpp);
 }
 
 TEST(DrawingFilterSlotTest, getCopyInt)
 {
-    auto alpha = Colors::Manager::get().find(Colors::Space::Type::Alpha);
-    auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-
     auto slot = DrawingFilter::Slot({}, {}, true);
     auto rgbint = std::make_shared<TestSurface>(Geom::IntPoint(21, 21), 1);
     rgbint->rect(3,  3,  15, 15,  {0.0, 0.9, 0.0, 0.5});
@@ -96,9 +90,6 @@ TEST(DrawingFilterSlotTest, getCopyInt)
 
 TEST(DrawingFilterSlotTest, getCopyFloat)
 {
-    auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-    auto cmyk = Colors::Manager::get().find(Colors::Space::Type::CMYK);
-
     auto slot = DrawingFilter::Slot();
     auto surface = std::make_shared<TestSurface>(Geom::IntPoint(21, 21), 1, rgb);
     surface->rect(3,  3,  15, 15,  {0.0, 0.9, 0.0, 0.5});
@@ -124,9 +115,9 @@ TEST(DrawingFilterSlotTest, getCopyFloat)
     ASSERT_EQ(copy_rgb->getColorSpace(), rgb);
     EXPECT_IMAGE_IS<PixelPatch::Method::ALPHA>(*copy_rgb, result);
 
-    auto copy_cmyk = slot.get_copy(DrawingFilter::SLOT_SOURCE_IMAGE, cmyk);
+    auto copy_cmyk = slot.get_copy(DrawingFilter::SLOT_SOURCE_IMAGE, cmyk_cpp);
     ASSERT_NE(surface, copy_cmyk);
-    ASSERT_EQ(copy_cmyk->getColorSpace(), cmyk);
+    ASSERT_EQ(copy_cmyk->getColorSpace(), cmyk_cpp);
     EXPECT_IMAGE_IS<PixelPatch::Method::ALPHA>(*copy_cmyk, result);
 }
 
@@ -156,7 +147,6 @@ TEST(DrawingFilterSlotTest, setAlphaSlot)
 {
     auto slot = DrawingFilter::Slot();
 
-    auto rgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
     auto src = std::make_shared<TestSurface>(Geom::IntPoint(21, 21), 1, rgb);
     src->rect(0,  3,  21, 3,  {0.0, 0.9, 0.0, 0.5});
     src->rect(15, 0,  3,  21, {0.5, 0.5, 0.5, 0.5});
@@ -181,6 +171,28 @@ TEST(DrawingFilterSlotTest, setAlphaSlot)
                     " -   - ");
 
     ASSERT_EQ(slot.get(DrawingFilter::SLOT_SOURCE_IMAGE), src);
+}
+
+TEST(DrawingFilterSlotTest, getAlphaSlotAsColor)
+{
+    for (auto int_based = 0; int_based <= 1; int_based++) {
+        auto slot = DrawingFilter::Slot(int_based);
+        auto surface = std::make_shared<Surface>(Geom::IntPoint(4, 4), 1.0, alpha);
+        slot.set(DrawingFilter::SLOT_SOURCE_ALPHA, surface);
+
+        auto copy = slot.get(DrawingFilter::SLOT_SOURCE_ALPHA, alpha);
+        ASSERT_EQ(copy->getColorSpace(), alpha);
+
+        if (int_based) {
+            auto copy_rgb = slot.get(DrawingFilter::SLOT_SOURCE_ALPHA, rgb);
+            ASSERT_FALSE(copy_rgb->getColorSpace());
+        } else {
+            auto copy_rgb = slot.get(DrawingFilter::SLOT_SOURCE_ALPHA, rgb);
+            ASSERT_EQ(copy_rgb->getColorSpace(), rgb);
+            auto copy_cmyk = slot.get(DrawingFilter::SLOT_SOURCE_ALPHA, cmyk_cpp);
+            ASSERT_EQ(copy_cmyk->getColorSpace(), cmyk_cpp);
+        }
+    }
 }
 
 TEST(DrawingFilterSlotTest, slotOptions)

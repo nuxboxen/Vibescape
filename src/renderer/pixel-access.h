@@ -565,10 +565,10 @@ public:
     }
 
     /**
-     * Simple multi-thread enabled loop for all the pixels in this raster.
+     * Simple multi-thread enabled loop for all the pixels in this raster for exporting.
      */
-    template <typename T0 = double, bool unmultiply = false>
-    void forEachPixelColor(std::function<void(int, int, std::array<T0, channel_total> const &)> &&function) const
+    template <typename T0 = double>
+    void forEachPixelPosAndColor(std::function<void(int, int, std::array<T0, channel_total> const &)> &&function) const
     {
         auto const pool = get_global_dispatch_pool();
         bool const limit = width() * height() > POOL_THRESHOLD;
@@ -576,11 +576,30 @@ public:
         pool->dispatch_threshold(height(), limit, [&](int y, int) {
             std::array<T0, channel_total> color;
             for (int x = 0; x < width(); x++) {
-                colorAt<T0>(x, y, color, unmultiply);
+                colorAt<T0>(x, y, color, true);
                 function(x, y, color);
             }
         });
     }
+
+    /**
+     * Simple loop for getting a color and setting it back again.
+     */
+    void forEachPixelColor(std::function<void(Color const &, Color &)> &&function)
+    {
+        auto const pool = get_global_dispatch_pool();
+        bool const limit = width() * height() > POOL_THRESHOLD;
+        pool->dispatch_threshold(height(), limit, [&](int y, int) {
+            Color in;
+            Color out;
+            for (int x = 0; x < width(); x++) {
+                colorAt(x, y, in, true);
+                function(in, out);
+                colorTo(x, y, out, true);
+            }
+        });
+    }
+
     /**
      * Dispatch a thread for each of the lines in this and the other pixel surfaces at the
      * same time, this one as cost for reading and the other as mutable for writing.

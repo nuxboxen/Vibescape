@@ -218,22 +218,6 @@ TEST(DrawingSurfaceTest, RunPixelFilter)
     }
 }
 
-TEST(DrawingSurfaceTest, MimeType)
-{
-    auto surface = TestSurface({10, 10}, 1, cmyk_cpp);
-    auto [empty, foo] = surface.getMimeData();
-    ASSERT_TRUE(empty.empty());
-
-    surface.setMimeData("jpeg", "TEST DATA");
-    auto ret = surface.getMimeData();
-    ASSERT_EQ(ret.first, "image/jpeg");
-    ASSERT_EQ(ret.second, "TEST DATA");
-
-    surface.setMimeData("jpeg", "");
-    auto empty2 = surface.getMimeData();
-    ASSERT_TRUE(empty2.second.empty());
-}
-
 /*
   Local Variables:
   mode:c++

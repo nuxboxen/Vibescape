@@ -40,9 +40,9 @@ public:
         , _item_opt(item_opt)
         , _int_based(int_based)
     {}
-    Slot()
+    Slot(bool int_based = false)
         : _last_out(SLOT_SOURCE_IMAGE)
-        , _int_based(false)
+        , _int_based(int_based)
     {}
 
     /** Destroys the Slot object and all its contents */

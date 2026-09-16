@@ -218,6 +218,13 @@ TEST(PixelColorSpaceTest, CMYKAToAlpha)
     EXPECT_TRUE(ColorIs(*a1._d, 10, 10, {0.5}));
 }
 
+TEST(PixelColorSpaceTest, AlphaExtractionSpeedTest)
+{
+    TestSurface<MEMORY_FORMAT_CMYA_KA256F> s3{1000, 1000};
+    TestSurface<MEMORY_FORMAT_ARGB32> s2{1000, 1000};
+    AlphaSpaceExtraction().filter(*s2._d, *s3._d);
+}
+
 TEST(PixelColorSpaceTest, AlphaToLuminosity)
 {
     TestSurface<MEMORY_FORMAT_A8> a1{21, 21};

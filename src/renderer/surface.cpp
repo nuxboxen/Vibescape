@@ -208,7 +208,8 @@ std::shared_ptr<Surface> Surface::convertedToColorSpace(std::shared_ptr<Colors::
     auto dest = similar(_dimensions, color_space);
     dest->_user_data = _user_data;
     if (ready()) {
-        if (color_space && color_space->getType() == Colors::Space::Type::Alpha) {
+        if ((color_space && color_space->getType() == Colors::Space::Type::Alpha)
+            || (_color_space && _color_space->getType() == Colors::Space::Type::Alpha)) {
             dest->run_pixel_filter(PixelFilter::AlphaSpaceExtraction(), *this);
         } else {
             dest->run_pixel_filter(PixelFilter::ColorSpaceTransform(_color_space, color_space), *this);
@@ -259,33 +260,6 @@ bool Surface::sanityCheckColorSpace(std::shared_ptr<Colors::Space::AnySpace> con
         throw SurfaceError(msg.str());
     }
     return true;
-}
-
-void Surface::setMimeData(std::string const &format, std::string const &data)
-{
-    std::string mimetype;
-    if (format == "jpeg") {
-        mimetype = CAIRO_MIME_TYPE_JPEG;
-    } else if (format == "jpeg2000") {
-        mimetype = CAIRO_MIME_TYPE_JP2;
-    } else if (format == "png") {
-        mimetype = CAIRO_MIME_TYPE_PNG;
-    }
-
-    for (auto surface : getCairoSurfaces()) {
-        if (data.size() > 0) {
-            // Each surface will need its own memory, so it can free it correctly.
-            // this is why we use std::string as input and not just pass in
-            // the char* arguments like cairomm does.
-            unsigned char *raw_ptr = (unsigned char *)g_malloc(data.size() + 1);
-            std::memcpy(raw_ptr, data.data(), data.size());
-            // Nothing has ever called cairomm's surface->set_mime_data and as a
-            // result the argments are broken upstream. Fall back to cairo instead.
-            cairo_surface_set_mime_data(const_cast<cairo_surface_t *>(surface->cobj()), mimetype.c_str(), raw_ptr, data.size(), g_free, raw_ptr);
-        } else {
-            surface->unset_mime_data(mimetype);
-        }
-    }
 }
 
 } // namespace Inkscape::Renderer

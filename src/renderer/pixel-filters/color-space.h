@@ -327,7 +327,6 @@ struct AlphaSpaceExtraction
 {
     template <class AccessDst, class AccessSrc>
     void filter(AccessDst &dst, AccessSrc const &src) const
-        // requires (AccessDst::channel_total == 1)
     {
         dst.forEachPixel([&](int x, int y) {
             dst.alphaTo(x, y, src.alphaAt(x, y));

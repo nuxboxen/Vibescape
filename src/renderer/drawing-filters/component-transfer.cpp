@@ -19,39 +19,41 @@
 #include "renderer/pixel-filters/component-transfer.h"
 #include "renderer/surface.h"
 
+#include "colors/spaces/base.h"
+
 namespace Inkscape::Renderer::DrawingFilter {
 
 void ComponentTransfer::render(Slot &slot) const
 {
-    auto input = slot.get_copy(_input, _color_space);
-    if (!input) {
+    auto output = slot.get_copy(_input, _color_space);
+    if (!output) {
         return;
     }
-    std::vector<PixelFilter::TransferFunction> tfs;
 
-    // To support more channels (CMYK etc) this needs to be changed.
-    for (unsigned i = 0; i < 4; ++i) {
+    std::vector<PixelFilter::TransferFunction> tfs;
+    for (int i = 0; i <= output->components(); ++i) {
         switch (type[i]) {
-        case ComponentTransferType::TABLE:
-        case ComponentTransferType::DISCRETE:
-            if (!tableValues[i].empty()) {
-                tfs.emplace_back(PixelFilter::TransferFunction(tableValues[i], type[i] == ComponentTransferType::DISCRETE));
-            }
-            break;
-        case ComponentTransferType::LINEAR:
-            tfs.emplace_back(PixelFilter::TransferFunction(intercept[i], slope[i]));
-            break;
-        case ComponentTransferType::GAMMA:
-            tfs.emplace_back(PixelFilter::TransferFunction(amplitude[i], exponent[i], offset[i]));
-            break;
-        case ComponentTransferType::ERROR:
-        case ComponentTransferType::IDENTITY:
-        default:
-            break;
+            case ComponentTransferType::TABLE:
+            case ComponentTransferType::DISCRETE:
+                if (!tableValues[i].empty()) {
+                    tfs.emplace_back(tableValues[i], type[i] == ComponentTransferType::DISCRETE);
+                    break;
+                }
+                // pass through
+            case ComponentTransferType::ERROR:
+            case ComponentTransferType::IDENTITY:
+                tfs.emplace_back();
+                break;
+            case ComponentTransferType::LINEAR:
+                tfs.emplace_back(slope[i], intercept[i]);
+                break;
+            case ComponentTransferType::GAMMA:
+                tfs.emplace_back(amplitude[i], exponent[i], offset[i]);
+                break;
         }
     }
-    input->run_pixel_filter(PixelFilter::ComponentTransfer(tfs), *input);
-    slot.set(_output, input);
+    output->run_pixel_filter(PixelFilter::ComponentTransfer(tfs));
+    slot.set(_output, output);
 }
 
 bool ComponentTransfer::can_handle_affine(Geom::Affine const &) const

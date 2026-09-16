@@ -26,6 +26,9 @@ public:
     enum Channel
     {
         R, G, B, A
+        // None SVG spec extentions for color space interpolations beyond RGB
+        , C, M, Y, K
+        , H, S, L
     };
 
     SPFeFuncNode(Channel channel)

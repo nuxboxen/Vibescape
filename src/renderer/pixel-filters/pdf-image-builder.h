@@ -32,7 +32,7 @@ struct BuildPdfImageData
         pixels.resize(width * src.height() * channel_count);
         alpha.resize(width * src.height());
 
-        src.template forEachPixelColor<T0, true>([width, &pixels, &alpha](int x, int y, std::array<T0, AccessSrc::channel_total> const &color) {
+        src.template forEachPixelPosAndColor<T0>([width, &pixels, &alpha](int x, int y, std::array<T0, AccessSrc::channel_total> const &color) {
             auto pos = y * width + x;
             auto pos_c = pos * channel_count;
             for (auto c = 0; c < channel_count; c++) {

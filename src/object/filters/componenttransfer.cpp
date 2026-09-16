@@ -72,16 +72,9 @@ std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeComponentTrans
             continue;
         }
 
-        int i;
-        switch (funcNode->channel) {
-        case SPFeFuncNode::R: i = 0; break;
-        case SPFeFuncNode::G: i = 1; break;
-        case SPFeFuncNode::B: i = 2; break;
-        case SPFeFuncNode::A: i = 3; break;
-        default:
-            g_warning("Unrecognized channel for component transfer.");
-            goto nested_break;
-        }
+        int i = (int)funcNode->channel;
+        if (i >= 4) i-=4; // cmyk offset
+        if (i >= 5) i-=5; // hsl offset
 
         componenttransfer->type[i] = funcNode->type;
         componenttransfer->tableValues[i] = funcNode->tableValues;
@@ -93,7 +86,6 @@ std::unique_ptr<Inkscape::Renderer::DrawingFilter::Primitive> SPFeComponentTrans
 
         set[i] = true;
     }
-nested_break:;
 
     // Set any types not explicitly set to the identity transform
     for (int i = 0; i < 4; i++) {

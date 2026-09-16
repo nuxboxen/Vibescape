@@ -8,7 +8,21 @@ using namespace Inkscape::Renderer::PixelFilter;
 TEST(PixelFilterComponentTest, ComponentTransfer)
 {
     // Default transfer is Identity
-    EXPECT_TRUE(FilterColors(ComponentTransfer({}), {1.0, 0.0, 1.0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer({}), {1.0, 0.0, 1.0, 0.5}, {1.0, 0.0, 1.0, 0.5}));
+}
+
+TEST(PixelFilterComponentTest, SpeedTest)
+{
+    auto src = TestSurface<MEMORY_FORMAT_ARGB32, PixelAccessEdgeMode::ZERO>(1000, 1000);
+    src.rect(150, 100, 100, 400, {0.0, 0.0, 0.8, 1.0});
+
+    std::vector<TransferFunction> tfs = {
+        TransferFunction({0, 0, 1, 1}, false),
+        TransferFunction({1, 1, 0, 0}, false),
+        TransferFunction({0, 1, 1, 0}, false),
+        TransferFunction({0, 0, 1, 0}, false),
+    };
+    ComponentTransfer(tfs).filter(*src._d);
 }
 
 TEST(PixelFilterComponentTest, ComponentTransferTable)
@@ -19,11 +33,11 @@ TEST(PixelFilterComponentTest, ComponentTransferTable)
         TransferFunction({0, 1, 1, 0}, false),
     };
     // NOTE: Input colors are in sRGB, not in linearRGB
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 0.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 0.4, 0.0, 1.0}, {1.0, 0.2, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 0.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 0.0, 0.8, 1.0}, {0.0, 1.0, 0.7, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 0.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 0.4, 0.0, 1.0}, {1.0, 0.2, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 0.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 0.0, 0.8, 1.0}, {0.0, 1.0, 0.7, 1.0}));
 }
 
 TEST(PixelFilterComponentTest, ComponentTransferDiscrete)
@@ -33,11 +47,11 @@ TEST(PixelFilterComponentTest, ComponentTransferDiscrete)
         TransferFunction({1, 1, 0, 0}, true),
         TransferFunction({0, 1, 1, 0}, true),
     };
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 0.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 0.2, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 0.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 0.0, 1.0, 1.0}, {0.0, 1.0, 0.7, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 0.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 0.2, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 0.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 0.0, 1.0, 1.0}, {0.0, 1.0, 0.7, 1.0}));
 }
 
 TEST(PixelFilterComponentTest, ComponentTransferLinear)
@@ -47,11 +61,11 @@ TEST(PixelFilterComponentTest, ComponentTransferLinear)
         TransferFunction(0.5, 0.25),
         TransferFunction(0.5, 0.5),
     };
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.5, 0.25, 0.5, 1.0}, {1.0, 0.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.5, 0.35, 0.5, 1.0}, {1.0, 0.2, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.5, 0.75, 0.5, 1.0}, {1.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 0.75, 0.5, 1.0}, {0.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 0.75, 0.85, 1.0}, {0.0, 1.0, 0.7, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.5, 0.25, 0.5, 1.0}, {1.0, 0.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.5, 0.35, 0.5, 1.0}, {1.0, 0.2, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.5, 0.75, 0.5, 1.0}, {1.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 0.75, 0.5, 1.0}, {0.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 0.75, 0.85, 1.0}, {0.0, 1.0, 0.7, 1.0}));
 }
 
 TEST(PixelFilterComponentTest, ComponentTransferGamma)
@@ -61,11 +75,11 @@ TEST(PixelFilterComponentTest, ComponentTransferGamma)
         TransferFunction(4.0, 4.0, 0.0),
         TransferFunction(4.0, 1.0, 0.0),
     };
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 0.0, 0.0, 1.0}, {1.0, 0.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 0.25, 0.0, 1.0}, {1.0, 0.5, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 1.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}));
-    EXPECT_TRUE(FilterColors(ComponentTransfer(tfs), {0.0, 1.0, 1.0, 1.0}, {0.0, 1.0, 0.5, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 0.0, 0.0, 1.0}, {1.0, 0.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 0.25, 0.0, 1.0}, {1.0, 0.5, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {1.0, 1.0, 0.0, 1.0}, {1.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 1.0, 0.0, 1.0}, {0.0, 1.0, 0.0, 1.0}));
+    EXPECT_TRUE(FilterColorsInPlace(ComponentTransfer(tfs), {0.0, 1.0, 1.0, 1.0}, {0.0, 1.0, 0.5, 1.0}));
 }
 
 /*

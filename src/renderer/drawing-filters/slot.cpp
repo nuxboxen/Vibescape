@@ -38,20 +38,24 @@ std::shared_ptr<Surface> Slot::get(int slot) const
     return found->second;
 }
 
-std::shared_ptr<Surface> Slot::get(int slot, std::shared_ptr<Colors::Space::AnySpace> const &space) const
+std::shared_ptr<Surface> Slot::get(int slot, std::shared_ptr<Colors::Space::AnySpace> const &dst_space) const
 {
     auto surface = get(slot);
     if (!surface) {
         return {};
     }
+    auto src_space = surface->getColorSpace();
+    bool src_alpha = (src_space && src_space->getType() == Colors::Space::Type::Alpha);
+    bool dst_alpha = (dst_space && dst_space->getType() == Colors::Space::Type::Alpha);
+
     // If a surface is in INT format, we refuse to convert it and instead just return as is.
     // Color Space support for filters is disabled for INT surfaces except for ALPHA.
-    if ((_int_based && (!space || space->getType() != Colors::Space::Type::Alpha)) || space == surface->getColorSpace()) {
+    if ((_int_based && !(src_alpha || dst_alpha)) || dst_space == src_space) {
         return surface;
     }
-    if (space) {
+    if (dst_space) {
         // Return a version of the surface in the new color space
-        return surface->convertedToColorSpace(space);
+        return surface->convertedToColorSpace(dst_alpha || !_int_based ? dst_space : std::shared_ptr<Colors::Space::AnySpace>{});
     }
 
     std::cerr << "Warning: filter had no color space set despite linearRGB being the default.\n";

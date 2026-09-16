@@ -39,13 +39,13 @@ public:
     bool can_handle_affine(Geom::Affine const &) const override;
     double complexity(Geom::Affine const &ctm) const override;
 
-    ComponentTransferType type[4];
-    std::vector<double> tableValues[4];
-    double slope[4];
-    double intercept[4];
-    double amplitude[4];
-    double exponent[4];
-    double offset[4];
+    ComponentTransferType type[5];
+    std::vector<double> tableValues[5];
+    double slope[5];
+    double intercept[5];
+    double amplitude[5];
+    double exponent[5];
+    double offset[5];
 
     Glib::ustring name() const override { return Glib::ustring("Component Transfer"); }
 };
