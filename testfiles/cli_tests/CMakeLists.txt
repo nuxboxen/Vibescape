@@ -616,6 +616,11 @@ add_cli_test(export-clone-group-filtered-mp PARAMETERS --export-type=pdf
                                             OUTPUT_PAGE 1
                                             REFERENCE_FILENAME export-clone-group-filtered-mp_expected.png
                                             FUZZ_PERCENTAGE 3)
+add_cli_test(export-mask-with-filter PARAMETERS
+                                     INPUT_FILENAME export-mask-with-filter.svg
+                                     OUTPUT_FILENAME export-mask-with-filter.pdf
+                                     REFERENCE_FILENAME export-mask-with-filter_expected.pdf
+                                     FUZZ_PERCENTAGE 1)
 add_cli_test(export-text-paintorder PARAMETERS --export-type=pdf
                                     INPUT_FILENAME  export-text-paintorder.svg
                                     OUTPUT_FILENAME export-text-paintorder.pdf
