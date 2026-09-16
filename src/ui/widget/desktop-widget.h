@@ -186,6 +186,7 @@ private:
     Inkscape::PrefObserver _tb_icon_sizes2;
     Inkscape::PrefObserver _tb_visible_buttons;
     Inkscape::PrefObserver _ds_sticky_zoom;
+    Inkscape::PrefObserver _version_in_title_observer;
 
     void _updateUnit();
     void _updateNamedview();

@@ -85,6 +85,7 @@
 #include "ui/toolbar/tool-toolbar.h"
 #include "ui/toolbar/toolbar-constants.h"
 #include "ui/util.h"
+#include "ui/widget/desktop-widget.h"
 #include "ui/widget/style-swatch.h"
 #include "util/recently-used-fonts.h"
 #include "util/trim.h"
@@ -2085,6 +2086,7 @@ void InkscapePreferences::initPageUI()
     _win_hide_task.init ( _("Dialogs are hidden in taskbar"), "/options/dialogsskiptaskbar/value", true);
     _win_save_viewport.init ( _("Save and restore documents viewport"), "/options/savedocviewport/value", true);
     _win_zoom_resize.init ( _("Zoom when window is resized"), "/options/stickyzoom/value", false);
+    _win_version_in_title.init ( _("Show version in title"), "/options/versionintitle/value", true);
     _win_ontop_none.init ( C_("Dialog on top", "None"), "/options/transientpolicy/value", PREFS_DIALOGS_WINDOWS_NONE, false, nullptr);
     _win_ontop_normal.init ( _("Normal"), "/options/transientpolicy/value", PREFS_DIALOGS_WINDOWS_NORMAL, true, &_win_ontop_none);
     _win_ontop_agressive.init ( _("Aggressive"), "/options/transientpolicy/value", PREFS_DIALOGS_WINDOWS_AGGRESSIVE, false, &_win_ontop_none);
@@ -2165,6 +2167,8 @@ void InkscapePreferences::initPageUI()
                             _("Zoom drawing when document window is resized, to keep the same area visible (this is the default which can be changed in any window using the button above the right scrollbar)"));
     _page_windows.add_line( true, "", _win_save_viewport, "",
                             _("Save documents viewport (zoom and panning position). Useful to turn off when sharing version controlled files."));
+    _page_windows.add_line( true, "", _win_version_in_title, "",
+                            _("Show Inkscape version in the title of the main window."));
 
     this->AddPage(_page_windows, _("Windows"), iter_ui, PREFS_PAGE_UI_WINDOWS);
 

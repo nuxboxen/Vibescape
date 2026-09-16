@@ -36,6 +36,7 @@
 #include "document.h"
 #include "enums.h"
 #include "helper/mathfns.h"
+#include "inkscape-version.h"
 #include "inkscape-window.h"
 #include "inkscape.h"
 #include "object/sp-image.h"
@@ -203,6 +204,10 @@ SPDesktopWidget::SPDesktopWidget(InkscapeWindow *inkscape_window)
     /* Canvas */
     _ds_sticky_zoom = prefs->createObserver("/options/stickyzoom/value", [this]() { sticky_zoom_updated(); });
     sticky_zoom_updated();
+
+    _version_in_title_observer = Preferences::get()->createObserver("/options/versionintitle/value", [this] {
+        _updateTitle();
+    });
 
     /* Dialog Container */
     _container = std::make_unique<DialogContainer>(inkscape_window);
@@ -398,6 +403,8 @@ SPDesktopWidget::~SPDesktopWidget() = default;
  */
 void SPDesktopWidget::_updateTitle()
 {
+    auto prefs = Preferences::get();
+
     if (_window) {
         auto const doc = _desktop->doc();
 
@@ -451,9 +458,10 @@ void SPDesktopWidget::_updateTitle()
 
         Name += " - Inkscape";
 
-        // Name += " (";
-        // Name += Inkscape::version_string;
-        // Name += ")";
+        if (prefs->getBool("/options/versionintitle/value", true)) {
+            Name += " ";
+            Name += Inkscape::version_string;
+        }
 
         _window->set_title(Name);
     }
