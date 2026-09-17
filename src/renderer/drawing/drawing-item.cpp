@@ -691,13 +691,9 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
 
     // Device scale for HiDPI screens (typically 1 or 2)
     int const device_scale = rc.device_scale;
-
-    // When this happens, we want to enforce the use of RGB so the results can
-    // be combined correctly. Use of INT8 surface can only combine with other INT8 surfaces
-    static auto srgb = Colors::Manager::get().find(Colors::Space::Type::RGB);
-
     auto interp_space = _style.color_interpolation;
     auto parent_space = dc.getSurfaceColorSpace();
+
     // Checking parent_space here disables color interpolation when parent surface
     // is an Integer surface which we don't support any color space conversions for
     auto target_space = parent_space && interp_space ? interp_space : parent_space;

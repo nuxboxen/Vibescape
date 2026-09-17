@@ -15,7 +15,7 @@ TEST(SurfaceComponentTransferTest, ComponentTransferGamma)
 
     auto surface = TestSurface({4, 4}, 1, {});
     surface.rect(0, 0, 4, 4, {1.0, 0.5, 0.0, 1.0});
-    surface.run_pixel_filter(PixelFilter::ComponentTransfer(tfs), surface);
+    surface.run_pixel_filter(PixelFilter::ComponentTransfer(tfs));
     auto color = surface.get_pixel(1, 1);
     EXPECT_TRUE(VectorIsNear(color, {1.0, 0.25, 0.0, 1.0}, 0.01));
 }
