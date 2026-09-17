@@ -1002,7 +1002,7 @@ LivePathEffectEditor::lpeFlatten(PathEffectSharedPtr const &lperef)
     current_lpeitem = current_lpeitem->flattenCurrentPathEffect();
     _current_use = nullptr;
     auto selection = getSelection();
-    if (selection && selection->isEmpty() ) {
+    if (current_lpeitem && selection && selection->isEmpty() ) {
         selection->add(current_lpeitem);
     }
     DocumentUndo::done(getDocument(), RC_("Undo", "Flatten path effect(s)"), INKSCAPE_ICON("dialog-path-effects"));
