@@ -69,6 +69,7 @@ protected:
 
     void set_matrix(Geom::Affine const &affine);
     void transform(Geom::Affine const &affine);
+    bool should_rasterize(SPObject const &object, bool recursive = false);
 
     capypdf::DrawContext _ctx;
     Document &_doc;
