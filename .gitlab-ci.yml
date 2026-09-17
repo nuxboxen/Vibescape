@@ -117,6 +117,8 @@ appimage:linux:
     - if: $CI_PROJECT_NAMESPACE != "inkscape" && $CI_PROJECT_NAMESPACE != "dehesselle"
       when: never
     - *run_otherwise
+  # temporarily allow MacOS builds to fail - see https://gitlab.com/inkscape/inkscape/-/merge_requests/8152
+  allow_failure: true
   cache:
     - key: ccache-$CI_JOB_NAME_SLUG-$CI_COMMIT_REF_SLUG
       fallback_keys:
