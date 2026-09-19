@@ -573,7 +573,7 @@ void SPStar::setSideLength(double length) {
         r[0] *= scale;
     }
 
-    this -> set_shape();
+    this->updateRepr();
 
     requestDisplayUpdate(SP_OBJECT_MODIFIED_FLAG);
 }

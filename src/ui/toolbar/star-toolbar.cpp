@@ -315,6 +315,8 @@ void StarToolbar::proportion_value_changed()
         }
     }
 
+    _updateLengthValue(_desktop->getSelection());
+
     if (!_batchundo) {
         DocumentUndo::maybeDone(_desktop->getDocument(), "star:spokeratio", RC_("Undo", "Star: Change spoke ratio"), INKSCAPE_ICON("draw-polygon-star"));
     }
