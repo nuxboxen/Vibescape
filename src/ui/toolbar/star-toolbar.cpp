@@ -273,6 +273,8 @@ void StarToolbar::magnitude_value_changed()
         }
     }
 
+    _updateLengthValue(_desktop->getSelection());
+
     if (!_batchundo) {
         DocumentUndo::maybeDone(_desktop->getDocument(), "star:numcorners", RC_("Undo", "Star: Change number of corners"), INKSCAPE_ICON("draw-polygon-star"));
     }
