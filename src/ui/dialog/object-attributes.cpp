@@ -1282,7 +1282,7 @@ public:
         _rx(get_widget<Widget::InkSpinButton>(builder, "rect-rx")),
         _ry(get_widget<Widget::InkSpinButton>(builder, "rect-ry")),
         _sharp(get_widget<Gtk::Button>(builder, "rect-sharp")),
-        _corners(get_widget<Gtk::Button>(builder, "rect-corners"))
+        _corners(get_widget<Gtk::DropDown>(builder, "rect-corners"))
     {
         _rx.signal_value_changed().connect([this](auto value){
             change_value_px(_rect, "corner-rx", value, "rx", [this](double rx){ _rect->setVisibleRx(rx); });
@@ -1299,18 +1299,23 @@ public:
             _rx.set_value(0);
             _ry.set_value(0);
         });
-        _corners.signal_clicked().connect([this]{
+        _corners.property_selected().signal_changed().connect([this]{
             if (!_rect || !_desktop) return;
 
-            // switch to the node tool to show handles
-            set_active_tool(_desktop, "Node");
-            // rx/ry need to be reset first, LPE doesn't handle them too well
-            _rx.set_value(0);
-            _ry.set_value(0);
-            // add flexible corners effect if not yet present
-            if (!find_lpeffect(_rect, LivePathEffect::FILLET_CHAMFER)) {
-                LivePathEffect::Effect::createAndApply("fillet_chamfer", _rect->document, _rect);
-                DocumentUndo::done(_rect->document, RC_("Undo", "Add fillet/chamfer effect"), INKSCAPE_ICON("dialog-path-effects"));
+            auto selected_index = _corners.get_selected();
+            if (selected_index == WITHOUT_LPE) {
+                remove_lpeffect(_rect, LivePathEffect::FILLET_CHAMFER);
+            } else if (selected_index == WITH_LPE) {
+                // switch to the node tool to show handles
+                set_active_tool(_desktop, "Node");
+                // rx/ry need to be reset first, LPE doesn't handle them too well
+                _rx.set_value(0);
+                _ry.set_value(0);
+                // add flexible corners effect if not yet present
+                if (!find_lpeffect(_rect, LivePathEffect::FILLET_CHAMFER)) {
+                    LivePathEffect::Effect::createAndApply("fillet_chamfer", _rect->document, _rect);
+                    DocumentUndo::done(_rect->document, RC_("Undo", "Add fillet/chamfer effect"), INKSCAPE_ICON("dialog-path-effects"));
+                }
             }
         });
 
@@ -1341,7 +1346,7 @@ public:
         _ry.set_value(_rect->ry.value);
         auto lpe = find_lpeffect(_rect, LivePathEffect::FILLET_CHAMFER);
         _sharp.set_sensitive(_rect->rx.value > 0 || _rect->ry.value > 0 || lpe);
-        _corners.set_sensitive(!lpe);
+        _corners.set_selected(lpe ? WITH_LPE : WITHOUT_LPE);
     }
 
 private:
@@ -1349,7 +1354,11 @@ private:
     Widget::InkSpinButton& _rx;
     Widget::InkSpinButton& _ry;
     Gtk::Button& _sharp;
-    Gtk::Button& _corners;
+    Gtk::DropDown& _corners;
+
+    // Indices for the values in the _corners drop down
+    static const int WITHOUT_LPE = 0;
+    static const int WITH_LPE = 1;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
