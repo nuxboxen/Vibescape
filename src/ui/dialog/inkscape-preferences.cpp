@@ -24,6 +24,7 @@
 #include <gio/gio.h>
 #include <giomm/themedicon.h>
 #include <glibmm/i18n.h>
+#include <glibmm/main.h>
 #include <glibmm/markup.h>
 #include <glibmm/refptr.h>
 #include <glibmm/ustring.h>
@@ -3568,7 +3569,10 @@ void InkscapePreferences::onKBRealize()
 {
     if (!_kb_shortcuts_loaded /*&& _current_page == &_page_keyshortcuts*/) {
         _kb_shortcuts_loaded = true;
-        onKBListKeyboardShortcuts();
+        // Delay loading keyboad shortcuts until idle because shortcuts need access to action data, which is only
+        // available when the main window is done being hooked up. So on startup, if the preferences are showing, we
+        // need to delay a tad to let the windows get registered.
+        Glib::signal_idle().connect_once(sigc::mem_fun(*this, &InkscapePreferences::onKBListKeyboardShortcuts));
     }
 }
 
