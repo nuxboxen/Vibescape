@@ -899,7 +899,9 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
         conns.emplace_back(document->connectDestroy(on_lose_document));
     }
 
-    _setAppSensitive(false);
+    if (!pipe_diffs) {
+        _setAppSensitive(false);
+    }
     _canceled = false;
     _main_loop->run();
 
@@ -918,7 +920,9 @@ int Script::execute(std::list<std::string> const &in_command, std::list<std::str
     Glib::spawn_close_pid(local_pid);
 
     _main_loop.reset();
-    _setAppSensitive(true);
+    if (!pipe_diffs) {
+        _setAppSensitive(true);
+    }
 
     WAIT_PROCESS(local_pid);
     if (_canceled) {
@@ -984,7 +988,7 @@ bool Script::file_listener::toFile(const Glib::ustring &name) {
 }
 
 /**
- * @param name File path. 
+ * @param name File path.
  *             Value is in platform-native encoding (see Glib::filename_to_utf8).
  */
 bool Script::file_listener::toFile(const std::string &name) {
