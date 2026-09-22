@@ -26,6 +26,7 @@
 
 #include <glibmm/i18n.h>
 #include <gtkmm/gesturezoom.h>
+#include <gtkmm/settings.h>
 #include <sigc++/adaptors/bind.h>
 #include <2geom/transforms.h>
 #include <2geom/rect.h>
@@ -125,6 +126,9 @@ SPDesktop::SPDesktop(SPNamedView *namedview_)
     zoom->signal_scale_changed().connect(sigc::mem_fun(*this, &SPDesktop::on_zoom_scale));
     zoom->signal_end().connect(sigc::mem_fun(*this, &SPDesktop::on_zoom_end));
     canvas->add_controller(zoom);
+
+    // grab default subsequent interaction timeout from Gtk::Settings (unit: ms)
+    _zoom_timeout = Gtk::Settings::get_default()->property_gtk_double_click_time();
 
     /* Connect document */
     setDocument(document);
@@ -651,6 +655,17 @@ void SPDesktop::set_display_area(bool log)
 }
 
 /**
+ * Log zoom value.
+ * Called on timeout callback.
+ */
+bool SPDesktop::_log_zoom()
+{
+    set_display_area(true);
+    _zoom_timeout_connection.disconnect(); // disconnect to avoid repeated invocations
+    return true;
+}
+
+/**
  * Map the drawing to the window so that 'c' lies at 'w' where where 'c'
  * is a point on the canvas and 'w' is position in window in screen pixels.
  */
@@ -660,6 +675,10 @@ void SPDesktop::set_display_area(Geom::Point const &c, Geom::Point const &w, boo
     Geom::Point offset = d2w(c) - w;
     _current_affine.addOffset(offset);
     set_display_area(log);
+
+    // disconnect previous timeout, connect new timeout
+    _zoom_timeout_connection.disconnect();
+    _zoom_timeout_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &SPDesktop::_log_zoom), _zoom_timeout);
 }
 
 /**

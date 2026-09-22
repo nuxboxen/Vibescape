@@ -230,6 +230,9 @@ private:
     Inkscape::CanvasItemDrawing  *_canvas_drawing        = nullptr; ///< The actual SVG drawing (a.k.a. arena).
 
     void _setupCanvasItems();
+    bool _log_zoom(); // zoom timer
+    double _zoom_timeout = 200;
+    sigc::scoped_connection _zoom_timeout_connection;
 
 public:
     SPCSSAttr *current = nullptr;  ///< Current style
@@ -330,9 +333,9 @@ public:
     void next_transform();
     void clear_transform_history();
 
-    void set_display_area(bool log = true);
-    void set_display_area(Geom::Point const &c, Geom::Point const &w, bool log = true);
-    void set_display_area(Geom::Rect const &a, Geom::Coord border, bool log = true);
+    void set_display_area(bool log = false);
+    void set_display_area(Geom::Point const &c, Geom::Point const &w, bool log = false);
+    void set_display_area(Geom::Rect const &a, Geom::Coord border, bool log = false);
     Geom::Parallelogram get_display_area() const;
     void set_display_width(Geom::Rect const &a, Geom::Coord border);
     void set_display_center(Geom::Rect const &a);
