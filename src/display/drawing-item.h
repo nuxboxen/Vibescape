@@ -158,6 +158,7 @@ public:
     void setFillPattern(DrawingPattern *pattern);
     void setStrokePattern(DrawingPattern *pattern);
     void setZOrder(unsigned zorder);
+    void shiftFromEnd(unsigned count, unsigned position);
     void setItemBounds(Geom::OptRect const &bounds);
     void setFilterRenderer(std::unique_ptr<Filters::Filter> renderer);
 
