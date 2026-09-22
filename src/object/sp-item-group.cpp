@@ -78,9 +78,10 @@ void SPGroup::child_added(Inkscape::XML::Node* child, Inkscape::XML::Node* ref) 
     SPLPEItem::child_added(child, ref);
 
     SPObject *last_child = this->lastChild();
-    if (last_child && last_child->getRepr() == child) {
+    if (last_child && last_child->getRepr() == child || adding_children) {
         // optimization for the common special case where the child is being added at the end
-        auto item = cast<SPItem>(last_child);
+        // or if adding a set of contiguous children (we delay moving them).
+        auto item = cast<SPItem>(get_child_by_repr(child));
         if ( item ) {
             /* TODO: this should be moved into SPItem somehow */
             for (auto &v : views) {
@@ -107,6 +108,16 @@ void SPGroup::child_added(Inkscape::XML::Node* child, Inkscape::XML::Node* ref) 
     }
     this->requestModified(SP_OBJECT_MODIFIED_FLAG);
 }
+
+// Move drawing items into correct place.
+void SPGroup::end_adding_children(unsigned count, unsigned position)
+{
+    for (auto &v : views) {
+        v.drawingitem->shiftFromEnd(count, position);
+    }
+    adding_children = false;
+}
+
 
 /* fixme: hide (Lauris) */
 
@@ -669,7 +680,7 @@ sp_item_group_ungroup (SPGroup *group, std::vector<SPItem*> &children)
     /* Step 2 - clear group */
     // remember the position of the group
     auto insert_after = group->getRepr()->prev();
-
+    unsigned position = group->pos_in_parent();
     // the group is leaving forever, no heir, clones should take note; its children however are going to reemerge
     group->deleteObject(true, false);
 
@@ -690,7 +701,9 @@ sp_item_group_ungroup (SPGroup *group, std::vector<SPItem*> &children)
     if (clip) { // if !maskonungroup is always null
         bbox_clip = bbox_on_rect_clip(clip);
     }
+
     /* Step 4 - add items */
+    dynamic_cast<SPGroup *>(pitem)->start_adding_children(); // Postpone shifting drawing items into correct place.
     std::vector<SPLPEItem *> lpeitems;
     for (auto *repr : items) {
         // add item
@@ -727,6 +740,7 @@ sp_item_group_ungroup (SPGroup *group, std::vector<SPItem*> &children)
             result_mask_set.add(item);
         }
     }
+    dynamic_cast<SPGroup *>(pitem)->end_adding_children(items.size(), position); // Shift drawing items into correct place.
 
     if (mask) {
         result_mask_set.add(mask);
