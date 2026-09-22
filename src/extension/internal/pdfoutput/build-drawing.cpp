@@ -160,7 +160,7 @@ void DrawContext::paint_item(SPItem const *item, Geom::Affine const &tr, SPStyle
     } else if (auto text = cast<SPText>(item)) {
         paint_text_layout(text->layout, context_style);
     } else if (auto flowtext = cast<SPFlowtext>(item)) {
-        // sp_flowtext_render(flowtext);
+        paint_text_layout(flowtext->layout, context_style);
     } else if (auto image = cast<SPImage>(item)) {
         paint_raster(image);
     } else if (auto group = cast<SPGroup>(item)) { // SPSymbol, SPRoot, SPMarker
