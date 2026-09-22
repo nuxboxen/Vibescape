@@ -15,6 +15,7 @@
 #include "themes.h"
 
 #include <regex>
+#include <glibmm/miscutils.h>
 #include <glibmm/regex.h>
 #include <gtkmm/cssprovider.h>
 #include <gtkmm/settings.h>
@@ -91,7 +92,7 @@ ThemeContext::get_available_themes()
 
     gtkThemeList themes;
     Glib::ustring theme = "";
-    gchar *path;
+    std::string path;
     gchar **builtin_themes;
     guint i, j;
     const gchar *const *dirs;
@@ -122,19 +123,16 @@ ThemeContext::get_available_themes()
 
     g_strfreev(builtin_themes);
 
-    path = g_build_filename(g_get_user_data_dir(), "themes", nullptr);
-    inkscape_fill_gtk(path, themes);
-    g_free(path);
+    path = Glib::build_filename(g_get_user_data_dir(), "themes", nullptr);
+    inkscape_fill_gtk(path.c_str(), themes);
   
-    path = g_build_filename(g_get_home_dir(), ".themes", nullptr);
-    inkscape_fill_gtk(path, themes);
-    g_free(path);
+    path = Glib::build_filename(g_get_home_dir(), ".themes", nullptr);
+    inkscape_fill_gtk(path.c_str(), themes);
   
     dirs = g_get_system_data_dirs();
     for (i = 0; dirs[i]; i++) {
-        path = g_build_filename(dirs[i], "themes", nullptr);
-        inkscape_fill_gtk(path, themes);
-        g_free(path);
+        path = Glib::build_filename(dirs[i], "themes", nullptr);
+        inkscape_fill_gtk(path.c_str(), themes);
     }
     return themes;
 }
