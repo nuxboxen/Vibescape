@@ -210,7 +210,6 @@ std::vector<std::vector<Glib::ustring>> raw_data_node_tool =
 void
 add_actions_node_tool(InkscapeWindow* win)
 {
-    std::cout << "add_actions_node_tool" << std::endl;
     Glib::VariantType String(Glib::VARIANT_TYPE_STRING);
 
     // clang-format off
