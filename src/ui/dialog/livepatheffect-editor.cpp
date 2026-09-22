@@ -364,9 +364,7 @@ void LivePathEffectEditor::add_lpes(Inkscape::UI::Widget::CompletionPopup &popup
         int const id = static_cast<int>(type);
         auto const menuitem = builder.add_item(lpe.label, lpe.category, lpe.tooltip, lpe.icon_name,
                                                lpe.sensitive, true, [=, this]{ onAdd(type); });
-        menuitem->signal_query_tooltip().connect([plpe, id, this](int x, int y, bool kbd, const Glib::RefPtr<Gtk::Tooltip>& tooltipw){
-            return sp_query_custom_tooltip(this, x, y, kbd, tooltipw, id, plpe->tooltip, plpe->icon_name);
-        }, false); // before
+        menuitem->set_tooltip_text(plpe->tooltip);
         if (builder.new_section()) {
             builder.set_section(get_category_name(lpe.category));
         }
