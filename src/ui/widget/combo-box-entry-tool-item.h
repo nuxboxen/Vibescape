@@ -28,6 +28,8 @@ namespace Gtk {
 class TreeModel;
 } // namespace Gtk
 
+namespace Inkscape::UI { class DefocusTarget; }
+
 namespace Inkscape::UI::Widget {
 
 /**
@@ -76,7 +78,7 @@ public:
 
     void set_model(Glib::RefPtr<Gtk::TreeModel> model) { _model = std::move(model); }
 
-    void setDefocusWidget(Gtk::Widget *widget) { _focusWidget = widget; }
+    void setDefocusTarget(DefocusTarget *target) { _defocus_target = target; }
 
 private:
     Glib::ustring       _tooltip;
@@ -89,7 +91,7 @@ private:
     CellDataFunc        _cell_data_func; // drop-down menu format
     bool                _popup = false; // Do we pop-up an entry-completion dialog?
     Glib::RefPtr<Gtk::EntryCompletion> _entry_completion;
-    Gtk::Widget        *_focusWidget = nullptr; ///< The widget to return focus to
+    DefocusTarget      *_defocus_target = nullptr; ///< The widget to return focus to
     std::optional<Gtk::CellRendererText> _cell;
 
     int                 _active = -1; // Index of active menu item (-1 if not in list).
