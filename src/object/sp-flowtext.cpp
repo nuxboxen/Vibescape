@@ -42,11 +42,7 @@
 #include "xml/repr.h"
 
 
-SPFlowtext::SPFlowtext() : SPItem(),
-    par_indent(0),
-    _optimizeScaledText(false)
-{
-}
+SPFlowtext::SPFlowtext() = default;
 
 SPFlowtext::~SPFlowtext() = default;
 

@@ -16,23 +16,24 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "sp-item.h"
+#include "sp-text-item.h"
 #include "sp-tref-reference.h"
 #include "text-tag-attributes.h"
 
 /* tref base class */
 
-class SPTRef final : public SPItem {
+class SPTRef final : public SPTextItem {
 public:
 	SPTRef();
 	~SPTRef() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
     // Attributes that are used in the same way they would be in a tspan
     TextTagAttributes attributes;
     
     // Text stored in the xlink:href attribute
-    char *href;
+    char *href = nullptr;
     
     // URI reference to original object
     SPTRefReference uriOriginalRef;
@@ -40,7 +41,7 @@ public:
     // Shortcut pointer to the child of the tref (which is a copy
     // of the character data stored at and/or below the node
     // referenced by uriOriginalRef)
-    SPObject *stringChild;
+    SPObject *stringChild = nullptr;
     
     // The sigc connections for various notifications
     sigc::connection _delete_connection;

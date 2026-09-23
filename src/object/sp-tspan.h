@@ -14,7 +14,7 @@
  * tspan and textpath, based on the flowtext routines
  */
 
-#include "sp-item.h"
+#include "sp-text-item.h"
 #include "text-tag-attributes.h"
 
 enum {
@@ -23,17 +23,17 @@ enum {
     SP_TSPAN_ROLE_LINE
 };
 
-class SPTSpan final : public SPItem {
+class SPTSpan final : public SPTextItem {
 public:
 	SPTSpan();
 	~SPTSpan() override;
     int tag() const override { return tag_of<decltype(*this)>; }
+    using Base = SPTextItem;
 
     unsigned int role : 2;
     TextTagAttributes attributes;
 
 	void build(SPDocument* doc, Inkscape::XML::Node* repr) override;
-	void release() override;
 	void set(SPAttr key, const char* value) override;
 	void update(SPCtx* ctx, unsigned int flags) override;
 	void modified(unsigned int flags) override;

@@ -10,7 +10,7 @@
 #include "style.h"
 
 // User must free return value.
-PangoFontDescription *ink_font_description_from_style(SPStyle const *style);
+Pango::FontDescription ink_font_description_from_style(SPStyle const *style);
 std::shared_ptr<FontInstance> ink_font_from_style(SPStyle const *style);
 
 /*

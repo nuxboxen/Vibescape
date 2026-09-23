@@ -29,14 +29,28 @@
 #include "text-toolbar.h"
 
 #include <ranges>
+
+#include <glibmm/i18n.h>
+#include <glibmm/markup.h>
+#include <glibmm/regex.h>
+
+#include <gtkmm/adjustment.h>
+#include <gtkmm/button.h>
 #include <gtkmm/checkbutton.h>
+#include <gtkmm/flattenlistmodel.h>
+#include <gtkmm/frame.h>
+#include <gtkmm/grid.h>
 #include <gtkmm/listbox.h>
+#include <gtkmm/listheader.h>
+#include <gtkmm/menubutton.h>
 #include <gtkmm/separator.h>
+#include <gtkmm/signallistitemfactory.h>
 #include <gtkmm/togglebutton.h>
 
 #include "document-undo.h"
 #include "document.h"
 #include "inkscape.h"
+#include "libnrtype/font-factory.h" // StyleNames
 #include "libnrtype/font-lister.h"
 #include "object/sp-flowdiv.h"
 #include "object/sp-flowtext.h"
@@ -51,7 +65,7 @@
 #include "ui/icon-names.h"
 #include "ui/tools/text-tool.h"
 #include "ui/util.h"
-#include "ui/widget/combo-box-entry-tool-item.h"
+#include "ui/widget/entry-dropdown.h"
 #include "ui/widget/font-size-selector.h"
 #include "ui/widget/spinbutton.h"
 #include "ui/widget/unit-tracker.h"
@@ -91,11 +105,9 @@ void recursively_set_properties(SPObject *object, SPCSSAttr *css, bool unset_des
     sp_repr_css_attr_unref(css_unset);
 }
 
-
 // TODO: possibly share with font-selector by moving most code to font-lister (passing family name)
-void sp_text_toolbox_select_cb(Gtk::Entry const &entry)
+void font_family_icon_clicked(Glib::ustring const &family)
 {
-    auto const family = entry.get_buffer()->get_text();
     // std::cout << "text_toolbox_missing_font_cb: selecting: " << family << std::endl;
 
     // Get all items with matching font-family set (not inherited!).
@@ -204,51 +216,58 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     configure_mode_buttons(_direction_buttons, get_widget<Gtk::Box>(builder, "direction_buttons_box"),
                            "direction_mode", &TextToolbar::direction_changed);
 
-    auto const fontlister = FontLister::get_instance();
-
-    font_count_changed_connection = fontlister->connectUpdate([this] {
+    font_count_changed_connection = FontLister::get_instance()->connectUpdate([this] {
         auto const [all_fonts, _] = FontLister::get_instance()->get_font_count_label();
         _reset_button.set_sensitive(!all_fonts);
     });
 
-    // Font family
-    _font_family_item = Gtk::make_managed<UI::Widget::ComboBoxEntryToolItem>(
-        "TextFontFamilyAction",
-        _("Font Family"),
-        _("Select Font Family (Alt-X to access)"),
-        fontlister->get_font_list(),
-        -1, // Entry width
-        50, // Extra list width
-        &font_lister_cell_data_func2, // Cell layout
-        &font_lister_separator_func
-    );
+    auto hf = Gtk::SignalListItemFactory::create();
+    hf->signal_setup_obj().connect([] (Glib::RefPtr<Glib::ObjectBase> const &obj) {
+        auto &item = dynamic_cast<Gtk::ListHeader &>(*obj);
+        auto label = Gtk::make_managed<Gtk::Label>();
+        label->set_xalign(0);
+        item.set_child(*label);
+    });
+    hf->signal_bind_obj().connect([this] (Glib::RefPtr<Glib::ObjectBase> const &obj) {
+        auto &item = dynamic_cast<Gtk::ListHeader &>(*obj);
 
-    _font_family_item->popup_enable(); // Enable entry completion
-    _font_family_item->set_info(_("Select all text with this font-family")); // Show selection icon
-    _font_family_item->set_info_cb(&sp_text_toolbox_select_cb);
-    _font_family_item->set_warning(_("Font not found on system")); // Show icon w/ tooltip if font missing
-    _font_family_item->set_warning_cb(&sp_text_toolbox_select_cb);
-    _font_family_item->focus_on_click(false);
+        Glib::ustring text;
+        if (item.get_item() == localfontlister.firstDocumentFont()) {
+            text = _("Document fonts");
+        } else {
+            text = _("System");
+        }
+
+        auto &label = dynamic_cast<Gtk::Label &>(*item.get_child());
+        label.set_text(text);
+    });
+
+    // Font family
+    _font_family_item = Gtk::make_managed<UI::Widget::EntryDropDown>();
+    _font_family_item->set_name("TextFontFamilyAction");
+    _font_family_item->set_tooltip_text(("Select Font Family (Alt-X to access)"));
+    _font_family_item->setModel(localfontlister.getFonts());
+    _font_family_item->setStringFunc(unwrap_arg_adaptor<FontLister::FontListItem>([] (auto &f) { return f.family; }));
+    _font_family_item->setFactory(create_label_factory<FontLister::FontListItem>(font_lister_get_markup, true));
+    _font_family_item->setHeaderFactory(hf);
+    // _font_family_item.setExtraListWidth(50);
+
+    // _font_family_item->popup_enable(); // Enable entry completion
     _font_family_item->connectChanged([this] { fontfamily_value_changed(); });
-    _font_family_item->setDefocusWidget(this);
+    _font_family_item->connectIconClicked([this] (auto) { font_family_icon_clicked(_font_family_item->getText()); });
+    _font_family_item->setDefocusTarget(this);
 
     get_widget<Gtk::Box>(builder, "font_list_box").append(*_font_family_item);
 
     // Font styles
-    _font_style_item = Gtk::manage(new UI::Widget::ComboBoxEntryToolItem(
-        "TextFontStyleAction",
-        _("Font Style"),
-        _("Font style"),
-        fontlister->get_style_list(),
-        12, // Width in characters
-        0, // Extra list width
-        {}, // Cell layout
-        {} // Separator
-    ));
-
+    _font_style_item = Gtk::make_managed<UI::Widget::EntryDropDown>();
+    _font_style_item->set_name("TextFontStyleAction");
+    _font_style_item->set_tooltip_text(_("Font style"));
+    _font_style_item->setModel(localfontlister.getStyles());
+    _font_style_item->setStringFuncAndFactory(unwrap_arg_adaptor<StyleNames>([] (auto &s) { return s.css_name; }));
+    _font_style_item->setWidthChars(12);
     _font_style_item->connectChanged([this] { fontstyle_value_changed(); });
-    _font_style_item->focus_on_click(false);
-    _font_style_item->setDefocusWidget(this);
+    _font_style_item->setDefocusTarget(this);
 
     get_widget<Gtk::Box>(builder, "styles_list_box").append(*_font_style_item);
 
@@ -300,6 +319,8 @@ TextToolbar::~TextToolbar() = default;
 void TextToolbar::setDesktop(SPDesktop *desktop)
 {
     if (_desktop) {
+        localfontlister.unsetDocument();
+
         _selection_changed_conn.disconnect();
         _selection_modified_conn.disconnect();
         _cursor_moved_conn.disconnect();
@@ -309,13 +330,7 @@ void TextToolbar::setDesktop(SPDesktop *desktop)
     Toolbar::setDesktop(desktop);
 
     if (_desktop) {
-        auto fontlister = FontLister::get_instance();
-        fontlister->update_font_list(_desktop->getDocument());
-
-        // Keep font list up to date with document fonts when refreshed.
-        _fonts_updated_conn = fontlister->connectNewFonts([=] {
-            fontlister->update_font_list(desktop->getDocument());
-        });
+        localfontlister.setDocument(_desktop->getDocument());
 
         auto sel = desktop->getSelection();
         _selection_changed_conn = sel->connectChangedFirst(sigc::mem_fun(*this, &TextToolbar::_selectionChanged));
@@ -383,54 +398,121 @@ void TextToolbar::text_outer_set_style(SPCSSAttr *css)
     }
 }
 
+// Return row of active text or -1 if not found. If exclude is true,
+// use 3d column if available to exclude row from checking (useful to
+// skip rows added for font-families included in doc and not on
+// system)
+bool get_active_row_from_text(Glib::ustring const &target_text)
+{
+    auto const fontlister = FontLister::get_instance();
+    auto const model = fontlister->get_font_list();
+
+    // Check if text in list
+    auto const size = model->get_n_items();
+    for (unsigned i = 0; i < size; i++) {
+        auto const &item = model->get_item(i)->data;
+
+        // See if we should exclude a row
+        if (!item.on_system) {
+            continue;
+        }
+
+        // Case insensitive compare
+        if (item.family.casefold() == target_text.casefold()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Checks if all comma separated text fragments are in the list and
+// returns a ustring with a list of missing fragments.
+// This is useful for checking if all fonts in a font-family fallback
+// list are available on the system.
+//
+// This routine could also create a Pango Markup string to show which
+// fragments are invalid in the entry box itself. See:
+// http://developer.gnome.org/pango/stable/PangoMarkupFormat.html
+// However... it appears that while one can retrieve the PangoLayout
+// for a GtkEntry box, it is only a copy and changing it has no effect.
+//   PangoLayout * pl = gtk_entry_get_layout( entry );
+//   pango_layout_set_markup( pl, "NEW STRING", -1 ); // DOESN'T WORK
+Glib::ustring check_comma_separated_text(Glib::ustring const &text)
+{
+    Glib::ustring missing;
+
+    // Parse fallback_list using a comma as deliminator
+    auto tokens = g_strsplit(text.c_str(), ",", 0);
+
+    bool first = true;
+    for (auto it = tokens; *it; ++it) {
+        auto token = *it;
+        // Remove any surrounding white space.
+        g_strstrip(token);
+
+        if (!get_active_row_from_text(token)) {
+            if (first) {
+                first = false;
+            } else {
+                missing += ", ";
+            }
+            missing += token;
+        }
+    }
+
+    g_strfreev(tokens);
+
+    return missing;
+}
+
+/*
+ * For the font-family list we need to handle two cases:
+ *   Text is in list store:
+ *     In this case we use row number as the font-family list can have duplicate
+ *     entries, one in the document font part and one in the system font part. In
+ *     order that scrolling through the list works properly we must distinguish
+ *     between the two.
+ *   Text is not in the list store (i.e. default font-family is not on system):
+ *     In this case we have a row number of -1, and the text must be set by hand.
+ */
 void TextToolbar::fontfamily_value_changed()
 {
     if constexpr (DEBUG_TEXT) {
         std::cout << std::endl;
-        std::cout << "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM" << std::endl;
-        std::cout << "sp_text_fontfamily_value_changed: " << std::endl;
+        std::cout << "fontfamily_value_changed: " << std::endl;
     }
 
-     // quit if run by the _changed callbacks
+    // quit if run by the _changed callbacks
     if (_freeze) {
         if constexpr (DEBUG_TEXT) {
-            std::cout << "sp_text_fontfamily_value_changed: frozen... return" << std::endl;
-            std::cout << "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM\n" << std::endl;
+            std::cout << "fontfamily_value_changed: frozen... return" << std::endl;
         }
         return;
     }
     _freeze = true;
 
-    Glib::ustring new_family = _font_family_item->get_active_text();
-    css_font_family_unquote( new_family ); // Remove quotes around font family names.
+    Glib::ustring new_family = _font_family_item->getText();
+    css_font_family_unquote(new_family); // Remove quotes around font family names.
 
     // TODO: Think about how to handle handle multiple selections. While
     // the font-family may be the same for all, the styles might be different.
     // See: TextEdit::onApply() for example of looping over selected items.
-    auto fontlister = FontLister::get_instance();
     if constexpr (DEBUG_TEXT) {
-        std::cout << "  Old family: " << fontlister->get_font_family() << std::endl;
+        std::cout << "  Old family: " << localfontlister.family << std::endl;
         std::cout << "  New family: " << new_family << std::endl;
-        std::cout << "  Old active: " << fontlister->get_font_family_row() << std::endl;
-        // std::cout << "  New active: " << act->active << std::endl;
     }
-    if (new_family.compare(fontlister->get_font_family()) != 0) {
-        // Changed font-family
 
-        if (_font_family_item->get_active() == -1) {
-            // New font-family, not in document, not on system (could be fallback list)
-            fontlister->insert_font_family(new_family);
-
-            // This just sets a variable in the ComboBoxEntryAction object...
-            // shouldn't we also set the actual active row in the combobox?
-            _font_family_item->set_active(0); // New family is always at top of list.
+    if (new_family.raw() != localfontlister.family) { // changed font-family
+        if (auto const pos = _font_family_item->getSelectedPos()) {
+            localfontlister.setFontFamily(*pos);
+        } else {
+            localfontlister.setFontFamily(_font_family_item->getText().raw());
         }
-
-        fontlister->set_font_family( _font_family_item->get_active() );
         // active text set in sp_text_toolbox_selection_changed()
 
         auto css = sp_repr_css_attr_new();
-        fontlister->fill_css(css);
+        fill_css_from_fontspec(css, localfontlister.getFontspec());
 
         if (mergeDefaultStyle(css)) {
             // If there is a selection, update
@@ -439,14 +521,21 @@ void TextToolbar::fontfamily_value_changed()
         sp_repr_css_attr_unref(css);
     }
 
+    // Adjust icon in entry.
+    // Todo: Disable if picked from list and on system.
+    if (auto const missing = check_comma_separated_text(_font_family_item->getText()); !missing.empty()) {
+        _font_family_item->setIcon(INKSCAPE_ICON("dialog-warning"), Gtk::Entry::IconPosition::SECONDARY);
+        _font_family_item->setIconTooltip(_("Font not found on system: ") + missing, Gtk::Entry::IconPosition::SECONDARY);
+    } else {
+        _font_family_item->setIcon(INKSCAPE_ICON("edit-select-all"), Gtk::Entry::IconPosition::SECONDARY);
+        _font_family_item->setIconTooltip(_("Select all text with this font-family"), Gtk::Entry::IconPosition::SECONDARY);
+    }
+
     // unfreeze
     _freeze = false;
 
-    fontlister->add_document_fonts_at_top(_desktop->getDocument());
-
     if constexpr (DEBUG_TEXT) {
-        std::cout << "sp_text_toolbox_fontfamily_changes: exit"  << std::endl;
-        std::cout << "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM" << std::endl;
+        std::cout << "fontfamily_value_changed: exit"  << std::endl;
         std::cout << std::endl;
     }
 }
@@ -500,17 +589,14 @@ void TextToolbar::fontstyle_value_changed()
     }
     _freeze = true;
 
-    Glib::ustring new_style = _font_style_item->get_active_text();
+    auto const &new_style = _font_style_item->getText();
 
-    auto const fontlister = FontLister::get_instance();
-
-    if (new_style.compare(fontlister->get_font_style()) != 0) {
-
-        fontlister->set_font_style(new_style);
+    if (new_style.raw() != localfontlister.style) {
+        localfontlister.setFontStyle(new_style);
         // active text set in sp_text_toolbox_seletion_changed()
 
         auto css = sp_repr_css_attr_new();
-        fontlister->fill_css(css);
+        fill_css_from_fontspec(css, localfontlister.getFontspec());
 
         if (mergeDefaultStyle(css)) {
             DocumentUndo::done(_desktop->getDocument(), RC_("Undo", "Text: Change font style"), INKSCAPE_ICON("draw-text"));
@@ -1406,11 +1492,10 @@ void TextToolbar::_selectionChanged(Selection *selection) // don't bother to upd
         outside = true;
     }
 
-    auto fontlister = FontLister::get_instance();
-    fontlister->selection_update();
-    // Update font list, but only if widget already created.
-    _font_family_item->set_active_text(fontlister->get_font_family().c_str(), fontlister->get_font_family_row());
-    _font_style_item->set_active_text(fontlister->get_font_style().c_str());
+    localfontlister.selectionUpdate(_desktop);
+    // Update font list.
+    _font_family_item->setText(localfontlister.family);
+    _font_style_item->setText(localfontlister.style);
 
     /*
      * Query from current selection:
@@ -2018,9 +2103,6 @@ void TextToolbar::on_reset_button_pressed()
     auto font_lister = FontLister::get_instance();
     font_lister->init_font_families();
     font_lister->init_default_styles();
-
-    auto document = _desktop->getDocument();
-    font_lister->add_document_fonts_at_top(document);
 }
 
 void TextToolbar::_cursorMoved(Tools::TextTool* tc)

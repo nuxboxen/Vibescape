@@ -19,6 +19,12 @@
 #ifndef INKSCAPE_UI_DIALOG_TEXT_EDIT_H
 #define INKSCAPE_UI_DIALOG_TEXT_EDIT_H
 
+#include <glibmm/refptr.h>              // for RefPtr
+#include <gtk/gtk.h>                    // for GtkEventControllerKey
+
+#include <sigc++/scoped_connection.h>   // for sigc::scoped_connection
+
+#include "libnrtype/font-lister.h"
 #include "ui/dialog/dialog-base.h"      // for DialogBase
 #include "ui/widget/font-variants.h"    // for FontVariants
 #include "util/action-accel.h"          // for ActionAccel
@@ -170,6 +176,7 @@ private:
     Gtk::Label &preview_label;  // Share with variants tab?
 
     std::unique_ptr<FontSelectorInterface> font_list;
+    LocalFontLister localfontlister;
 
     // Tab 2: Text ---------------------- //
     Gtk::TextView *text_view;

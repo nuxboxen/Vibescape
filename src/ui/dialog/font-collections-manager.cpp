@@ -38,6 +38,7 @@ FontCollectionsManager::FontCollectionsManager()
     , _delete_button        (UI::get_widget<Gtk::Button>(builder, "delete_button"))
 {
     _font_selector = Gtk::make_managed<UI::Widget::FontSelector>(false, false);
+    // Fixme: Need to give it a localfontlister, or a lite version with just a list of fonts, no style, no current font/style state.
     _font_list_box.insert_child_after(*_font_selector, _font_count_label);
 
     _collections_box.insert_child_after(_user_font_collections, _buttons_box);
@@ -72,10 +73,10 @@ FontCollectionsManager::FontCollectionsManager()
 void FontCollectionsManager::on_search_entry_changed()
 {
     auto search_txt = _search_entry.get_text();
-    _font_selector->unset_model();
-    Inkscape::FontLister *font_lister = Inkscape::FontLister::get_instance();
+    //_font_selector->unset_model();
+    auto font_lister = Inkscape::FontLister::get_instance();
     font_lister->show_results(search_txt);
-    _font_selector->set_model();
+    //_font_selector->set_model();
     change_font_count_label();
 }
 
@@ -97,9 +98,9 @@ void FontCollectionsManager::on_edit_button_pressed()
 void FontCollectionsManager::on_reset_button_pressed()
 {
     _search_entry.set_text("");
-    Inkscape::FontLister* font_lister = Inkscape::FontLister::get_instance();
+    auto font_lister = Inkscape::FontLister::get_instance();
 
-    if(font_lister->get_font_families_size() == font_lister->get_font_list()->children().size()) {
+    if (font_lister->get_font_families_size() == font_lister->get_font_list()->get_n_items()) {
         // _user_font_collections.populate_collections();
         return;
     }
@@ -107,8 +108,6 @@ void FontCollectionsManager::on_reset_button_pressed()
     Inkscape::FontCollections::get()->clear_selected_collections();
     font_lister->init_font_families();
     font_lister->init_default_styles();
-    SPDocument *document = getDesktop()->getDocument();
-    font_lister->add_document_fonts_at_top(document);
 }
 
 void FontCollectionsManager::change_font_count_label()

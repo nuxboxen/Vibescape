@@ -74,6 +74,7 @@ target_sources(inkscape_base PRIVATE
   sp-tag-use.cpp
   sp-tag.cpp
   sp-text.cpp
+  sp-text-item.cpp
   sp-title.cpp
   sp-tref-reference.cpp
   sp-tref.cpp
@@ -165,6 +166,7 @@ target_sources(inkscape_base PRIVATE
   sp-tag-use.h
   sp-tag-use-reference.h
   sp-text.h
+  sp-text-item.h
   sp-textpath.h
   sp-title.h
   sp-tref-reference.h

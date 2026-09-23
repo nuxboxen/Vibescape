@@ -10,7 +10,6 @@
 
 #include <giomm/liststore.h>
 #include <gtkmm/builder.h>
-#include <gtkmm/comboboxtext.h>
 #include <gtkmm/flowbox.h>
 #include <gtkmm/grid.h>
 #include <gtkmm/gridview.h>
@@ -60,9 +59,7 @@ public:
 
     ~FontList() override = default;
 
-    // no op, not used
-    void set_model() override {};
-    void unset_model() override {};
+    void setDefocusTarget(Inkscape::UI::DefocusTarget *) override;
 
 private:
     void on_map() override;

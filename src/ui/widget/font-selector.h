@@ -31,9 +31,19 @@
 #ifndef INKSCAPE_UI_WIDGET_FONT_SELECTOR_H
 #define INKSCAPE_UI_WIDGET_FONT_SELECTOR_H
 
-#include <gtkmm/comboboxtext.h>
+#include <memory>
+
+#include <glibmm/refptr.h>
+#include <gtkmm/box.h>
+#include <gtkmm/cellrenderertext.h>
+#include <gtkmm/columnview.h>
 #include <gtkmm/frame.h>
+#include <gtkmm/label.h>
+#include <gtkmm/singleselection.h>
 #include <gtkmm/scrolledwindow.h>
+#include <gtkmm/listview.h>
+#include <sigc++/connection.h>
+#include <sigc++/signal.h>
 
 #include "ui/widget/font-selector-interface.h"
 #include "ui/widget/font-size-selector.h"
@@ -46,6 +56,8 @@ class Drag;
 namespace Gtk {
 class DragSource;
 } // namespace Gtk
+
+struct StyleNames;
 
 namespace Inkscape::UI::Widget {
 
@@ -80,16 +92,14 @@ protected:
     // Font family
     Gtk::Frame          family_frame;
     Gtk::ScrolledWindow family_scroll;
-    Gtk::TreeView       family_treeview;
-    Gtk::TreeViewColumn family_treecolumn;
-    Gtk::CellRendererText family_cell;
+    Glib::RefPtr<Gtk::SingleSelection> family_selection;
+    Gtk::ListView       family_listview;
 
     // Font style
     Gtk::Frame          style_frame;
     Gtk::ScrolledWindow style_scroll;
-    Gtk::TreeView       style_treeview;
-    Gtk::TreeViewColumn style_treecolumn;
-    Gtk::CellRendererText style_cell;
+    Glib::RefPtr<Gtk::SingleSelection> style_selection;
+    Gtk::ColumnView     style_columnview;
 
     // Font size
     Gtk::Label          size_label;
@@ -101,8 +111,7 @@ protected:
 
 private:
     // Use font style when listing style names.
-    void style_cell_data_func(Gtk::CellRenderer *renderer,
-                              Gtk::TreeModel::const_iterator const &iter);
+    Glib::ustring get_style_markup(StyleNames const &stylenames);
 
     // Signal handlers
     void on_family_changed();
@@ -118,13 +127,11 @@ private:
     sigc::scoped_connection _idle_connection;
 
     // Variables
-    bool initial = true;
+    LocalFontLister *_localfontlister = nullptr;
 
     // control font variations update and UI element size
     void update_variations(const Glib::ustring& fontspec);
 
-    bool set_cell_markup();
-    void on_realize_list();
     // For drag and drop.
     Glib::RefPtr<Gdk::ContentProvider> on_drag_prepare(double x, double y);
     void on_drag_begin(Gtk::DragSource &source, Glib::RefPtr<Gdk::Drag> const &drag);
@@ -148,7 +155,7 @@ public:
      */
     void update_font ();
     void unset_model() override;
-    void set_model() override;
+    void set_model(Inkscape::LocalFontLister &localfontlister) override;
 
     /**
      * Get fontspec based on current settings. (Does not handle size, yet.)

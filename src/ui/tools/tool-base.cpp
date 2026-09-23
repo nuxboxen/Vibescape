@@ -18,7 +18,9 @@
 #include "ui/tools/tool-base.h"
 
 #include <gdkmm/seat.h>
+#include <gtkmm/entry.h>
 #include <gtkmm/eventcontrollerkey.h>
+#include <gtkmm/spinbutton.h>
 #include <gtkmm/version.h>
 
 #include "actions/actions-tools.h"
@@ -53,9 +55,6 @@
 #include "ui/widget/canvas-grid.h"
 #include "ui/widget/canvas.h"
 #include "ui/widget/desktop-widget.h"
-#include "ui/widget/combo-box-entry-tool-item.h"
-#include <gtkmm/entry.h>
-#include <gtkmm/spinbutton.h>
 #include "ui/widget/events/canvas-event.h"
 #include "ui/widget/events/debug.h"
 #include "ui/widget/generic/spin-button.h"
@@ -147,10 +146,11 @@ static Gtk::Widget* find_first_focusable_input(Gtk::Widget* container) {
         return nullptr;
     }
 
-    if (auto* combo = dynamic_cast<UI::Widget::ComboBoxEntryToolItem*>(container)) {
-        Gtk::Entry* entry = combo->get_entry();
-        return (entry && entry->get_sensitive()) ? entry : nullptr;
-    }
+    // FIXME for EntryDropDown
+    // if (auto* combo = dynamic_cast<UI::Widget::ComboBoxEntryToolItem*>(container)) {
+    //     Gtk::Entry* entry = combo->get_entry();
+    //     return (entry && entry->get_sensitive()) ? entry : nullptr;
+    // }
 
     if (dynamic_cast<Widget::InkSpinButton*>(container) || dynamic_cast<Gtk::Entry*>(container)) {
         return (container->get_focusable() && container->get_sensitive()) ? container : nullptr;

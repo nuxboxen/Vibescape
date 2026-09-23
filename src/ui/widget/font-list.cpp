@@ -1424,6 +1424,11 @@ void FontList::set_current_size(double size)
     _font_size.setSize(size);
 }
 
+void FontList::setDefocusTarget(DefocusTarget *defocus_target)
+{
+  //    _font_size.setDefocusTarget(defocus_target);  FIXME
+}
+
 void FontList::add_font(Glib::ustring const &fontspec, bool select)
 {
     auto scoped = _update.block();

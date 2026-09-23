@@ -28,10 +28,14 @@
  * Released under GNU GPL v2+, read the file 'COPYING' for more information.
  */
 
-#include "object/weakptr.h"
+#include <sigc++/connection.h>
+
 #include "style.h"
 #include "text-editing.h"
 #include "toolbar.h"
+#include "libnrtype/font-lister.h"
+#include "object/sp-item.h"
+#include "object/weakptr.h"
 
 namespace Gtk {
 class Builder;
@@ -48,11 +52,11 @@ class ToolBase;
 class TextTool;
 } // namespace Tools
 namespace Widget {
-class FontSizeSelector;
-class UnitMenu;
-class ComboBoxEntryToolItem;
 class ComboToolItem;
+class EntryDropDown;
+class FontSizeSelector;
 class SpinButton;
+class UnitMenu;
 class UnitTracker;
 } // namespace Widget
 } // namespace UI
@@ -84,10 +88,10 @@ private:
     Gtk::ListBox &_font_collections_list;
     Gtk::Button &_reset_button;
 
-    UI::Widget::ComboBoxEntryToolItem *_font_family_item;
+    UI::Widget::EntryDropDown *_font_family_item;
+    UI::Widget::EntryDropDown *_font_style_item;
     UI::Widget::FontSizeSelector &_font_size_item;
-    UI::Widget::ComboBoxEntryToolItem *_font_style_item;
-    UI::Widget::UnitMenu*_line_height_units_item;
+    UI::Widget::UnitMenu* _line_height_units_item;
     UI::Widget::SpinButton &_line_height_item;
     Gtk::ToggleButton &_superscript_btn;
     Gtk::ToggleButton &_subscript_btn;
@@ -110,6 +114,8 @@ private:
     SPStyle _query_cursor;
     double selection_fontsize;
     int _previous_unit;
+
+    LocalFontLister localfontlister;
 
     sigc::scoped_connection fc_changed_selection;
     sigc::scoped_connection fc_update;

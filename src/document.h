@@ -45,6 +45,7 @@
 
 #include "composite-undo-stack-observer.h"
 
+
 // This variable is introduced with 0.92.1
 // with the introduction of automatic fix 
 // for files detected to have been created 
@@ -76,6 +77,7 @@ class SPObject;
 class SPRoot;
 
 namespace Inkscape {
+    class DocumentFonts;
     class DocumentUndo;
     class Event;
     class EventLog;
@@ -176,11 +178,14 @@ public:
 
     Inkscape::EventLog *get_event_log() { return _event_log.get(); }
 
-    Inkscape::PageManager& getPageManager() { return *_page_manager; }
-    const Inkscape::PageManager& getPageManager() const { return *_page_manager; }
+    Inkscape::PageManager &getPageManager() { return *_page_manager; }
+    Inkscape::PageManager const &getPageManager() const { return *_page_manager; }
 
     Inkscape::Colors::DocumentCMS &getDocumentCMS() { return *_cms_manager; }
-    const Inkscape::Colors::DocumentCMS &getDocumentCMS() const { return *_cms_manager; }
+    Inkscape::Colors::DocumentCMS const &getDocumentCMS() const { return *_cms_manager; }
+
+    Inkscape::DocumentFonts &getDocumentFonts() { return *_document_fonts; }
+    Inkscape::DocumentFonts const &getDocumentFonts() const { return *_document_fonts; }
 
 private:
     void _importDefsNode(SPDocument *source, Inkscape::XML::Node *defs, Inkscape::XML::Node *target_defs);
@@ -188,6 +193,7 @@ private:
 
     std::unique_ptr<Inkscape::PageManager> _page_manager;
     std::unique_ptr<Inkscape::Colors::DocumentCMS> _cms_manager;
+    std::unique_ptr<Inkscape::DocumentFonts> _document_fonts;
 
     std::queue<GQuark> pending_resource_changes;
 
