@@ -230,7 +230,7 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
     _font_family_item->set_warning_cb(&sp_text_toolbox_select_cb);
     _font_family_item->focus_on_click(false);
     _font_family_item->connectChanged([this] { fontfamily_value_changed(); });
-    _font_family_item->setDefocusWidget(this);
+    _font_family_item->setDefocusTarget(this);
 
     get_widget<Gtk::Box>(builder, "font_list_box").append(*_font_family_item);
 
@@ -248,7 +248,7 @@ TextToolbar::TextToolbar(Glib::RefPtr<Gtk::Builder> const &builder)
 
     _font_style_item->connectChanged([this] { fontstyle_value_changed(); });
     _font_style_item->focus_on_click(false);
-    _font_style_item->setDefocusWidget(this);
+    _font_style_item->setDefocusTarget(this);
 
     get_widget<Gtk::Box>(builder, "styles_list_box").append(*_font_style_item);
 
