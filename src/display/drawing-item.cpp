@@ -422,6 +422,16 @@ void DrawingItem::setZOrder(unsigned zorder)
     });
 }
 
+void DrawingItem::shiftFromEnd(unsigned count, unsigned position)
+{
+    unsigned end = _children.size();
+    unsigned start = end - count;
+    auto it_pos   = std::next(_children.begin(), position);
+    auto it_start = std::next(_children.begin(), start);
+    auto it_end   = std::next(_children.begin(), end);
+    _children.splice(it_pos, _children, it_start, it_end);
+}
+
 void DrawingItem::setItemBounds(Geom::OptRect const &bounds)
 {
     defer([=, this] {
