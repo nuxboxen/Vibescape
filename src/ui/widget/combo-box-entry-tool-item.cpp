@@ -30,6 +30,7 @@
 #include <gtkmm/eventcontrollerkey.h>
 
 #include "libnrtype/font-lister.h"
+#include "ui/defocus-target.h"
 #include "ui/icon-names.h"
 
 namespace Inkscape::UI::Widget {
@@ -463,8 +464,9 @@ bool ComboBoxEntryToolItem::match_selected_cb(Gtk::TreeModel::iterator const &it
 
 void ComboBoxEntryToolItem::defocus()
 {
-    if (_focusWidget) {
-        _focusWidget->grab_focus();
+    // move focus away
+    if (_defocus_target) {
+        _defocus_target->onDefocus();
     }
 }
 
