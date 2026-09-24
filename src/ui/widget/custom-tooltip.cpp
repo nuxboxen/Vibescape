@@ -8,6 +8,7 @@
 #include <gtkmm/image.h>
 #include <gtkmm/tooltip.h>
 #include <giomm/themedicon.h>
+#include "ui/icon-names.h"
 
 #include "ui/pack.h"
 
@@ -46,9 +47,12 @@ sp_query_custom_tooltip(Gtk::Widget *widg, int x, int y, bool keyboard_tooltip, 
     label->set_wrap(true);
     label->set_markup(tooltip);
     label->set_max_width_chars(40);
-    if (icon != "") {
-	    Inkscape::UI::pack_start(*box, *Gtk::make_managed<Gtk::Image>(Gio::ThemedIcon::create(icon)), true, true, 2);
-    }
+    if (!icon.empty()) {
+        auto image = Gtk::make_managed<Gtk::Image>();
+        image->set_from_icon_name(INKSCAPE_ICON(icon.c_str()));
+        image->set_pixel_size(50);
+        Inkscape::UI::pack_start(*box, *image, false, false, 4);
+    }        
     Inkscape::UI::pack_start(*box, *label, true, true, 2);
     tooltipw->set_custom(*box);
     box->add_css_class("symbolic");

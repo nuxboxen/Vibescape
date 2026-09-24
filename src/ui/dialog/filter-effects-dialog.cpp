@@ -20,6 +20,7 @@
 #include <utility>
 #include <gdkmm/general.h>
 #include <gdkmm/seat.h>
+#include <glibmm/i18n.h>
 #include <glibmm/main.h>
 #include <glibmm/stringutils.h>
 #include <gtkmm/cssprovider.h>
@@ -1506,6 +1507,25 @@ FilterEffectsDialog::FilterModifier::FilterModifier(FilterEffectsDialog& d, Glib
 
     _list.get_selection()->signal_changed().connect(sigc::mem_fun(*this, &FilterModifier::on_filter_selection_changed));
     _observer->signal_changed().connect([this](auto, auto) {signal_filter_changed().emit();});
+
+    _list.set_has_tooltip(true);
+    _list.signal_query_tooltip().connect([this](int x, int y, bool kbd, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+        Gtk::TreeModel::iterator iter;
+        if (!_list.get_tooltip_context_iter(x, y, kbd, iter) || !iter) {
+            return false;
+        }
+
+        auto row = *iter;
+        SPFilter* filter = row[_columns.filter];
+        if (!filter) return false;
+
+        Glib::ustring filter_name = row[_columns.label];
+        int id = reinterpret_cast<intptr_t>(filter);
+        Glib::ustring icon_name = "dialog-filters";
+        Glib::ustring tooltip_text = Glib::ustring::compose("[%1]", filter_name);
+
+        return sp_query_custom_tooltip(this, x, y, kbd, tooltip, id, tooltip_text, icon_name);
+    }, false);
 }
 
 // Update each filter's sel property based on the current object selection;
@@ -1938,6 +1958,54 @@ FilterEffectsDialog::PrimitiveList::PrimitiveList(FilterEffectsDialog& d)
     _observer->signal_changed().connect([this](auto, auto){signal_primitive_changed().emit();});
     get_selection()->signal_changed().connect(sigc::mem_fun(*this, &PrimitiveList::on_primitive_selection_changed));
     signal_primitive_changed().connect(sigc::mem_fun(*this, &PrimitiveList::queue_draw));
+
+    set_has_tooltip(true);
+    signal_query_tooltip().connect([this](int x, int y, bool kbd, const Glib::RefPtr<Gtk::Tooltip>& tooltip) {
+        Gtk::TreeModel::iterator iter;
+        if (!get_tooltip_context_iter(x, y, kbd, iter) || !iter) {
+            return false;
+        }
+
+        auto row = *iter;
+        SPFilterPrimitive* primitive = row[_columns.primitive];
+        if (!primitive) return false;
+
+        Inkscape::Filters::FilterPrimitiveType type = row[_columns.type_id];
+        int id = static_cast<int>(type);
+        Glib::ustring type_name = FPConverter.get_label(type);
+
+        static const std::map<Inkscape::Filters::FilterPrimitiveType, std::pair<Glib::ustring, Glib::ustring>> primitive_info = {
+            { NR_FILTER_GAUSSIANBLUR,      {"feGaussianBlur-icon", _("Uniformly blurs its input. Commonly used together with Offset to create a drop shadow effect.")} },
+            { NR_FILTER_MORPHOLOGY,        {"feMorphology-icon", _("Provides erode and dilate effects. For single-color objects erode makes the object thinner and dilate makes it thicker.")} },
+            { NR_FILTER_OFFSET,            {"feOffset-icon", _("Offsets the input by an user-defined amount. Commonly used for drop shadow effects.")} },
+            { NR_FILTER_CONVOLVEMATRIX,    {"feConvolveMatrix-icon", _("Performs a convolution on the input image enabling effects like blur, sharpening, embossing and edge detection.")} },
+            { NR_FILTER_DISPLACEMENTMAP,   {"feDisplacementMap-icon", _("Displaces pixels from the first input using the second as a map of displacement intensity. Classical examples are whirl and pinch effects.")} },
+            { NR_FILTER_DROPSHADOW,        {"feDropShadow-icon", _("Creates a drop shadow of the input image. Combines offset, blur, and compositing in a single convenient primitive.")} },
+            { NR_FILTER_TILE,              {"feTile-icon", _("Tiles a region with an input graphic. The source tile is defined by the filter primitive subregion of the input.")} },
+            { NR_FILTER_COMPOSITE,         {"feComposite-icon", _("Composites two images using one of the Porter-Duff blending modes or the arithmetic mode described in SVG standard.")} },
+            { NR_FILTER_BLEND,             {"feBlend-icon", _("Provides image blending modes, such as screen, multiply, darken and lighten.")} },
+            { NR_FILTER_MERGE,             {"feMerge-icon", _("Merges multiple inputs using normal alpha compositing. Equivalent to using several Blend primitives in 'normal' mode or several Composite primitives in 'over' mode.")} },
+            { NR_FILTER_COLORMATRIX,       {"feColorMatrix-icon", _("Modifies pixel colors based on a transformation matrix. Useful for adjusting color hue and saturation.")} },
+            { NR_FILTER_COMPONENTTRANSFER, {"feComponentTransfer-icon", _("Manipulates color components according to particular transfer functions. Useful for brightness and contrast adjustment, color balance, and thresholding.")} },
+            { NR_FILTER_DIFFUSELIGHTING,   {"feDiffuseLighting-icon", _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.")} },
+            { NR_FILTER_SPECULARLIGHTING,  {"feSpecularLighting-icon", _("Creates \"embossed\" shadings.  The input's alpha channel is used to provide depth information: higher opacity areas are raised toward the viewer and lower opacity areas recede away from the viewer.")} },
+            { NR_FILTER_FLOOD,             {"feFlood-icon", _("Fills the region with a given color and opacity. Often used as input to other filters to apply color to a graphic.")} },
+            { NR_FILTER_IMAGE,             {"feImage-icon", _("Fills the region with graphics from an external file or from another portion of the document.")} },
+            { NR_FILTER_TURBULENCE,        {"feTurbulence-icon", _("Renders Perlin noise, which is useful to generate textures such as clouds, fire, smoke, marble or granite.")} },
+        };
+
+        auto it = primitive_info.find(type);
+        if (it != primitive_info.end()) {
+            const auto& [icon_name, description] = it->second;
+            Glib::ustring tooltip_text = Glib::ustring::compose("[%1] %2", type_name, description);
+            return sp_query_custom_tooltip(this, x, y, kbd, tooltip, id, tooltip_text, icon_name);
+        }
+
+        Glib::ustring tooltip_text = Glib::ustring::compose("[%1]", type_name);
+
+        tooltip->set_text(tooltip_text);
+        return true;
+    }, false);
 
     init_text();
 
@@ -2854,12 +2922,17 @@ void FilterEffectsDialog::add_effects(Inkscape::UI::Widget::CompletionPopup& pop
     std::vector<Effect> effects;
     effects.reserve(get_effects().size());
     for (auto&& effect : get_effects()) {
+        Glib::ustring label = _(FPConverter.get_label(effect.first).c_str());
+        Glib::ustring tooltip = effect.second.tooltip;
+        if (tooltip != label) {
+            tooltip = Glib::ustring::compose("[%1] %2", label, tooltip);
+        }
         effects.push_back({
             effect.first,
-            _(FPConverter.get_label(effect.first).c_str()),
+            label,
             effect.second.category,
             effect.second.icon_name,
-            effect.second.tooltip
+            tooltip
         });
     }
     std::sort(begin(effects), end(effects), [=](auto&& a, auto&& b) {
@@ -2880,6 +2953,7 @@ void FilterEffectsDialog::add_effects(Inkscape::UI::Widget::CompletionPopup& pop
                                                effect.icon_name, true, true,
                                                [=, this]{ add_filter_primitive(type); });
         auto const id = static_cast<int>(type);
+        menuitem->set_has_tooltip(true);
         menuitem->signal_query_tooltip().connect([=, this] (int x, int y, bool kbd, const Glib::RefPtr<Gtk::Tooltip>& tooltipw) {
             return sp_query_custom_tooltip(this, x, y, kbd, tooltipw, id, effect.tooltip, effect.icon_name);
         }, false); // before
@@ -3095,7 +3169,10 @@ FilterEffectsDialog::FilterEffectsDialog()
     update_settings_view();
 }
 
-FilterEffectsDialog::~FilterEffectsDialog() = default;
+FilterEffectsDialog::~FilterEffectsDialog()
+{
+    sp_clear_custom_tooltip();
+}
 
 void FilterEffectsDialog::documentReplaced()
 {
