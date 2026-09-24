@@ -1457,6 +1457,12 @@ unsigned get_latin_keyval_impl(unsigned const event_keyval, unsigned const event
     if (consumed_modifiers) {
         *consumed_modifiers = modifiers;
     }
+    // gdk_display_translate_key does not have information on whether numlock was active during the press.
+    // So if numlock is on, we'll get the wrong keyval as a result (which is not a latin layout difference, it's just
+    // how numlock & numpads work). So just skip translating numpad keys.
+    if (keyval >= GDK_KEY_KP_Space && keyval <= GDK_KEY_KP_9) {
+        keyval = event_keyval;
+    }
 #ifndef __APPLE__
     // on macOS <option> key inserts special characters and below condition fires all the time
     if (keyval != event_keyval) {
