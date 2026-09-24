@@ -23,7 +23,7 @@ Inkscape's main motivations are to provide the Open Source community
 with a fully W3C compliant XML, SVG, and CSS2 drawing tool emphasizing a
 lightweight core with powerful features added as extensions, and the
 establishment of a friendly, open, community-oriented development
-processes.
+process.
 
 [![build status](https://gitlab.com/inkscape/inkscape/badges/master/pipeline.svg)](https://gitlab.com/inkscape/inkscape/-/commits/master)
 
