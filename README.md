@@ -1,35 +1,36 @@
-Inkscape. Draw Freely.
-======================
+# Vibescape
 
-[https://inkscape.org/](https://inkscape.org/)
+Vibescape is a personal development fork of [Inkscape](https://inkscape.org/), hosted on GitHub under [nuxboxen](https://github.com/nuxboxen).
 
-Inkscape is a Free and open source vector graphics editor. It offers a rich set
-of features and is widely used for both artistic and technical illustrations
-such as cartoons, clip art, logos, typography, diagramming and flowcharting.
-It uses vector graphics to allow for sharp printouts and renderings at
-unlimited resolution and is not bound to a fixed number of pixels like raster
-graphics. Inkscape uses the standardized SVG file format as its main format,
-which is supported by many other applications including web browsers.
+The initial import preserves upstream Git history, branches, tags, licenses, and credits. All 13 recursive source submodules are hosted in companion `nuxboxen/Vibescape-*` repositories.
 
-SVG Features include basic shapes, paths, text, markers, clones,
-alpha blending, transforms, gradients, and grouping.
-In addition, Inkscape supports Creative Commons meta-data, node-editing,
-layers, complex path operations, text-on-path, and SVG XML editing.
-It also imports several formats like EPS, Postscript,
-JPEG, PNG, BMP, and TIFF and exports PNG as well as multiple vector-based
-formats.
+## Get the complete source
 
-Inkscape's main motivations are to provide the Open Source community
-with a fully W3C compliant XML, SVG, and CSS2 drawing tool emphasizing a
-lightweight core with powerful features added as extensions, and the
-establishment of a friendly, open, community-oriented development
-processes.
+```sh
+git clone --recurse-submodules https://github.com/nuxboxen/Vibescape.git
+cd Vibescape
+```
 
-[![build status](https://gitlab.com/inkscape/inkscape/badges/master/pipeline.svg)](https://gitlab.com/inkscape/inkscape/-/commits/master)
+For an existing checkout:
 
-## More information
+```sh
+git submodule sync --recursive
+git submodule update --init --recursive
+```
 
-- [Download](https://inkscape.org/download)
-- [User Documentation](https://inkscape.org/learn/)
-- [Developer Documentation](doc/readme.md)
-- [Report Bugs](https://inkscape.org/contribute/report-bugs/)
+See [Vibescape setup and dependency provenance](VIBESCAPE.md) for the exact source snapshot, dependency inventory, platform build requirements, and upstream update workflow.
+
+## Development status
+
+This is a source fork of Inkscape's development branch. Application names, artwork, and executable names still follow upstream Inkscape. No Vibescape binary release or build validation is implied by this import.
+
+## Inkscape and licensing
+
+Inkscape is a free and open source SVG vector graphics editor for artistic and technical illustrations, including logos, typography, diagrams, and drawings.
+
+Original authorship and licensing are retained in [AUTHORS](AUTHORS), [COPYING](COPYING), and [LICENSES](LICENSES/). Consult the licenses of individual files and dependency repositories.
+
+- [Upstream source](https://gitlab.com/inkscape/inkscape)
+- [User documentation](https://inkscape.org/learn/)
+- [Developer documentation](doc/readme.md)
+- [Vibescape issues](https://github.com/nuxboxen/Vibescape/issues)

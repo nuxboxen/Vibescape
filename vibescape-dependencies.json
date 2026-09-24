@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "project": "Vibescape",
+  "upstream_url": "https://gitlab.com/inkscape/inkscape.git",
+  "upstream_commit": "02fb211a6c4065c770c7bd01e58c15cfaf69f4f8",
+  "import_date_utc": "2026-09-24",
+  "dependency_policy": "All recursive Git submodules are mirrored under nuxboxen. Extensions differs only in .gitmodules URLs. Platform and package-manager dependencies remain external.",
+  "dependencies": [
+    {
+      "path": "share/extensions",
+      "upstream_url": "https://gitlab.com/inkscape/extensions.git",
+      "upstream_commit": "87ece23a2fac1a8174d93e35354b84e9465f57e1",
+      "github_url": "https://github.com/nuxboxen/Vibescape-extensions.git",
+      "checkout_commit": "c6442355c0fa92ea6ccf1701b3e5b86278296725"
+    },
+    {
+      "path": "src/3rdparty/2geom",
+      "upstream_url": "https://gitlab.com/inkscape/lib2geom.git",
+      "upstream_commit": "c7d8378ccc109bdb2ed30f0c8407725e93ffdd9b",
+      "github_url": "https://github.com/nuxboxen/Vibescape-lib2geom.git",
+      "checkout_commit": "c7d8378ccc109bdb2ed30f0c8407725e93ffdd9b"
+    },
+    {
+      "path": "share/themes",
+      "upstream_url": "https://gitlab.com/inkscape/themes.git",
+      "upstream_commit": "a8a8375fbe8672bb1a273be7aa32c06564936e29",
+      "github_url": "https://github.com/nuxboxen/Vibescape-themes.git",
+      "checkout_commit": "a8a8375fbe8672bb1a273be7aa32c06564936e29"
+    },
+    {
+      "path": "src/3rdparty/libcroco",
+      "upstream_url": "https://gitlab.com/inkscape/libcroco.git",
+      "upstream_commit": "d851af79660943cb8b6feaa9c7cc9d39eb3b4686",
+      "github_url": "https://github.com/nuxboxen/Vibescape-libcroco.git",
+      "checkout_commit": "d851af79660943cb8b6feaa9c7cc9d39eb3b4686"
+    },
+    {
+      "path": "po",
+      "upstream_url": "https://gitlab.com/inkscape/translations.git",
+      "upstream_commit": "01264328bacc922634ce790a4a2a6bf3608ca45c",
+      "github_url": "https://github.com/nuxboxen/Vibescape-translations.git",
+      "checkout_commit": "01264328bacc922634ce790a4a2a6bf3608ca45c"
+    },
+    {
+      "path": "src/3rdparty/libdepixelize",
+      "upstream_url": "https://gitlab.com/inkscape/devel/libdepixelize.git",
+      "upstream_commit": "73b07a45f01cf7c4b179d1e65cef22609e000419",
+      "github_url": "https://github.com/nuxboxen/Vibescape-libdepixelize.git",
+      "checkout_commit": "73b07a45f01cf7c4b179d1e65cef22609e000419"
+    },
+    {
+      "path": "src/3rdparty/libuemf",
+      "upstream_url": "https://gitlab.com/inkscape/devel/libuemf.git",
+      "upstream_commit": "71aba3710b4548bd6df7b7bddcd17096a813efa5",
+      "github_url": "https://github.com/nuxboxen/Vibescape-libuemf.git",
+      "checkout_commit": "71aba3710b4548bd6df7b7bddcd17096a813efa5"
+    },
+    {
+      "path": "src/3rdparty/capypdf",
+      "upstream_url": "https://github.com/jpakkane/capypdf",
+      "upstream_commit": "d789f48b43518bcd190e9d845c943e3978014f61",
+      "github_url": "https://github.com/nuxboxen/Vibescape-capypdf.git",
+      "checkout_commit": "d789f48b43518bcd190e9d845c943e3978014f61"
+    },
+    {
+      "path": "share/extensions/other/gcodetools",
+      "upstream_url": "https://gitlab.com/inkscape/extras/extensions-gcodetools.git",
+      "upstream_commit": "f799a9ac8707cb08f2b04602c22a12c6d7acb9c7",
+      "github_url": "https://github.com/nuxboxen/Vibescape-extensions-gcodetools.git",
+      "checkout_commit": "f799a9ac8707cb08f2b04602c22a12c6d7acb9c7"
+    },
+    {
+      "path": "share/extensions/other/inkman",
+      "upstream_url": "https://gitlab.com/inkscape/extras/extension-manager.git",
+      "upstream_commit": "267734e94609fe9041a3c69da6430e7a90b8cd6f",
+      "github_url": "https://github.com/nuxboxen/Vibescape-extension-manager.git",
+      "checkout_commit": "267734e94609fe9041a3c69da6430e7a90b8cd6f"
+    },
+    {
+      "path": "share/extensions/other/clipart",
+      "upstream_url": "https://gitlab.com/inkscape/extras/inkscape-import-clipart.git",
+      "upstream_commit": "8d2948ce2fe82b195fec99f909049a8fdd64298e",
+      "github_url": "https://github.com/nuxboxen/Vibescape-inkscape-import-clipart.git",
+      "checkout_commit": "8d2948ce2fe82b195fec99f909049a8fdd64298e"
+    },
+    {
+      "path": "share/extensions/other/extension-xaml",
+      "upstream_url": "https://gitlab.com/inkscape/extras/extension-xaml.git",
+      "upstream_commit": "3a16aa7372c96559a6af918f54e096dc5de16081",
+      "github_url": "https://github.com/nuxboxen/Vibescape-extension-xaml.git",
+      "checkout_commit": "3a16aa7372c96559a6af918f54e096dc5de16081"
+    },
+    {
+      "path": "share/extensions/other/extension-afdesign",
+      "upstream_url": "https://gitlab.com/inkscape/extras/extension-afdesign.git",
+      "upstream_commit": "b2288b5f371685161ff87b70788a5cddccf7f4a8",
+      "github_url": "https://github.com/nuxboxen/Vibescape-extension-afdesign.git",
+      "checkout_commit": "b2288b5f371685161ff87b70788a5cddccf7f4a8"
+    }
+  ]
+}
