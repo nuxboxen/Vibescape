@@ -16,6 +16,7 @@ using namespace Inkscape::Colors;
 
 static std::string cmyk_filename = INKSCAPE_TESTS_DIR "/data/colors/default_cmyk.icc";
 
+const std::shared_ptr<Space::AnySpace> int_rgb; // Delibrately empty for surface memory ARGB32
 const std::shared_ptr<Space::AnySpace> alpha = Manager::get().find(Space::Type::Alpha);
 const std::shared_ptr<Space::AnySpace> gray = Manager::get().find(Space::Type::Gray);
 const std::shared_ptr<Space::AnySpace> rgb = Manager::get().find(Space::Type::RGB);

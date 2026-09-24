@@ -38,6 +38,7 @@ class Surface;
 Cairo::Matrix geom_to_cairo(const Geom::Affine &affine);
 Cairo::RectangleInt geom_to_cairo(Geom::IntRect const &rect);
 Geom::IntRect cairo_to_geom(const Cairo::RectangleInt &rect);
+std::vector<Geom::IntRect> cairo_to_geom(const Cairo::Region &region);
 Geom::Affine rect_to_matrix(Geom::OptRect const &bbox);
 Geom::Affine viewbox_matrix(Geom::Affine const &m, Geom::OptRect const &rect);
 

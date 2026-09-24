@@ -229,7 +229,8 @@ protected:
     DrawingPattern *_fill_pattern;
     DrawingPattern *_stroke_pattern;
     std::unique_ptr<DrawingFilter::Filter> _filter;
-    std::unique_ptr<CacheData> _cache;
+    bool _is_cached = false;
+    mutable std::shared_ptr<SurfaceCache> _cache;
     int _update_complexity = 0;
     bool _contains_unisolated_blend : 1;
 

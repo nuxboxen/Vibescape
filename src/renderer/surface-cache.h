@@ -30,21 +30,28 @@ public:
         : Surface(area.dimensions(), device_scale, space)
         , _origin(area.min())
         , _pending_area(area)
-        , _clean_region(cairo_region_create())
+        , _clean_region(cairo_region_create(), true)
     {}
 
     void markDirty(Geom::IntRect const &area = Geom::IntRect::infinite());
     void markClean(Geom::IntRect const &area = Geom::IntRect::infinite());
     void scheduleTransform(Geom::IntRect const &new_area, Geom::Affine const &trans);
     void prepare();
+
+    void paintToCache(Surface const &src, Geom::IntRect const &carea);
     void paintFromCache(Context &dc, Geom::OptIntRect &area, bool is_filter);
 
     auto cacheArea() const { return Geom::IntRect::from_xywh(_origin, dimensions()); }
+    auto getLock() const { return std::unique_lock(_mutables); }
+
+    Cairo::RefPtr<Cairo::Region> getCleanRegionWithin(Geom::OptIntRect &area) const;
 private:
     Geom::IntPoint _origin;
     Geom::IntRect _pending_area;
     Geom::Affine _pending_transform;
     Cairo::Region _clean_region;
+
+    mutable std::mutex _mutables;
 };
 
 } // namespace Inkscape::Renderer

@@ -23,12 +23,6 @@ namespace Inkscape::Renderer {
 class DrawingItem;
 class SurfaceCache;
 
-struct CacheData
-{
-    mutable std::mutex mutables;
-    mutable std::shared_ptr<SurfaceCache> surface;
-};
-
 struct CacheRecord : boost::totally_ordered<CacheRecord>
 {
     bool operator<(CacheRecord const &other) const { return score < other.score; }

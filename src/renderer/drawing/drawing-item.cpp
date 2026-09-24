@@ -274,9 +274,10 @@ void DrawingItem::_setCached(bool cached, bool persistent)
     }
 
     if (cached) {
-        _cache = std::make_unique<CacheData>();
+        _is_cached = true;
         _drawing._cached_items.insert(this);
     } else {
+        _is_cached = false;
         _cache.reset();
         _drawing._cached_items.erase(this);
     }
@@ -488,8 +489,8 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
     if (totally_invalidated) {
         // Perform work that would have been done by our call to _markForRendering(),
         // had it not been overshadowed by a totally-invalidating node.
-        if (_cache && _cache->surface) {
-            _cache->surface->markDirty();
+        if (_cache) {
+            _cache->markDirty();
         }
         _dropPatternCache();
     }
@@ -599,11 +600,11 @@ void DrawingItem::update(Geom::IntRect const &area, UpdateContext const &ctx, un
          * after the update the item can have its caching turned off,
          * e.g. because its filter was removed. This way we avoid temporarily
          * using more memory than the cache budget */
-        if (_cache && _cache->surface) {
+        if (_cache) {
             Geom::OptIntRect cl = _cacheRect();
             if (_visible && cl && _has_cache_iterator) { // never create cache for invisible items
                 // this takes care of invalidation on transform
-                _cache->surface->scheduleTransform(*cl, ctm_change);
+                _cache->scheduleTransform(*cl, ctm_change);
             } else {
                 // Destroy cache for this item - outside of canvas or invisible.
                 // The opposite transition (invisible -> visible or object
@@ -701,16 +702,16 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
     std::unique_lock<std::mutex> lock;
 
     // Render from cache if possible, unless requested not to (hatches).
-    if (_cache && !(flags & RENDER_BYPASS_CACHE)) {
-        lock = std::unique_lock(_cache->mutables);
+    if (_is_cached && !(flags & RENDER_BYPASS_CACHE)) {
+        if (_cache && _cache->getColorSpace() == target_space) {
+            lock = _cache->getLock();
 
-        if (_cache->surface && _cache->surface->getColorSpace() == target_space) {
-            if (_cache->surface->getDeviceScale() != device_scale) {
-                _cache->surface->markDirty();
+            if (_cache->getDeviceScale() != device_scale) {
+                _cache->markDirty();
             }
-            _cache->surface->prepare();
+            _cache->prepare();
             dc.setOperator(_blend_mode);
-            _cache->surface->paintFromCache(dc, carea, forcecache);
+            _cache->paintFromCache(dc, carea, forcecache);
             // carea contains everything still dirty, and being empty means it's a perfect cache
             if (!carea) {
                 dc.resetSource(0);
@@ -723,14 +724,12 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
             Geom::OptIntRect cl = _cacheRect();
             if (!cl)
                 cl = carea;
-            _cache->surface = std::make_shared<SurfaceCache>(*cl, device_scale, target_space);
+            _cache = std::make_shared<SurfaceCache>(*cl, device_scale, target_space);
+            lock = _cache->getLock();
         }
-
         if (!forcecache) {
             lock.unlock(); // Only hold the lock for the full duration of rendering for filters.
         }
-    } else {
-        // if our caching was turned off after the last update, it was already deleted in setCached()
     }
 
 
@@ -746,7 +745,7 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
         || _isolation == SP_CSS_ISOLATION_ISOLATE // 6. it is isolated
         || (_child_type == ChildType::ROOT && isolate_root) // 7. it is the root and needs isolation
         || (parent_space != target_space)         // 9. different rendering color spaces
-        || (bool)_cache                           // 8. it is to be cached
+        || (bool)_is_cached                       // 8. it is to be cached
         ;
 
     auto antialias = rc.antialiasing_override.value_or(_antialias);
@@ -895,32 +894,18 @@ unsigned DrawingItem::render(Context &dc, DrawingOptions &rc, Geom::IntRect cons
             lock.lock(); // Only hold the lock for the full duration of rendering for filters.
         }
         assert(lock);
-        assert(_cache->surface);
-
-        auto cachect = Context(*_cache->surface);
-        cachect.rectangle(*carea);
-        cachect.set_operator(Cairo::Context::Operator::SOURCE);
-        cachect.setSource(*intermediate);
-        cachect.fill();
-        _cache->surface->markClean(*carea);
+        _cache->paintToCache(*intermediate, *carea);
     }
 
-    dc.save(); // Prevent Translate from accumulating
-    dc.translate(Geom::Translate(carea->min()));
-    dc.rectangle(Geom::Rect::from_xywh({0, 0}, carea->dimensions()));
-
-    dc.setSource(*intermediate);
+    dc.rectangle(*carea);
+    dc.setSource(*intermediate, carea->min().x(), carea->min().y());
 
     // 7. Render blend mode
     dc.setOperator(_blend_mode);
     dc.fill();
     dc.resetSource(0);
-    dc.restore();
 
     // Web isolation only works if parent doesn't have transform
-
-    // the call above is to clear a ref on the intermediate surface held by dc
-
     return render_result;
 }
 
@@ -1096,8 +1081,8 @@ void DrawingItem::_markForRendering()
         if (i != this && i->_filter) {
             i->_filter->area_enlarge(*dirty, i->ctm());
         }
-        if (i->_cache && i->_cache->surface) {
-            i->_cache->surface->markDirty(*dirty);
+        if (i->_cache) {
+            i->_cache->markDirty(*dirty);
         }
         i->_dropPatternCache();
         if (i->_background_accumulate) {
@@ -1116,10 +1101,10 @@ void DrawingItem::_invalidateFilterBackground(Geom::IntRect const &area)
 {
     if (!_drawbox.intersects(area)) return;
 
-    if (_cache && _cache->surface && _filter && (
+    if (_cache && _filter && (
                 _filter->uses_input(DrawingFilter::SLOT_BACKGROUND_IMAGE)
              || _filter->uses_input(DrawingFilter::SLOT_BACKGROUND_ALPHA))) {
-        _cache->surface->markDirty(area);
+        _cache->markDirty(area);
     }
 
     for (auto & i : _children) {

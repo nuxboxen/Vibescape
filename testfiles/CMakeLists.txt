@@ -226,6 +226,7 @@ add_unit_tests(TEST_SOURCES
                             "renderer/context-pattern-test.cpp"
                             "renderer/pixel-access-test.cpp"
                             "renderer/pixel-filter-*-test.cpp"
+                            "renderer/surface-cache-test.cpp"
                             "renderer/surface-filter-*-test.cpp"
                             "renderer/surface-test.cpp"
                     ENVIRONMENT "FONTCONFIG_FILE=${CMAKE_CURRENT_SOURCE_DIR}/rendering_tests/fonts/geomtest.conf"

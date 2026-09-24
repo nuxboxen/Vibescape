@@ -44,6 +44,15 @@ Geom::IntRect cairo_to_geom(const Cairo::RectangleInt &rect)
     return Geom::IntRect::from_xywh(rect.x, rect.y, rect.width, rect.height);
 }
 
+std::vector<Geom::IntRect> cairo_to_geom(const Cairo::Region &region)
+{
+    std::vector<Geom::IntRect> ret;
+    for (int i = 0; i < region.get_num_rectangles(); i++) {
+        ret.push_back(cairo_to_geom(region.get_rectangle(i)));
+    }
+    return ret;
+}
+
 Geom::Affine rect_to_matrix(Geom::OptRect const &bbox)
 {
     return bbox ? Geom::Affine(bbox->width(), 0, 0, bbox->height(), bbox->left(), bbox->top()) : Geom::identity();
