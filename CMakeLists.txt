@@ -196,6 +196,7 @@ add_subdirectory(share)
 
 if(WIN32)
   include(CMakeScripts/InstallMSYS2.cmake)
+  include(CMakeScripts/VibescapeWindows.cmake)
 endif()
 
 # -----------------------------------------------------------------------------

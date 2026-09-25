@@ -53,7 +53,7 @@ function(list_files_pacman package_name file_list)
     # use pacman to list all files/folders installed by the package
     execute_process(
         COMMAND pacman -Ql ${MINGW_PACKAGE_PREFIX}-${package_name}
-        OUTPUT_FILE list_files_pacman_temp.txt
+        OUTPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/list_files_pacman_temp.txt"
         RESULT_VARIABLE res
         ERROR_VARIABLE err
     )
@@ -65,7 +65,7 @@ function(list_files_pacman package_name file_list)
         COMMAND sed -e 's/^${MINGW_PACKAGE_PREFIX}-${package_name} //' # remove package name
         COMMAND sed -e 's/^\\/${MINGW_PREFIX}\\///' # remove root path
         COMMAND tr '\n' '\;' # finally replace newlines with semicolon
-        INPUT_FILE list_files_pacman_temp.txt
+        INPUT_FILE "${CMAKE_CURRENT_BINARY_DIR}/list_files_pacman_temp.txt"
         OUTPUT_VARIABLE out
         RESULT_VARIABLE res
         ERROR_VARIABLE err
