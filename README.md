@@ -74,6 +74,12 @@ an assessment of the security of official Inkscape releases.
 This is experimental development work. Build results and documentation describe
 what we have tried, without claiming a completed security review or release readiness.
 
+## Interface layout
+
+The Object Properties panel places **Description** above **Selection**, keeping
+Title, Description, and ID together at the top. The section opens by default and
+remembers your choice when you collapse or expand it.
+
 ## Source and development documentation
 
 Start by reading the [security guidance above](#security-and-running-code).

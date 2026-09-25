@@ -134,7 +134,7 @@ private:
     Gtk::TextView& _obj_description;
     Gtk::Entry& _obj_label;
     Gtk::Button& _locked;
-    Pref<bool> _name_props_visibility = {dlg_pref_path + "/options/show_name_props"};
+    Pref<bool> _name_props_visibility = {dlg_pref_path + "/options/show_name_props", true};
     Gtk::Button* _inter_toggle = nullptr;
     Widget::WidgetGroup _inter_group;
     std::unique_ptr<ObjectProperties> _obj_interactivity;

@@ -830,7 +830,7 @@ void details::AttributesPanel::update_panel(SPObject* object, SPDesktop* desktop
             update_size_location();
         }
         else {
-            // "Selection" at the top (a label)
+            // "Selection" object label
             update_label(object, desktop ? desktop->getSelection() : nullptr);
             // update object's lock state
             update_lock(object);
@@ -1121,6 +1121,7 @@ void details::AttributesPanel::add_object_label() {
 class ImagePanel : public details::AttributesPanel {
 public:
     ImagePanel() {
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -1132,7 +1133,6 @@ public:
         Widget::reparent_properties(_panel->get_main(), _grid, true, false);
         add_filters();
         // no LPEs work on image currently, so no path effect section here
-        add_name_properties();
         add_interactivity_properties();
     }
     ~ImagePanel() override = default;
@@ -1319,6 +1319,7 @@ public:
             }
         });
 
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -1327,7 +1328,6 @@ public:
         reparent_properties(get_widget<Gtk::Grid>(builder, "rect-main"), _grid, true, false);
         add_filters();
         add_lpes();
-        add_name_properties();
         add_interactivity_properties();
     }
 
@@ -1463,6 +1463,7 @@ public:
             }
         });
 
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -1471,7 +1472,6 @@ public:
         reparent_properties(get_widget<Gtk::Grid>(builder, "ellipse-main"), _grid, true, false);
         add_filters();
         add_lpes();
-        add_name_properties();
         add_interactivity_properties();
     }
 
@@ -1594,6 +1594,7 @@ public:
             });
         });
 
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -1613,7 +1614,6 @@ public:
 
         add_filters();
         add_lpes();
-        add_name_properties();
         add_interactivity_properties();
     }
 
@@ -1761,6 +1761,7 @@ auto paint_to_item(const PaintKey& paint) {
 class TextPanel : public details::AttributesPanel {
 public:
     TextPanel(Glib::RefPtr<Gtk::Builder> builder) {
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -1768,7 +1769,6 @@ public:
         add_fill_and_stroke();
         _grid.add_section_divider();
         add_filters(false);
-        add_name_properties();
         add_interactivity_properties();
     }
 
@@ -1798,6 +1798,7 @@ public:
         _info(get_widget<Gtk::Label>(builder, "path-info")),
         _data(_svgd_edit->getTextView())
     {
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -1810,7 +1811,6 @@ public:
 
         add_filters(false);
         add_lpes();
-        add_name_properties();
         add_interactivity_properties();
 
         auto pref_path = details::dlg_pref_path + "path-panel/";
@@ -2047,6 +2047,7 @@ private:
 class GroupPanel : public details::AttributesPanel {
 public:
     GroupPanel(Glib::RefPtr<Gtk::Builder> builder) {
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -2080,7 +2081,6 @@ if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
 }
         add_filters();
         add_lpes();
-        add_name_properties();
         add_interactivity_properties();
     }
 
@@ -2118,6 +2118,7 @@ private:
 class ClonePanel : public details::AttributesPanel {
 public:
     ClonePanel(Glib::RefPtr<Gtk::Builder> builder) {
+        add_name_properties();
         add_object_label();
         add_size_properties();
         _grid.add_gap();
@@ -2169,7 +2170,6 @@ if constexpr (INCLUDE_EXPERIMENTAL_PANELS) {
         add_filters();
         //TODO: commented out for now; clones need special treatment (clone original lpe?)
         // add_lpes(true);
-        add_name_properties();
         add_interactivity_properties();
     }
 
