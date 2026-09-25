@@ -76,6 +76,10 @@ what we have tried, without claiming a completed security review or release read
 
 ## Interface layout
 
+**Edit > Keyboard Shortcuts...**, just above **Preferences**, opens the existing
+shortcut editor directly. You can also reach it through
+**Preferences > Interface > Keyboard Shortcuts**.
+
 The Object Properties panel places **Description** above **Selection**, keeping
 Title, Description, and ID together at the top. The section opens by default and
 remembers your choice when you collapse or expand it.

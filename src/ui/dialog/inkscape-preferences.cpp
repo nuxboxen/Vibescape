@@ -4081,7 +4081,11 @@ void InkscapePreferences::on_pagelist_selection_changed()
 // Show page indicated in preferences file.
 void InkscapePreferences::showPage()
 {
+    auto prefs = Inkscape::Preferences::get();
+    auto const page = prefs->getInt("/dialogs/preferences/page", 0);
     _search.set_text("");
+    // Clearing a search selects its first result; preserve the requested destination.
+    prefs->setInt("/dialogs/preferences/page", page);
     _page_list.get_model()->foreach_iter(sigc::mem_fun(*this, &InkscapePreferences::matchPage));
 }
 

@@ -21,9 +21,12 @@
 
 #include "inkscape-application.h"
 #include "inkscape-window.h"
+#include "preferences.h"
 
 #include "ui/dialog/dialog-container.h"
 #include "ui/dialog/dialog-data.h"
+#include "ui/dialog/dialog-manager.h"
+#include "ui/dialog/inkscape-preferences.h"
 
 // Note the "AttrDialog" is now part of the "XMLDialog" and the "Style" dialog is part of the "Selectors" dialog.
 // Also note that the "AttrDialog" does not correspond to SP_VERB_DIALOG_ATTR!!!!! (That would be the "ObjectAttributes" dialog.)
@@ -60,6 +63,7 @@ static const std::vector<std::vector<Glib::ustring>> raw_data_dialogs = {
     {"win.dialog-open('Transform')",          N_("Open Transform"),            SECTION,  N_("Precisely control objects' transformations")                                             },
     {"win.dialog-open('UndoHistory')",        N_("Open Undo History"),         SECTION,  N_("Undo History")                                                                           },
     {"win.dialog-open('XMLEditor')",          N_("Open XML Editor"),           SECTION,  N_("View and edit the XML tree of the document")                                             },
+    {"win.preferences-keyboard-shortcuts",    N_("Open Keyboard Shortcuts"),   SECTION,  N_("Edit keyboard shortcuts") },
     {"app.preferences",                       N_("Open Preferences"),          SECTION,  N_("Edit global Inkscape preferences")                                                       },
 #if WITH_LIBSPELLING
     {"win.dialog-open('Spellcheck')",         N_("Open Spellcheck"),           SECTION,  N_("Check spelling of text in document")                                                     },
@@ -101,6 +105,30 @@ dialog_open(const Glib::VariantBase& value, InkscapeWindow *win)
 
     Inkscape::UI::Dialog::DialogContainer *container = dt->getContainer();
     container->new_dialog(dialog);
+}
+
+/**
+ * Open the existing Preferences dialog directly at Keyboard Shortcuts.
+ */
+static void preferences_keyboard_shortcuts(InkscapeWindow *win)
+{
+    auto desktop = win ? win->get_desktop() : nullptr;
+    if (!desktop) {
+        show_output("preferences_keyboard_shortcuts: no desktop!");
+        return;
+    }
+
+    Inkscape::Preferences::get()->setInt("/dialogs/preferences/page", PREFS_PAGE_UI_KEYBOARD_SHORTCUTS);
+    auto container = desktop->getContainer();
+    container->new_dialog("Preferences");
+
+    auto dialog = container->get_dialog("Preferences");
+    if (!dialog) {
+        dialog = Inkscape::UI::Dialog::DialogManager::singleton().find_floating_dialog("Preferences");
+    }
+    if (auto preferences = dynamic_cast<Inkscape::UI::Dialog::InkscapePreferences *>(dialog)) {
+        preferences->showPage();
+    }
 }
 
 /**
@@ -147,6 +175,8 @@ void add_actions_dialogs(InkscapeWindow *win)
     win->add_action_with_parameter( "dialog-open",  String, sigc::bind(sigc::ptr_fun(&dialog_open),   win));
     win->add_action(                "dialog-toggle",        sigc::bind(sigc::ptr_fun(&dialog_toggle), win));
     // clang-format on
+
+    win->add_action("preferences-keyboard-shortcuts", sigc::bind(sigc::ptr_fun(&preferences_keyboard_shortcuts), win));
 
     // macOS automatically uses app.preferences in the application menu
     auto gapp = win->get_application();
