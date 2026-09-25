@@ -1,5 +1,13 @@
 # Vibescape source and dependencies
 
+## Scope and safety
+
+This is a personal learning fork. We do not plan to distribute prebuilt Vibescape
+binaries, installers, or binary release archives. Read the
+[project scope and security guidance](README.md#security-and-running-code) before
+using any checkout, setup, or build commands. We have not audited this fork and
+cannot establish that it is safe to build or run.
+
 ## Initial import
 
 - Date: 2026-09-24 (UTC)
@@ -12,7 +20,7 @@ The repositories retain upstream commit history, branches, tags, licenses, and a
 
 ## Source dependency inventory
 
-All eight direct submodules and all five nested extension submodules are mirrored under the same GitHub account. The default Vibescape checkout resolves every source submodule from those GitHub repositories.
+All eight direct submodules and all five nested extension submodules are mirrored under the same GitHub account. The current Vibescape development branch resolves every source submodule from those GitHub repositories.
 
 | Checkout path | GitHub repository | Original pinned commit |
 | --- | --- | --- |
@@ -36,8 +44,10 @@ Historical branches and tags remain as imported, including their historical upst
 
 ## Clone and update the complete source
 
+The integrated development branch is `master`. The explicit branch below avoids selecting an imported historical branch through the repository default.
+
 ```sh
-git clone --recurse-submodules https://github.com/nuxboxen/Vibescape.git
+git clone --branch master --recurse-submodules https://github.com/nuxboxen/Vibescape.git
 cd Vibescape
 git submodule status --recursive
 ```
@@ -57,7 +67,7 @@ The source dependencies are included through the mirrored submodules. Compilers,
 
 Start with [the build guide](doc/building/readme.md), [Windows/MSYS2](doc/building/windows.md), [Linux](doc/building/linux.md), or [macOS](doc/building/mac.md). CMake requirements are defined in [CMakeScripts/DefineDependsandFlags.cmake](CMakeScripts/DefineDependsandFlags.cmake).
 
-When an upstream guide gives the Inkscape GitLab clone command, substitute the Vibescape recursive clone command above. Existing GitLab CI configuration is preserved as upstream material; automated GitHub builds and release packaging require separate setup.
+When an upstream guide gives the Inkscape GitLab clone command, substitute the Vibescape recursive clone command above. Existing GitLab CI configuration and installer definitions are retained as upstream material. They do not imply planned Vibescape binary distribution; no such distribution is planned.
 
 The initial import verified repository and submodule integrity. The first local Windows development build completed on 2026-09-24 and opened the editor. See [the Vibescape Windows build notes](doc/building/vibescape-windows.md) for the reproducible setup, validation results, and remaining metafile test failures. Use `Build-Windows.ps1` for incremental builds, `Build-Windows.ps1 -Action Install` to fully refresh the local runnable folder, and `Run-Vibescape.cmd` to launch with separate Vibescape preferences.
 

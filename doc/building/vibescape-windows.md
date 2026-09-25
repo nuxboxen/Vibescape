@@ -1,16 +1,45 @@
 # Vibescape on Windows
 
+> These notes document our local experiments. Read the
+> [project scope and security guidance](../../README.md#security-and-running-code)
+> before building or running anything. We have not audited this fork and cannot
+> establish that it is safe to run. No public Vibescape binary distribution is planned.
+
 The local checkout is `C:\Users\winbo\Projects\Vibescape`.
 Double-click `Run-Vibescape.cmd` in the repository root to open our build.
 It launches `build/windows/install/bin/inkscape.exe` with a separate
 application identity and preferences in `%APPDATA%\Vibescape`.
 You can also run `Run-Vibescape.ps1`, optionally passing one SVG file.
-The application still uses Inkscape's original name and branding.
+The Windows executable and running-app icons use the orange Vibescape "Vi"
+design. The application still uses Inkscape's original name; broader relabeling
+is separate work. See [the icon source notes](../../share/branding/README-VIBESCAPE.md).
+
+The opening splash uses the 700 x 220 Vibescape Venus artwork in
+`share/screens/start-splash.png`. The build stages it into
+`build/windows/install/share/inkscape/screens/start-splash.png`.
+The [artwork master and generation prompts](../../share/screens/alternatives/vibescape-venus-prompt.md)
+are retained alongside the approved export.
+
+When making a shortcut, its icon can come from the packaged executable or
+`build/windows/install/share/inkscape/branding/vibescape.ico`. The build does
+not create or update desktop, Start menu, or taskbar shortcuts.
 
 Use the launcher for normal work: opening `inkscape.exe` directly still uses
 Inkscape's default profile. The other executable under `build/windows/bin`
 is the compiler output and does not have the complete packaged runtime beside it.
 
+## Windows icon validation
+
+The icon build completed on 2026-09-24. All ten embedded icon images in each
+of the four Windows executables matched `share/branding/vibescape.ico` byte
+for byte. The installed ICO and six GTK PNG sizes matched their source files.
+The copyright resource was preserved, and the packaged version command
+returned successfully with private test preferences. Existing locale warnings
+remain. Evidence is in `build/windows/logs/vibescape-icons/`.
+
+The work did not change existing Windows shortcuts, file associations, or
+system settings. NSIS/WiX icon configuration was updated, but no installer
+was produced or tested.
 ## Rebuild this configured checkout
 
 From PowerShell in the repository root:
@@ -41,8 +70,8 @@ The script uses MSYS2 UCRT64, RelWithDebInfo, static internal Inkscape libraries
 and the pinned internal lib2geom. All installation stays inside the local build
 folder. It does not install system-wide or change file associations. Close
 Vibescape before rebuilding changed application code so Windows can replace
-its executable and libraries. Release archives and installers remain separate
-future work.
+its executable and libraries. Prebuilt binary releases and public installer
+distribution are not planned.
 
 Logs are in `build/windows/logs/`. The package inventory is
 `build/windows/logs/msys2-packages.txt`, refreshed by explicit configuration.

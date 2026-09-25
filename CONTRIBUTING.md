@@ -1,3 +1,31 @@
+# Contributing to Vibescape
+
+Vibescape is an independent personal learning fork of Inkscape. Please read the
+[project scope and security guidance](README.md) before working with this source.
+We are not security experts and cannot establish that this fork is safe to build
+or run. We do not plan to distribute prebuilt Vibescape binaries.
+
+For changes or problems specific to Vibescape, use
+[this repository's issues](https://github.com/nuxboxen/Vibescape/issues) and pull
+requests. Describe the problem, the proposed change, what you actually checked,
+and any remaining limitations. Discuss substantial changes before investing
+significant work. Preserve upstream attribution, copyright notices, and licenses.
+
+We have no plans to submit these experiments upstream. Please do not send
+Vibescape support requests or fork-specific changes to Inkscape on our behalf.
+Any future upstream contribution would be a separate discussion following
+Inkscape's own wishes and process.
+
+## Retained upstream Inkscape guidance
+
+The original Inkscape contributor guide follows for reference and attribution.
+Its references to "we", contacts, GitLab merge requests, CI, and release workflows
+refer to the upstream Inkscape project. They do not describe Vibescape's support
+or contribution process. For current upstream guidance, consult
+[Inkscape's contribution page](https://inkscape.org/contribute/).
+
+---
+
 [Inkscape Developer Documentation](doc/readme.md) /
 
 Contributing to Inkscape - Getting started with Inkscape Development

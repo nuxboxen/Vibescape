@@ -297,6 +297,12 @@ if(WIN32)
   configure_file(inkscape.rc ${CMAKE_BINARY_DIR}/src/inkview.rc)
   configure_file(inkscape-manifest.xml ${CMAKE_BINARY_DIR}/src/inkview-manifest.xml)
   list(APPEND view_SRC ${CMAKE_BINARY_DIR}/src/inkview.rc)
+
+  # Resource compilers must rebuild the embedded icons when the artwork changes.
+  set_source_files_properties(
+    ${CMAKE_BINARY_DIR}/src/inkscape.rc
+    ${CMAKE_BINARY_DIR}/src/inkview.rc
+    PROPERTIES OBJECT_DEPENDS "${CMAKE_SOURCE_DIR}/share/branding/vibescape.ico")
 endif()
 
 # make executables for inkscape and inkview

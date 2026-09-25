@@ -56,7 +56,7 @@ configure_file("${CMAKE_SOURCE_DIR}/CMakeScripts/CPack.cmake" "${CMAKE_BINARY_DI
 ## Generator-specific configuration ##
 
 # NSIS (Windows .exe installer)
-set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/share/branding/inkscape.ico")
+set(CPACK_NSIS_MUI_ICON "${CMAKE_SOURCE_DIR}/share/branding/vibescape.ico")
 set(CPACK_NSIS_MUI_HEADERIMAGE "${CMAKE_SOURCE_DIR}/packaging/nsis/header.bmp")
 set(CPACK_NSIS_MUI_WELCOMEFINISHPAGE_BITMAP "${CMAKE_SOURCE_DIR}/packaging/nsis/welcomefinish.bmp")
 set(CPACK_NSIS_IGNORE_LICENSE_PAGE 1)
@@ -103,7 +103,7 @@ set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "\
 # WIX (Windows .msi installer)
 set(CPACK_WIX_UPGRADE_GUID "4d5fedaa-84a0-48be-bd2a-08246398361a")
 set(CPACK_WIX_VERSION 4)
-set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/share/branding/inkscape.ico")
+set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/share/branding/vibescape.ico")
 set(CPACK_WIX_UI_BANNER "${CMAKE_SOURCE_DIR}/packaging/wix/Bitmaps/banner.bmp")
 set(CPACK_WIX_UI_DIALOG "${CMAKE_SOURCE_DIR}/packaging/wix/Bitmaps/dialog.bmp")
 set(CPACK_WIX_UI_REF "WixUI_FeatureTree_nolicense")
