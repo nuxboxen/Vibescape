@@ -158,7 +158,17 @@ if(WIN32)
     ${MINGW_BIN}/tk[0-9]*.dll
     ${MINGW_BIN}/vulkan-[0-9]*.dll
     ${MINGW_BIN}/zlib1.dll)
+  # The selected bindings below are the only copies to install. Installing the
+  # MSYS2 copies first needlessly replaces the same DLLs on every invocation.
+  list(FILTER MINGW_LIBS EXCLUDE REGEX "/lib(glibmm-2[.]68|giomm-2[.]68|gtkmm-4[.]0)-[0-9]+[.]dll$")
   INSTALL(FILES ${MINGW_LIBS} DESTINATION bin)
+
+  # Package the C++ bindings selected by pkg-config, including local builds.
+  foreach(binding IN ITEMS glibmm-2.68 giomm-2.68 gtkmm-4.0)
+    pkg_get_variable(binding_prefix ${binding} prefix)
+    file(GLOB binding_dlls "${binding_prefix}/bin/lib${binding}-[0-9]*.dll")
+    install(FILES ${binding_dlls} DESTINATION bin)
+  endforeach()
   # There are differences for 64-Bit and 32-Bit build environments.
   if(HAVE_MINGW64)
     if($ENV{MSYSTEM} STREQUAL "CLANGARM64" OR $ENV{MSYSTEM} STREQUAL "CLANG64")
@@ -179,7 +189,7 @@ if(WIN32)
 
   # Install graphics-magick dlls
   if(WITH_GRAPHICS_MAGICK)
-    install (DIRECTORY ${MINGW_LIB}/GraphicsMagick-1.3.45
+    install (DIRECTORY ${MINGW_LIB}/GraphicsMagick-${MAGICK_VERSION}
       DESTINATION lib
       FILES_MATCHING
       PATTERN "*.dll"
@@ -383,7 +393,8 @@ if(WIN32)
     # Python packages for the extensions manager, and clipart importer extensions
     set(packages
         "python-platformdirs" "python-msgpack" "python-cachecontrol"
-        "python-idna" "python-urllib3" "python-chardet" "python-certifi" "python-requests" "python-beautifulsoup4" "python-filelock")
+        "python-idna" "python-urllib3" "python-chardet" "python-certifi" "python-requests" "python-beautifulsoup4" "python-filelock"
+        "python-soupsieve" "python-typing_extensions" "python-charset-normalizer")
     foreach(package ${packages})
       list_files_pacman(${package} paths)
       install_list(FILES ${paths}

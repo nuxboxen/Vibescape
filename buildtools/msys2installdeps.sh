@@ -111,6 +111,9 @@ $ARCH-scour
 eval pacman -S $PACMAN_OPTIONS \
 $ARCH-python-platformdirs \
 $ARCH-python-beautifulsoup4 \
+$ARCH-python-soupsieve \
+$ARCH-python-typing_extensions \
+$ARCH-python-charset-normalizer \
 $ARCH-python-cachecontrol \
 $ARCH-python-certifi \
 $ARCH-python-chardet \

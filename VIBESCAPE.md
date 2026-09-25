@@ -59,7 +59,7 @@ Start with [the build guide](doc/building/readme.md), [Windows/MSYS2](doc/buildi
 
 When an upstream guide gives the Inkscape GitLab clone command, substitute the Vibescape recursive clone command above. Existing GitLab CI configuration is preserved as upstream material; automated GitHub builds and release packaging require separate setup.
 
-The import verifies repository and submodule integrity. It does not claim that the development snapshot has been compiled or tested interactively on this computer.
+The initial import verified repository and submodule integrity. The first local Windows development build completed on 2026-09-24 and opened the editor. See [the Vibescape Windows build notes](doc/building/vibescape-windows.md) for the reproducible setup, validation results, and remaining metafile test failures. Use `Build-Windows.ps1` for incremental builds, `Build-Windows.ps1 -Action Install` to fully refresh the local runnable folder, and `Run-Vibescape.cmd` to launch with separate Vibescape preferences.
 
 ## Bringing in upstream improvements
 
