@@ -1,4 +1,4 @@
-APPLICATION_ICON    ICON        "${CMAKE_SOURCE_DIR}/share/branding/inkscape.ico"
+APPLICATION_ICON    ICON        "${CMAKE_SOURCE_DIR}/share/branding/vibescape.ico"
 1                   24          "${CMAKE_BINARY_DIR}/src/${FILE_NAME}-manifest.xml"
 
 1 VERSIONINFO
