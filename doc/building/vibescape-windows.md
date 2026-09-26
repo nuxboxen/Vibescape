@@ -265,3 +265,13 @@ whole installation folder together; the executable needs its adjacent
 libraries and resource folders. No MSI/EXE installer was created. The local
 build output and validation logs are ignored by Git; the build scripts and
 instructions are maintained in this repository.
+
+
+### Selector copy-drag validation (2026-09-25)
+
+The Alt-drag feature compiled in the Windows development build and passed three
+focused CTest targets (40 individual checks). The C++ test helper now follows the
+same static/shared build setting as the application library, resolving MinGW
+multiple-definition errors in this configuration. See the
+[copy-drag notes](../alt-drag-duplicate.md) for the exact coverage and outstanding
+hands-on checks. This does not resolve or replace the older export limitations above.

@@ -63,9 +63,9 @@ public:
     void setCenter(Geom::Point const &p);
     void grab(Geom::Point const &p, double x, double y, bool show_handles, bool translating);
     void transform(Geom::Affine const &rel_affine, Geom::Point const &norm);
-    void ungrab();
+    void ungrab(bool commit_undo = true);
     void stamp(bool clone = false);
-    bool moveTo(Geom::Point const &xy, unsigned int state);
+    bool moveTo(Geom::Point const &xy, unsigned int state, bool duplicate_drag = false);
     void commitAbsoluteAffine();
     void commitRelativeAffine();
     void align(guint state, SPSelTransHandle const &handle);

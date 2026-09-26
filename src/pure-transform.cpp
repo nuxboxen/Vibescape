@@ -148,8 +148,7 @@ SnappedPoint PureTranslate::snap(::SnapManager *sm, SnapCandidatePoint const &p,
 SnappedPoint PureTranslateConstrained::snap(::SnapManager *sm, SnapCandidatePoint const &p, Geom::Point pt_orig, Geom::OptRect const &bbox_to_snap) const {
     // Calculate a constraint dedicated for this specific point
     // When doing a constrained translation, all points will move in the same direction, i.e.
-    // either horizontally or vertically. The lines along which they move are therefore all
-    // parallel, but might not be co-linear. Therefore we will have to specify the point through
+    // along parallel lines (including diagonal copy drags), which might not be co-linear. Therefore we will have to specify the point through
     // which the constraint-line runs here, for each point individually.
     Snapper::SnapConstraint dedicated_constraint = Snapper::SnapConstraint(pt_orig, _direction);
     return sm->constrainedSnap(p, dedicated_constraint, bbox_to_snap);

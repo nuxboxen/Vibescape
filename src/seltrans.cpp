@@ -25,6 +25,7 @@
 #include <2geom/transforms.h>
 
 #include "seltrans.h"
+#include "ui/tools/duplicate-drag.h"
 
 #include "desktop-style.h"
 #include "desktop.h"
@@ -417,7 +418,7 @@ void Inkscape::SelTrans::transform(Geom::Affine const &rel_affine, Geom::Point c
     _updateHandles();
 }
 
-void Inkscape::SelTrans::ungrab()
+void Inkscape::SelTrans::ungrab(bool commit_undo)
 {
     g_return_if_fail(_grabbed);
     _grabbed = false;
@@ -479,7 +480,7 @@ void Inkscape::SelTrans::ungrab()
         _items_affines.clear();
         _items_centers.clear();
 
-        if (!_current_relative_affine.isIdentity()) { // we can have a identity affine
+        if (commit_undo && !_current_relative_affine.isIdentity()) { // we can have a identity affine
             // when trying to stretch a perfectly vertical line in horizontal direction, which will not be allowed
             // by the handles; this would be identified as a (zero) translation by isTranslation()
             if (_current_relative_affine.isTranslation()) {
@@ -499,7 +500,7 @@ void Inkscape::SelTrans::ungrab()
         if (_stamped) {
             _clear_stamp();
         }
-        if (_center_is_set) {
+        if (commit_undo && _center_is_set) {
             // we were dragging center; update reprs and commit undoable action
         	auto items= _desktop->getSelection()->items();
             for (auto item : items) {
@@ -1498,19 +1499,23 @@ void Inkscape::SelTrans::commitRelativeAffine()
     transform(_relative_affine, _origin);
 }
 
-bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
+bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state, bool duplicate_drag)
 {
     SnapManager &m = _desktop->getNamedView()->snap_manager;
 
     /* The amount that we've moved by during this drag */
     Geom::Point dxy = xy - _point;
 
-    auto increments = Modifiers::Modifier::get(Modifiers::Type::MOVE_INCREMENT)->active(state);
-    auto no_snap = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING)->active(state);
-    auto confine = Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(state);
-    increments = increments;
+    auto const constrain_diagonals = duplicate_drag && (state & GDK_SHIFT_MASK);
+    auto increments = !constrain_diagonals && Modifiers::Modifier::get(Modifiers::Type::MOVE_INCREMENT)->active(state);
+    auto no_snap_modifier = Modifiers::Modifier::get(Modifiers::Type::MOVE_NO_SNAPPING);
+    auto no_snap = no_snap_modifier->active(state) &&
+                   !(constrain_diagonals && no_snap_modifier->get_and_mask() == Modifiers::SHIFT);
+    auto confine = constrain_diagonals || Modifiers::Modifier::get(Modifiers::Type::MOVE_CONFINE)->active(state);
 
-    if (confine) {
+    if (constrain_diagonals) {
+        dxy = UI::Tools::constrain_duplicate_drag(dxy);
+    } else if (confine) {
         if (fabs(dxy[Geom::X]) > fabs(dxy[Geom::Y])) {
             dxy[Geom::Y] = 0;
         } else {
@@ -1535,7 +1540,11 @@ bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
 
         Inkscape::PureTranslate *bb, *sn;
 
-        if (confine) { // constrained movement with snapping
+        if (constrain_diagonals) {
+            auto const direction = dxy == Geom::Point(0, 0) ? Geom::Point(1, 0) : dxy / Geom::LInfty(dxy);
+            bb = new Inkscape::PureTranslateConstrained(dxy, direction);
+            sn = new Inkscape::PureTranslateConstrained(dxy, direction);
+        } else if (confine) { // constrained movement with snapping
 
             /* Snap to things, and also constrain to horizontal or vertical movement */
 
@@ -1589,7 +1598,7 @@ bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
         } else {
             // We didn't snap, so remove any previous snap indicator
             _desktop->getSnapIndicator()->remove_snaptarget();
-            if (confine) {
+            if (confine && !constrain_diagonals) {
                 // If we didn't snap, then we should still constrain horizontally or vertically
                 // (When we did snap, then this constraint has already been enforced by
                 // calling constrainedSnapTranslate() above)
@@ -1615,9 +1624,15 @@ bool Inkscape::SelTrans::moveTo(Geom::Point const &xy, guint state)
     Inkscape::Util::Quantity y_q = Inkscape::Util::Quantity(dxy[Geom::Y], "px");
     Glib::ustring xs(x_q.string(_desktop->getNamedView()->display_units));
     Glib::ustring ys(y_q.string(_desktop->getNamedView()->display_units));
-    _message_context.setF(Inkscape::NORMAL_MESSAGE,
+    if (duplicate_drag) {
+        _message_context.setF(Inkscape::NORMAL_MESSAGE,
+            _("<b>Move copy</b> by %s, %s; <b>Shift</b> restricts to horizontal, vertical or 45 degrees; <b>Esc</b> cancels"),
+            xs.c_str(), ys.c_str());
+    } else {
+        _message_context.setF(Inkscape::NORMAL_MESSAGE,
             _("<b>Move</b> by %s, %s; with <b>%s</b> to restrict to horizontal/vertical; with <b>%s</b> to disable snapping"),
             xs.c_str(), ys.c_str(), confine_mod.c_str(), no_snap_mod.c_str());
+    }
 
     return move != Geom::identity();
 }

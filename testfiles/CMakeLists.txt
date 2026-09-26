@@ -80,6 +80,7 @@ set(TEST_SOURCES
     util-uri-test
     drag-and-drop-svgz
     drawing-pattern-test
+    duplicate-drag-test
     split-path-test
     attributes-test
     dir-util-test
@@ -138,7 +139,9 @@ if(WITH_CAPYPDF)
     )
 endif()
 
-add_library(cpp_test_static_library SHARED inkscape-test.cpp doc-per-case-test.cpp compare-paths-test.h lpespaths-test.h store-integrity-test.h test-with-svg-object-pairs.cpp)
+# Match inkscape_base's linkage. A shared helper plus static inkscape_base can
+# link two copies of application symbols into a test executable on MinGW.
+add_library(cpp_test_static_library inkscape-test.cpp doc-per-case-test.cpp compare-paths-test.h lpespaths-test.h store-integrity-test.h test-with-svg-object-pairs.cpp)
 target_link_libraries(cpp_test_static_library PUBLIC ${GTEST_LIBRARIES} inkscape_base)
 
 add_custom_target(tests)

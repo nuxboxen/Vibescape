@@ -152,7 +152,7 @@ Modifier::Container &Modifier::_modifiers()
         make_modifier("select-remove-from", _("Remove from selection"), _("Remove items from existing selection"), SHIFT | CTRL, SELECT, DRAG),
         make_modifier("select-force-drag", _("Forced Drag"), _("Drag objects even if the mouse isn't over them"), ALT, SELECT, DRAG),
         make_modifier("select-cycle", _("Cycle through objects"), _("Scroll through objects under the cursor"), ALT, SELECT, SCROLL),
-        make_modifier("select-duplicate", _("Duplicate selection on drag"), _("Duplicate selection when starting a drag"), NEVER, SELECT, DRAG),
+        make_modifier("select-duplicate", _("Duplicate selection on drag"), _("Duplicate selection when starting a drag"), ALT, SELECT, DRAG),
         make_modifier("select-remove-snap", _("Remove snap target"), _("Remove snap target during a drag"), SHIFT | ALT, SELECT, DRAG),
 
     // Transform handle modifiers (applies to multiple tools)

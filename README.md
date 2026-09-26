@@ -80,9 +80,37 @@ what we have tried, without claiming a completed security review or release read
 shortcut editor directly. You can also reach it through
 **Preferences > Interface > Keyboard Shortcuts**.
 
+See the [Illustrator shortcut comparison](ILLUSTRATOR_SHORTCUTS.md) for the Windows
+reference, corresponding Vibescape actions, profile bindings, and matching checklist.
+
 The Object Properties panel places **Description** above **Selection**, keeping
 Title, Description, and ID together at the top. The section opens by default and
 remembers your choice when you collapse or expand it.
+
+## Copy by dragging
+
+With the Selector tool, hold **Alt before pressing the mouse button**, then drag
+an object to move a copy. Drag a member of a selection to copy the whole selection;
+drag an unselected object to copy that object. The originals stay in place.
+
+- Hold **Shift** during the copy drag to constrain movement horizontally, vertically,
+  or at 45 degrees. Snapping uses the existing snapping controls.
+- **Escape** cancels the copy and restores the previous selection.
+- **Undo** reverses duplication and movement together.
+- An Alt-click creates no copy. Starting on empty canvas keeps selection behavior.
+
+The modifier is **Duplicate selection on drag** under
+**Edit > Keyboard Shortcuts > Tool Modifiers**. Its default is Alt in the shipped
+profiles; an existing personal override still takes precedence. Disable or reassign
+it there to recover the old Alt-drag behavior. While duplication is enabled, it
+wins over Forced Drag/touch selection on an object; Shift constrains the copy
+instead of using the stock Shift-to-disable-snapping behavior.
+
+This first version covers moving copies with the Selector, including groups and
+multiple objects. Alt must be held at mouse-down; pressing it during an ordinary
+drag does not switch that drag to copying. Scaling/rotating handles, node editing,
+and dragging in the Layers and Objects panel are separate interactions.
+See the [implementation and acceptance checks](doc/alt-drag-duplicate.md).
 
 ## Source and development documentation
 

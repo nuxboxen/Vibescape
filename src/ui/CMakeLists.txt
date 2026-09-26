@@ -102,6 +102,7 @@ target_sources(inkscape_base PRIVATE
 	tools/rect-tool.cpp
 	tools/marker-tool.cpp
 	tools/select-tool.cpp
+	tools/duplicate-drag.cpp
 	tools/booleans-builder.cpp
 	tools/booleans-tool.cpp
 	tools/booleans-subitems.cpp
@@ -492,6 +493,7 @@ target_sources(inkscape_base PRIVATE
 	tools/rect-tool.h
 	tools/marker-tool.h
 	tools/select-tool.h
+	tools/duplicate-drag.h
 	tools/booleans-builder.h
 	tools/booleans-tool.h
 	tools/booleans-subitems.h

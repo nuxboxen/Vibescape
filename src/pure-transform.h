@@ -65,18 +65,21 @@ public:
 class PureTranslateConstrained: public PureTranslate {
 
 protected:
-    Geom::Dim2 _direction;
+    Geom::Point _direction;
     SnappedPoint snap(::SnapManager *sm, SnapCandidatePoint const &p, Geom::Point pt_orig, Geom::OptRect const &bbox_to_snap) const override;
 
 public:
     ~PureTranslateConstrained() override = default;
     PureTranslateConstrained(Geom::Coord displacement, Geom::Dim2 direction):
         PureTranslate(),
-        _direction(direction)
+        _direction()
         {
+            _direction[direction] = 1.0;
             _vector[direction] = displacement;
             _vector[1-direction] = 0.0;
         }
+    PureTranslateConstrained(Geom::Point const &displacement, Geom::Point const &direction)
+        : PureTranslate(displacement), _direction(direction) {}
     // PureTranslateConstrained * clone () const {return new PureTranslateConstrained(*this);}
 };
 
